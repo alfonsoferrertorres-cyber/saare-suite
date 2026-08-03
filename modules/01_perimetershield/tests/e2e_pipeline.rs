@@ -1,4 +1,4 @@
-﻿use ed25519_dalek::{Signer, SigningKey};
+use ed25519_dalek::{Signer, SigningKey};
 use evidencevault::EvidenceVault;
 use perimetershield::{LicensePayload, PerimeterShieldEngine, SignedLicenseToken};
 use saare_core::get_audit_timestamp;
@@ -44,5 +44,7 @@ fn test_end_to_end_compliance_pipeline() {
 
     // 4. Verificación de Integridad Auditada
     assert_eq!(vault.len(), 3);
-    assert!(vault.verify_integrity().expect("La cadena de evidencias debe ser inmutable y válida"));
+    assert!(vault
+        .verify_integrity()
+        .expect("La cadena de evidencias debe ser inmutable y válida"));
 }

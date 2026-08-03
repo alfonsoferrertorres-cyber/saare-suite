@@ -1,4 +1,4 @@
-﻿use ed25519_dalek::{Signer, SigningKey};
+use ed25519_dalek::{Signer, SigningKey};
 use saare_core::{get_audit_timestamp, LicenseVerifier};
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +60,10 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&token).unwrap());
 
     println!();
-    let status = if is_valid { "VALIDA (200 OK)" } else { "INVALIDA" };
+    let status = if is_valid {
+        "VALIDA (200 OK)"
+    } else {
+        "INVALIDA"
+    };
     println!("Validacion de firma en tiempo de ejecucion: {}", status);
 }

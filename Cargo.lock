@@ -12,6 +12,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "authorvault"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -81,6 +89,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "compliancesuite"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "evidencevault",
+ "md5",
+ "saare-core",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -139,6 +159,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "deepfakeshield"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
+]
+
+[[package]]
 name = "der"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -180,6 +208,14 @@ dependencies = [
  "sha2",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "edututorguard"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
 ]
 
 [[package]]
@@ -303,6 +339,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "labengine"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,6 +366,12 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+
+[[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
 name = "memchr"
@@ -516,13 +566,6 @@ dependencies = [
 name = "saare-runtime"
 version = "0.1.0"
 dependencies = [
- "ed25519-dalek",
- "evidencevault",
- "perimetershield",
- "rand",
- "saare-core",
- "serde",
- "serde_json",
  "tokio",
 ]
 
@@ -640,6 +683,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovereignty_node"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "spki"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -675,6 +727,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tokenmatrix"
+version = "0.1.0"
+dependencies = [
+ "saare-core",
+ "serde",
 ]
 
 [[package]]
@@ -867,20 +927,6 @@ name = "zeroize"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e"
-dependencies = [
- "zeroize_derive",
-]
-
-[[package]]
-name = "zeroize_derive"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
 
 [[package]]
 name = "zmij"

@@ -1,4 +1,4 @@
-﻿use saare_core::{get_audit_timestamp, LicenseVerifier, SecureBuffer};
+use saare_core::{get_audit_timestamp, LicenseVerifier, SecureBuffer};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -39,11 +39,11 @@ impl fmt::Debug for PerimeterShieldEngine {
 
 impl PerimeterShieldEngine {
     pub fn bootstrap(token_json: &str) -> Result<Self, PerimeterError> {
-        let token: SignedLicenseToken = serde_json::from_str(token_json)
-            .map_err(|_| PerimeterError::SerializationError)?;
+        let token: SignedLicenseToken =
+            serde_json::from_str(token_json).map_err(|_| PerimeterError::SerializationError)?;
 
-        let payload_bytes = serde_json::to_vec(&token.payload)
-            .map_err(|_| PerimeterError::SerializationError)?;
+        let payload_bytes =
+            serde_json::to_vec(&token.payload).map_err(|_| PerimeterError::SerializationError)?;
 
         let signature_array: [u8; 64] = token
             .signature
@@ -58,11 +58,19 @@ impl PerimeterShieldEngine {
             return Err(PerimeterError::InvalidSignature);
         }
 
-        if !token.payload.allowed_modules.contains(&"01_perimetershield".to_string()) {
+        if !token
+            .payload
+            .allowed_modules
+            .contains(&"01_perimetershield".to_string())
+        {
             return Err(PerimeterError::ModuleNotAuthorized);
         }
 
-        let session_data = format!("SESSION_INIT_CLIENT_{}_{}", token.payload.client_id, get_audit_timestamp());
+        let session_data = format!(
+            "SESSION_INIT_CLIENT_{}_{}",
+            token.payload.client_id,
+            get_audit_timestamp()
+        );
         let session_buffer = SecureBuffer::new(session_data.into_bytes());
 
         Ok(Self { session_buffer })

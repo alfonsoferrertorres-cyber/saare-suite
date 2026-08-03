@@ -1,4 +1,4 @@
-﻿use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use saare_core::get_audit_timestamp;
 use serde::{Deserialize, Serialize};
 
@@ -77,7 +77,11 @@ impl EvidenceVault {
 
             let payload_str = format!(
                 "{}:{}:{}:{}:{:?}",
-                record.sequence, record.timestamp, record.client_id, record.action, record.previous_signature
+                record.sequence,
+                record.timestamp,
+                record.client_id,
+                record.action,
+                record.previous_signature
             );
 
             let sig_array: [u8; 64] = record
