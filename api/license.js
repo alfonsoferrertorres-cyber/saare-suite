@@ -1,162 +1,102 @@
-import crypto from 'crypto';
 import { Resend } from 'resend';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export default async function handler(req, res) {
-  // Configuración Segura de CORS
-  const allowedOrigins = [process.env.ALLOWED_ORIGIN || 'https://saare.es'];
-  const origin = req.headers.origin;
+  // Configuración de cabeceras CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
 
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
+  // Manejo de Preflight OPTIONS
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   // Healthcheck Endpoint
   if (req.method === 'GET') {
-    return res.status(200).json({
-      status: 'online',
-      service: 'SAARE Platform Licensing Engine',
-      version: '4.2.0',
-      timestamp: new Date().toISOString(),
-    });
+    return res.status(200).send('SAARE Enterprise Discovery API Active');
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Utiliza POST.' });
-  }
-
-  // Validación de Autenticación de Administrador / API Key
-  const authHeader = req.headers.authorization;
-  const adminSecret = process.env.ADMIN_ISSUER_SECRET;
-  
-  if (adminSecret && authHeader !== `Bearer ${adminSecret}`) {
-    return res.status(401).json({ error: 'No autorizado para emitir licencias.' });
+    return res.status(405).json({ status: 'error', message: 'Method Not Allowed' });
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-
-    const company = String(body.company || body.empresa || body.name || 'Cliente_Enterprise').trim();
-    const email = String(body.email || body.correo || '').trim().toLowerCase();
-    const tierType = String(body.type || body.tier || 'EVALUATION_SANDBOX').trim();
-
-    // Validación de formato de email simple
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      return res.status(400).json({ error: 'El parámetro email es obligatorio y debe ser válido.' });
+    let payload = req.body;
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch (e) {
+        payload = {};
+      }
     }
+    payload = payload || {};
 
-    const validDays = tierType === 'EVALUATION_SANDBOX' ? 14 : 365;
-    const now = new Date();
-    const expirationDate = new Date(now.getTime() + validDays * 24 * 60 * 60 * 1000);
-
-    const payload = {
-      company,
-      type: tierType,
-      issued_at: now.toISOString(),
-      expires_at: expirationDate.toISOString(),
-      modules: [
-        '01_perimetershield',
-        '02_evidencevault',
-        '03_compliancesuite',
-        '04_sovereignty_node',
-        '05_tokenmatrix',
-        '06_labengine',
-        '09_deepfakeshield',
-      ],
+    const governanceProfile = {
+      environmentType: payload.deploymentModel || payload.environment || payload.env || 'Hybrid Enterprise AI',
+      governanceMaturity: 'Developing',
+      exposureAreas: [
+        'Runtime Policy Enforcement',
+        'AI Agent & MCP Boundary Control',
+        'Auditable Evidence Logging',
+        'Sensitive Data Exposure (DLP)'
+      ]
     };
 
-    const privateKeyRaw = process.env.SAARE_PRIVATE_KEY;
-    if (!privateKeyRaw) {
-      console.error('ALERTA CRÍTICA: Falta la variable SAARE_PRIVATE_KEY');
-      return res.status(500).json({ error: 'Configuración criptográfica incompleta.' });
-    }
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 30);
 
-    // Normalización de Clave Privada
-    const formattedKey = privateKeyRaw.includes('-----BEGIN')
-      ? privateKeyRaw.replace(/\\n/g, '\n')
-      : `-----BEGIN PRIVATE KEY-----\n${privateKeyRaw.replace(/\\n/g, '\n')}\n-----END PRIVATE KEY-----`;
+    const discoveryToken = Buffer.from(JSON.stringify({
+      company: payload.company || 'Enterprise Client',
+      program: 'SAARE_DISCOVERY_PROGRAM',
+      nodes: 5,
+      exp: expires.toISOString()
+    })).toString('base64');
 
-    const payloadBytes = Buffer.from(JSON.stringify(payload), 'utf8');
-
-    const privateKey = crypto.createPrivateKey({
-      key: formattedKey,
-      format: 'pem',
-      type: 'pkcs8',
-    });
-
-    // Firma con Ed25519
-    const signatureBuffer = crypto.sign(null, payloadBytes, privateKey);
-
-    // Extracción limpia de la clave pública raw (32 bytes para Ed25519)
-    const publicKeyObj = crypto.createPublicKey(privateKey);
-    const pubKeyRaw = publicKeyObj.export({ format: 'der', type: 'spki' });
-    // En el estándar PKCS#8 / SPKI Ed25519, los últimos 32 bytes corresponden a la clave pública
-    const publicKeyBytes = Array.from(pubKeyRaw.subarray(-32));
-
-    const licenseObject = {
-      payload,
-      signature: Array.from(signatureBuffer),
-      public_key: publicKeyBytes,
-    };
-
-    const licenseJsonContent = JSON.stringify(licenseObject, null, 2);
-
-    // Envío del Email
-    let emailSent = false;
+    // Despacho de correo transaccional vía Resend
     if (resend) {
       try {
-        const sender = process.env.EMAIL_FROM || 'SAARE Licensing <licensing@saare.es>';
         await resend.emails.send({
-          from: sender,
-          to: [email],
-          subject: `Licencia SAARE Platform (${tierType}) - ${company}`,
+          from: process.env.EMAIL_FROM || 'SAARE Leads <legal@saare.es>',
+          to: ['alfonsoferrertorres@gmail.com'],
+          subject: `🚀 [NUEVO LEAD] ${payload.company || 'Empresa'} - ${payload.name || 'Cliente'}`,
           html: `
-            <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5; max-width: 600px;">
-              <h2 style="color: #0284c7;">Emisión de Licencia de Producción</h2>
-              <p>Hola team de <strong>${company}</strong>,</p>
-              <p>Se ha generado tu clave criptográfica oficial <code>saare.lic</code> para la suite SAARE v4.2.0.</p>
-              
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; margin: 15px 0;">
-                <p style="margin: 0;"><strong>Organización:</strong> ${company}</p>
-                <p style="margin: 4px 0 0 0;"><strong>Válida hasta:</strong> ${expirationDate.toLocaleDateString('es-ES')}</p>
-              </div>
-
-              <p>Por favor, descarga el archivo adjunto y colócalo en la raíz de tu servicio o contenedor Docker.</p>
-              <hr style="border: 0; border-top: 1px solid #cbd5e1; margin-top: 20px;" />
-              <p style="font-size: 12px; color: #64748b;">MS3V S.A.A.R.E. SL | legal@saare.es</p>
+            <div style="font-family: Arial, sans-serif; background-color: #030712; color: #f8fafc; padding: 24px; border-radius: 8px;">
+              <h2 style="color: #06b6d4; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 0;">
+                Nueva Solicitud de Arquitectura / Lead Recibido
+              </h2>
+              <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 15px;">
+                <tr><td style="padding: 8px; color: #94a3b8; width: 35%;">Nombre Completo:</td><td style="padding: 8px; color: #fff;"><b>${payload.name || 'N/A'}</b></td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Empresa / Organización:</td><td style="padding: 8px; color: #fff;"><b>${payload.company || 'N/A'}</b></td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Email Corporativo:</td><td style="padding: 8px; color: #38bdf8;"><b>${payload.email || 'N/A'}</b></td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Rol / Cargo:</td><td style="padding: 8px; color: #fff;">${payload.role || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Entorno (Target):</td><td style="padding: 8px; color: #fbbf24;">${payload.deploymentModel || payload.environment || payload.env || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Carga de Trabajo (Workload):</td><td style="padding: 8px; color: #fff;">${payload.workload || payload.useCase || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; color: #94a3b8;">Normativas Requeridas:</td><td style="padding: 8px; color: #34d399;">${Array.isArray(payload.frameworks) ? payload.frameworks.join(', ') : (Array.isArray(payload.complianceNeeds) ? payload.complianceNeeds.join(', ') : 'EU AI Act')}</td></tr>
+              </table>
             </div>
-          `,
-          attachments: [
-            {
-              filename: 'saare.lic',
-              content: Buffer.from(licenseJsonContent, 'utf-8').toString('base64'),
-            },
-          ],
+          `
         });
-        emailSent = true;
       } catch (mailErr) {
-        console.error('Error no bloqueante enviando email:', mailErr.message);
+        console.error('❌ Error no bloqueante enviando email:', mailErr.message);
       }
     }
 
     return res.status(200).json({
       success: true,
-      company,
-      license: licenseObject,
-      email_sent: emailSent,
+      status: 'success',
+      profile: governanceProfile,
+      discoveryToken,
+      message: 'Governance Profile Generated'
     });
-  } catch (error) {
-    console.error('Error en /api/license:', error.message);
-    return res.status(500).json({
-      error: 'Fallo interno generando la licencia.',
-    });
+
+  } catch (err) {
+    console.error('❌ Error procesando solicitud:', err.message);
+    return res.status(400).json({ status: 'error', message: 'Invalid JSON Payload' });
   }
 }
