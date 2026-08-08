@@ -1,23 +1,18 @@
-{
+﻿{
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "@saare/ui/*": ["packages/ui/src/*"],
-      "@saare/shared-types/*": ["packages/shared-types/src/*"],
-      "@saare/assessment-engine/*": ["packages/assessment-engine/src/*"]
-    }
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false
   },
-  "include": ["src", "packages", "services", "app"]
+  "include": ["src", "public", "index.html"]
 }
