@@ -6,6 +6,7 @@ export default function Pricing() {
   const [modalType, setModalType] = useState('enterprise'); // 'enterprise' or 'oem'
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   
   // Dynamic form state
   const [formData, setFormData] = useState({
@@ -43,12 +44,35 @@ export default function Pricing() {
     setIsModalOpen(true);
   };
 
+  // Redirección a Stripe Checkout
+  const handleStripeCheckout = async (priceId) => {
+    setCheckoutLoading(true);
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId })
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(`Error al iniciar el checkout: ${data.error || 'Inténtelo de nuevo.'}`);
+      }
+    } catch (error) {
+      console.error('Error al conectar con Checkout:', error);
+      alert('No se pudo conectar con la pasarela de pagos.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Petición al endpoint Serverless de Vercel
       const response = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,15 +181,24 @@ export default function Pricing() {
               </span>
               <h3 className="text-2xl font-serif font-bold text-white mt-4 mb-2">Want to deploy the platform?</h3>
               <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                Request a technical architecture review to define an Enterprise licensing model or OEM connector tailored to your infrastructure.
+                Request a technical architecture review or purchase a production license directly for immediate setup.
               </p>
             </div>
-            <button
-              onClick={() => openSpecificModal('enterprise')}
-              className="w-full text-center bg-[#C5A059] hover:bg-[#d6b16a] text-black font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-md shadow-[#C5A059]/20 cursor-pointer"
-            >
-              Request Architecture
-            </button>
+            <div className="space-y-3">
+              <button
+                disabled={checkoutLoading}
+                onClick={() => handleStripeCheckout('price_1U0zYCFlwFW4ifPSZwysl3al')}
+                className="w-full text-center bg-[#C5A059] hover:bg-[#d6b16a] text-black font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-md shadow-[#C5A059]/20 cursor-pointer disabled:opacity-50"
+              >
+                {checkoutLoading ? 'Redirecting...' : 'Buy Cloud Gateway License (15,000€)'}
+              </button>
+              <button
+                onClick={() => openSpecificModal('enterprise')}
+                className="w-full text-center bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Request Architecture Review
+              </button>
+            </div>
           </div>
 
         </div>
@@ -177,8 +210,8 @@ export default function Pricing() {
               <tr className="border-b border-slate-800 text-slate-400">
                 <th className="py-3 px-4">Feature</th>
                 <th className="py-3 px-4 text-[#00f0ff]">Discovery</th>
-                <th className="py-3 px-4 text-slate-200">Professional</th>
-                <th className="py-3 px-4 text-[#C5A059]">Enterprise</th>
+                <th className="py-3 px-4 text-slate-200">Cloud Gateway</th>
+                <th className="py-3 px-4 text-[#C5A059]">Embedded Engine</th>
                 <th className="py-3 px-4 text-purple-400">OEM / ISV</th>
               </tr>
             </thead>
@@ -186,14 +219,14 @@ export default function Pricing() {
               <tr>
                 <td className="py-3 px-4 font-bold text-white">Objective</td>
                 <td className="py-3 px-4">Evaluate</td>
-                <td className="py-3 px-4">Prototype / PoC</td>
                 <td className="py-3 px-4">Production Ops</td>
+                <td className="py-3 px-4">In-Process Runtime</td>
                 <td className="py-3 px-4">Integrate / Resell</td>
               </tr>
               <tr>
                 <td className="py-3 px-4 font-bold text-white">Deployment</td>
                 <td className="py-3 px-4">Local Sandbox</td>
-                <td className="py-3 px-4">Cloud / PoC</td>
+                <td className="py-3 px-4">Sidecar / Cloud Proxy</td>
                 <td className="py-3 px-4">On-Prem / Air-Gapped</td>
                 <td className="py-3 px-4">Embedded SDK</td>
               </tr>
@@ -203,10 +236,20 @@ export default function Pricing() {
                   <Link to="/discovery" className="text-[#00f0ff] underline">Start Discovery</Link>
                 </td>
                 <td className="py-3 px-4">
-                  <button onClick={() => openSpecificModal('enterprise')} className="text-slate-200 underline cursor-pointer">Contact Sales</button>
+                  <button 
+                    onClick={() => handleStripeCheckout('price_1U0zYCFlwFW4ifPSZwysl3al')} 
+                    className="text-slate-200 underline cursor-pointer"
+                  >
+                    Buy Cloud Gateway
+                  </button>
                 </td>
                 <td className="py-3 px-4">
-                  <button onClick={() => openSpecificModal('enterprise')} className="text-[#C5A059] underline cursor-pointer">Request Arch.</button>
+                  <button 
+                    onClick={() => handleStripeCheckout('price_1U0zYIFlwFW4ifPS4FmGkGz2')} 
+                    className="text-[#C5A059] underline cursor-pointer"
+                  >
+                    Buy Embedded
+                  </button>
                 </td>
                 <td className="py-3 px-4">
                   <button onClick={() => openSpecificModal('oem')} className="text-purple-400 underline cursor-pointer">Talk to OEM</button>
