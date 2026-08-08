@@ -1,27 +1,8 @@
 {
   "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
-        }
-      ]
-    }
-  ],
   "rewrites": [
     {
-      "source": "/api/v1/leads",
-      "destination": "/api/v1/leads.js"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/.*).*)",
       "destination": "/index.html"
     }
   ]
