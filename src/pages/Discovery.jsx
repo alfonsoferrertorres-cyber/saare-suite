@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Discovery() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,24 +15,33 @@ export default function Discovery() {
     complianceNeeds: ['EU AI Act']
   });
 
+  // Lock background scroll when modal is active
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isModalOpen]);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleComplianceToggle = (framework) => {
-    setFormData(prev => {
-      const exists = prev.complianceNeeds.includes(framework);
-      if (exists) {
-        return { ...prev, complianceNeeds: prev.complianceNeeds.filter(f => f !== framework) };
-      } else {
-        return { ...prev, complianceNeeds: [...prev.complianceNeeds, framework] };
-      }
-    });
+    setFormData(prev => ({
+      ...prev,
+      complianceNeeds: prev.complianceNeeds.includes(framework)
+        ? prev.complianceNeeds.filter(f => f !== framework)
+        : [...prev.complianceNeeds, framework]
+    }));
   };
 
   const triggerPDFDownload = () => {
+    const pdfUrl = '/docs/SAARE-Technical-Whitepaper-v14.pdf';
     const link = document.createElement('a');
-    link.href = '/docs/SAARE-Technical-Whitepaper-v14.pdf';
-    link.download = 'SAARE-Technical-Whitepaper-v14.pdf';
+    link.href = pdfUrl;
+    link.setAttribute('download', 'SAARE-Technical-Whitepaper-v14.pdf');
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   };
 
   const handleSubmit = async (e) => {
@@ -40,7 +49,6 @@ export default function Discovery() {
     setLoading(true);
 
     try {
-      // Conexión directa a la Serverless Function de Vercel
       const response = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,11 +70,11 @@ export default function Discovery() {
         triggerPDFDownload();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Error al procesar la solicitud: ${errorData.error || 'Error en el servidor backend.'}`);
+        alert(`Error: ${errorData.error || 'Server error occurred.'}`);
       }
     } catch (error) {
-      console.error('Error enviando la solicitud:', error);
-      alert('No se pudo conectar con el servidor backend.');
+      console.error('Submission error:', error);
+      alert('Unable to reach the server.');
     } finally {
       setLoading(false);
     }
@@ -80,7 +88,6 @@ export default function Discovery() {
   return (
     <div className="min-h-screen bg-[#050811] text-white pt-24 pb-20 px-6 sm:px-8">
       <div className="max-w-5xl mx-auto space-y-12">
-        
         {/* HERO SECTION */}
         <div className="text-center max-w-4xl mx-auto space-y-6">
           <span className="font-mono text-[10px] font-bold text-[#00f0ff] uppercase tracking-widest bg-[#00f0ff]/10 px-4 py-1.5 rounded-full border border-[#00f0ff]/20 inline-block">
@@ -116,7 +123,6 @@ export default function Discovery() {
             </div>
           </div>
 
-          {/* TRIGGER BUTTON TO OPEN FORM MODAL */}
           <div className="pt-4 text-center">
             <button
               type="button"
@@ -127,15 +133,19 @@ export default function Discovery() {
             </button>
           </div>
         </div>
-
       </div>
 
-      {/* DISCOVERY FORM MODAL */}
+      {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="bg-[#050811] border border-slate-800 rounded-2xl max-w-xl w-full p-6 sm:p-8 relative shadow-2xl my-8">
             <button
               onClick={closeModal}
+              aria-label="Close modal"
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-mono text-sm cursor-pointer"
             >
               ✕
@@ -157,8 +167,6 @@ export default function Discovery() {
                 </p>
 
                 <div className="space-y-3 pt-2">
-                  
-                  {/* Row 1: Name and Company */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-mono text-slate-400 mb-1">Full Name *</label>
@@ -168,7 +176,7 @@ export default function Discovery() {
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
                         placeholder="e.g. Carlos Mendoza"
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
                       />
                     </div>
                     <div>
@@ -179,12 +187,11 @@ export default function Discovery() {
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
                         placeholder="e.g. SAARE Tech Inc."
                         value={formData.company}
-                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                        onChange={(e) => handleInputChange('company', e.target.value)}
                       />
                     </div>
                   </div>
 
-                  {/* Row 2: Email and Role */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-mono text-slate-400 mb-1">Corporate Email *</label>
@@ -194,7 +201,7 @@ export default function Discovery() {
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
                         placeholder="carlos@company.com"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
                       />
                     </div>
                     <div>
@@ -202,7 +209,7 @@ export default function Discovery() {
                       <select
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff] cursor-pointer"
                         value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        onChange={(e) => handleInputChange('role', e.target.value)}
                       >
                         <option value="CISO / Security Leader">CISO / Security Leader</option>
                         <option value="CTO / Chief Architect">CTO / Chief Architect</option>
@@ -213,14 +220,13 @@ export default function Discovery() {
                     </div>
                   </div>
 
-                  {/* Row 3: Deployment Target and Workload */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-mono text-slate-400 mb-1">Deployment Target</label>
                       <select
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff] cursor-pointer"
                         value={formData.env}
-                        onChange={(e) => setFormData({ ...formData, env: e.target.value })}
+                        onChange={(e) => handleInputChange('env', e.target.value)}
                       >
                         <option value="AWS Cloud">AWS Cloud</option>
                         <option value="Microsoft Azure">Microsoft Azure</option>
@@ -234,7 +240,7 @@ export default function Discovery() {
                       <select
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff] cursor-pointer"
                         value={formData.useCase}
-                        onChange={(e) => setFormData({ ...formData, useCase: e.target.value })}
+                        onChange={(e) => handleInputChange('useCase', e.target.value)}
                       >
                         <option value="Agentic Workflows & MCP">Agentic Workflows & MCP</option>
                         <option value="Enterprise RAG / Knowledge Base">Enterprise RAG / Knowledge Base</option>
@@ -244,7 +250,6 @@ export default function Discovery() {
                     </div>
                   </div>
 
-                  {/* Multi-Select Compliance Frameworks */}
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 mb-1.5">
                       Target Compliance Frameworks
@@ -269,7 +274,6 @@ export default function Discovery() {
                       })}
                     </div>
                   </div>
-
                 </div>
 
                 <button
@@ -289,12 +293,20 @@ export default function Discovery() {
                 <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
                   Thank you, <span className="text-[#00f0ff] font-bold">{formData.name}</span> ({formData.company}). Your assessment parameters have been registered. The evaluation package download has initiated.
                 </p>
-                <button
-                  onClick={closeModal}
-                  className="mt-4 bg-slate-800 text-slate-200 border border-slate-700 text-xs px-8 py-3 rounded-xl hover:text-white cursor-pointer font-mono uppercase tracking-wider"
-                >
-                  Close Window
-                </button>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    onClick={triggerPDFDownload}
+                    className="text-xs text-[#00f0ff] underline hover:text-white cursor-pointer font-mono"
+                  >
+                    Didn't download automatically? Click here
+                  </button>
+                  <button
+                    onClick={closeModal}
+                    className="mt-2 bg-slate-800 text-slate-200 border border-slate-700 text-xs px-8 py-3 rounded-xl hover:text-white cursor-pointer font-mono uppercase tracking-wider"
+                  >
+                    Close Window
+                  </button>
+                </div>
               </div>
             )}
           </div>

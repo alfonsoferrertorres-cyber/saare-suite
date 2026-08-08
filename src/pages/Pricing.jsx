@@ -77,28 +77,28 @@ export default function Pricing() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: modalType,
-          tier: modalType === 'oem' ? 'OEM / ISV Integration' : 'Enterprise Architecture',
-          name: formData.name,
+          type: modalType === 'oem' ? 'OEM_INTEGRATION' : 'ENTERPRISE_EVALUATION',
+          company: formData.company || formData.name,
           email: formData.email,
-          company: formData.company,
+          name: formData.name,
           role: formData.role,
           environment: formData.env,
           useCase: formData.useCase,
-          complianceNeeds: formData.complianceNeeds
+          complianceNeeds: formData.complianceNeeds.join(', ')
         })
       });
 
-      if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success) {
         setSubmitted(true);
         triggerPDFDownload();
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(`Error processing request: ${errorData.error || 'Please check server logs.'}`);
+        alert(`Error al procesar la solicitud: ${data.error || 'Verifique el correo introducido.'}`);
       }
     } catch (error) {
-      console.error('Error submitting request:', error);
-      alert('Could not connect to backend server.');
+      console.error('Error enviando la solicitud:', error);
+      alert('No se pudo conectar con el servidor de licencias.');
     } finally {
       setLoading(false);
     }
