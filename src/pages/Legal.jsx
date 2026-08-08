@@ -12,7 +12,7 @@ export default function Legal() {
       sections: [
         {
           heading: '1. Objeto y Titularidad',
-          text: 'El presente documento regula la contratación de licencias y el acceso a SAARE Platform, comercializada por MS3V S.A.A.R.E. SL (CIF / B-XXXXXXXX) con domicilio en España. El uso comercial está reservado exclusivamente a personas jurídicas y entidades profesionales (B2B).'
+          text: 'El presente documento regula la contratación de licencias y el acceso a SAARE Platform, comercializada por MS3V S.A.A.R.E. SL con domicilio en España. El uso comercial está reservado exclusivamente a personas jurídicas y entidades profesionales (B2B).'
         },
         {
           heading: '2. Licencias de Uso y Suscripción',
@@ -47,7 +47,7 @@ export default function Legal() {
       subtitle: 'End User License Agreement para SAARE Policy Shield & Embedded SDK',
       sections: [
         {
-          heading: '1. Restricciones de Ingenería Inversa',
+          heading: '1. Restricciones de Ingeniería Inversa',
           text: 'Queda estrictamente prohibida la descompilación, ingeniería inversa o manipulación del motor nativo (.dll / .so) y del mecanismo de firma criptográfica de licencias Ed25519.'
         },
         {
@@ -85,7 +85,7 @@ export default function Legal() {
         <div className="space-y-8 text-slate-300 text-xs sm:text-sm font-light leading-relaxed">
           {currentData.sections.map((sec, idx) => (
             <div key={idx} className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-xl space-y-2">
-              <h3 className="text-base font-serif font-bold text-white text-[#00f0ff]">
+              <h3 className="text-base font-serif font-bold text-[#00f0ff]">
                 {sec.heading}
               </h3>
               <p>{sec.text}</p>
@@ -93,7 +93,7 @@ export default function Legal() {
           ))}
         </div>
 
-        {/* Botón de regreso */}
+        {/* Volver */}
         <div className="pt-4 border-t border-slate-800 flex justify-between items-center text-xs font-mono">
           <Link to="/" className="text-slate-400 hover:text-white transition-all">
             ← Volver a SAARE Platform
