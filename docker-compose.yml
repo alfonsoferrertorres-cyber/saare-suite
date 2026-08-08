@@ -1,0 +1,5 @@
+﻿services:
+  sidecar:
+    image: ghcr.io/alfonsoferrertorres-cyber/saare-suite/saare-sidecar:latest
+    container_name: saare-sidecar
+    restart: always
