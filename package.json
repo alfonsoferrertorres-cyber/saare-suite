@@ -11,6 +11,8 @@
   ],
   "scripts": {
     "dev": "vite",
+    "server": "node test-webhook.js",
+    "start": "node test-webhook.js",
     "build": "vite build",
     "preview": "vite preview"
   },
