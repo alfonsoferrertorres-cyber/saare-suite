@@ -1,6 +1,6 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
 
-  // 1. Manejo global de clics para capturar botones, enlaces y tarjetas de la plataforma
+  // 1. Manejo global de clics para capturar botones y tarjetas
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button, a, .btn, .card');
     if (!btn) return;
@@ -8,12 +8,13 @@
     const text = (btn.innerText || btn.textContent || '').trim().toUpperCase();
     const href = (btn.getAttribute('href') || '').toLowerCase();
 
-    // Evaluar si la interacción busca abrir el modal de Discovery
     const isDiscoveryRequest = 
       text.includes('REQUEST DISCOVERY') || 
       text.includes('START DISCOVERY') || 
+      text.includes('REQUEST ARCHITECTURE') ||
       btn.id === 'btn-open-discovery' ||
-      href.includes('discovery');
+      href.includes('discovery') ||
+      href.includes('pricing');
 
     if (isDiscoveryRequest) {
       e.preventDefault();
@@ -31,7 +32,7 @@
       return;
     }
 
-    // Cerrar modales al presionar la 'X' o la capa exterior
+    // Cerrar modal al pulsar 'X' o backdrop
     if (
       e.target.classList.contains('modal-close') || 
       e.target.classList.contains('modal-overlay') || 
@@ -47,47 +48,89 @@
     }
   }, true);
 
-  // 2. Inyector dinámico de Modal para Discovery
+  // 2. Inyector de Modal Avanzado con la Especificación Enterprise Completa
   function openInjectedDiscoveryModal() {
     let modal = document.getElementById('discovery-modal');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'discovery-modal';
       modal.className = 'modal-overlay';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.92); backdrop-filter:blur(12px); z-index:99999; display:flex; justify-content:center; align-items:center; opacity:1; visibility:visible;';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.94); backdrop-filter:blur(14px); z-index:99999; display:flex; justify-content:center; align-items:center; opacity:1; visibility:visible;';
       modal.innerHTML = `
-        <div class="modal-card" style="background:#090d16; border:1px solid rgba(6,182,212,0.3); border-radius:12px; width:90%; max-width:560px; padding:2rem; position:relative; color:#fff; font-family:sans-serif; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
+        <div class="modal-card" style="background:#090d16; border:1px solid rgba(6,182,212,0.3); border-radius:12px; width:92%; max-width:620px; padding:2rem; position:relative; color:#fff; font-family:sans-serif; box-shadow:0 25px 50px -12px rgba(0,0,0,0.85);">
           <span class="modal-close" style="position:absolute; top:1rem; right:1.2rem; color:#94a3b8; cursor:pointer; font-size:1.5rem; font-weight:bold;">&times;</span>
           <span style="font-size:0.68rem; color:#06b6d4; font-weight:bold; letter-spacing:1.5px; text-transform:uppercase; display:block; margin-bottom:0.2rem;">
-            EVALUATION METHODOLOGY • DISCOVERY ACCESS
+            EVALUATION METHODOLOGY • ARCHITECTURE SPECIFICATION
           </span>
-          <h2 style="font-size:1.5rem; color:#fff; margin:0 0 1.2rem; font-weight:700;">Request Discovery Assessment</h2>
+          <h2 style="font-size:1.5rem; color:#fff; margin:0 0 1.2rem; font-weight:700;">Request Architecture Specification</h2>
           
           <form id="discovery-access-form">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
               <div>
                 <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Full Name *</label>
-                <input type="text" name="name" required placeholder="Carlos Mendoza" style="width:100%; padding:0.75rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+                <input type="text" name="name" required placeholder="e.g. Carlos Mendoza" style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
               </div>
               <div>
-                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Organization *</label>
-                <input type="text" name="company" required placeholder="SAARE Tech Inc" style="width:100%; padding:0.75rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Organization / Company *</label>
+                <input type="text" name="company" required placeholder="e.g. SAARE Tech Inc." style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
               </div>
             </div>
-            <div style="margin-bottom:1rem;">
-              <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Corporate Email *</label>
-              <input type="email" name="email" required placeholder="carlos@company.com" style="width:100%; padding:0.75rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+              <div>
+                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Corporate Email *</label>
+                <input type="email" name="email" required placeholder="carlos@company.com" style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Role / Function</label>
+                <select name="role" style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+                  <option value="CISO / Security Leader">CISO / Security Leader</option>
+                  <option value="Enterprise Architect">Enterprise Architect</option>
+                  <option value="DevOps / AI Engineer">DevOps / AI Engineer</option>
+                  <option value="Compliance / Legal Officer">Compliance / Legal Officer</option>
+                </select>
+              </div>
             </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+              <div>
+                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Deployment Target</label>
+                <select name="deploymentModel" style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+                  <option value="AWS Cloud">AWS Cloud</option>
+                  <option value="Azure / GCP">Azure / GCP</option>
+                  <option value="Air-Gapped On-Premise">Air-Gapped On-Premise</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Primary AI Workload</label>
+                <select name="workload" style="width:100%; padding:0.7rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
+                  <option value="Agentic Workflows & MCP">Agentic Workflows & MCP</option>
+                  <option value="RAG & Knowledge Bases">RAG & Knowledge Bases</option>
+                  <option value="Custom LLM Fine-Tuning">Custom LLM Fine-Tuning</option>
+                </select>
+              </div>
+            </div>
+
             <div style="margin-bottom:1.2rem;">
-              <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.3rem;">Deployment Target</label>
-              <select name="deploymentModel" style="width:100%; padding:0.75rem; background:#030712; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; font-size:0.85rem;">
-                <option value="AWS Cloud">AWS Cloud</option>
-                <option value="Azure / GCP">Azure / GCP</option>
-                <option value="Air-Gapped On-Premise">Air-Gapped On-Premise</option>
-              </select>
+              <label style="display:block; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.4rem;">Target Compliance Frameworks</label>
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:0.5rem;">
+                <label style="display:flex; align-items:center; gap:6px; background:#030712; padding:0.5rem; border:1px solid rgba(255,255,255,0.12); border-radius:4px; font-size:0.75rem; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" name="frameworks" value="EU AI Act" checked style="accent-color:#06b6d4;"> EU AI Act
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; background:#030712; padding:0.5rem; border:1px solid rgba(255,255,255,0.12); border-radius:4px; font-size:0.75rem; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" name="frameworks" value="GDPR" style="accent-color:#06b6d4;"> GDPR
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; background:#030712; padding:0.5rem; border:1px solid rgba(255,255,255,0.12); border-radius:4px; font-size:0.75rem; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" name="frameworks" value="DORA" style="accent-color:#06b6d4;"> DORA
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; background:#030712; padding:0.5rem; border:1px solid rgba(255,255,255,0.12); border-radius:4px; font-size:0.75rem; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" name="frameworks" value="ISO/IEC 42001" style="accent-color:#06b6d4;"> ISO 42001
+                </label>
+              </div>
             </div>
+
             <button type="submit" style="width:100%; padding:0.85rem; background:#06b6d4; color:#020617; font-weight:bold; font-size:0.85rem; border:none; border-radius:6px; cursor:pointer; text-transform:uppercase; letter-spacing:1px;">
-              SUBMIT DISCOVERY REQUEST
+              SUBMIT ARCHITECTURE REQUEST
             </button>
           </form>
         </div>
@@ -100,7 +143,7 @@
     modal.style.opacity = '1';
   }
 
-  // 3. Procesar envíos hacia http://localhost:8080 y desplegar la vista del Perfil
+  // 3. Submisión y respuesta dinámica
   function attachFormSubmitHandler(form) {
     if (!form || form.dataset.bound === 'true') return;
     form.dataset.bound = 'true';
@@ -111,12 +154,13 @@
       const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerText = 'PROCESSING DISCOVERY REQUEST...';
+        submitBtn.innerText = 'PROCESSING ARCHITECTURE REQUEST...';
       }
 
-      const payload = Object.fromEntries(new FormData(form).entries());
-      payload.company = payload.company || payload.organization || 'Enterprise Lead';
-      payload.deploymentModel = payload.deploymentModel || payload.environment || payload.deploymentTarget || 'AWS Cloud';
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      payload.frameworks = formData.getAll('frameworks');
+      payload.company = payload.company || 'Enterprise Lead';
 
       try {
         const response = await fetch('http://localhost:8080', {
@@ -166,22 +210,12 @@
                 </ul>
               </div>
 
-              <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 0.8rem; border-radius: 6px; margin-bottom: 1.2rem;">
-                <span style="font-size: 0.75rem; color: #34d399; font-weight: bold; display: block; margin-bottom: 0.2rem;">
-                  RECOMMENDED NEXT STEP
-                </span>
-                <p style="font-size: 0.8rem; color: #94a3b8; margin: 0;">
-                  Start a 30-day SAARE Discovery Program to validate your AI governance posture in your own environment.
-                </p>
-              </div>
-
               <button id="btn-activate-discovery" style="width: 100%; padding: 0.85rem; background: #06b6d4; color: #020617; font-weight: bold; font-size: 0.85rem; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">
                 START DISCOVERY PROGRAM (30 DAYS)
               </button>
             </div>
           `;
 
-          // Generación de descarga de licencias (.lic) y SDK (.zip)
           document.getElementById('btn-activate-discovery').addEventListener('click', () => {
             const licBlob = new Blob([JSON.stringify({ token: result.discoveryToken }, null, 2)], { type: 'application/json' });
             const linkLic = document.createElement('a');
@@ -200,13 +234,12 @@
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerText = 'SUBMIT DISCOVERY REQUEST';
+          submitBtn.innerText = 'SUBMIT ARCHITECTURE REQUEST';
         }
-        alert('Error: Asegúrate de que el backend en el puerto 8080 está encendido.');
+        alert('Error: Asegúrate de que el backend en el puerto 8080 está activo.');
       }
     });
   }
 
-  // Vincular formularios estáticos presentes en la página al cargar
   document.querySelectorAll('form').forEach(attachFormSubmitHandler);
 });
