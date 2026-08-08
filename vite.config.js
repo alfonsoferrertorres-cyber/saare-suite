@@ -16,8 +16,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true, // Purga la carpeta dist antes de cada build para eliminar bundle legacy
+    emptyOutDir: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name]-v42-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-v42-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-v42-[hash].[ext]`
+      }
+    }
   }
 });
