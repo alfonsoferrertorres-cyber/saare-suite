@@ -14,7 +14,7 @@
   "rewrites": [
     {
       "source": "/api/v1/leads",
-      "destination": "/api/license"
+      "destination": "/api/v1/leads.js"
     },
     {
       "source": "/api/:path*",
