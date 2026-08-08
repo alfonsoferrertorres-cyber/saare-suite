@@ -54,9 +54,9 @@ export default function Discovery() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'DISCOVERY_ASSESSMENT',
-          company: formData.company || formData.name,
-          email: formData.email,
-          name: formData.name,
+          company: formData.company.trim() || formData.name.trim(),
+          email: formData.email.trim(),
+          name: formData.name.trim(),
           role: formData.role,
           environment: formData.env,
           useCase: formData.useCase,
@@ -66,11 +66,11 @@ export default function Discovery() {
 
       const data = await response.json().catch(() => ({}));
 
-      if (response.ok && data.success) {
+      if (response.ok && (data.success || data.license || data.status === 'success')) {
         setSubmitted(true);
         triggerPDFDownload();
       } else {
-        alert(`Error al procesar la solicitud: ${data.error || 'Verifique el correo introducido.'}`);
+        alert(`Error al procesar la solicitud: ${data.error || data.details || 'Verifique el correo introducido.'}`);
       }
     } catch (error) {
       console.error('Error enviando la solicitud:', error);
