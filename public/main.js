@@ -1,6 +1,6 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
 
-  // 1. Manejo global de clics para capturar botones, enlaces y tarjetas de arquitectura
+  // 1. Manejo global de clics para capturar botones, enlaces y tarjetas de la plataforma
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button, a, .btn, .card');
     if (!btn) return;
@@ -8,24 +8,18 @@
     const text = (btn.innerText || btn.textContent || '').trim().toUpperCase();
     const href = (btn.getAttribute('href') || '').toLowerCase();
 
-    // Detección de intención para abrir el modal de Discovery o Architecture
-    const isDiscovery = 
+    // Evaluar si la interacción busca abrir el modal de Discovery
+    const isDiscoveryRequest = 
       text.includes('REQUEST DISCOVERY') || 
       text.includes('START DISCOVERY') || 
       btn.id === 'btn-open-discovery' ||
       href.includes('discovery');
 
-    const isArchitecture = 
-      text.includes('REQUEST ARCHITECTURE') || 
-      text.includes('ARCHITECTURE SPECIFICATION') || 
-      href.includes('architecture');
-
-    if (isDiscovery || isArchitecture) {
+    if (isDiscoveryRequest) {
       e.preventDefault();
       e.stopPropagation();
 
-      // Verificar si existe un modal en el DOM
-      const htmlModal = document.querySelector('.modal-overlay') || document.querySelector('#arch-modal') || document.querySelector('#discovery-modal');
+      const htmlModal = document.querySelector('.modal-overlay') || document.querySelector('#arch-modal');
 
       if (htmlModal) {
         htmlModal.style.display = 'flex';
@@ -37,23 +31,23 @@
       return;
     }
 
-    // Cierre de modales al pulsar en 'X' o backdrop
+    // Cerrar modales al presionar la 'X' o la capa exterior
     if (
       e.target.classList.contains('modal-close') || 
       e.target.classList.contains('modal-overlay') || 
       e.target.innerText === '×' || 
       e.target.innerText === '✕'
     ) {
-      const activeModal = e.target.closest('.modal-overlay') || document.getElementById('discovery-modal') || document.getElementById('arch-modal');
-      if (activeModal) {
-        activeModal.style.display = 'none';
-        activeModal.style.opacity = '0';
-        activeModal.style.visibility = 'hidden';
+      const modal = e.target.closest('.modal-overlay') || document.getElementById('discovery-modal') || document.getElementById('arch-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        modal.style.visibility = 'hidden';
       }
     }
   }, true);
 
-  // 2. Inyector dinámico de Modal para Discovery en caso de no existir en el DOM
+  // 2. Inyector dinámico de Modal para Discovery
   function openInjectedDiscoveryModal() {
     let modal = document.getElementById('discovery-modal');
     if (!modal) {
@@ -61,7 +55,6 @@
       modal.id = 'discovery-modal';
       modal.className = 'modal-overlay';
       modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.92); backdrop-filter:blur(12px); z-index:99999; display:flex; justify-content:center; align-items:center; opacity:1; visibility:visible;';
-      
       modal.innerHTML = `
         <div class="modal-card" style="background:#090d16; border:1px solid rgba(6,182,212,0.3); border-radius:12px; width:90%; max-width:560px; padding:2rem; position:relative; color:#fff; font-family:sans-serif; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
           <span class="modal-close" style="position:absolute; top:1rem; right:1.2rem; color:#94a3b8; cursor:pointer; font-size:1.5rem; font-weight:bold;">&times;</span>
@@ -188,7 +181,7 @@
             </div>
           `;
 
-          // Descarga de saare.lic y paquete SDK
+          // Generación de descarga de licencias (.lic) y SDK (.zip)
           document.getElementById('btn-activate-discovery').addEventListener('click', () => {
             const licBlob = new Blob([JSON.stringify({ token: result.discoveryToken }, null, 2)], { type: 'application/json' });
             const linkLic = document.createElement('a');
@@ -214,6 +207,6 @@
     });
   }
 
-  // Vincular formularios estáticos presentes en el HTML
+  // Vincular formularios estáticos presentes en la página al cargar
   document.querySelectorAll('form').forEach(attachFormSubmitHandler);
 });
