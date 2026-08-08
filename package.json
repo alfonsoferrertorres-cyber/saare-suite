@@ -1,14 +1,8 @@
-{
+﻿{
   "name": "saare-suite",
   "private": true,
   "version": "4.2.0",
   "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "services/*",
-    "app/*"
-  ],
   "scripts": {
     "dev": "vite",
     "server": "node test-webhook.js",
