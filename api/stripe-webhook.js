@@ -2,8 +2,10 @@
 import { Resend } from 'resend';
 import crypto from 'crypto';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const resend = new Resend(process.env.RESEND_API_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+});
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Mapeo oficial de Price IDs de Stripe a los 4 Pilares de SAARE Platform
 const PRICE_TIER_MAP = {
@@ -43,7 +45,7 @@ const PRICE_TIER_MAP = {
   }
 };
 
-// Helper asíncrono robusto para convertir Stream a Buffer en Vercel
+// Helper asíncrono para convertir Stream a Buffer sin distorsionar la firma
 async function getRawBody(readable) {
   const chunks = [];
   for await (const chunk of readable) {
@@ -148,8 +150,8 @@ export default async function handler(req, res) {
 
       const licenseJsonContent = JSON.stringify(token, null, 2);
 
-      // 4. Enviar el correo transaccional vía Resend con la licencia adjunta
-      if (process.env.RESEND_API_KEY && customerEmail) {
+      // 4. Enviar el correo transaccional vía Resend con la licencia adjunta en Base64
+      if (resend && customerEmail) {
         const { data, error } = await resend.emails.send({
           from: process.env.EMAIL_FROM || 'S.A.A.R.E. Licensing <licensing@saare.es>',
           to: [customerEmail],
@@ -171,7 +173,7 @@ export default async function handler(req, res) {
           attachments: [
             {
               filename: 'saare.lic',
-              content: Buffer.from(licenseJsonContent, 'utf-8'),
+              content: Buffer.from(licenseJsonContent, 'utf-8').toString('base64'),
             },
           ],
         });

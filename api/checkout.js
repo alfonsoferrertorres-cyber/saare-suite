@@ -1,6 +1,8 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+});
 
 export default async function handler(req, res) {
   // Configuración de cabeceras CORS
@@ -23,14 +25,19 @@ export default async function handler(req, res) {
   try {
     let body = req.body;
     if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch (e) {}
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        // Body ya parseado o no es JSON válido
+      }
     }
     body = body || {};
 
     const priceId = body.priceId || 'price_1U0y94FlwFW4ifPSpmUw7WMV';
     const email = body.email || '';
-    const company = body.company || body.empresa || 'Empresa';
+    const company = body.company || body.empresa || '';
 
+    // Creación de la sesión de Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -49,6 +56,9 @@ export default async function handler(req, res) {
           optional: false,
         },
       ],
+      metadata: {
+        company: company,
+      },
       success_url: `https://www.saare.es/pricing?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://www.saare.es/pricing?canceled=true`,
     });
