@@ -27,6 +27,5 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
           push: true
           tags: ghcr.io/alfonsoferrertorres-cyber/saare-sidecar:latest
