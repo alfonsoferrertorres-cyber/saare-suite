@@ -119,13 +119,13 @@ export default function Solutions() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/discovery"
-              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20"
+              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20 cursor-pointer"
             >
               Start Discovery
             </Link>
             <Link
               to="/pricing"
-              className="border border-slate-700 text-slate-200 hover:text-white hover:border-[#00f0ff] font-bold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all"
+              className="border border-slate-700 text-slate-200 hover:text-white hover:border-[#00f0ff] font-bold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
             >
               Request Architecture
             </Link>

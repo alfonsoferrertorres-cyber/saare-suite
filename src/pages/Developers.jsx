@@ -46,7 +46,7 @@ socket.write(JSON.stringify(payload));`}</code>
         <div className="text-center pt-4">
           <Link
             to="/discovery"
-            className="inline-block bg-[#00f0ff] hover:bg-[#38bdf8] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-[#00f0ff]/20"
+            className="inline-block bg-[#00f0ff] hover:bg-[#38bdf8] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-[#00f0ff]/20 cursor-pointer"
           >
             Access Developer Sandbox
           </Link>

@@ -32,14 +32,14 @@ export default function Home() {
           <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
             <Link
               to="/pricing"
-              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-4 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20 hover:scale-[1.02]"
+              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-4 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20 hover:scale-[1.02] cursor-pointer"
             >
               Request Architecture
             </Link>
 
             <Link
               to="/discovery"
-              className="bg-slate-900/80 text-slate-200 border border-slate-700 font-bold text-xs px-8 py-4 rounded-xl uppercase tracking-wider hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all backdrop-blur-md hover:scale-[1.02]"
+              className="bg-slate-900/80 text-slate-200 border border-slate-700 font-bold text-xs px-8 py-4 rounded-xl uppercase tracking-wider hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all backdrop-blur-md hover:scale-[1.02] cursor-pointer"
             >
               Start Discovery
             </Link>
@@ -50,7 +50,7 @@ export default function Home() {
             <a
               href="/docs/SAARE-Technical-Whitepaper-v14.pdf"
               download="SAARE-Technical-Whitepaper-v14.pdf"
-              className="font-mono text-[11px] text-slate-400 hover:text-[#C5A059] transition-colors flex items-center gap-2 group"
+              className="font-mono text-[11px] text-slate-400 hover:text-[#C5A059] transition-colors flex items-center gap-2 group cursor-pointer"
             >
               <span className="text-[#C5A059] font-bold">↓</span>
               <span className="underline underline-offset-4 group-hover:text-white">Technical Whitepaper (PDF)</span>
@@ -61,7 +61,7 @@ export default function Home() {
             <a
               href="/docs/SAARE-Technical-Whitepaper-v16.pdf"
               download="SAARE-Technical-Whitepaper-v16.pdf"
-              className="font-mono text-[11px] text-slate-400 hover:text-[#00f0ff] transition-colors flex items-center gap-2 group"
+              className="font-mono text-[11px] text-slate-400 hover:text-[#00f0ff] transition-colors flex items-center gap-2 group cursor-pointer"
             >
               <span className="text-[#00f0ff] font-bold">↓</span>
               <span className="underline underline-offset-4 group-hover:text-white">Verification Spec V16 (PDF)</span>

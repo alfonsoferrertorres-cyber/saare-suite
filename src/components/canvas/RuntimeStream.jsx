@@ -50,6 +50,7 @@ export const RuntimeStream = () => {
       ctx.fillStyle = '#050811';
       ctx.fillRect(0, 0, width, height);
 
+      // Línea divisoria de inspección RAM
       ctx.strokeStyle = '#C5A059';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 6]);
@@ -83,21 +84,17 @@ export const RuntimeStream = () => {
         }
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.signed ? 5 : 3.5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.signed ? 4.5 : 3, 0, Math.PI * 2);
         ctx.fillStyle = p.signed ? '#C5A059' : '#475569';
-        ctx.shadowColor = p.signed ? '#C5A059' : 'transparent';
-        ctx.shadowBlur = p.signed ? 8 : 0;
         ctx.fill();
-        ctx.shadowBlur = 0;
 
         if (p.signed) {
-          ctx.fillStyle = 'rgba(197, 160, 89, 0.75)';
+          ctx.fillStyle = 'rgba(197, 160, 89, 0.85)';
           ctx.font = '9px monospace';
           ctx.fillText(`Ed25519:#${p.signature}`, p.x - 20, p.y + 16);
         }
       });
 
-      // Limpieza segura fuera de loop
       packets = packets.filter((p) => p.x <= width + 50);
     };
 

@@ -7,7 +7,7 @@ export default function Pricing() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Enhanced dynamic form state
+  // Dynamic form state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,11 +48,13 @@ export default function Pricing() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/leads', {
+      // Petición al endpoint Serverless de Vercel
+      const response = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: modalType,
+          tier: modalType === 'oem' ? 'OEM / ISV Integration' : 'Enterprise Architecture',
           name: formData.name,
           email: formData.email,
           company: formData.company,
@@ -65,13 +67,14 @@ export default function Pricing() {
 
       if (response.ok) {
         setSubmitted(true);
-        triggerPDFDownload(); // Automated PDF download upon successful lead submission
+        triggerPDFDownload();
       } else {
-        alert('Error processing request. Please check server logs.');
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Error processing request: ${errorData.error || 'Please check server logs.'}`);
       }
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Could not connect to backend server at http://localhost:8080');
+      alert('Could not connect to backend server.');
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,7 @@ export default function Pricing() {
             </div>
             <Link
               to="/discovery"
-              className="w-full text-center bg-slate-800 hover:bg-slate-700 text-[#00f0ff] border border-[#00f0ff]/40 font-bold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all"
+              className="w-full text-center bg-slate-800 hover:bg-slate-700 text-[#00f0ff] border border-[#00f0ff]/40 font-bold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
             >
               Start Discovery
             </Link>

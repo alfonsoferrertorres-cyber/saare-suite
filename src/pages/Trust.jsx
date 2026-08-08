@@ -41,7 +41,7 @@ export default function Trust() {
         <div className="text-center pt-4">
           <Link
             to="/pricing"
-            className="inline-block bg-[#C5A059] hover:bg-[#d6b16a] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-[#C5A059]/20"
+            className="inline-block bg-[#C5A059] hover:bg-[#d6b16a] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-[#C5A059]/20 cursor-pointer"
           >
             Download Trust & Verification Package
           </Link>

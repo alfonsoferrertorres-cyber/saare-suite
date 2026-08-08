@@ -131,13 +131,13 @@ export default function Products() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/developers"
-              className="bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all"
+              className="bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
             >
               Explore Developers Hub
             </Link>
             <Link
               to="/discovery"
-              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20"
+              className="bg-[#C5A059] text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider hover:bg-[#d6b16a] transition-all shadow-lg shadow-[#C5A059]/20 cursor-pointer"
             >
               Start Discovery Program
             </Link>

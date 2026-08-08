@@ -17,7 +17,7 @@ services:
     depends_on:
       - backend
 
-  # Servicio Backend Node.js / Webhooks
+  # Servicio Backend Node.js / Webhooks / Licensing
   backend:
     build:
       context: .
@@ -29,6 +29,8 @@ services:
     environment:
       - PORT=8080
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - SAARE_PRIVATE_KEY=${SAARE_PRIVATE_KEY}
+      - EMAIL_FROM=SAARE Licensing <licensing@saare.es>
     networks:
       - saare-network
 

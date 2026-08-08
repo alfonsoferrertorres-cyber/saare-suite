@@ -89,7 +89,7 @@ export default function HeroBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = p.accelerated || p2.accelerated ? 'rgba(197, 160, 89, 0.3)' : 'rgba(15, 23, 42, 0.8)';
+            ctx.strokeStyle = p.accelerated || p2.accelerated ? 'rgba(197, 160, 89, 0.35)' : 'rgba(30, 41, 59, 0.6)';
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -98,10 +98,7 @@ export default function HeroBackground() {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.accelerated ? '#C5A059' : '#00f0ff';
-        ctx.shadowColor = p.accelerated ? '#C5A059' : '#00f0ff';
-        ctx.shadowBlur = p.accelerated ? 10 : 4;
         ctx.fill();
-        ctx.shadowBlur = 0;
       });
     };
 
@@ -118,7 +115,7 @@ export default function HeroBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-80"
     />
   );
 }

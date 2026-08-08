@@ -40,12 +40,13 @@ export default function Discovery() {
     setLoading(true);
 
     try {
-      // Uso de ruta relativa canalizada por el proxy de Vite (vite.config.js)
-      const response = await fetch('/api/v1/leads', {
+      // Conexión directa a la Serverless Function de Vercel
+      const response = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'discovery',
+          tier: 'Discovery Assessment',
           name: formData.name,
           email: formData.email,
           company: formData.company,
@@ -60,7 +61,8 @@ export default function Discovery() {
         setSubmitted(true);
         triggerPDFDownload();
       } else {
-        alert('Error al procesar la solicitud.');
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Error al procesar la solicitud: ${errorData.error || 'Error en el servidor backend.'}`);
       }
     } catch (error) {
       console.error('Error enviando la solicitud:', error);

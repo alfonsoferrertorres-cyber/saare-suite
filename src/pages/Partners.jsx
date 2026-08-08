@@ -52,7 +52,7 @@ export default function Partners() {
         <div className="text-center pt-4">
           <Link
             to="/pricing"
-            className="inline-block bg-purple-500 hover:bg-purple-400 text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-purple-500/20"
+            className="inline-block bg-purple-500 hover:bg-purple-400 text-black font-extrabold text-xs px-8 py-3.5 rounded-xl uppercase tracking-wider transition-all shadow-lg shadow-purple-500/20 cursor-pointer"
           >
             Request OEM Integration Blueprint
           </Link>
