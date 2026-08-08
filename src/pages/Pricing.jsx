@@ -48,7 +48,7 @@ export default function Pricing() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/leads', {
+      const response = await fetch('/api/v1/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
