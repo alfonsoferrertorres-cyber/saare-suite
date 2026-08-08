@@ -40,7 +40,8 @@ export default function Discovery() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/leads', {
+      // Uso de ruta relativa canalizada por el proxy de Vite (vite.config.js)
+      const response = await fetch('/api/v1/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -63,7 +64,7 @@ export default function Discovery() {
       }
     } catch (error) {
       console.error('Error enviando la solicitud:', error);
-      alert('No se pudo conectar con el servidor backend en http://localhost:8080');
+      alert('No se pudo conectar con el servidor backend.');
     } finally {
       setLoading(false);
     }

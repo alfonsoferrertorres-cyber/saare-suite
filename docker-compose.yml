@@ -1,5 +1,37 @@
-﻿services:
+﻿version: '3.8'
+
+services:
+  # Servicio Proxy Sidecar L7 (Inspección Zero-Copy)
   sidecar:
     image: ghcr.io/alfonsoferrertorres-cyber/saare-suite/saare-sidecar:latest
     container_name: saare-sidecar
     restart: always
+    ports:
+      - "8081:8081" # Puerto de enlace L7 Proxy
+    environment:
+      - SAARE_ENV=production
+      - LOG_LEVEL=info
+      - BACKEND_URL=http://backend:8080
+    networks:
+      - saare-network
+    depends_on:
+      - backend
+
+  # Servicio Backend Node.js / Webhooks
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saare-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    networks:
+      - saare-network
+
+networks:
+  saare-network:
+    driver: bridge

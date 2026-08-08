@@ -52,6 +52,7 @@ const server = http.createServer((req, res) => {
           createdAt: new Date().toISOString()
         };
 
+        // 1. Guardar copia local en JSON
         const logPath = path.join(process.cwd(), 'leads_log.json');
         let logs = [];
         if (fs.existsSync(logPath)) {
@@ -61,6 +62,7 @@ const server = http.createServer((req, res) => {
         logs.push(record);
         fs.writeFileSync(logPath, JSON.stringify(logs, null, 2));
 
+        // 2. Despachar notificación vía Resend API
         if (process.env.RESEND_API_KEY) {
           resend.emails.send({
             from: 'SAARE Leads <legal@saare.es>',
@@ -89,6 +91,7 @@ const server = http.createServer((req, res) => {
           });
         }
 
+        // 3. Respuesta JSON limpia
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           status: 'success',
