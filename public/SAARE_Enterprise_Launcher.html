@@ -299,35 +299,35 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const modules = [
-                // DevOps
+                // DevOps (Col 0)
                 { title: 'Optimizador API', cat: 'devops', meta: 'DVO-01', x: 0, y: 0 },
                 { title: 'Freno de Emergencia', cat: 'devops', meta: 'DVO-02', x: 0, y: 33 },
                 { title: 'Erradicador RAG', cat: 'devops', meta: 'DVO-03', x: 0, y: 66 },
                 { title: 'Selector Inteligente', cat: 'devops', meta: 'DVO-04', x: 0, y: 100 },
                 
-                // Banca
+                // Banca (Col 1)
                 { title: 'Escudo Bancario', cat: 'banca', meta: 'BNC-01', x: 16.6, y: 0 },
                 { title: 'Conmutador Multi-LLM', cat: 'banca', meta: 'BNC-02', x: 16.6, y: 50 },
                 
-                // GRC
+                // GRC (Col 2)
                 { title: 'Blindaje Clínico', cat: 'grc', meta: 'GRC-01', x: 33.3, y: 0 },
                 { title: 'Auditor EU AI Act', cat: 'grc', meta: 'GRC-02', x: 33.3, y: 50 },
                 { title: 'Extractor ISO 42001', cat: 'grc', meta: 'GRC-03', x: 33.3, y: 100 },
                 
-                // Ciber
+                // Ciber (Col 3)
                 { title: 'Defensa Anti-Jailbreak', cat: 'ciber', meta: 'CYB-01', x: 50, y: 0 },
                 { title: 'Notario para Tribunales', cat: 'ciber', meta: 'CYB-02', x: 50, y: 50 },
                 { title: 'Sellador de Brechas SOC', cat: 'ciber', meta: 'CYB-03', x: 50, y: 100 },
 
-                // Defensa
+                // Defensa (Col 4)
                 { title: 'Búnker Air-Gapped', cat: 'defensa', meta: 'DEF-01', x: 66.6, y: 0 },
                 { title: 'Gobernanza Edge/IoT', cat: 'defensa', meta: 'DEF-02', x: 66.6, y: 50 },
 
-                // Educacion
+                // Educacion (Col 5)
                 { title: 'Tutor COPPA', cat: 'educacion', meta: 'EDU-01', x: 83.3, y: 0 },
                 { title: 'Validador STEM', cat: 'educacion', meta: 'EDU-02', x: 83.3, y: 50 },
 
-                // Identidad
+                // Identidad (Col 6)
                 { title: 'KYC Antifraude', cat: 'identidad', meta: 'ID-01', x: 100, y: 0 },
                 { title: 'Certificación C2PA', cat: 'identidad', meta: 'ID-02', x: 100, y: 25 },
                 { title: 'Radar Anti-Clonación', cat: 'identidad', meta: 'ID-03', x: 100, y: 50 },
@@ -337,7 +337,7 @@
 
             const grid = document.getElementById('module-grid');
 
-            // Renderizado seguro en el DOM
+            // Renderizado dinámico seguro
             modules.forEach(mod => {
                 const bgPos = `${mod.x}% ${mod.y}%`;
                 const card = document.createElement('div');
@@ -355,16 +355,10 @@
                     </div>
                 `;
 
-                // Clic en tarjeta -> Disparar formulario de Discovery
-                card.addEventListener('click', () => {
-                    const btnDiscovery = document.getElementById('btn-open-discovery');
-                    if (btnDiscovery) btnDiscovery.click();
-                });
-
                 grid.appendChild(card);
             });
 
-            // Filtrado de navegación
+            // Filtrado de la barra lateral
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(item => {
                 item.addEventListener('click', () => {
