@@ -4,20 +4,21 @@ import { Resend } from 'resend';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export default async function handler(req, res) {
-  // Configuración de cabeceras CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  // Configuración Segura de CORS
+  const allowedOrigins = [process.env.ALLOWED_ORIGIN || 'https://saare.es'];
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // GET: Healthcheck / Estado de la API de Licencias
+  // Healthcheck Endpoint
   if (req.method === 'GET') {
     return res.status(200).json({
       status: 'online',
@@ -31,30 +32,30 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido. Utiliza POST.' });
   }
 
+  // Validación de Autenticación de Administrador / API Key
+  const authHeader = req.headers.authorization;
+  const adminSecret = process.env.ADMIN_ISSUER_SECRET;
+  
+  if (adminSecret && authHeader !== `Bearer ${adminSecret}`) {
+    return res.status(401).json({ error: 'No autorizado para emitir licencias.' });
+  }
+
   try {
-    let body = req.body;
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        // Formato ya procesado
-      }
-    }
-    body = body || {};
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
     const company = String(body.company || body.empresa || body.name || 'Cliente_Enterprise').trim();
     const email = String(body.email || body.correo || '').trim().toLowerCase();
     const tierType = String(body.type || body.tier || 'EVALUATION_SANDBOX').trim();
 
-    if (!email) {
-      return res.status(400).json({ error: 'El parámetro email es obligatorio.' });
+    // Validación de formato de email simple
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return res.status(400).json({ error: 'El parámetro email es obligatorio y debe ser válido.' });
     }
 
-    // Configuración de validez (14 días para Sandbox / 365 días para Comercial)
     const validDays = tierType === 'EVALUATION_SANDBOX' ? 14 : 365;
     const now = new Date();
-    const expirationDate = new Date();
-    expirationDate.setDate(now.getDate() + validDays);
+    const expirationDate = new Date(now.getTime() + validDays * 24 * 60 * 60 * 1000);
 
     const payload = {
       company,
@@ -74,11 +75,11 @@ export default async function handler(req, res) {
 
     const privateKeyRaw = process.env.SAARE_PRIVATE_KEY;
     if (!privateKeyRaw) {
-      console.error('ALERTA CRÍTICA: Falta la variable SAARE_PRIVATE_KEY en Vercel');
-      return res.status(500).json({ error: 'Configuración criptográfica incompleta en el servidor.' });
+      console.error('ALERTA CRÍTICA: Falta la variable SAARE_PRIVATE_KEY');
+      return res.status(500).json({ error: 'Configuración criptográfica incompleta.' });
     }
 
-    // Normalización de clave privada PEM Ed25519 / PKCS#8
+    // Normalización de Clave Privada
     const formattedKey = privateKeyRaw.includes('-----BEGIN')
       ? privateKeyRaw.replace(/\\n/g, '\n')
       : `-----BEGIN PRIVATE KEY-----\n${privateKeyRaw.replace(/\\n/g, '\n')}\n-----END PRIVATE KEY-----`;
@@ -91,13 +92,14 @@ export default async function handler(req, res) {
       type: 'pkcs8',
     });
 
-    // Firma con clave Ed25519
+    // Firma con Ed25519
     const signatureBuffer = crypto.sign(null, payloadBytes, privateKey);
 
-    // Extracción de clave pública en formato de bytes de 32 elementos (SPKI DER)
+    // Extracción limpia de la clave pública raw (32 bytes para Ed25519)
     const publicKeyObj = crypto.createPublicKey(privateKey);
-    const pubKeyDer = publicKeyObj.export({ format: 'der', type: 'spki' });
-    const publicKeyBytes = Array.from(pubKeyDer.subarray(-32));
+    const pubKeyRaw = publicKeyObj.export({ format: 'der', type: 'spki' });
+    // En el estándar PKCS#8 / SPKI Ed25519, los últimos 32 bytes corresponden a la clave pública
+    const publicKeyBytes = Array.from(pubKeyRaw.subarray(-32));
 
     const licenseObject = {
       payload,
@@ -107,7 +109,7 @@ export default async function handler(req, res) {
 
     const licenseJsonContent = JSON.stringify(licenseObject, null, 2);
 
-    // Despacho de email con adjunto saare.lic en Base64 mediante Resend
+    // Envío del Email
     let emailSent = false;
     if (resend) {
       try {
@@ -152,10 +154,9 @@ export default async function handler(req, res) {
       email_sent: emailSent,
     });
   } catch (error) {
-    console.error('Error en /api/license:', error);
+    console.error('Error en /api/license:', error.message);
     return res.status(500).json({
       error: 'Fallo interno generando la licencia.',
-      details: error.message,
     });
   }
 }

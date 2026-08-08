@@ -12,17 +12,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true, // Cambiado a true para permitir conexiones locales en red
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    host: true
   },
   build: {
     outDir: 'dist',
+    emptyOutDir: true, // Purga la carpeta dist antes de cada build para eliminar bundle legacy
     sourcemap: false,
     chunkSizeWarningLimit: 1000
   }
