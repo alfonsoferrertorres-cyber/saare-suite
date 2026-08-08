@@ -134,7 +134,7 @@ export default async function handler(req, res) {
                 <p style="margin: 0 0 6px 0;"><strong>Capacidades Activas:</strong></p>
                 <ul style="margin: 0; padding-left: 20px;">
                   <li><strong>Active Shield:</strong> Protección L7 contra prompt injections y filtrado DLP de PII/IBANs en RAM.</li>
-                  <li><strong>DeepFakeShield:</strong> Verificación biométrica KYC y autenticación C2PA de medios sintéticos[cite: 1, 2].</li>
+                  <li><strong>DeepFakeShield:</strong> Verificación biométrica KYC y autenticación C2PA de medios sintéticos.</li>
                 </ul>
               </div>
 
@@ -154,7 +154,7 @@ export default async function handler(req, res) {
           attachments: [
             {
               filename: 'saare.lic',
-              content: Buffer.from(licenseKey, 'utf-8'),
+              content: Buffer.from(licenseKey, 'utf-8').toString('base64'),
             },
           ],
         });
