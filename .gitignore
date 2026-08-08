@@ -1,4 +1,4 @@
-# 1. Dependencias
+﻿# 1. Dependencias
 node_modules/
 .pnpm-store/
 
@@ -12,7 +12,6 @@ node_modules/
 *.lic
 
 # 4. Despliegue en Serverless y Variables de Entorno
-.vercel/
 .env*
 *.local
 
@@ -22,7 +21,8 @@ node_modules/
 *.suo
 *.sw?
 
-# 6. Logs y Archivos del Sistema
+# 6. Logs, Base de Datos Local y Captura de Leads
 *.log
+leads_log.json
 .DS_Store
 Thumbs.db
