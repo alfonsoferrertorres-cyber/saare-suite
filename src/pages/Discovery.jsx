@@ -15,7 +15,7 @@ export default function Discovery() {
     complianceNeeds: ['EU AI Act']
   });
 
-  // Lock background scroll when modal is active
+  // Bloquear scroll de pantalla cuando el modal está activo
   useEffect(() => {
     document.body.style.overflow = isModalOpen ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
@@ -53,28 +53,28 @@ export default function Discovery() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'discovery',
-          tier: 'Discovery Assessment',
-          name: formData.name,
+          type: 'DISCOVERY_ASSESSMENT',
+          company: formData.company || formData.name,
           email: formData.email,
-          company: formData.company,
+          name: formData.name,
           role: formData.role,
           environment: formData.env,
           useCase: formData.useCase,
-          complianceNeeds: formData.complianceNeeds
+          complianceNeeds: formData.complianceNeeds.join(', ')
         })
       });
 
-      if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success) {
         setSubmitted(true);
         triggerPDFDownload();
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(`Error: ${errorData.error || 'Server error occurred.'}`);
+        alert(`Error al procesar la solicitud: ${data.error || 'Verifique el correo introducido.'}`);
       }
     } catch (error) {
-      console.error('Submission error:', error);
-      alert('Unable to reach the server.');
+      console.error('Error enviando la solicitud:', error);
+      alert('No se pudo conectar con el servidor backend.');
     } finally {
       setLoading(false);
     }
