@@ -12,22 +12,14 @@ const PRICE_TIER_MAP = {
     preset_id: 'PRESET_TIER1_GATEWAY',
     tier_name: 'SAARE Platform - Cloud Security Gateway (Test)',
     max_nodes: 10,
-    allowed_modules: [
-      '01_perimetershield',  // Active Shield
-      '03_compliancesuite',  // Compliance Center
-      '05_tokenmatrix'       // Token Smart Router
-    ]
+    allowed_modules: ['01_perimetershield', '03_compliancesuite', '05_tokenmatrix']
   },
   // Tier 1: Cloud & Sidecar Gateway (15,000€/año)
   'price_1U0zYCFlwFW4ifPSZwysl3al': {
     preset_id: 'PRESET_TIER1_GATEWAY',
     tier_name: 'SAARE Platform - Cloud Security Gateway',
     max_nodes: 10,
-    allowed_modules: [
-      '01_perimetershield',  // Active Shield
-      '03_compliancesuite',  // Compliance Center
-      '05_tokenmatrix'       // Token Smart Router
-    ]
+    allowed_modules: ['01_perimetershield', '03_compliancesuite', '05_tokenmatrix']
   },
   // Tier 2: Embedded Native Engine (42,000€/año)
   'price_1U0zYIFlwFW4ifPS4FmGkGz2': {
@@ -39,7 +31,7 @@ const PRICE_TIER_MAP = {
       '04_sovereignty_node', '05_tokenmatrix', '06_labengine', '09_deepfakeshield'
     ]
   },
-  // Tier 3: Whitelabel OEM Partner (Custom / Revenue Share)
+  // Tier 3: Whitelabel OEM Partner
   'personalizado': {
     preset_id: 'PRESET_TIER3_OEM_WHITELABEL',
     tier_name: 'SAARE Platform - Whitelabel OEM Partner',
@@ -51,8 +43,8 @@ const PRICE_TIER_MAP = {
   }
 };
 
-// Helper para convertir el Stream entrante en Búfer para la verificación de Stripe
-async function buffer(readable) {
+// Helper asíncrono robusto para convertir Stream a Buffer en Vercel
+async function getRawBody(readable) {
   const chunks = [];
   for await (const chunk of readable) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
@@ -70,9 +62,9 @@ export default async function handler(req, res) {
 
   // 1. Validar la firma criptográfica del Webhook de Stripe
   try {
-    const buf = await buffer(req);
+    const rawBody = await getRawBody(req);
     event = stripe.webhooks.constructEvent(
-      buf,
+      rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -127,7 +119,6 @@ export default async function handler(req, res) {
 
     // 3. Generar la firma Ed25519 en formato LicenseGuard
     try {
-      // Normalizar saltos de línea para claves almacenadas en variables de entorno Vercel
       const formattedKey = privateKeyRaw.includes('-----BEGIN')
         ? privateKeyRaw.replace(/\\n/g, '\n')
         : `-----BEGIN PRIVATE KEY-----\n${privateKeyRaw.replace(/\\n/g, '\n')}\n-----END PRIVATE KEY-----`;
@@ -143,7 +134,7 @@ export default async function handler(req, res) {
       // Firmar el payload utilizando la clave privada Ed25519
       const signatureBuffer = crypto.sign(null, payloadBytes, privateKey);
       
-      // Extraer la clave pública correspondiente en bytes (últimos 32 bytes del SPKI DER)
+      // Extraer la clave pública correspondiente en bytes
       const publicKeyObj = crypto.createPublicKey(privateKey);
       const pubKeyDer = publicKeyObj.export({ format: 'der', type: 'spki' });
       const publicKeyBytes = Array.from(pubKeyDer.subarray(-32));
@@ -160,7 +151,7 @@ export default async function handler(req, res) {
       // 4. Enviar el correo transaccional vía Resend con la licencia adjunta
       if (process.env.RESEND_API_KEY && customerEmail) {
         const { data, error } = await resend.emails.send({
-          from: 'S.A.A.R.E. Licensing <licensing@saare.es>',
+          from: process.env.EMAIL_FROM || 'S.A.A.R.E. Licensing <licensing@saare.es>',
           to: [customerEmail],
           subject: `Licencia Comercial SAARE Platform - ${empresaName}`,
           html: `
@@ -180,14 +171,13 @@ export default async function handler(req, res) {
           attachments: [
             {
               filename: 'saare.lic',
-              content: Buffer.from(licenseJsonContent, 'utf-8').toString('base64'),
+              content: Buffer.from(licenseJsonContent, 'utf-8'),
             },
           ],
         });
 
         if (error) {
           console.error('Error al enviar correo mediante Resend:', error);
-          return res.status(500).json({ error: 'Error en servicio de correo', details: error });
         } else {
           console.log('Licencia comercial emitida y enviada con éxito:', data?.id);
         }
@@ -201,7 +191,7 @@ export default async function handler(req, res) {
   return res.status(200).json({ received: true });
 }
 
-// Desactivar el Body Parser por defecto de Vercel para permitir la validación de firma de Stripe
+// Desactivar el Body Parser por defecto para permitir la validación de firma de Stripe
 export const config = {
   api: {
     bodyParser: false,
