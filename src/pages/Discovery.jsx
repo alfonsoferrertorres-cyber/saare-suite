@@ -49,7 +49,7 @@ export default function Discovery() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/license', {
+      const response = await fetch('/api/v1/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
