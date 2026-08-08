@@ -9,6 +9,7 @@ import Pricing from './pages/Pricing';
 import Partners from './pages/Partners';
 import Developers from './pages/Developers';
 import Trust from './pages/Trust';
+import Legal from './pages/Legal';
 
 export default function App() {
   return (
@@ -62,14 +63,28 @@ export default function App() {
             <Route path="/developers" element={<Developers />} />
             <Route path="/trust" element={<Trust />} />
             
+            {/* Rutas Legales B2B & Stripe Compliance */}
+            <Route path="/terms" element={<Legal />} />
+            <Route path="/privacy" element={<Legal />} />
+            <Route path="/eula" element={<Legal />} />
+
             {/* Fallback 404 Route */}
             <Route path="*" element={<Home />} />
           </Routes>
         </main>
 
-        {/* Corporate Footer */}
-        <footer className="py-6 text-center font-mono text-xs text-slate-500 border-t border-slate-900 bg-[#050811]">
-          MS3V S.A.A.R.E. SL • Enterprise AI Governance Infrastructure
+        {/* Corporate Footer Con Enlaces Legales */}
+        <footer className="py-6 px-6 border-t border-slate-900 bg-[#050811]">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-mono text-slate-500">
+            <div>
+              MS3V S.A.A.R.E. SL • Enterprise AI Governance Infrastructure
+            </div>
+            <div className="flex gap-6 text-[11px]">
+              <Link to="/terms" className="hover:text-[#C5A059] transition-colors">Términos</Link>
+              <Link to="/privacy" className="hover:text-[#00f0ff] transition-colors">Privacidad</Link>
+              <Link to="/eula" className="hover:text-purple-400 transition-colors">EULA</Link>
+            </div>
+          </div>
         </footer>
 
       </div>
