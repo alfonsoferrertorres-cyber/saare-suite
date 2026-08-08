@@ -1,24 +1,31 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
 
-  // 1. Manejo global de clics para capturar "REQUEST DISCOVERY ACCESS"
+  // 1. Manejo global de clics para capturar botones, enlaces y tarjetas de arquitectura
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest('button, a');
+    const btn = e.target.closest('button, a, .btn, .card');
     if (!btn) return;
 
-    const text = (btn.innerText || '').trim().toUpperCase();
+    const text = (btn.innerText || btn.textContent || '').trim().toUpperCase();
     const href = (btn.getAttribute('href') || '').toLowerCase();
 
-    const isDiscoveryRequest = 
-      text.includes('REQUEST DISCOVERY ACCESS') || 
+    // Detección de intención para abrir el modal de Discovery o Architecture
+    const isDiscovery = 
       text.includes('REQUEST DISCOVERY') || 
-      text.includes('START DISCOVERY');
+      text.includes('START DISCOVERY') || 
+      btn.id === 'btn-open-discovery' ||
+      href.includes('discovery');
 
-    if (isDiscoveryRequest) {
+    const isArchitecture = 
+      text.includes('REQUEST ARCHITECTURE') || 
+      text.includes('ARCHITECTURE SPECIFICATION') || 
+      href.includes('architecture');
+
+    if (isDiscovery || isArchitecture) {
       e.preventDefault();
       e.stopPropagation();
 
-      // Verificar si existe un modal en el HTML de la página
-      const htmlModal = document.querySelector('.modal-overlay') || document.querySelector('#arch-modal');
+      // Verificar si existe un modal en el DOM
+      const htmlModal = document.querySelector('.modal-overlay') || document.querySelector('#arch-modal') || document.querySelector('#discovery-modal');
 
       if (htmlModal) {
         htmlModal.style.display = 'flex';
@@ -27,12 +34,22 @@
       } else {
         openInjectedDiscoveryModal();
       }
+      return;
     }
 
-    // Cerrar modales al hacer clic en la X
-    if (e.target.classList.contains('modal-close') || e.target.innerText === '×' || e.target.innerText === '✕') {
-      const modal = e.target.closest('.modal-overlay') || e.target.closest('#discovery-modal') || e.target.closest('#arch-modal');
-      if (modal) modal.style.display = 'none';
+    // Cierre de modales al pulsar en 'X' o backdrop
+    if (
+      e.target.classList.contains('modal-close') || 
+      e.target.classList.contains('modal-overlay') || 
+      e.target.innerText === '×' || 
+      e.target.innerText === '✕'
+    ) {
+      const activeModal = e.target.closest('.modal-overlay') || document.getElementById('discovery-modal') || document.getElementById('arch-modal');
+      if (activeModal) {
+        activeModal.style.display = 'none';
+        activeModal.style.opacity = '0';
+        activeModal.style.visibility = 'hidden';
+      }
     }
   }, true);
 
@@ -42,7 +59,9 @@
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'discovery-modal';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.92); backdrop-filter:blur(12px); z-index:99999; display:flex; justify-content:center; align-items:center;';
+      modal.className = 'modal-overlay';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.92); backdrop-filter:blur(12px); z-index:99999; display:flex; justify-content:center; align-items:center; opacity:1; visibility:visible;';
+      
       modal.innerHTML = `
         <div class="modal-card" style="background:#090d16; border:1px solid rgba(6,182,212,0.3); border-radius:12px; width:90%; max-width:560px; padding:2rem; position:relative; color:#fff; font-family:sans-serif; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
           <span class="modal-close" style="position:absolute; top:1rem; right:1.2rem; color:#94a3b8; cursor:pointer; font-size:1.5rem; font-weight:bold;">&times;</span>
@@ -84,11 +103,15 @@
       attachFormSubmitHandler(modal.querySelector('form'));
     }
     modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
   }
 
   // 3. Procesar envíos hacia http://localhost:8080 y desplegar la vista del Perfil
   function attachFormSubmitHandler(form) {
-    if (!form) return;
+    if (!form || form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,11 +12,11 @@
             --border-glass: rgba(255, 255, 255, 0.08);
             
             /* Vertical Colors (Glows) */
-            --glow-devops: #fbbf24; /* Ámbar */
-            --glow-banca: #10b981;  /* Esmeralda */
-            --glow-grc: #06b6d4;    /* Cian */
-            --glow-ciber: #a855f7;  /* Púrpura */
-            --glow-defensa: #94a3b8;/* Acero */
+            --glow-devops: #fbbf24;   /* Ámbar */
+            --glow-banca: #10b981;    /* Esmeralda */
+            --glow-grc: #06b6d4;      /* Cian */
+            --glow-ciber: #a855f7;    /* Púrpura */
+            --glow-defensa: #94a3b8;  /* Acero */
             --glow-educacion: #6366f1;/* Índigo */
             --glow-identidad: #14b8a6;/* Turquesa */
         }
@@ -119,6 +118,9 @@
 
         .header-section {
             margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
         }
 
         .header-title {
@@ -132,6 +134,25 @@
         .header-subtitle {
             color: #64748b;
             font-size: 1rem;
+        }
+
+        .btn-discovery {
+            background: #06b6d4;
+            color: #020617;
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-discovery:hover {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
         }
 
         /* CSS Grid for Solutions */
@@ -180,20 +201,16 @@
             transform: scale(1.05);
         }
 
-        /* Sprite Background (Cropping visually) */
         .card-bg {
             position: absolute;
             top: -10%; left: -10%; right: -10%; bottom: -10%;
             background-image: url('watermarked_img_17171974852090795231.png');
-            /* The image has 7 columns and roughly 4 rows. We scale to map a cell */
             background-size: 700% 450%; 
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 0;
-            /* Filter to blend and make it look hyper-tech */
             filter: contrast(1.1) brightness(0.9);
         }
 
-        /* Overlays to hide burned-in text and emphasize HTML text */
         .card-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -201,7 +218,6 @@
             z-index: 1;
         }
 
-        /* Card Content (HTML Text) */
         .card-content {
             position: relative;
             z-index: 3;
@@ -232,7 +248,6 @@
             gap: 6px;
         }
 
-        /* Micro-indicators per category */
         .card[data-category="devops"] .card-meta { color: var(--glow-devops); }
         .card[data-category="banca"] .card-meta { color: var(--glow-banca); }
         .card[data-category="grc"] .card-meta { color: var(--glow-grc); }
@@ -241,15 +256,12 @@
         .card[data-category="educacion"] .card-meta { color: var(--glow-educacion); }
         .card[data-category="identidad"] .card-meta { color: var(--glow-identidad); }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-obsidian); }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Utility for filtering */
         .hidden { display: none !important; }
-
     </style>
 </head>
 <body>
@@ -272,95 +284,102 @@
     <!-- MAIN LAUNCHER AREA -->
     <main class="main-content">
         <div class="header-section">
-            <h1 class="header-title">Despliegue de Infraestructura</h1>
-            <p class="header-subtitle">Seleccione la topología de red y los escudos modulares a inicializar.</p>
+            <div>
+                <h1 class="header-title">Despliegue de Infraestructura</h1>
+                <p class="header-subtitle">Seleccione la topología de red y los escudos modulares a inicializar.</p>
+            </div>
+            <button class="btn-discovery" id="btn-open-discovery">REQUEST DISCOVERY ACCESS</button>
         </div>
 
-        <div class="grid-container" id="module-grid">
-            
-            <!-- Generación dinámica de los 21 módulos con recortes CSS -->
-            <script>
-                const modules = [
-                    // DevOps (Col 0)
-                    { title: 'Optimizador API', cat: 'devops', meta: 'DVO-01', x: 0, y: 0 },
-                    { title: 'Freno de Emergencia', cat: 'devops', meta: 'DVO-02', x: 0, y: 33 },
-                    { title: 'Erradicador RAG', cat: 'devops', meta: 'DVO-03', x: 0, y: 66 },
-                    { title: 'Selector Inteligente', cat: 'devops', meta: 'DVO-04', x: 0, y: 100 },
-                    
-                    // Banca (Col 1)
-                    { title: 'Escudo Bancario', cat: 'banca', meta: 'BNC-01', x: 16.6, y: 0 },
-                    { title: 'Conmutador Multi-LLM', cat: 'banca', meta: 'BNC-02', x: 16.6, y: 50 },
-                    
-                    // GRC (Col 2)
-                    { title: 'Blindaje Clínico', cat: 'grc', meta: 'GRC-01', x: 33.3, y: 0 },
-                    { title: 'Auditor EU AI Act', cat: 'grc', meta: 'GRC-02', x: 33.3, y: 50 },
-                    { title: 'Extractor ISO 42001', cat: 'grc', meta: 'GRC-03', x: 33.3, y: 100 },
-                    
-                    // Ciber (Col 3)
-                    { title: 'Defensa Anti-Jailbreak', cat: 'ciber', meta: 'CYB-01', x: 50, y: 0 },
-                    { title: 'Notario para Tribunales', cat: 'ciber', meta: 'CYB-02', x: 50, y: 50 },
-                    { title: 'Sellador de Brechas SOC', cat: 'ciber', meta: 'CYB-03', x: 50, y: 100 },
-
-                    // Defensa (Col 4)
-                    { title: 'Búnker Air-Gapped', cat: 'defensa', meta: 'DEF-01', x: 66.6, y: 0 },
-                    { title: 'Gobernanza Edge/IoT', cat: 'defensa', meta: 'DEF-02', x: 66.6, y: 50 },
-
-                    // Educacion (Col 5)
-                    { title: 'Tutor COPPA', cat: 'educacion', meta: 'EDU-01', x: 83.3, y: 0 },
-                    { title: 'Validador STEM', cat: 'educacion', meta: 'EDU-02', x: 83.3, y: 50 },
-
-                    // Identidad (Col 6)
-                    { title: 'KYC Antifraude', cat: 'identidad', meta: 'ID-01', x: 100, y: 0 },
-                    { title: 'Certificación C2PA', cat: 'identidad', meta: 'ID-02', x: 100, y: 25 },
-                    { title: 'Radar Anti-Clonación', cat: 'identidad', meta: 'ID-03', x: 100, y: 50 },
-                    { title: 'Trazabilidad de Derechos', cat: 'identidad', meta: 'ID-04', x: 100, y: 75 },
-                    { title: 'Escudo Opt-Out Scraping', cat: 'identidad', meta: 'ID-05', x: 100, y: 100 }
-                ];
-
-                const grid = document.getElementById('module-grid');
-                
-                modules.forEach(mod => {
-                    // Mapeo preciso de coordenadas X e Y sobre la imagen (Sprite Map)
-                    const bgPos = `${mod.x}% ${mod.y}%`;
-                    
-                    const cardHtml = `
-                        <div class="card" data-category="${mod.cat}">
-                            <div class="card-bg" style="background-position: ${bgPos};"></div>
-                            <div class="card-overlay"></div>
-                            <div class="card-content">
-                                <div class="card-meta">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                                    ${mod.meta} - SYS.RDY
-                                </div>
-                                <h3 class="card-title">${mod.title}</h3>
-                            </div>
-                        </div>
-                    `;
-                    grid.innerHTML += cardHtml;
-                });
-            </script>
-        </div>
+        <div class="grid-container" id="module-grid"></div>
     </main>
 
-    <!-- JS for Filtering -->
+    <!-- Inyección de Lógica Frontend & Eventos -->
+    <script src="/main.js"></script>
     <script>
-        const navItems = document.querySelectorAll('.nav-item');
-        const cards = document.querySelectorAll('.card');
+        document.addEventListener('DOMContentLoaded', () => {
+            const modules = [
+                // DevOps
+                { title: 'Optimizador API', cat: 'devops', meta: 'DVO-01', x: 0, y: 0 },
+                { title: 'Freno de Emergencia', cat: 'devops', meta: 'DVO-02', x: 0, y: 33 },
+                { title: 'Erradicador RAG', cat: 'devops', meta: 'DVO-03', x: 0, y: 66 },
+                { title: 'Selector Inteligente', cat: 'devops', meta: 'DVO-04', x: 0, y: 100 },
+                
+                // Banca
+                { title: 'Escudo Bancario', cat: 'banca', meta: 'BNC-01', x: 16.6, y: 0 },
+                { title: 'Conmutador Multi-LLM', cat: 'banca', meta: 'BNC-02', x: 16.6, y: 50 },
+                
+                // GRC
+                { title: 'Blindaje Clínico', cat: 'grc', meta: 'GRC-01', x: 33.3, y: 0 },
+                { title: 'Auditor EU AI Act', cat: 'grc', meta: 'GRC-02', x: 33.3, y: 50 },
+                { title: 'Extractor ISO 42001', cat: 'grc', meta: 'GRC-03', x: 33.3, y: 100 },
+                
+                // Ciber
+                { title: 'Defensa Anti-Jailbreak', cat: 'ciber', meta: 'CYB-01', x: 50, y: 0 },
+                { title: 'Notario para Tribunales', cat: 'ciber', meta: 'CYB-02', x: 50, y: 50 },
+                { title: 'Sellador de Brechas SOC', cat: 'ciber', meta: 'CYB-03', x: 50, y: 100 },
 
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                // Update active state
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
+                // Defensa
+                { title: 'Búnker Air-Gapped', cat: 'defensa', meta: 'DEF-01', x: 66.6, y: 0 },
+                { title: 'Gobernanza Edge/IoT', cat: 'defensa', meta: 'DEF-02', x: 66.6, y: 50 },
 
-                // Filter logic
-                const filter = item.getAttribute('data-filter');
-                cards.forEach(card => {
-                    if (filter === 'all' || card.getAttribute('data-category') === filter) {
-                        card.classList.remove('hidden');
-                    } else {
-                        card.classList.add('hidden');
-                    }
+                // Educacion
+                { title: 'Tutor COPPA', cat: 'educacion', meta: 'EDU-01', x: 83.3, y: 0 },
+                { title: 'Validador STEM', cat: 'educacion', meta: 'EDU-02', x: 83.3, y: 50 },
+
+                // Identidad
+                { title: 'KYC Antifraude', cat: 'identidad', meta: 'ID-01', x: 100, y: 0 },
+                { title: 'Certificación C2PA', cat: 'identidad', meta: 'ID-02', x: 100, y: 25 },
+                { title: 'Radar Anti-Clonación', cat: 'identidad', meta: 'ID-03', x: 100, y: 50 },
+                { title: 'Trazabilidad de Derechos', cat: 'identidad', meta: 'ID-04', x: 100, y: 75 },
+                { title: 'Escudo Opt-Out Scraping', cat: 'identidad', meta: 'ID-05', x: 100, y: 100 }
+            ];
+
+            const grid = document.getElementById('module-grid');
+
+            // Renderizado seguro en el DOM
+            modules.forEach(mod => {
+                const bgPos = `${mod.x}% ${mod.y}%`;
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.setAttribute('data-category', mod.cat);
+                card.innerHTML = `
+                    <div class="card-bg" style="background-position: ${bgPos};"></div>
+                    <div class="card-overlay"></div>
+                    <div class="card-content">
+                        <div class="card-meta">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                            ${mod.meta} - SYS.RDY
+                        </div>
+                        <h3 class="card-title">${mod.title}</h3>
+                    </div>
+                `;
+
+                // Clic en tarjeta -> Disparar formulario de Discovery
+                card.addEventListener('click', () => {
+                    const btnDiscovery = document.getElementById('btn-open-discovery');
+                    if (btnDiscovery) btnDiscovery.click();
+                });
+
+                grid.appendChild(card);
+            });
+
+            // Filtrado de navegación
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    const filter = item.getAttribute('data-filter');
+                    const cards = document.querySelectorAll('.card');
+                    cards.forEach(card => {
+                        if (filter === 'all' || card.getAttribute('data-category') === filter) {
+                            card.classList.remove('hidden');
+                        } else {
+                            card.classList.add('hidden');
+                        }
+                    });
                 });
             });
         });
