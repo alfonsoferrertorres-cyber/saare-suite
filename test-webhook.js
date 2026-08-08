@@ -1,8 +1,10 @@
 ﻿import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Resend } from 'resend';
 
 const PORT = process.env.PORT || 8080;
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,12 +20,12 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const payload = JSON.parse(body || '{}');
 
         const governanceProfile = {
-          environmentType: payload.deploymentModel || payload.environment || 'Hybrid Enterprise AI',
+          environmentType: payload.deploymentModel || payload.environment || payload.env || 'Hybrid Enterprise AI',
           governanceMaturity: 'Developing',
           exposureAreas: [
             'Runtime Policy Enforcement',
@@ -59,6 +61,34 @@ const server = http.createServer((req, res) => {
         logs.push(record);
         fs.writeFileSync(logPath, JSON.stringify(logs, null, 2));
 
+        if (process.env.RESEND_API_KEY) {
+          resend.emails.send({
+            from: 'SAARE Leads <legal@saare.es>',
+            to: ['alfonsoferrertorres@gmail.com'],
+            subject: `🚀 [NUEVO LEAD] ${payload.company || 'Empresa'} - ${payload.name || 'Cliente'}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; background-color: #030712; color: #f8fafc; padding: 24px; border-radius: 8px;">
+                <h2 style="color: #06b6d4; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 0;">
+                  Nueva Solicitud de Arquitectura / Lead Recibido
+                </h2>
+                <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 15px;">
+                  <tr><td style="padding: 8px; color: #94a3b8; width: 35%;">Nombre Completo:</td><td style="padding: 8px; color: #fff;"><b>${payload.name || 'N/A'}</b></td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Empresa / Organización:</td><td style="padding: 8px; color: #fff;"><b>${payload.company || 'N/A'}</b></td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Email Corporativo:</td><td style="padding: 8px; color: #38bdf8;"><b>${payload.email || 'N/A'}</b></td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Rol / Cargo:</td><td style="padding: 8px; color: #fff;">${payload.role || 'N/A'}</td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Entorno (Target):</td><td style="padding: 8px; color: #fbbf24;">${payload.deploymentModel || payload.environment || payload.env || 'N/A'}</td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Carga de Trabajo (Workload):</td><td style="padding: 8px; color: #fff;">${payload.workload || payload.useCase || 'N/A'}</td></tr>
+                  <tr><td style="padding: 8px; color: #94a3b8;">Normativas Requeridas:</td><td style="padding: 8px; color: #34d399;">${Array.isArray(payload.frameworks) ? payload.frameworks.join(', ') : (Array.isArray(payload.complianceNeeds) ? payload.complianceNeeds.join(', ') : 'EU AI Act')}</td></tr>
+                </table>
+              </div>
+            `
+          }).then(response => {
+            console.log('📧 Correo enviado mediante Resend:', response);
+          }).catch(err => {
+            console.error('❌ Error al enviar email:', err.message);
+          });
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           status: 'success',
@@ -68,8 +98,9 @@ const server = http.createServer((req, res) => {
         }));
 
       } catch (err) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'success' }));
+        console.error('❌ Error procesando solicitud:', err.message);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', message: 'Invalid JSON Payload' }));
       }
     });
   } else {
@@ -79,5 +110,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Backend de licencias/webhooks activo en http://localhost:${PORT}`);
+  console.log(`Backend activo en http://localhost:${PORT}`);
 });

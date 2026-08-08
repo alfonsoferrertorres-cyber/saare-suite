@@ -26,3 +26,5 @@ node_modules/
 leads_log.json
 .DS_Store
 Thumbs.db
+
+.env
