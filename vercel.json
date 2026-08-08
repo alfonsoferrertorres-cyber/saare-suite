@@ -1,6 +1,5 @@
 ﻿{
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/test-webhook.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/.*).*)", "destination": "/index.html" }
   ]
 }
