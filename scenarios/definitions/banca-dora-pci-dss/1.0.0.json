@@ -1,0 +1,39 @@
+{
+  "id": "banca_dora_pci_dss",
+  "version": "1.0.0",
+  "title": "?? Entorno Financiero & Bancario — DORA / PCI-DSS v4.0",
+  "description": "Blindaje de resiliencia operativa digital y protección estricta contra fuga de PAN, IBAN y datos de tarjetas de crédito en flujos de IA financiera.",
+  "sector": "fintech_banking",
+  "jurisdiction": "EU",
+  "securityLevel": "maximum",
+  "controls": [
+    "input_inspection",
+    "pci_dss_sanitization",
+    "secret_protection",
+    "dora_resilience_check",
+    "output_validation",
+    "evidence_generation",
+    "forensic_isolation"
+  ],
+  "runtimeBehavior": {
+    "inputInspection": true,
+    "outputValidation": true,
+    "policyEnforcement": true,
+    "evidenceGeneration": true,
+    "forensicIsolation": true,
+    "semanticGovernance": true
+  },
+  "failurePolicy": {
+    "inputViolation": "REJECT",
+    "outputViolation": "REJECT",
+    "integrityFailure": "ISOLATE",
+    "policyViolation": "BLOCK",
+    "unknownCondition": "REJECT"
+  },
+  "decisionModel": {
+    "accepted": "VALIDATED",
+    "rejected": "REJECTED",
+    "review": "REVIEW"
+  },
+  "deploymentProfiles": ["On-Prem", "VPC_Dedicated", "Air-Gapped"]
+}

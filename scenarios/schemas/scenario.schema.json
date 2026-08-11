@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SAAREScenarioDefinition",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "title",
+    "sector",
+    "jurisdiction",
+    "securityLevel",
+    "controls",
+    "runtimeBehavior",
+    "failurePolicy",
+    "decisionModel",
+    "deploymentProfiles"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "sector": { "type": "string" },
+    "jurisdiction": { "type": "string" },
+    "securityLevel": { "type": "string", "enum": ["standard", "high", "maximum"] },
+    "controls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "runtimeBehavior": {
+      "type": "object",
+      "required": ["inputInspection", "outputValidation", "policyEnforcement", "evidenceGeneration", "forensicIsolation", "semanticGovernance"],
+      "properties": {
+        "inputInspection": { "type": "boolean" },
+        "outputValidation": { "type": "boolean" },
+        "policyEnforcement": { "type": "boolean" },
+        "evidenceGeneration": { "type": "boolean" },
+        "forensicIsolation": { "type": "boolean" },
+        "semanticGovernance": { "type": "boolean" }
+      }
+    },
+    "failurePolicy": {
+      "type": "object",
+      "required": ["inputViolation", "outputViolation", "integrityFailure", "policyViolation", "unknownCondition"],
+      "properties": {
+        "inputViolation": { "type": "string", "enum": ["REJECT", "REVIEW"] },
+        "outputViolation": { "type": "string", "enum": ["REJECT", "REVIEW"] },
+        "integrityFailure": { "type": "string", "enum": ["ISOLATE", "REJECT"] },
+        "policyViolation": { "type": "string", "enum": ["BLOCK", "REVIEW"] },
+        "unknownCondition": { "type": "string", "enum": ["REVIEW", "REJECT"] }
+      }
+    },
+    "decisionModel": {
+      "type": "object",
+      "required": ["accepted", "rejected", "review"],
+      "properties": {
+        "accepted": { "type": "string", "const": "VALIDATED" },
+        "rejected": { "type": "string", "const": "REJECTED" },
+        "review": { "type": "string", "const": "REVIEW" }
+      }
+    },
+    "deploymentProfiles": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

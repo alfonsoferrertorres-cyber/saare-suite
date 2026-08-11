@@ -1,0 +1,40 @@
+{
+  "id": "cumplimiento_corporativo_es_maxima_seguridad",
+  "version": "1.0.0",
+  "title": "???? Cumplimiento Corporativo España — Máxima Seguridad",
+  "description": "Gobernanza ex-ante para IA empresarial adaptada al marco regulatorio español y europeo (EU AI Act, LOPDGDD, DORA).",
+  "sector": "corporativo",
+  "jurisdiction": "ES",
+  "securityLevel": "maximum",
+  "controls": [
+    "input_inspection",
+    "data_protection",
+    "secret_protection",
+    "semantic_validation",
+    "output_validation",
+    "agent_governance",
+    "evidence_generation",
+    "forensic_isolation"
+  ],
+  "runtimeBehavior": {
+    "inputInspection": true,
+    "outputValidation": true,
+    "policyEnforcement": true,
+    "evidenceGeneration": true,
+    "forensicIsolation": true,
+    "semanticGovernance": true
+  },
+  "failurePolicy": {
+    "inputViolation": "REJECT",
+    "outputViolation": "REJECT",
+    "integrityFailure": "ISOLATE",
+    "policyViolation": "BLOCK",
+    "unknownCondition": "REVIEW"
+  },
+  "decisionModel": {
+    "accepted": "VALIDATED",
+    "rejected": "REJECTED",
+    "review": "REVIEW"
+  },
+  "deploymentProfiles": ["Cloud", "On-Prem", "Edge", "Air-Gapped"]
+}
