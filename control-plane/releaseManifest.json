@@ -1,0 +1,20 @@
+{
+  "release": "S.A.A.R.E. Enterprise V2.3.0",
+  "build_timestamp": "2026-08-11T12:00:00.000Z",
+  "components": {
+    "control_plane": { "version": "2.3.0", "engine": "Node.js ES-Modules" },
+    "l7_proxy": { "version": "1.4.0", "runtime": "Rust release profile", "latency_target_ms": "< 0.2" },
+    "evidence_vault": { "version": "1.2.0", "hash_algorithm": "SHA-256", "chain_type": "Merkle Tree + Hash Chaining" },
+    "crypto_signature": { "algorithm": "Ed25519", "key_id": "ed25519_pub_prod_01" }
+  },
+  "supported_frameworks": [
+    "DORA (EU Regulation 2022/2554)",
+    "PCI DSS v4.0",
+    "ISO/IEC 27001:2022"
+  ],
+  "provenance": {
+    "git_commit": "1c2ea66",
+    "git_branch": "master",
+    "security_invariants_satisfied": "8/8"
+  }
+}

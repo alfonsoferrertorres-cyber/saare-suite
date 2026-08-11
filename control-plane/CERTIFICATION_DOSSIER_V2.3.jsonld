@@ -1,0 +1,29 @@
+{
+  "@context": "https://schema.saare.ai/v2/certification_dossier.jsonld",
+  "type": "AuditCertificationDossier",
+  "dossierId": "dos_1786441703515_d2eae185",
+  "issuedAt": "2026-08-11T09:48:23.516Z",
+  "executionId": "exec_e2e_certification_prod_01",
+  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "auditSummary": {
+    "scenarioTitle": "Banca & DORA / PCI-DSS Strict",
+    "finalVerdict": "REJECTED",
+    "reason": "Deteccion determinista: Patron de Prompt Injection #412",
+    "chainMerkleRoot": "a65ed35d314d94f3bdb807e6644c84f2ab9772ac6ce934105543c62341ab34e5",
+    "integrityStatus": "CHAIN_INTEGRITY_VERIFIED"
+  },
+  "complianceFrameworks": {
+    "dora": [
+      "Art. 9(4) - Aislamiento de fuentes de riesgo",
+      "Art. 11 - Respuesta y recuperacion de incidentes"
+    ],
+    "pci_dss_v4": [
+      "Req 3.4 - Proteccion de datos de tarjetahabientes (PII)",
+      "Req 10.4.1 - Sincronizacion de tiempo y firmas"
+    ],
+    "iso_27001": [
+      "A.5.15 - Control de acceso",
+      "A.8.12 - Prevencion de fuga de datos (DLP)"
+    ]
+  }
+}
