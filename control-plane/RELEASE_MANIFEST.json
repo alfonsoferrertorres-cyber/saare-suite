@@ -1,0 +1,18 @@
+{
+  "name": "S.A.A.R.E. Enterprise",
+  "version": "3.0.0-RC1",
+  "status": "FROZEN_RELEASE_CANDIDATE",
+  "build_timestamp": "2026-08-11T12:00:00.000Z",
+  "core_components": {
+    "control_plane": { "version": "3.0.0", "status": "FROZEN" },
+    "scenario_registry": { "version": "2.2.0", "status": "FROZEN" },
+    "evidence_vault": { "version": "1.2.0", "hash": "SHA-256", "tree": "Merkle", "status": "FROZEN" },
+    "l7_engine": { "version": "1.4.0", "runtime": "Rust", "latency_target": "< 0.2ms", "status": "FROZEN" },
+    "compliance_engine": { "version": "2.1.0", "frameworks": ["DORA", "PCI-DSS v4.0", "ISO/IEC 27001"], "status": "FROZEN" },
+    "resilience_gate": { "version": "1.5.0", "invariants": "8/8 PASS", "status": "FROZEN" }
+  },
+  "git_provenance": {
+    "commit_sha": "d676432",
+    "branch": "master"
+  }
+}
