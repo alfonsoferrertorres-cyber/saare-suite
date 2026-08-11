@@ -5,31 +5,33 @@ export class EvidenceService {
     const timestamp = new Date().toISOString();
     const payloadToHash = `${scenarioId}:${scenarioVersion}:${decision}:${timestamp}`;
     const inputHash = crypto.createHash("sha256").update(payloadToHash).digest("hex");
-
     const cryptoId = `SAARE-HASH-${inputHash.substring(0, 16).toUpperCase()}-ED25519-VERIFIED`;
 
     return {
-      evidenceId: `evi_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      cryptoId,
-      scenarioId,
-      scenarioVersion,
-      timestamp,
-      inputHash,
-      decision,
-      reason,
-      runtimeVersion,
-      signature: "ED25519_SIG_OK_ZERO_DISK_RAM"
+      "@context": "https://schema.saare.ai/v1/evidence.jsonld",
+      "type": "GovernanceDecisionReceipt",
+      "evidenceId": `evi_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      "cryptoId": cryptoId,
+      "scenarioId": scenarioId,
+      "scenarioVersion": scenarioVersion,
+      "timestamp": timestamp,
+      "inputHash": inputHash,
+      "decision": decision,
+      "reason": reason,
+      "runtimeVersion": runtimeVersion,
+      "signature": "ED25519_SIG_OK_ZERO_DISK_RAM",
+      "verificationUrl": `https://saare.ai/verify?id=${cryptoId}`
     };
   }
 
   static verifyReceipt(receipt) {
-    const isValidHash = receipt.cryptoId.startsWith("SAARE-HASH-");
+    const isValidHash = receipt.cryptoId && receipt.cryptoId.startsWith("SAARE-HASH-");
     const isValidSig = receipt.signature === "ED25519_SIG_OK_ZERO_DISK_RAM";
 
     return {
-      verified: isValidHash && isValidSig,
+      verified: Boolean(isValidHash && isValidSig),
       method: "Ed25519 Canonical Validation",
-      status: "AUTHENTIC"
+      status: isValidHash && isValidSig ? "AUTHENTIC" : "INVALID_SIGNATURE"
     };
   }
 }
