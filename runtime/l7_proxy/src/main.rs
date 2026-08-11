@@ -3,17 +3,18 @@ use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct InspectionRequest {
-    payload: String,
-    execution_id: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct InspectionVerdict {
-    verdict: String,
-    reason: String,
-    inspection_time_ms: f64,
-    interceptor_module: String,
+pub struct OTelSpan {
+    pub trace_id: String,
+    pub span_id: String,
+    pub parent_span_id: String,
+    pub service_name: String,
+    pub execution_id: String,
+    pub event_type: String,
+    pub verdict: String,
+    pub reason: String,
+    pub interceptor_module: String,
+    pub latency_ms: f64,
+    pub timestamp_iso: String,
 }
 
 fn inspect_payload(payload: &str) -> (String, String, String) {
@@ -43,9 +44,20 @@ fn inspect_payload(payload: &str) -> (String, String, String) {
     )
 }
 
+fn generate_hex_id(bytes_len: usize) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(format!("{}:{}", Instant::now().elapsed().as_nanos(), bytes_len));
+    let hash = hasher.finalize();
+    format!("{:x}", hash)[..bytes_len * 2].to_string()
+}
+
 #[tokio::main]
 async fn main() {
-    println!("=== S.A.A.R.E. L7 PROXY ENGINE V1.3 (RUST RUNTIME) ===");
+    println!("=== S.A.A.R.E. L7 PROXY ENGINE V1.4 (OPENTELEMETRY TRACING) ===");
+
+    let trace_id = format!("4bf92f3577b34da6a3ce929d0e0e4736");
+    let execution_id = "exec_dora_compliance_prod_01";
 
     let test_payloads = vec![
         ("req_101", "Hola, me gustaria consultar el horario de oficina."),
@@ -58,20 +70,25 @@ async fn main() {
         let (verdict, reason, module) = inspect_payload(payload);
         let duration = start.elapsed();
 
-        let result = InspectionVerdict {
+        let span = OTelSpan {
+            trace_id: trace_id.clone(),
+            span_id: generate_hex_id(8),
+            parent_span_id: generate_hex_id(8),
+            service_name: "saare-l7-proxy".to_string(),
+            execution_id: execution_id.to_string(),
+            event_type: "L7_INSPECTION_SPAN".to_string(),
             verdict,
             reason,
-            inspection_time_ms: duration.as_secs_f64() * 1000.0,
             interceptor_module: module,
+            latency_ms: duration.as_secs_f64() * 1000.0,
+            timestamp_iso: "2026-08-11T11:23:00.000Z".to_string(),
         };
 
-        println!("\n[ID: {}] Payload: \"{}\"", id, payload);
-        println!("  -> Veredicto: {}", result.verdict);
-        println!("  -> Modulo:    {}", result.interceptor_module);
-        println!("  -> Razon:     {}", result.reason);
-        println!("  -> Latencia:  {:.4} ms", result.inspection_time_ms);
+        let json_otel = serde_json::to_string_pretty(&span).unwrap();
+        println!("\n[SPAN GENERADO - ID: {}]", id);
+        println!("{}", json_otel);
     }
 
-    println!("\n=== INSPECCION COMPLETADA - DOD 10/10 LATENCIA < 0.2ms VERIFICADA ===");
+    println!("\n=== FASE V1.4 OPENTELEMETRY COMPLETED ===");
 }
 
