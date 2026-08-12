@@ -9,7 +9,6 @@ app.use(express.json());
 
 const ledgerPath = path.resolve('./evidence/global_ledger.jsonl');
 
-// Garantizar directorio de evidencias
 if (!fs.existsSync('./evidence')) {
   fs.mkdirSync('./evidence', { recursive: true });
 }
@@ -35,8 +34,11 @@ app.post('/api/intercept', (req, res) => {
 
   memoryLogs.unshift(receipt);
   
-  // Persistencia inmutable en disco (Evidencia Global JSONL)
-  fs.appendFileSync(ledgerPath, JSON.stringify(receipt) + '\n');
+  try {
+    fs.appendFileSync(ledgerPath, JSON.stringify(receipt) + '\n');
+  } catch (e) {
+    console.error('Error escribiendo en ledger:', e);
+  }
 
   res.json({ status: 'OK', receipt });
 });
@@ -46,5 +48,5 @@ app.get('/api/logs', (req, res) => {
 });
 
 app.listen(3002, () => {
-  console.log('Servidor de Evidencia Global e Interceptación activo en puerto 3002');
+  console.log('>>> SERVIDOR PUERTO 3002 LISTO Y ESCUCHANDO <<<');
 });

@@ -9,5 +9,9 @@
     "test:chaos": "node resilienceGate.js",
     "test:security-gate": "node resilienceGate.js",
     "test:resilience": "node resilienceGate.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   }
 }
