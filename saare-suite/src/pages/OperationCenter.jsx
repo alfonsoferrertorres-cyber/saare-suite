@@ -52,7 +52,8 @@ export default function OperationCenter() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans">
+      {/* HEADER */}
       <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-3">
@@ -85,6 +86,7 @@ export default function OperationCenter() {
         </div>
       </header>
 
+      {/* BODY CON SIDEBAR DE NAVEGACIÓN */}
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 border-r border-slate-800 bg-slate-900/40 p-4 flex flex-col justify-between hidden md:flex">
           <nav className="space-y-1">
@@ -111,79 +113,59 @@ export default function OperationCenter() {
           </nav>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-950 flex flex-col justify-between">
-          <div>
-            {activeTab === 'overview' && <OverviewDashboard userRoleLevel={userRoleLevel} onOpenBuilder={() => setActiveTab('builder')} />}
-            {activeTab === 'builder' && (
-              <PipelineBuilder 
-                step={builderStep} onNext={handleNextStep} onPrev={handlePrevStep} setStep={setBuilderStep}
-                selectedModule={selectedModule} setSelectedModule={setSelectedModule}
-                selectedPreset={selectedPreset} setSelectedPreset={setSelectedPreset}
-                configState={configState} setConfigState={setConfigState}
-                onDeploy={runDeployment} isDeploying={isDeploying} deployStep={deployStep}
-              />
-            )}
-            {['modules', 'presets', 'policies', 'evidence', 'integrations'].includes(activeTab) && (
-              <GenericTechnicalTab tabId={activeTab} />
-            )}
-          </div>
+        {/* CONTENIDO PRINCIPAL */}
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-950">
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-100">Operation Center</h1>
+                  <p className="text-sm text-slate-400">Monitoreo determinista de gobernanza, intercepciones y evidencia criptográfica.</p>
+                </div>
+                <button onClick={() => setActiveTab('builder')} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm flex items-center space-x-2 shadow-lg shadow-cyan-500/10">
+                  <GitMerge className="w-4 h-4" /><span>Configure New Pipeline</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono">
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-xs text-slate-500 block mb-1">INTERCEPCIONES L7</span>
+                  <span className="text-2xl font-bold text-slate-100">12,842</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-xs text-slate-500 block mb-1">LATENCIA P50</span>
+                  <span className="text-2xl font-bold text-emerald-400">0.18 ms</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-xs text-slate-500 block mb-1">LATENCIA P95</span>
+                  <span className="text-2xl font-bold text-emerald-400">0.56 ms</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-xs text-slate-500 block mb-1">LATENCIA P99</span>
+                  <span className="text-2xl font-bold text-cyan-400">0.96 ms</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab !== 'overview' && (
+            <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl">
+              <h2 className="text-xl font-bold capitalize text-slate-100 mb-2">{activeTab} Section</h2>
+              <p className="text-xs text-slate-400 font-mono">[SYSTEM OK] Módulo activo en el runtime determinista.</p>
+            </div>
+          )}
 
           {showTechnicalTrace && (
-            <div className="mt-8 border border-cyan-500/30 bg-slate-900/90 rounded-xl p-4 font-mono text-xs text-slate-300 shadow-2xl relative">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
-                <div className="flex items-center space-x-2 text-cyan-400 font-bold">
-                  <Terminal className="w-4 h-4" /><span>TECHNICAL TRACE (ENGINEER LEVEL)</span>
-                </div>
-                <button onClick={() => setShowTechnicalTrace(false)} className="text-slate-500 hover:text-slate-300">✕</button>
+            <div className="mt-8 border border-cyan-500/30 bg-slate-900/90 rounded-xl p-4 font-mono text-xs text-slate-300">
+              <div className="flex justify-between border-b border-slate-800 pb-2 mb-3">
+                <span className="text-cyan-400 font-bold">TECHNICAL TRACE (ENGINEER LEVEL)</span>
+                <button onClick={() => setShowTechnicalTrace(false)}>✕</button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><span className="text-slate-500 block">SEMANTIC MODE</span><span className="text-amber-400 font-semibold">{selectedModule.techMode}</span></div>
-                <div><span className="text-slate-500 block">RUNTIME CORE</span><span className="text-slate-200">v4.8.2-GA (x86_64)</span></div>
-                <div><span className="text-slate-500 block">CRYPTO RECEIPT</span><span className="text-emerald-400">Ed25519 Verified</span></div>
-                <div><span className="text-slate-500 block">TRACE ID</span><span className="text-slate-400">SAARE-89F2A10B4</span></div>
-              </div>
+              <p>TRACE ID: SAARE-89F2A10B4 | CRYPTO RECEIPT: Ed25519 Verified</p>
             </div>
           )}
         </main>
       </div>
-    </div>
-  );
-}
-
-function GenericTechnicalTab({ tabId }) {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold capitalize text-slate-100">{tabId} View</h1>
-      <p className="text-sm text-slate-400">Detalles técnicos e insumos de gobernanza determinista para {tabId}.</p>
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs text-slate-300 space-y-2">
-        <p className="text-cyan-400">[SYSTEM OK] Inspección activa sobre el módulo {tabId.toUpperCase()}.</p>
-        <p>Integridad Criptográfica: Ed25519 - Validado.</p>
-        <p>Políticas Regulatorias: DORA / EU AI Act / PCI-DSS Enforced.</p>
-      </div>
-    </div>
-  );
-}
-
-function OverviewDashboard({ userRoleLevel, onOpenBuilder }) {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Operation Center</h1>
-          <p className="text-sm text-slate-400">Monitoreo determinista de gobernanza, intercepciones y evidencia criptográfica.</p>
-        </div>
-        <button onClick={onOpenBuilder} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-2 text-sm shadow-lg shadow-cyan-500/10">
-          <GitMerge className="w-4 h-4" /><span>Configure New Pipeline</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PipelineBuilder({ step, onNext, onPrev, setStep, selectedModule, setSelectedModule, selectedPreset, setSelectedPreset, configState, setConfigState, onDeploy, isDeploying, deployStep }) {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-100">Pipeline Builder Active Step: {step}</h1>
     </div>
   );
 }
