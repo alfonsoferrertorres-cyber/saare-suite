@@ -1,0 +1,8 @@
+﻿apiVersion: saare.io/v1alpha1
+kind: SaareScenario
+metadata:
+  name: banca-dora-pci-prod
+spec:
+  scenarioId: "banca_dora_pci_dss"
+  hsmEnabled: true
+  l7FilterPolicy: "STRICT_PII_REDACT"
