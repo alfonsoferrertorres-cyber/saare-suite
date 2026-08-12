@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheck, Activity, Cpu, Database, Layers, GitMerge, 
   Server, Terminal, Sliders 

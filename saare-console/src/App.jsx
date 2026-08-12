@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { AuthProvider } from './context/AuthContext';
 import OperationCenter from './pages/OperationCenter';
 

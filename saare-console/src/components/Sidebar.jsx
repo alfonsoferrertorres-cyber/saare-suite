@@ -1,4 +1,4 @@
-ï»¿import React from 'react';
+import React from 'react';
 
 export default function Sidebar({ activeTab, setActiveTab, isLive = true }) {
   return (
@@ -34,7 +34,7 @@ export default function Sidebar({ activeTab, setActiveTab, isLive = true }) {
       </div>
 
       <div className="text-xs text-slate-500 border-t border-slate-800 pt-4">
-        <p>MÃ¡xima ProtecciÃ³n Configurada</p>
+        <p>Máxima Protección Configurada</p>
         <p className="text-[10px] text-slate-600 mt-1">Core Runtime Engine v7.2</p>
       </div>
     </aside>

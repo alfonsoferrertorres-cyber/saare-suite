@@ -1,4 +1,4 @@
-Ôªøimport React, { useState } from 'react';
+import React, { useState } from 'react';
 import { verifyEvidenceReceipt } from '../services/evidenceVault';
 
 export default function Verify() {
@@ -12,7 +12,7 @@ export default function Verify() {
       const res = await verifyEvidenceReceipt(parsedReceipt, publicKey);
       setResult(res);
     } catch (err) {
-      setResult({ valid: false, reason: 'JSON malformado o inv√°lido.' });
+      setResult({ valid: false, reason: 'JSON malformado o inv·lido.' });
     }
   };
 
@@ -20,7 +20,7 @@ export default function Verify() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col items-center justify-center">
       <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-lg p-6 shadow-xl">
         <h1 className="text-xl font-bold text-emerald-400 mb-2">SAARE Evidence Receipt Verifier</h1>
-        <p className="text-xs text-slate-400 mb-6">Verificaci√≥n matem√°tica independiente mediante firmas Ed25519 (Offline).</p>
+        <p className="text-xs text-slate-400 mb-6">VerificaciÛn matem·tica independiente mediante firmas Ed25519 (Offline).</p>
 
         <div className="space-y-4">
           <div>
@@ -29,18 +29,18 @@ export default function Verify() {
               rows="8"
               value={jsonInput}
               onChange={(e) => setJsonInput(e.target.value)}
-              placeholder="Pega aqu√≠ el contenido del archivo de evidencia..."
+              placeholder="Pega aquÌ el contenido del archivo de evidencia..."
               className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Clave P√∫blica del Runtime (Hex)</label>
+            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Clave P˙blica del Runtime (Hex)</label>
             <input
               type="text"
               value={publicKey}
               onChange={(e) => setPublicKey(e.target.value)}
-              placeholder="Clave p√∫blica Ed25519..."
+              placeholder="Clave p˙blica Ed25519..."
               className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
             />
           </div>
@@ -54,7 +54,7 @@ export default function Verify() {
 
           {result && (
             <div className={`p-4 rounded border text-xs font-mono mt-4 ${result.valid ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300' : 'bg-rose-950/50 border-rose-500 text-rose-300'}`}>
-              <div className="font-bold text-sm mb-1">{result.valid ? 'VERIFY ‚úì (V√ÅLIDO)' : 'VERIFY ‚úó (RECHAZADO)'}</div>
+              <div className="font-bold text-sm mb-1">{result.valid ? 'VERIFY ? (V¡LIDO)' : 'VERIFY ? (RECHAZADO)'}</div>
               <p>{result.reason}</p>
             </div>
           )}

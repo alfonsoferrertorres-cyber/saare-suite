@@ -1,4 +1,4 @@
-ï»¿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { verifyEvidenceReceipt } from '../services/evidenceVault';
 
 export function EvidenceVerify() {
@@ -12,16 +12,16 @@ export function EvidenceVerify() {
       const res = await verifyEvidenceReceipt(parsedReceipt, publicKey);
       setResult(res);
     } catch (err) {
-      setResult({ valid: false, reason: 'JSON malformado o invÃ¡lido: ' + err.message });
+      setResult({ valid: false, reason: 'JSON malformado o inválido: ' + err.message });
     }
   };
 
   return (
     <div style={{ padding: '20px', border: '1px solid #F59E0B', borderRadius: '8px', background: '#0F141C', color: '#CBD5E1', margin: '20px 0' }}>
-      <h3 style={{ color: '#F59E0B', marginTop: 0 }}>Portal de VerificaciÃ³n CriptogrÃ¡fica Offline (/verify)</h3>
+      <h3 style={{ color: '#F59E0B', marginTop: 0 }}>Portal de Verificación Criptográfica Offline (/verify)</h3>
       
       <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '5px' }}>Clave PÃºblica (Hex - Ed25519):</label>
+        <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '5px' }}>Clave Pública (Hex - Ed25519):</label>
         <input 
           type="text" 
           value={publicKey} 
@@ -34,7 +34,7 @@ export function EvidenceVerify() {
         <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '5px' }}>Recibo de Evidencia (JSON):</label>
         <textarea 
           rows="5"
-          placeholder="Pega aquÃ­ el JSON del recibo..."
+          placeholder="Pega aquí el JSON del recibo..."
           value={receiptInput}
           onChange={(e) => setReceiptInput(e.target.value)}
           style={{ width: '100%', background: '#050811', border: '1px solid #1E293B', color: '#FFF', padding: '8px', fontFamily: 'monospace' }}
@@ -48,7 +48,7 @@ export function EvidenceVerify() {
       {result && (
         <div style={{ background: '#050811', padding: '12px', borderRadius: '4px', border: `1px solid ${result.valid ? '#10B981' : '#EF4444'}` }}>
           <strong style={{ color: result.valid ? '#10B981' : '#EF4444' }}>
-            {result.valid ? 'VERIFICACIÃ“N EXITOSA âœ“' : 'VERIFICACIÃ“N FALLIDA âœ—'}
+            {result.valid ? 'VERIFICACIÓN EXITOSA ?' : 'VERIFICACIÓN FALLIDA ?'}
           </strong>
           <p style={{ margin: '5px 0 0 0', fontSize: '13px' }}>{result.reason}</p>
         </div>

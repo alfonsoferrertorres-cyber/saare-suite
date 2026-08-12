@@ -1,8 +1,8 @@
-ï»¿import React from 'react';
+import React from 'react';
 
 export function Header() {
   const downloadStandaloneConsole = () => {
-    // Genera y descarga directamente la versiÃ³n ejecutable cliente
+    // Genera y descarga directamente la versión ejecutable cliente
     window.open('http://localhost:3002/api/logs', '_blank');
   };
 
@@ -10,7 +10,7 @@ export function Header() {
     <header className="flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 text-white">
       <div>
         <h1 className="text-xl font-bold tracking-wide text-cyan-400">S.A.A.R.E. Platform</h1>
-        <p className="text-xs text-slate-400">Dominio ProducciÃ³n: consola.saare.es</p>
+        <p className="text-xs text-slate-400">Dominio Producción: consola.saare.es</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -20,7 +20,7 @@ export function Header() {
           PUERTO 3002 OK
         </div>
 
-        {/* BOTÃ“N PROMINENTE DE DESCARGA DIRECTA */}
+        {/* BOTÓN PROMINENTE DE DESCARGA DIRECTA */}
         <a 
           href="/SAARE_Console_V2.2_Standalone.html" 
           download="SAARE_Console_V2.2_Standalone.html"

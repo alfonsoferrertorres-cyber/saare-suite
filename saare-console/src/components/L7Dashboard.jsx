@@ -1,4 +1,4 @@
-ï»¿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { l7Proxy } from '../services/l7Interceptor';
 
 export function L7Dashboard() {
@@ -33,7 +33,7 @@ export function L7Dashboard() {
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F59E0B' }}>{metrics.p95} ms</div>
         </div>
         <div style={{ background: '#050811', padding: '15px', border: '1px solid #1E293B', textIndent: 'center' }}>
-          <span style={{ fontSize: '12px', color: '#94A3B8' }}>P99 (Pico MÃ¡ximo)</span>
+          <span style={{ fontSize: '12px', color: '#94A3B8' }}>P99 (Pico Máximo)</span>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#EF4444' }}>{metrics.p99} ms</div>
         </div>
         <div style={{ background: '#050811', padding: '15px', border: '1px solid #1E293B', textIndent: 'center' }}>
@@ -43,7 +43,7 @@ export function L7Dashboard() {
       </div>
 
       <button onClick={handleSimulateCall} disabled={loading} style={{ background: '#00F0FF', color: '#050811', border: 'none', padding: '10px 18px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>
-        {loading ? 'Interceptando...' : 'Simular PeticiÃ³n L7 Interceptada'}
+        {loading ? 'Interceptando...' : 'Simular Petición L7 Interceptada'}
       </button>
 
       {logs.length > 0 && (

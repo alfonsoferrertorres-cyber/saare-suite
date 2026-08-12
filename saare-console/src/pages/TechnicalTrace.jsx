@@ -1,10 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 
 export default function TechnicalTrace() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-mono text-xs">
       <div className="border-b border-slate-800 pb-3">
-        <span className="text-[10px] text-[#00f0ff] uppercase block">NIVEL 3 — DEEP TECHNICAL TRACE / Registro Global (ENGINEER & AUDITOR)</span>
+        <span className="text-[10px] text-[#00f0ff] uppercase block">NIVEL 3 � DEEP TECHNICAL TRACE / Registro Global (ENGINEER & AUDITOR)</span>
         <h1 className="text-xl font-bold text-white font-serif mt-1">Execution Trace & Cryptographic Logs</h1>
       </div>
 
@@ -16,7 +16,7 @@ export default function TechnicalTrace() {
           <div><span className="text-slate-500">Runtime Version:</span> Core Runtime v7.2.1-rust</div>
           <div><span className="text-slate-500">Last Decision:</span> <span className="text-rose-400 font-bold">BLOCK</span></div>
           <div><span className="text-slate-500">Reason:</span> Policy Violation (Prompt Injection Pattern #412)</div>
-          <div><span className="text-slate-500">Crypto Verification:</span> <span className="text-emerald-400">Ed25519 Verified ✓</span></div>
+          <div><span className="text-slate-500">Crypto Verification:</span> <span className="text-emerald-400">Ed25519 Verified ?</span></div>
           <div><span className="text-slate-500">Timestamp:</span> 2026-08-11T09:36:00Z</div>
         </div>
 

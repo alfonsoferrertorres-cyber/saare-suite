@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { COMMERCIAL_SCENARIOS } from '../data/commercialCatalog';
 import { saveDeploymentPlan, getActiveDeploymentPlan } from '../services/scenarioRegistry';
 
@@ -21,7 +21,7 @@ export function CommercialCatalog() {
 
   return (
     <div style={{ padding: '20px', border: '1px solid #10B981', borderRadius: '8px', background: '#0F141C', color: '#CBD5E1', margin: '20px 0' }}>
-      <h3 style={{ color: '#10B981', marginTop: 0 }}>Catálogo Comercial & Escenarios de Gobernanza</h3>
+      <h3 style={{ color: '#10B981', marginTop: 0 }}>Cat�logo Comercial & Escenarios de Gobernanza</h3>
       
       <div style={{ marginBottom: '20px' }}>
         <label style={{ fontSize: '14px', color: '#94A3B8', marginRight: '10px' }}>ID Tenant Activo:</label>
@@ -53,7 +53,7 @@ export function CommercialCatalog() {
                 <span style={{ fontSize: '10px', background: '#C5A059', color: '#000', padding: '2px 6px', fontWeight: 'bold', borderRadius: '3px' }}>{scen.badge}</span>
                 <h4 style={{ color: '#FFF', margin: '10px 0 5px 0' }}>{scen.name}</h4>
                 <p style={{ fontSize: '12px', color: '#94A3B8' }}>{scen.description}</p>
-                <div style={{ fontSize: '11px', color: '#00F0FF', margin: '8px 0' }}>💡 {scen.impact}</div>
+                <div style={{ fontSize: '11px', color: '#00F0FF', margin: '8px 0' }}>?? {scen.impact}</div>
               </div>
 
               <button 
@@ -69,7 +69,7 @@ export function CommercialCatalog() {
                   marginTop: '10px'
                 }}
               >
-                {isSelected ? '✓ Escenario Activo' : 'Desplegar Plan'}
+                {isSelected ? '? Escenario Activo' : 'Desplegar Plan'}
               </button>
             </div>
           );

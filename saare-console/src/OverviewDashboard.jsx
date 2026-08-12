@@ -1,4 +1,4 @@
-ï»¿import React, { useState } from 'react';
+import React, { useState } from 'react';
 
 export default function OverviewDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -39,7 +39,7 @@ export default function OverviewDashboard() {
         </div>
 
         <div className="text-xs text-slate-500 border-t border-slate-800 pt-4">
-          <p>MÃ¡xima Seguridad Configurada</p>
+          <p>Máxima Seguridad Configurada</p>
           <p className="text-[10px] text-slate-600 mt-1">Core Runtime Engine v7.2</p>
         </div>
       </aside>
@@ -85,8 +85,8 @@ export default function OverviewDashboard() {
           <div className="space-y-3">
             <div className="p-4 bg-slate-950 border border-slate-800 rounded flex justify-between items-center">
               <div>
-                <h4 className="font-semibold text-emerald-400">Cumplimiento Corporativo ES (MÃ¡xima Seguridad)</h4>
-                <p className="text-xs text-slate-400">ProtecciÃ³n integral L7 con bloqueo de PII y Prompt Injection</p>
+                <h4 className="font-semibold text-emerald-400">Cumplimiento Corporativo ES (Máxima Seguridad)</h4>
+                <p className="text-xs text-slate-400">Protección integral L7 con bloqueo de PII y Prompt Injection</p>
               </div>
             </div>
             <div className="p-4 bg-slate-950 border border-slate-800 rounded flex justify-between items-center">

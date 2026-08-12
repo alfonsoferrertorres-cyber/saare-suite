@@ -1,4 +1,4 @@
-Ôªøimport React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createEvidenceReceipt } from "../services/evidenceVault";
 
 export function GlobalRegistryView() {
@@ -40,7 +40,7 @@ export function GlobalRegistryView() {
   const handleDownloadReceipt = async (log) => {
     const receipt = await createEvidenceReceipt(
       "MS3V_GLOBAL_NODE_L7",
-      { user: log.user, prompt: "Auditor√≠a en Nodo L7" },
+      { user: log.user, prompt: "AuditorÌa en Nodo L7" },
       log.status
     );
 
@@ -57,7 +57,7 @@ export function GlobalRegistryView() {
     <div className="space-y-4 font-mono text-xs text-slate-300">
       <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
-          <span className="text-amber-400 font-bold block">CAPA DE REGISTRO & AUDITOR√çA L7 (NODO MS3V)</span>
+          <span className="text-amber-400 font-bold block">CAPA DE REGISTRO & AUDITORÕA L7 (NODO MS3V)</span>
           <h2 className="text-lg font-bold text-white mt-0.5">REGISTRO GLOBAL <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded ml-2">ISO 42001 READY</span></h2>
         </div>
         <div className="text-right">
@@ -72,7 +72,7 @@ export function GlobalRegistryView() {
               <th className="p-3">ID Evidencia</th>
               <th className="p-3">Timestamp (UTC)</th>
               <th className="p-3">Usuario Anonimizado</th>
-              <th className="p-3">Estado / Acci√≥n DLP</th>
+              <th className="p-3">Estado / AcciÛn DLP</th>
               <th className="p-3">Firma SHA-256</th>
               <th className="p-3 text-right">Recibo Forense</th>
             </tr>

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { fetchScenarios, createDeployment, subscribeToTelemetry } from "../services/apiClient";
 import { GlobalRegistryView } from "../components/GlobalRegistryView";
 
@@ -80,7 +80,7 @@ export default function OperationCenter() {
 
           {activeSubscription && (
             <div className="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 font-mono text-xs space-y-2">
-              <span className="text-emerald-400 font-bold block">✓ ESCENARIO EN SUSCRIPCIÓN ACTIVA</span>
+              <span className="text-emerald-400 font-bold block">? ESCENARIO EN SUSCRIPCI�N ACTIVA</span>
               <div>Subscription ID: <span className="text-white">{activeSubscription.execution_id}</span></div>
               <div>Estado Runtime: <span className="text-emerald-400 font-bold">{activeSubscription.status}</span></div>
             </div>
@@ -90,7 +90,7 @@ export default function OperationCenter() {
 
       {activeTab === "ESCENAS" && (
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h3 className="font-mono text-xs text-slate-400 uppercase">Escenarios Disponibles para Suscripción</h3>
+          <h3 className="font-mono text-xs text-slate-400 uppercase">Escenarios Disponibles para Suscripci�n</h3>
           {scenarios.map((sc) => (
             <div key={sc.id} className="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
               <div>
