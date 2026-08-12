@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "Anti-Jailbreak L7: Bloqueo perimetral de Prompt Injections y fugas",
+    "preset_id":  "enterprise-antijailbreak",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "Edge/IoT Industrial: Optimización en hardware restringido con latencia \u003c 1.5ms",
+    "preset_id":  "edge-iotsovereign",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

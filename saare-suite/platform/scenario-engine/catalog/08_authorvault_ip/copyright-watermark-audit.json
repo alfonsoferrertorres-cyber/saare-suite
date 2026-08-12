@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDIPRES",
+    "description":  "Auditoría Derechos Autor: Firma Ed25519 acreditativa de grado de intervención humana",
+    "preset_id":  "copyright-watermark-audit",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

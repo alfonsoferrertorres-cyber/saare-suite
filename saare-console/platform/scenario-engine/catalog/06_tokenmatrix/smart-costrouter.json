@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDIPRES",
+    "description":  "Enrutamiento Financiero: Conmutación según complejidad (LLM Local vs Cloud, -65% coste)",
+    "preset_id":  "smart-costrouter",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

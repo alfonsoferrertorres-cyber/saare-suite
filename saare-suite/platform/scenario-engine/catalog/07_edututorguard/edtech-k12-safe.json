@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDLEGAL",
+    "description":  "Filtro Pedagógico COPPA: Bloqueo de contenido sensible y guía socrática obligatoria",
+    "preset_id":  "edtech-k12-safe",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

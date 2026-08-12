@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "KYC Antifraude: Análisis de vídeo/DNI en RAM para detectar suplantación facial",
+    "preset_id":  "kyc-biometric-anti-spoofing",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

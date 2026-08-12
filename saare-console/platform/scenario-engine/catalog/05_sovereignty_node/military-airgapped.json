@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "Aislamiento Defensa: Emisión nula de datos hacia el exterior en redes clasificadas",
+    "preset_id":  "military-airgapped",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

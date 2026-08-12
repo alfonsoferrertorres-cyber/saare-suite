@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDVERD",
+    "description":  "Protección Agentes MCP: Cortacircuitos contra bucles infinitos",
+    "preset_id":  "agent-circuitbreaker",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

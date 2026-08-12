@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "Anti-Clonación Voz: Detección de sintetizadores de audio en autorizaciones bancarias",
+    "preset_id":  "voice-cloning-defense",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

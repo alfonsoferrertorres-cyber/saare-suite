@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDFOR",
+    "description":  "SOC Incident Response: Sellado criptográfico en RAM y emisión de CRYPTO-IDs",
+    "preset_id":  "incidentresponse-soc",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

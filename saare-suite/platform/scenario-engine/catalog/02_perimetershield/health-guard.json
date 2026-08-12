@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "Anonimización PHI: Tokenización de historiales médicos (HIPAA / RGPD)",
+    "preset_id":  "health-guard",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

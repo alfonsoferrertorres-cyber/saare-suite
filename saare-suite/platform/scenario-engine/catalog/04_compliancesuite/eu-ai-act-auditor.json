@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDLEGAL",
+    "description":  "Auditoría EU AI Act: Traducción de Arts. 9, 12, 14, 15 en reglas activas AEPD/AESIA",
+    "preset_id":  "eu-ai-act-auditor",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

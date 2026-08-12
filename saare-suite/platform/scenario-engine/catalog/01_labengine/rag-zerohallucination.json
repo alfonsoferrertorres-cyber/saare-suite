@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDVERD",
+    "description":  "Integridad RAG: Enforzamiento determinista AST para erradicar alucinaciones",
+    "preset_id":  "rag-zerohallucination",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

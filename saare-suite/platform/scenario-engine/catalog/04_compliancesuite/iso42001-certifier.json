@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDCORP",
+    "description":  "Certificación ISO 42001: Matriz continua de evidencias para el SGIA (AIMS)",
+    "preset_id":  "iso42001-certifier",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

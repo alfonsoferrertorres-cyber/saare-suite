@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDFOR",
+    "description":  "Peritaje Judicial: Certificación offline inalterable ante tribunales",
+    "preset_id":  "court-verifier",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

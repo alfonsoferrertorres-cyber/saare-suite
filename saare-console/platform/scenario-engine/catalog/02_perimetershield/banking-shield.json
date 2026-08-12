@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDSECU",
+    "description":  "DLP Financiero: Ocultación en RAM de Tarjetas, IBANs, NIFs (DORA / PCI-DSS)",
+    "preset_id":  "banking-shield",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}

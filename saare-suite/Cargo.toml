@@ -1,0 +1,32 @@
+﻿[workspace]
+members = [
+    "core",
+    "modules/01_perimetershield",
+    "modules/02_evidencevault",
+    "modules/03_compliancesuite",
+    "modules/04_sovereignty_node",
+    "modules/05_tokenmatrix",
+    "modules/06_labengine",
+    "modules/07_edututorguard",
+    "modules/08_authorvault",
+    "modules/09_deepfakeshield",
+    "tools/saare-runtime"
+]
+resolver = "2"
+
+[workspace.dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.38", features = ["full"] }
+ed25519-dalek = "2.1"
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
+rand = "0.8"
+hex = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,0 +1,8 @@
+name = "saare-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-10"
+
+# Almacenamiento KV para estado de despliegues y licenciamiento
+[[kv_namespaces]]
+binding = "SAARE_KV"
+id = "<tu_kv_namespace_id>"

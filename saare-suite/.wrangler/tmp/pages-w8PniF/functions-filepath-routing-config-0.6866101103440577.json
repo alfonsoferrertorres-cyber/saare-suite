@@ -1,0 +1,45 @@
+{
+  "routes": [
+    {
+      "routePath": "/v1/chat/completions",
+      "mountPath": "/v1/chat",
+      "method": "POST",
+      "module": [
+        "v1/chat/completions.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/v1/leads",
+      "mountPath": "/api/v1",
+      "method": "",
+      "module": [
+        "api/v1/leads.ts:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/checkout",
+      "mountPath": "/api",
+      "method": "OPTIONS",
+      "module": [
+        "api/checkout.js:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/checkout",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/checkout.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/license",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/license.ts:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

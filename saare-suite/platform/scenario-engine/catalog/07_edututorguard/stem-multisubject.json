@@ -1,0 +1,9 @@
+﻿{
+    "signature_algorithm":  "Ed25519",
+    "version":  "v4.0",
+    "internal_mode":  "SAARE-MDVERD",
+    "description":  "Verificación STEM: Comprobación determinista analítica en Mates, Física, Química",
+    "preset_id":  "stem-multisubject",
+    "active":  true,
+    "enforcement_level":  "L7_RAM_EXECUTION"
+}
