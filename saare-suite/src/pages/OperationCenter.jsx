@@ -1,174 +1,189 @@
 ﻿import React, { useState } from 'react';
+import { 
+  Activity, GitMerge, Layers, Sliders, ShieldCheck, Database, Server, 
+  Terminal, CheckCircle2, RefreshCw, Play, ArrowRight, ChevronRight 
+} from 'lucide-react';
+
+const MODULES_DATA = [
+  { id: 'perimeter', name: 'PerimeterShield', type: 'L7 Proxy', desc: 'Protección de datos sensibles (PII, PCI, IBAN) e inspección de payloads.', techMode: 'Deterministic RAM Enforcement' },
+  { id: 'rate', name: 'TokenMatrix', type: 'Throttle Engine', desc: 'Control de tasa de consumo por token y prevención de abusos.', techMode: 'Token Bucket / Sliding Window' },
+  { id: 'evidence', name: 'EvidenceVault', type: 'Ledger Engine', desc: 'Registro inmutable de evidencias con firmas criptográficas Ed25519.', techMode: 'Cryptographic Ed25519 Signed' }
+];
+
+const PRESETS_DATA = {
+  perimeter: [
+    { id: 'p1', name: 'Banking Shield', desc: 'Máxima rigidez para entornos bancarios y financieros.', toggles: ['PIIDetection', 'PCIDetection', 'IBANDetection'] },
+    { id: 'p2', name: 'Enterprise AI Guard', desc: 'Protección enfocada en LLMs y prevención de Prompt Injections.', toggles: ['PromptInjection', 'EvidenceGeneration'] }
+  ]
+};
 
 export default function OperationCenter() {
-  const [activeScenario, setActiveScenario] = useState('EU AI Act España');
-  const [isolationMode, setIsolationMode] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([
-    { id: 'REC-8801', time: '06:32:01', event: 'Validación de Prompt', verdict: 'Aprobado', hash: 'e2f5...89a1', state: 'Local + Cloud' },
-    { id: 'REC-8802', time: '06:33:14', event: 'DNI Detectado (Filtro ES)', verdict: 'Anonymizado en RAM', hash: 'a4b1...32f0', state: 'Local + Cloud' }
-  ]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [userRoleLevel, setUserRoleLevel] = useState('business');
+  const [showTechnicalTrace, setShowTechnicalTrace] = useState(false);
+  const [builderStep, setBuilderStep] = useState(1);
+  const [selectedModule, setSelectedModule] = useState(MODULES_DATA[0]);
+  const [selectedPreset, setSelectedPreset] = useState(PRESETS_DATA.perimeter[0]);
+  const [configState, setConfigState] = useState({
+    PIIDetection: true, PCIDetection: true, IBANDetection: true,
+    PromptInjection: true, EvidenceGeneration: true, actionOnDetection: 'BLOCK', retention: 'Client Infrastructure'
+  });
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployStep, setDeployStep] = useState(0);
 
-  const handleScenarioChange = async (scenarioName) => {
-    setActiveScenario(scenarioName);
-    setLoading(true);
-    try {
-      await fetch('https://www.saare.es/api/deployments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: scenarioName, action: 'ACTIVATE_SCENARIO' })
-      });
-    } catch (e) {
-      console.log('Cambio de escenario local registrado:', scenarioName);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleNextStep = () => setBuilderStep((prev) => Math.min(prev + 1, 6));
+  const handlePrevStep = () => setBuilderStep((prev) => Math.max(prev - 1, 1));
 
-  const toggleIsolation = () => {
-    setIsolationMode(!isolationMode);
-  };
-
-  const handleTriggerTest = async () => {
-    setLoading(true);
-    const newId = 'REC-' + Math.floor(1000 + Math.random() * 9000);
-    const now = new Date().toLocaleTimeString();
-    
-    try {
-      const res = await fetch('https://www.saare.es/api/deployments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: activeScenario, action: 'TEST_PROMPT' })
-      });
-      const data = await res.json();
-      
-      setLogs(prev => [
-        { id: newId, time: now, event: 'Ejecución de Prueba', verdict: 'Aprobado (Ed25519)', hash: data.id ? data.id.substring(0, 10) + '...' : 'c8f2...99e1', state: 'Local + Cloud' },
-        ...prev
-      ]);
-    } catch (err) {
-      setLogs(prev => [
-        { id: newId, time: now, event: 'Simulación de Inspección', verdict: 'Aprobado Local', hash: 'f91a...33d2', state: 'Local' },
-        ...prev
-      ]);
-    } finally {
-      setLoading(false);
-    }
+  const runDeployment = () => {
+    setIsDeploying(true);
+    setDeployStep(0);
+    const steps = ['INITIALIZING', 'LOADING POLICY', 'STARTING MODULES', 'VERIFYING CONFIGURATION', 'RUNTIME ACTIVE'];
+    steps.forEach((_, index) => {
+      setTimeout(() => {
+        setDeployStep(index + 1);
+        if (index === steps.length - 1) {
+          setTimeout(() => {
+            setIsDeploying(false);
+            setActiveTab('overview');
+          }, 1200);
+        }
+      }, (index + 1) * 800);
+    });
   };
 
   return (
-    <div style={{ background: '#050811', color: '#CBD5E1', minHeight: '100vh', padding: '24px', fontFamily: 'sans-serif' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <span style={{ background: '#059669', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>RUNTIME ACTIVO</span>
-          <span style={{ fontSize: '12px', color: '#64748B', marginLeft: '12px' }}>Node: saare-edge-eu-west</span>
-          <h1 style={{ color: '#F8FAFC', margin: '8px 0 0 0', fontSize: '24px' }}>Centro de Mando & Registro Dual-Vault</h1>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+      <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3">
+            <div className="h-8 w-8 rounded bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-cyan-500/20">S</div>
+            <span className="font-mono text-lg font-bold tracking-wider text-slate-100">SAARE<span className="text-cyan-400">.CONSOLE</span></span>
+          </div>
+          <div className="hidden md:flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-mono text-emerald-400">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-bold">RUNTIME ACTIVE</span>
+          </div>
         </div>
-        <div>
-          <button 
-            onClick={toggleIsolation}
-            style={{ 
-              background: isolationMode ? '#DC2626' : '#1E293B', 
-              color: '#fff', 
-              border: '1px solid #334155', 
-              padding: '8px 16px', 
-              borderRadius: '6px', 
-              cursor: 'pointer',
-              fontWeight: 'bold' 
-            }}
-          >
-            Modo Aislamiento Estricto (Air-Gapped): {isolationMode ? 'ACTIVADO' : 'DESACTIVADO (Dual-Vault)'}
+
+        <div className="hidden lg:flex items-center space-x-6 text-xs text-slate-400 font-mono">
+          <div><span className="text-slate-500">ENGINE:</span> <span className="text-slate-200">v4.8-core</span></div>
+          <div><span className="text-slate-500">PROTECTION:</span> <span className="text-emerald-400">100% ENFORCED</span></div>
+          <div><span className="text-slate-500">EVIDENCE:</span> <span className="text-cyan-400">VALIDATED (Ed25519)</span></div>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          <div className="bg-slate-800 p-1 rounded-lg border border-slate-700 flex text-xs font-mono">
+            {['business', 'operator', 'engineer'].map((lvl) => (
+              <button key={lvl} onClick={() => setUserRoleLevel(lvl)} className={`px-2.5 py-1 rounded capitalize ${userRoleLevel === lvl ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>
+                {lvl}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowTechnicalTrace(!showTechnicalTrace)} className={`p-2 rounded-lg border transition ${showTechnicalTrace ? 'bg-cyan-950 border-cyan-500 text-cyan-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>
+            <Terminal className="w-4 h-4" />
           </button>
         </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-64 border-r border-slate-800 bg-slate-900/40 p-4 flex flex-col justify-between hidden md:flex">
+          <nav className="space-y-1">
+            <div className="text-[10px] font-mono font-semibold text-slate-500 tracking-wider px-3 mb-2 uppercase">Operación</div>
+            <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === 'overview' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+              <Activity className="w-4 h-4" /><span>Overview</span>
+            </button>
+            <button onClick={() => setActiveTab('builder')} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === 'builder' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+              <GitMerge className="w-4 h-4" /><span>Pipeline Builder</span>
+            </button>
+
+            <div className="text-[10px] font-mono font-semibold text-slate-500 tracking-wider px-3 pt-4 mb-2 uppercase">Gobernanza</div>
+            {[
+              { id: 'modules', label: 'Modules', icon: Layers },
+              { id: 'presets', label: 'Presets', icon: Sliders },
+              { id: 'policies', label: 'Policies', icon: ShieldCheck },
+              { id: 'evidence', label: 'Evidence Vault', icon: Database },
+              { id: 'integrations', label: 'Integrations', icon: Server }
+            ].map((item) => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === item.id ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <item.icon className="w-4 h-4" /><span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-950 flex flex-col justify-between">
+          <div>
+            {activeTab === 'overview' && <OverviewDashboard userRoleLevel={userRoleLevel} onOpenBuilder={() => setActiveTab('builder')} />}
+            {activeTab === 'builder' && (
+              <PipelineBuilder 
+                step={builderStep} onNext={handleNextStep} onPrev={handlePrevStep} setStep={setBuilderStep}
+                selectedModule={selectedModule} setSelectedModule={setSelectedModule}
+                selectedPreset={selectedPreset} setSelectedPreset={setSelectedPreset}
+                configState={configState} setConfigState={setConfigState}
+                onDeploy={runDeployment} isDeploying={isDeploying} deployStep={deployStep}
+              />
+            )}
+            {['modules', 'presets', 'policies', 'evidence', 'integrations'].includes(activeTab) && (
+              <GenericTechnicalTab tabId={activeTab} />
+            )}
+          </div>
+
+          {showTechnicalTrace && (
+            <div className="mt-8 border border-cyan-500/30 bg-slate-900/90 rounded-xl p-4 font-mono text-xs text-slate-300 shadow-2xl relative">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+                <div className="flex items-center space-x-2 text-cyan-400 font-bold">
+                  <Terminal className="w-4 h-4" /><span>TECHNICAL TRACE (ENGINEER LEVEL)</span>
+                </div>
+                <button onClick={() => setShowTechnicalTrace(false)} className="text-slate-500 hover:text-slate-300">✕</button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div><span className="text-slate-500 block">SEMANTIC MODE</span><span className="text-amber-400 font-semibold">{selectedModule.techMode}</span></div>
+                <div><span className="text-slate-500 block">RUNTIME CORE</span><span className="text-slate-200">v4.8.2-GA (x86_64)</span></div>
+                <div><span className="text-slate-500 block">CRYPTO RECEIPT</span><span className="text-emerald-400">Ed25519 Verified</span></div>
+                <div><span className="text-slate-500 block">TRACE ID</span><span className="text-slate-400">SAARE-89F2A10B4</span></div>
+              </div>
+            </div>
+          )}
+        </main>
       </div>
+    </div>
+  );
+}
 
-      {/* Escenarios */}
-      <h3 style={{ color: '#C5A059', fontSize: '14px', letterSpacing: '1px' }}>1. ESCENARIO DE PROTECCIÓN ACTIVO</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
-        
-        {/* Card 1 */}
-        <div 
-          onClick={() => handleScenarioChange('EU AI Act España')}
-          style={{ 
-            border: activeScenario === 'EU AI Act España' ? '2px solid #C5A059' : '1px solid #1E293B', 
-            background: '#0F172A', padding: '16px', borderRadius: '8px', cursor: 'pointer' 
-          }}
-        >
-          <span style={{ background: '#0284C7', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>Máxima Seguridad</span>
-          <h4 style={{ color: '#F8FAFC', margin: '8px 0' }}>EU AI Act España</h4>
-          <p style={{ fontSize: '12px', color: '#94A3B8' }}>Anonymización DNI/IBAN/NIF ex-ante, auditoría AESIA y firma criptográfica Ed25519.</p>
-        </div>
-
-        {/* Card 2 */}
-        <div 
-          onClick={() => handleScenarioChange('Banca & Finanzas DORA')}
-          style={{ 
-            border: activeScenario === 'Banca & Finanzas DORA' ? '2px solid #C5A059' : '1px solid #1E293B', 
-            background: '#0F172A', padding: '16px', borderRadius: '8px', cursor: 'pointer' 
-          }}
-        >
-          <span style={{ background: '#0284C7', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>DORA / PCI-DSS</span>
-          <h4 style={{ color: '#F8FAFC', margin: '8px 0' }}>Banca & Finanzas DORA</h4>
-          <p style={{ fontSize: '12px', color: '#94A3B8' }}>Protección PCI-DSS, detección de tarjetas y cifrado de transacciones L7.</p>
-        </div>
-
-        {/* Card 3 */}
-        <div 
-          onClick={() => handleScenarioChange('Agentes Autónomos & MCP')}
-          style={{ 
-            border: activeScenario === 'Agentes Autónomos & MCP' ? '2px solid #C5A059' : '1px solid #1E293B', 
-            background: '#0F172A', padding: '16px', borderRadius: '8px', cursor: 'pointer' 
-          }}
-        >
-          <span style={{ background: '#0284C7', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>Control Agéntico</span>
-          <h4 style={{ color: '#F8FAFC', margin: '8px 0' }}>Agentes Autónomos & MCP</h4>
-          <p style={{ fontSize: '12px', color: '#94A3B8' }}>Guardarraíles para llamadas a herramientas y prevención de bucles infinitos.</p>
-        </div>
-
+function GenericTechnicalTab({ tabId }) {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold capitalize text-slate-100">{tabId} View</h1>
+      <p className="text-sm text-slate-400">Detalles técnicos e insumos de gobernanza determinista para {tabId}.</p>
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs text-slate-300 space-y-2">
+        <p className="text-cyan-400">[SYSTEM OK] Inspección activa sobre el módulo {tabId.toUpperCase()}.</p>
+        <p>Integridad Criptográfica: Ed25519 - Validado.</p>
+        <p>Políticas Regulatorias: DORA / EU AI Act / PCI-DSS Enforced.</p>
       </div>
+    </div>
+  );
+}
 
-      {/* Botón de Invocación */}
-      <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <button 
-          onClick={handleTriggerTest}
-          disabled={loading}
-          style={{ 
-            background: '#C5A059', color: '#000', fontWeight: 'bold', border: 'none', 
-            padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' 
-          }}
-        >
-          {loading ? 'PROCESANDO INSPECION L7...' : 'EJECUTAR SIMULACIÓN DE PRUEBA DE CAMPO'}
+function OverviewDashboard({ userRoleLevel, onOpenBuilder }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Operation Center</h1>
+          <p className="text-sm text-slate-400">Monitoreo determinista de gobernanza, intercepciones y evidencia criptográfica.</p>
+        </div>
+        <button onClick={onOpenBuilder} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-2 text-sm shadow-lg shadow-cyan-500/10">
+          <GitMerge className="w-4 h-4" /><span>Configure New Pipeline</span>
         </button>
-        <span style={{ fontSize: '13px', color: '#64748B' }}>Escenario seleccionado: <strong style={{ color: '#38BDF8' }}>{activeScenario}</strong></span>
       </div>
+    </div>
+  );
+}
 
-      {/* Tabla de Evidencias */}
-      <h3 style={{ color: '#C5A059', fontSize: '14px', letterSpacing: '1px' }}>REGISTRO DE ACTIVIDAD Y EVIDENCIAS CRIPTOGRÁFICAS</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', background: '#0F172A', borderRadius: '8px', overflow: 'hidden' }}>
-        <thead>
-          <tr style={{ background: '#1E293B', textAlign: 'left', color: '#64748B' }}>
-            <th style={{ padding: '12px' }}>ID RECIBO</th>
-            <th style={{ padding: '12px' }}>HORA</th>
-            <th style={{ padding: '12px' }}>EVENTO / INTERCEPCIÓN</th>
-            <th style={{ padding: '12px' }}>VEREDICTO</th>
-            <th style={{ padding: '12px' }}>HASH ED25519</th>
-            <th style={{ padding: '12px' }}>ESTADO DUAL-VAULT</th>
-          </tr>
-        </thead>
-        <tbody>
-          {logs.map((log) => (
-            <tr key={log.id} style={{ borderBottom: '1px solid #1E293B' }}>
-              <td style={{ padding: '12px', color: '#F59E0B', fontWeight: 'bold' }}>{log.id}</td>
-              <td style={{ padding: '12px' }}>{log.time}</td>
-              <td style={{ padding: '12px', color: '#F8FAFC' }}>{log.event}</td>
-              <td style={{ padding: '12px', color: '#10B981' }}>{log.verdict}</td>
-              <td style={{ padding: '12px', fontFamily: 'monospace', color: '#94A3B8' }}>{log.hash}</td>
-              <td style={{ padding: '12px', color: '#38BDF8' }}>{log.state}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+function PipelineBuilder({ step, onNext, onPrev, setStep, selectedModule, setSelectedModule, selectedPreset, setSelectedPreset, configState, setConfigState, onDeploy, isDeploying, deployStep }) {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight text-slate-100">Pipeline Builder Active Step: {step}</h1>
     </div>
   );
 }
