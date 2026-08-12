@@ -1,10 +1,8 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [logs, setLogs] = useState([]);
   const [status, setStatus] = useState('CONECTANDO...');
-  const [newLogIds, setNewLogIds] = useState(new Set());
-  const previousIdsRef = useRef(new Set());
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -12,25 +10,7 @@ export default function App() {
         const res = await fetch('http://localhost:3002/api/logs');
         if (res.ok) {
           const data = await res.json();
-          const fetchedLogs = data.logs || data;
-          
-          // Detectar IDs nuevos para marcarlos
-          const currentIds = new Set(fetchedLogs.map(l => l.id || l.evidenceId));
-          const newlyAdded = new Set();
-          
-          currentIds.forEach(id => {
-            if (!previousIdsRef.current.has(id)) {
-              newlyAdded.add(id);
-            }
-          });
-
-          if (newlyAdded.size > 0 && previousIdsRef.current.size > 0) {
-            setNewLogIds(newlyAdded);
-            setTimeout(() => setNewLogIds(new Set()), 3000); // Quitar marcado a los 3s
-          }
-
-          previousIdsRef.current = currentIds;
-          setLogs(fetchedLogs);
+          setLogs(data.logs || data);
           setStatus('CONECTADO (PUERTO 3002)');
         }
       } catch (err) {
@@ -42,6 +22,8 @@ export default function App() {
     const interval = setInterval(fetchLogs, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  const now = Date.now();
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#0b0f19', color: '#fff', fontFamily: 'monospace', minHeight: '100vh' }}>
@@ -63,16 +45,17 @@ export default function App() {
             <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Esperando interceptaciones en localhost:3002...</td></tr>
           ) : (
             logs.map((log, index) => {
-              const logId = log.id || log.evidenceId || 'EV-' + index;
-              const isNew = newLogIds.has(logId);
+              const logTime = new Date(log.timestamp).getTime() || 0;
+              const isRecent = (now - logTime) < 10000; // Resalta si el log entró hace menos de 10s
+
               return (
                 <tr key={index} style={{ 
                   borderBottom: '1px solid #222',
-                  backgroundColor: isNew ? 'rgba(0, 255, 136, 0.15)' : 'transparent',
-                  transition: 'background-color 1s ease'
+                  backgroundColor: isRecent ? 'rgba(0, 255, 136, 0.25)' : 'transparent',
+                  transition: 'background-color 0.5s ease'
                 }}>
-                  <td style={{ padding: '10px', color: isNew ? '#00ff88' : '#e2b340', fontWeight: isNew ? 'bold' : 'normal' }}>
-                    {isNew ? '► ' : ''}{logId}
+                  <td style={{ padding: '10px', color: isRecent ? '#00ff88' : '#e2b340', fontWeight: 'bold' }}>
+                    {isRecent ? '► [NUEVO] ' : ''}{log.id || log.evidenceId || 'EV-' + index}
                   </td>
                   <td>{log.timestamp || new Date().toISOString()}</td>
                   <td style={{ color: '#00d2ff' }}>{log.user || log.userAnonymized || 'OPERADOR'}</td>
