@@ -25,9 +25,9 @@ app.post('/api/intercept', (req, res) => {
   const receipt = {
     evidenceId,
     timestamp,
+    promptContent: prompt || 'PROMPT SIN CONTENIDO',
     user: user || 'USER-ANONYMOUS',
     decision: decision || 'RECHAZADO',
-    promptSnippet: prompt ? prompt.substring(0, 30) : 'N/A',
     sha256DataHash: 'a29d21f5bf04f769-MAD-' + signature,
     compliance: 'ISO 42001 / EU AI ACT AUDITED'
   };
