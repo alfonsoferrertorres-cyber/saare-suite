@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
         from: 'S.A.A.R.E. Governance <no-reply@saare.es>',
         to: payload.email,
         subject: 'Perfil de Gobernanza IA Registrado',
-        html: `<p>Se ha generado el perfil para el entorno: <strong>${governanceProfile.environmentType}</strong></p>`
+        html: \<p>Se ha generado el perfil para el entorno: <strong>\</strong></p>\
       });
     }
 
