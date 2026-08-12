@@ -1,52 +1,103 @@
-﻿
-// Helper Licencias SAARE
-const handleScenarioClickHelper = (id, fn) => {
-  const free = ['blindaje', 'security', 'governance', 'S.A.A.R.E. (LIVE)'];
-  if (free.some(m => String(id).toLowerCase().includes(m))) {
-    if (typeof fn === 'function') fn(id);
-  } else {
-    const u = 'https://www.saare.es/checkout?scenario=' + id;
-    if (window.__TAURI__) {
-      import('@tauri-apps/api/shell').then(({ open }) => open(u)).catch(() => window.open(u, '_blank'));
-    } else {
-      window.open(u, '_blank');
-    }
-  }
-};
-import React, { useState } from 'react';
-import { 
-  ShieldCheck, Activity, Cpu, Database, Layers, GitMerge, FileText, 
-  Settings, CheckCircle2, AlertTriangle, XCircle, ArrowRight, ChevronRight, 
-  Terminal, Play, RefreshCw, Lock, Server, Sparkles, ExternalLink, Sliders
-} from 'lucide-react';
+﻿import React, { useState } from 'react';
 
-// --- MOCK DATA ---
-const MODULES_DATA = [
-  { id: 'perimeter', name: 'PerimeterShield', type: 'Active L7 Gateway', desc: 'Protección perimetral de tráfico IA e intercepción en tiempo real.', techMode: 'SAARE-MD-SECU' },
-  { id: 'token', name: 'TokenMatrix', type: 'Token Rate & Anomaly Engine', desc: 'Análisis semántico y control de volumen por token.', techMode: 'SAARE-MD-TOKN' },
-  { id: 'evidence', name: 'EvidenceVault', type: 'Cryptographic Ledger', desc: 'Registro inmutable de decisiones y recibos criptográficos.', techMode: 'SAARE-MD-EVNT' },
-  { id: 'compliance', name: 'ComplianceSuite', type: 'Regulatory Auditor', desc: 'Evaluación continua contra Marcos DORA, EU AI Act y HIPAA.', techMode: 'SAARE-MD-COMP' }
-];
+export default function OverviewDashboard() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isLive, setIsLive] = useState(true);
 
-const PRESETS_DATA = {
-  perimeter: [
-    { id: 'p_banking', name: 'Banking Shield', desc: 'DLP Financiero, DORA & PCI-DSS compliance.', toggles: ['PII Detection', 'PCI Detection', 'IBAN Detection', 'Prompt Injection'] },
-    { id: 'p_health', name: 'Health Guard', desc: 'Protección de datos de salud PHI / GDPR / HIPAA.', toggles: ['PHI Masking', 'Medical Record Isolation', 'GDPR Audit Trail'] },
-    { id: 'p_jailbreak', name: 'Enterprise Anti-Jailbreak', desc: 'Mitigación de Prompt Injection y Secret Leakage.', toggles: ['System Prompt Protection', 'Secret Leakage Filter', 'Direct Injection Block'] }
-  ],
-  token: [
-    { id: 't_fairness', name: 'Fair-Use Throttle', desc: 'Rate limiting adaptativo por usuario/tenant.', toggles: ['Burst Control', 'Anomalous Spike Drop'] }
-  ],
-  evidence: [
-    { id: 'e_full', name: 'Zero-Trust Audit', desc: 'Firma Ed25519 para el 100% de transacciones.', toggles: ['Real-time Ed25519 Signing', 'Hardware Vault Sync'] }
-  ],
-  compliance: [
-    { id: 'c_eu', name: 'EU AI Act Enforcement', desc: 'Monitoreo de sesgo y trazabilidad algorítmica.', toggles: ['Risk Classification', 'Bias Audit'] }
-  ]
-};
+  return (
+    <div className="flex h-screen bg-slate-950 text-slate-100 font-sans">
+      {/* Sidebar Navigation */}
+      <aside className="w-64 border-r border-slate-800 p-4 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-xl font-bold tracking-wider text-emerald-400">SAARE CONSOLE</h1>
+            <span className={`px-2 py-0.5 text-xs font-mono rounded ${isLive ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'}`}>
+              S.A.A.R.E. ({isLive ? 'LIVE' : 'OFFLINE'})
+            </span>
+          </div>
 
-export default function SAAREConsole() {
-  // Navigation & View State
-  const [activeTab, setActiveTab] = useState('S.A.A.R.E. (LIVE)'); // 'S.A.A.R.E. (LIVE)' (Model A) or 'builder' (Model B)
-  const [userRoleLevel, setUserRoleLevel] = useState('operator'); // 'business' | 'operator' | 'engineer'
-  const [showTechnicalTrace, setShowTechnicalTrace] = useState(false);
+          <nav className="space-y-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${activeTab === 'overview' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            >
+              OVERVIEW
+            </button>
+            <button
+              onClick={() => setActiveTab('scenarios')}
+              className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${activeTab === 'scenarios' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            >
+              ESCENARIOS
+            </button>
+            <button
+              onClick={() => setActiveTab('trace')}
+              className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${activeTab === 'trace' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            >
+              TECHNICAL TRACE
+            </button>
+          </nav>
+        </div>
+
+        <div className="text-xs text-slate-500 border-t border-slate-800 pt-4">
+          <p>Máxima Seguridad Configurada</p>
+          <p className="text-[10px] text-slate-600 mt-1">Core Runtime Engine v7.2</p>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <header className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-bold">Operation Center</h2>
+            <p className="text-sm text-slate-400">SAARE CONTROL PLANE V1</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 bg-emerald-950 text-emerald-400 text-xs font-mono rounded-full border border-emerald-800 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              SSE ACTIVE
+            </span>
+          </div>
+        </header>
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+            <p className="text-xs text-slate-400 mb-1">INTERCEPCIONES L7</p>
+            <p className="text-2xl font-mono text-emerald-400">12.869</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+            <p className="text-xs text-slate-400 mb-1">LATENCIA P50</p>
+            <p className="text-2xl font-mono text-emerald-400">0.19 ms</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+            <p className="text-xs text-slate-400 mb-1">LATENCIA P95</p>
+            <p className="text-2xl font-mono text-amber-400">0.51 ms</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+            <p className="text-xs text-slate-400 mb-1">LATENCIA P99</p>
+            <p className="text-2xl font-mono text-amber-400">0.95 ms</p>
+          </div>
+        </div>
+
+        {/* Escenarios Section */}
+        <section className="bg-slate-900 border border-slate-800 rounded-lg p-6">
+          <h3 className="text-sm font-semibold text-slate-400 mb-4 tracking-wider">ESCENARIOS EN REGISTRY</h3>
+          <div className="space-y-3">
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded flex justify-between items-center">
+              <div>
+                <h4 className="font-semibold text-emerald-400">Cumplimiento Corporativo ES (Máxima Seguridad)</h4>
+                <p className="text-xs text-slate-400">Protección integral L7 con bloqueo de PII y Prompt Injection</p>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded flex justify-between items-center">
+              <div>
+                <h4 className="font-semibold text-slate-200">Banca & DORA / PCI-DSS Strict</h4>
+                <p className="text-xs text-slate-400">Perfil estricto para entidades financieras bajo normativa europea</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
