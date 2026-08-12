@@ -13,10 +13,9 @@ if (!fs.existsSync('./evidence')) {
   fs.mkdirSync('./evidence', { recursive: true });
 }
 
-let memoryLogs = [];
-
 app.post('/api/intercept', (req, res) => {
   const { prompt, user, decision } = req.body;
+  const authHeader = req.headers['authorization'] || 'SAARE-TOKEN-DEFAULT';
   
   const timestamp = new Date().toISOString();
   const evidenceId = 'EV-' + Date.now();
@@ -27,26 +26,37 @@ app.post('/api/intercept', (req, res) => {
     timestamp,
     promptContent: prompt || 'PROMPT SIN CONTENIDO',
     user: user || 'USER-ANONYMOUS',
+    tokenRef: authHeader.replace('Bearer ', ''),
     decision: decision || 'RECHAZADO',
     sha256DataHash: 'a29d21f5bf04f769-MAD-' + signature,
     compliance: 'ISO 42001 / EU AI ACT AUDITED'
   };
 
-  memoryLogs.unshift(receipt);
-  
   try {
     fs.appendFileSync(ledgerPath, JSON.stringify(receipt) + '\n');
   } catch (e) {
-    console.error('Error escribiendo en ledger:', e);
+    console.error('Error escribiendo en registro:', e);
   }
 
   res.json({ status: 'OK', receipt });
 });
 
+// GET /api/logs: Lee directamente la carpeta/archivo del registro inmutable
 app.get('/api/logs', (req, res) => {
-  res.json(memoryLogs);
+  try {
+    if (fs.existsSync(ledgerPath)) {
+      const fileContent = fs.readFileSync(ledgerPath, 'utf-8');
+      const lines = fileContent.trim().split('\n').filter(Boolean);
+      const logsFromFile = lines.map(line => JSON.parse(line)).reverse();
+      return res.json(logsFromFile);
+    }
+    res.json([]);
+  } catch (e) {
+    console.error('Error leyendo registro:', e);
+    res.status(500).json({ error: 'Error leyendo ledger de evidencias' });
+  }
 });
 
 app.listen(3002, () => {
-  console.log('>>> SERVIDOR PUERTO 3002 LISTO Y ESCUCHANDO <<<');
+  console.log('>>> SERVIDOR PUERTO 3002 LEYENDO REGISTRO EN DISCO <<<');
 });
