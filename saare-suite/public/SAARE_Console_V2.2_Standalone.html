@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>S.A.A.R.E. - Compliance Command Center V2.2 (Descargable)</title>
+  <style>
+    :root { 
+      --bg-primary: #0a0e17; 
+      --bg-card: #111827; 
+      --border-color: #1f2937; 
+      --text-main: #f3f4f6; 
+      --text-muted: #9ca3af; 
+      --accent-green: #10b981; 
+      --accent-blue: #3b82f6; 
+      --accent-red: #ef4444; 
+    }
+    body { margin: 0; font-family: monospace; background: var(--bg-primary); color: var(--text-main); }
+    header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 16px 24px; 
+      border-bottom: 1px solid var(--border-color); 
+      background: var(--bg-card); 
+    }
+    .header-right { display: flex; gap: 16px; align-items: center; }
+    
+    /* Escudo de estado */
+    .status-badge { 
+      background: rgba(16, 185, 129, 0.1); 
+      color: var(--accent-green); 
+      padding: 8px 16px; 
+      border-radius: 6px; 
+      border: 1px solid var(--accent-green); 
+      font-weight: bold; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+    }
+
+    /* Botón de descarga directa gigante */
+    .btn-download-big {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: bold;
+      border: 1px solid #60a5fa;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s ease-in-out;
+    }
+    .btn-download-big:hover {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+    }
+
+    .layout { display: grid; grid-template-columns: 240px 1fr; height: calc(100vh - 75px); }
+    sidebar { border-right: 1px solid var(--border-color); background: var(--bg-card); padding: 16px; }
+    sidebar button { width: 100%; text-align: left; padding: 12px; margin-bottom: 8px; background: transparent; border: 1px solid transparent; color: var(--text-muted); border-radius: 6px; cursor: pointer; }
+    sidebar button.active, sidebar button:hover { background: var(--border-color); color: var(--text-main); border-color: var(--accent-blue); }
+    main { padding: 24px; overflow-y: auto; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: var(--accent-blue); }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-color); }
+    th { color: var(--text-muted); }
+    .badge-rejected { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+    pre { background: #000; padding: 12px; border-radius: 6px; overflow-x: auto; color: #a7f3d0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong style="font-size: 18px;">S.A.A.R.E.</strong> | Compliance Command Center V2.2
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Origen de Datos: C:\MS3V_SAARE_Auditoria</div>
+    </div>
+    
+    <div class="header-right">
+      <!-- Escudo de estado estático -->
+      <div class="status-badge">
+        <span>🛡️</span> PUERTO 3002 OK
+      </div>
+
+      <!-- BOTÓN DE DESCARGA DIRECTA DESTACADO -->
+      <button class="btn-download-big" onclick="downloadConsoleHtml()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        DESCARGAR CONSOLA CLIENTE (.HTML)
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <sidebar>
+      <button onclick="showSection('dashboard')">Registro Global (MS3V)</button>
+      <button onclick="showSection('scenarios')">Escenarios Activos</button>
+    </sidebar>
+    <main id="mainContent"></main>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3002/api";
+
+    // Función para descargar el archivo .html directamente desde el navegador
+    function downloadConsoleHtml() {
+      const htmlContent = document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SAARE_Console_V2.2_Standalone.html";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function showSection(sec) {
+      const main = document.getElementById("mainContent");
+      
+      if (sec === "dashboard") {
+        try {
+          const res = await fetch(API_BASE + "/logs");
+          const data = await res.json();
+          let rows = data.logs.map(log => `
+            <tr>
+              <td style="color: #38bdf8">${log.id}</td>
+              <td>${new Date(log.timestamp).toLocaleString()}</td>
+              <td>${log.user}</td>
+              <td><span class="badge-rejected">${log.status}</span></td>
+              <td style="color: #64748b; font-size: 11px;">${log.signature}</td>
+            </tr>
+          `).join("");
+
+          main.innerHTML = `
+            <div class="card">
+              <h3>Registro Global de Auditoría (Persistencia en Vivo)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID Evidencia</th>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Resultado L7</th>
+                    <th>Firma Criptográfica</th>
+                  </tr>
+                </thead>
+                <tbody>${rows || '<tr><td colspan="5">No hay eventos registrados en MS3V</td></tr>'}</tbody>
+              </table>
+            </div>`;
+        } catch(e) {
+          main.innerHTML = `<div class="card"><h3 style="color:var(--accent-red)">Error de conexión</h3><p>No se pudo conectar con el puente en puerto 3002</p></div>`;
+        }
+      }
+
+      if (sec === "scenarios") {
+        try {
+          const res = await fetch(API_BASE + "/scenarios");
+          const data = await res.json();
+          main.innerHTML = `<div class="card"><h3>Escenarios de Seguridad Mapeados</h3><pre>${JSON.stringify(data.scenarios, null, 2)}</pre></div>`;
+        } catch(e) {
+          main.innerHTML = `<div class="card"><h3 style="color:var(--accent-red)">Error al cargar escenarios</h3></div>`;
+        }
+      }
+    }
+
+    showSection("dashboard");
+    setInterval(() => showSection("dashboard"), 5000);
+  </script>
+</body>
+</html>
