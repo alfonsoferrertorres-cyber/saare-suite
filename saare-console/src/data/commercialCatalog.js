@@ -1,4 +1,4 @@
-﻿// Traducción comercial de módulos internos a impacto corporativo
+// Traducción comercial de módulos internos a impacto corporativo
 
 export const COMMERCIAL_SCENARIOS = [
   {

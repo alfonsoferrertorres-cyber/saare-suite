@@ -1,0 +1,4 @@
+﻿src-tauri/
+public/downloads/
+*.exe
+*.msi
