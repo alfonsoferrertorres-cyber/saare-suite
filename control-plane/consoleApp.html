@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>S.A.A.R.E. - Compliance Command Center V2.2</title>
+  <title>S.A.A.R.E. - Compliance Command Center V2.2 (Descargable)</title>
   <style>
-    :root { --bg-primary: #0a0e17; --bg-card: #111827; --border-color: #1f2937; --text-main: #f3f4f6; --text-muted: #9ca3af; --accent-green: #10b981; --accent-blue: #3b82f6; }
+    :root { --bg-primary: #0a0e17; --bg-card: #111827; --border-color: #1f2937; --text-main: #f3f4f6; --text-muted: #9ca3af; --accent-green: #10b981; --accent-blue: #3b82f6; --accent-red: #ef4444; }
     body { margin: 0; font-family: monospace; background: var(--bg-primary); color: var(--text-main); }
     header { display: flex; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border-color); background: var(--bg-card); }
     .status-badge { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent-green); font-weight: bold; }
@@ -15,6 +15,10 @@
     main { padding: 24px; overflow-y: auto; }
     .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .card h3 { margin-top: 0; color: var(--accent-blue); }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-color); }
+    th { color: var(--text-muted); }
+    .badge-rejected { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
     pre { background: #000; padding: 12px; border-radius: 6px; overflow-x: auto; color: #a7f3d0; }
   </style>
 </head>
@@ -22,45 +26,71 @@
   <header>
     <div><strong>S.A.A.R.E.</strong> | Compliance Command Center V2.2</div>
     <div style="display: flex; gap: 16px; align-items: center;">
-      <span>Rol Activo: <strong>Engineer</strong></span>
-      <div class="status-badge">SECURITY & RESILIENCE ?</div>
+      <span>Origen de Datos: <strong>C:\MS3V_SAARE_Auditoria</strong></span>
+      <div class="status-badge">PUERTO 3002 OK</div>
     </div>
   </header>
   <div class="layout">
     <sidebar>
-      <button onclick="showSection('dashboard')">Compliance Dashboard</button>
-      <button onclick="showSection('resilience')">Resilience Gate</button>
-      <button onclick="showSection('evidence')">Evidence Explorer</button>
-      <button onclick="showSection('mapping')">Control Mapping</button>
+      <button onclick="showSection('dashboard')">Registro Global (MS3V)</button>
+      <button onclick="showSection('scenarios')">Escenarios Activos</button>
     </sidebar>
     <main id="mainContent"></main>
   </div>
   <script>
-    const API_BASE = "http://localhost:3001/api/v1";
+    const API_BASE = "http://localhost:3002/api";
+
     async function showSection(sec) {
       const main = document.getElementById("mainContent");
+      
       if (sec === "dashboard") {
-        const scenarios = await (await fetch(API_BASE + "/scenarios")).json();
-        main.innerHTML = "<div class='card'><h3>Compliance Command Center</h3><p>Escenarios Activos: " + scenarios.length + "</p></div>";
+        try {
+          const res = await fetch(API_BASE + "/logs");
+          const data = await res.json();
+          let rows = data.logs.map(log => `
+            <tr>
+              <td style="color: #38bdf8">${log.id}</td>
+              <td>${new Date(log.timestamp).toLocaleString()}</td>
+              <td>${log.user}</td>
+              <td><span class="badge-rejected">${log.status}</span></td>
+              <td style="color: #64748b; font-size: 11px;">${log.signature}</td>
+            </tr>
+          `).join("");
+
+          main.innerHTML = `
+            <div class="card">
+              <h3>Registro Global de Auditoría (Persistencia en Vivo)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID Evidencia</th>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Resultado L7</th>
+                    <th>Firma Criptográfica</th>
+                  </tr>
+                </thead>
+                <tbody>${rows || '<tr><td colspan="5">No hay eventos registrados en MS3V</td></tr>'}</tbody>
+              </table>
+            </div>`;
+        } catch(e) {
+          main.innerHTML = `<div class="card"><h3 style="color:var(--accent-red)">Error de conexión</h3><p>No se pudo conectar con el puente en puerto 3002</p></div>`;
+        }
       }
-      if (sec === "resilience") {
-        const gate = await (await fetch(API_BASE + "/resilience-gate")).json();
-        main.innerHTML = "<div class='card'><h3>Resilience Gate: " + gate.verdict + " (" + gate.satisfiedInvariants + "/8 PASS)</h3></div>";
-      }
-      if (sec === "evidence") {
-        main.innerHTML = "<div class='card'><h3>Evidence Explorer</h3><button onclick='generateDossier()'>Generar Dossier Firmado</button><div id='out'></div></div>";
-      }
-      if (sec === "mapping") {
-        const scenarios = await (await fetch(API_BASE + "/scenarios")).json();
-        main.innerHTML = "<div class='card'><h3>Control Mapping</h3><pre>" + JSON.stringify(scenarios, null, 2) + "</pre></div>";
+
+      if (sec === "scenarios") {
+        try {
+          const res = await fetch(API_BASE + "/scenarios");
+          const data = await res.json();
+          main.innerHTML = `<div class="card"><h3>Escenarios de Seguridad Mapeados</h3><pre>${JSON.stringify(data.scenarios, null, 2)}</pre></div>`;
+        } catch(e) {
+          main.innerHTML = `<div class="card"><h3 style="color:var(--accent-red)">Error al cargar escenarios</h3></div>`;
+        }
       }
     }
-    async function generateDossier() {
-      const res = await fetch(API_BASE + "/dossier/generate", { method: "POST", headers: { "X-User-Role": "Engineer" } });
-      const data = await res.json();
-      document.getElementById("out").innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
-    }
+
     showSection("dashboard");
+    setInterval(() => showSection("dashboard"), 5000);
   </script>
 </body>
 </html>

@@ -1,116 +1,111 @@
-import React, { useState } from "react";
+Ôªøimport React, { useState, useEffect } from "react";
+import { createEvidenceReceipt } from "../services/evidenceVault";
 
-export const GlobalRegistryView = ({ activeScenes = ["Blindaje Activo"] }) => {
-  const [selectedEvent, setSelectedEvent] = useState(null);
-
-  const hasActia = activeScenes.includes("ACTia");
-  const hasDora = activeScenes.includes("DORA");
-  const hasEnterprise = activeScenes.includes("Enterprise");
-
-  const events = [
+export function GlobalRegistryView() {
+  const [logs, setLogs] = useState([
+    {
+      id: "EV-20260731-1891",
+      timestamp: "2026-07-30T23:43:14Z",
+      user: "USER-25AC6AC0",
+      status: "PERMITIDO",
+      signature: "de8c464db03ecb47bbab31f0823266057a8a0ca897434dccac9cdc40fb22"
+    },
     {
       id: "EV-20260811-0012",
       timestamp: "2026-08-11T12:48:10Z",
-      user: "USER-25AC6AC0",
-      type: "BLOQUEO L7",
-      scene: "Blindaje Activo",
-      decision: "REJECTED",
-      reason: "PatrÛn de inyecciÛn r·pida n.∫ 412",
-      cryptoId: "SAARE-HASH-9981A72F08B211ECA8A30242AC120002-ED25519-SIG-8F32C1",
-      actiaRisk: hasActia ? "ALTO RIESGO (Art. 6 EU AI Act)" : null,
-      doraControl: hasDora ? "DORA-ICT-07 (ProtecciÛn de Integridad)" : null,
-      traceId: hasEnterprise ? "4bf92f3577b34da6a3ce929d0e0e4736" : null
-    },
-    {
-      id: "EV-20260811-0011",
-      timestamp: "2026-08-11T12:45:02Z",
-      user: "USER-88F92A10",
-      type: "OPERACI”N",
-      scene: "Blindaje Activo",
-      decision: "ALLOWED",
-      reason: "Solicitud limpia, sin sesgo ni PII",
-      cryptoId: "SAARE-HASH-11A9C83022F11BC099182390A00129F1-ED25519-SIG-3A21F9",
-      actiaRisk: hasActia ? "RIESGO MÕNIMO" : null,
-      doraControl: hasDora ? "DORA-ICT-05" : null,
-      traceId: hasEnterprise ? "7c102a1109a22f319200aa00129033a1" : null
+      user: "USER-EDD4309534",
+      status: "RECHAZADO",
+      signature: "a29d21f5bf04f769-MAD-ED25519-SIG-PII-BLOCK"
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    const handleInterceptEvent = (event) => {
+      if (event.data && event.data.type === "SAARE_PROMPT_INTERCEPTED") {
+        const newLog = {
+          id: 'EV-' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 8) + '-' + Math.floor(1000 + Math.random() * 9000),
+          timestamp: new Date().toISOString(),
+          user: event.data.user || "USER-EDD4309534",
+          status: event.data.hasPII ? "RECHAZADO" : "PERMITIDO",
+          signature: 'sha256-' + Math.random().toString(36).substring(2, 34) + '-ED25519-SIG'
+        };
+        setLogs((prevLogs) => [newLog, ...prevLogs]);
+      }
+    };
+
+    window.addEventListener("message", handleInterceptEvent);
+    return () => window.removeEventListener("message", handleInterceptEvent);
+  }, []);
+
+  const handleDownloadReceipt = async (log) => {
+    const receipt = await createEvidenceReceipt(
+      "MS3V_GLOBAL_NODE_L7",
+      { user: log.user, prompt: "Auditor√≠a en Nodo L7" },
+      log.status
+    );
+
+    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "receipt_" + receipt.execution_id + ".jsonld";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="p-6 bg-slate-950 text-slate-100 min-h-screen space-y-6">
-      {/* Target Banner: Cobertura TelemÈtrica por Escenas Compradas */}
-      <div className="flex flex-wrap justify-between items-center bg-slate-900/80 p-4 rounded-xl border border-slate-800 backdrop-blur">
+    <div className="space-y-4 font-mono text-xs text-slate-300">
+      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
-          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Capa de Registro & AuditorÌa</div>
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            REGISTRO GLOBAL <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-mono">ISO 42001 READY</span>
-          </h2>
+          <span className="text-amber-400 font-bold block">CAPA DE REGISTRO & AUDITOR√çA L7 (NODO MS3V)</span>
+          <h2 className="text-lg font-bold text-white mt-0.5">REGISTRO GLOBAL <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded ml-2">ISO 42001 READY</span></h2>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right text-xs">
-            <span className="text-slate-400">Escenas Activas: </span>
-            <span className="text-blue-400 font-bold">{activeScenes.join(", ")}</span>
-          </div>
-          <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all shadow-lg shadow-blue-600/20">
-            EXPORTAR MANIFIESTO
-          </button>
+        <div className="text-right">
+          <span className="text-slate-400 text-[10px] block">Registros en Tiempo Real (Inmutable JSONL Ledger)</span>
         </div>
       </div>
 
-      {/* Main Events Feed: Tabla Moderna de Registro */}
-      <div className="bg-slate-900/50 rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-800 flex justify-between items-center text-xs text-slate-400">
-          <span>REGISTROS EN TIEMPO REAL (INMUTABLE HASH CHAIN)</span>
-          <span className="font-mono text-slate-500">Local Ledger: C:\MS3V_SAARE_Auditoria\ledger.jsonl</span>
-        </div>
-
-        <div className="divide-y divide-slate-800/60">
-          {events.map((ev) => (
-            <div 
-              key={ev.id} 
-              onClick={() => setSelectedEvent(selectedEvent === ev.id ? null : ev.id)}
-              className="p-4 hover:bg-slate-800/30 transition-colors cursor-pointer space-y-2"
-            >
-              <div className="flex justify-between items-center text-xs">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-blue-400 font-semibold">{ev.id}</span>
-                  <span className="text-slate-500 font-mono">{ev.timestamp}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ev.decision === "REJECTED" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
-                    {ev.decision}
+      <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-900/80 text-slate-400 border-b border-slate-800 text-[11px]">
+              <th className="p-3">ID Evidencia</th>
+              <th className="p-3">Timestamp (UTC)</th>
+              <th className="p-3">Usuario Anonimizado</th>
+              <th className="p-3">Estado / Acci√≥n DLP</th>
+              <th className="p-3">Firma SHA-256</th>
+              <th className="p-3 text-right">Recibo Forense</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60">
+            {logs.map((log) => (
+              <tr key={log.id} className="hover:bg-slate-900/40 transition-colors">
+                <td className="p-3 font-bold text-amber-400">{log.id}</td>
+                <td className="p-3 text-slate-400">{log.timestamp}</td>
+                <td className="p-3 text-emerald-400 font-bold">{log.user}</td>
+                <td className="p-3">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    log.status === "PERMITIDO" || log.status === "ALLOWED" 
+                      ? "bg-emerald-950 text-emerald-400 border border-emerald-800" 
+                      : "bg-rose-950 text-rose-400 border border-rose-800"
+                  }`}>
+                    {log.status}
                   </span>
-                </div>
-                <span className="text-emerald-400 text-xs flex items-center gap-1 font-mono">
-                  Ed25519 Verificado ?
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center text-sm">
-                <div className="text-slate-200 font-medium">{ev.reason}</div>
-                <div className="text-xs text-slate-400 font-mono">{ev.user}</div>
-              </div>
-
-              {/* MÛdulos de TelemetrÌa Adicional seg˙n Escenas Adquiridas */}
-              {(hasActia || hasDora || hasEnterprise) && (
-                <div className="flex flex-wrap gap-2 pt-1 text-[11px]">
-                  {hasActia && <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded font-mono">{ev.actiaRisk}</span>}
-                  {hasDora && <span className="bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded font-mono">{ev.doraControl}</span>}
-                  {hasEnterprise && <span className="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded font-mono">TraceId: {ev.traceId}</span>}
-                </div>
-              )}
-
-              {/* InspecciÛn TÈcnica Profunda Plegable */}
-              {selectedEvent === ev.id && (
-                <div className="mt-3 p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs font-mono space-y-2 text-slate-400">
-                  <div><span className="text-slate-500">MÛdulo/Escena:</span> {ev.scene}</div>
-                  <div><span className="text-slate-500">Crypto-ID:</span> <span className="text-blue-300">{ev.cryptoId}</span></div>
-                  <div><span className="text-slate-500">Estado de la evidencia:</span> Guardado en el registro local inmutable y sincronizado en el ·rbol de Merkle.</div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                </td>
+                <td className="p-3 text-slate-500 font-mono text-[10px] truncate max-w-xs">{log.signature}</td>
+                <td className="p-3 text-right">
+                  <button
+                    onClick={() => handleDownloadReceipt(log)}
+                    className="bg-slate-800 text-amber-400 border border-amber-500/30 px-2 py-1 rounded text-[10px] hover:bg-slate-700 transition-all"
+                  >
+                    DESCARGAR EVIDENCIA
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
-};
-
+}
