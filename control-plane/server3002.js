@@ -14,7 +14,6 @@ if (!fs.existsSync('./evidence')) {
   fs.mkdirSync('./evidence', { recursive: true });
 }
 
-// Función para obtener el hash del último registro guardado
 function getLastHash() {
   if (!fs.existsSync(ledgerPath)) return 'GENESIS_HASH_0000000000000000';
   const lines = fs.readFileSync(ledgerPath, 'utf-8').trim().split('\n').filter(Boolean);
@@ -27,12 +26,22 @@ function getLastHash() {
   }
 }
 
+// Función para simular/enviar alertas en tiempo real (SIEM / Slack / Teams)
+function sendSecurityAlert(receipt) {
+  if (receipt.decision === 'RECHAZADO') {
+    console.log(`\n[ALERT] ALERTA DE SEGURIDAD EN TIEMPO REAL:`);
+    console.log(` - Evento: ${receipt.evidenceId}`);
+    console.log(` - Usuario: ${receipt.user}`);
+    console.log(` - Motivo: Infracción de política DLP / Contenido bloqueado`);
+    console.log(` - Hash SHA-256: ${receipt.sha256DataHash}\n`);
+  }
+}
+
 function recordEvidence(prompt, user, tokenRef, decision) {
   const timestamp = new Date().toISOString();
   const evidenceId = 'EV-' + Date.now();
   const previousHash = getLastHash();
 
-  // Contenido base para generar el hash unívoco encadenado
   const rawPayload = `${evidenceId}|${timestamp}|${prompt}|${user}|${decision}|${previousHash}`;
   const sha256DataHash = crypto.createHash('sha256').update(rawPayload).digest('hex');
 
@@ -50,6 +59,7 @@ function recordEvidence(prompt, user, tokenRef, decision) {
 
   try {
     fs.appendFileSync(ledgerPath, JSON.stringify(receipt) + '\n');
+    sendSecurityAlert(receipt);
   } catch (e) {
     console.error('Error escribiendo en registro:', e);
   }
@@ -93,5 +103,5 @@ app.get('/api/logs', (req, res) => {
 });
 
 app.listen(3002, () => {
-  console.log('>>> SERVIDOR PUERTO 3002 ACTUALIZADO CON HASH-CHAINING <<<');
+  console.log('>>> SERVIDOR PUERTO 3002 ACTUALIZADO CON ALERTAS SIEM <<<');
 });

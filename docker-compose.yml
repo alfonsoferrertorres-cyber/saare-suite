@@ -1,0 +1,13 @@
+﻿version: '3.8'
+
+services:
+  saare-control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: saare-control-plane
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./control-plane/evidence:/app/evidence
+    restart: always
