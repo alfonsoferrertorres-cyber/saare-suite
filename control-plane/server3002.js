@@ -2,6 +2,7 @@
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const app = express();
 app.use(cors());
@@ -13,19 +14,37 @@ if (!fs.existsSync('./evidence')) {
   fs.mkdirSync('./evidence', { recursive: true });
 }
 
+// Función para obtener el hash del último registro guardado
+function getLastHash() {
+  if (!fs.existsSync(ledgerPath)) return 'GENESIS_HASH_0000000000000000';
+  const lines = fs.readFileSync(ledgerPath, 'utf-8').trim().split('\n').filter(Boolean);
+  if (lines.length === 0) return 'GENESIS_HASH_0000000000000000';
+  try {
+    const lastEntry = JSON.parse(lines[lines.length - 1]);
+    return lastEntry.sha256DataHash || 'GENESIS_HASH_0000000000000000';
+  } catch (e) {
+    return 'GENESIS_HASH_0000000000000000';
+  }
+}
+
 function recordEvidence(prompt, user, tokenRef, decision) {
   const timestamp = new Date().toISOString();
   const evidenceId = 'EV-' + Date.now();
-  const signature = 'ED25519-SIG-' + Math.random().toString(36).substring(2, 12).toUpperCase();
+  const previousHash = getLastHash();
+
+  // Contenido base para generar el hash unívoco encadenado
+  const rawPayload = `${evidenceId}|${timestamp}|${prompt}|${user}|${decision}|${previousHash}`;
+  const sha256DataHash = crypto.createHash('sha256').update(rawPayload).digest('hex');
 
   const receipt = {
     evidenceId,
     timestamp,
     promptContent: prompt || 'PROMPT SIN CONTENIDO',
-    user: user || 'LLM-PYTHON-SDK',
+    user: user || 'LLM-CLIENT',
     tokenRef: tokenRef || 'SAARE-TOKEN-DEFAULT',
     decision: decision || 'RECHAZADO',
-    sha256DataHash: 'a29d21f5bf04f769-MAD-' + signature,
+    previousHash,
+    sha256DataHash,
     compliance: 'ISO 42001 / EU AI ACT AUDITED'
   };
 
@@ -37,7 +56,6 @@ function recordEvidence(prompt, user, tokenRef, decision) {
   return receipt;
 }
 
-// Endpoint estándar para interceptaciones manuales
 app.post('/api/intercept', (req, res) => {
   const { prompt, user, decision } = req.body;
   const authHeader = req.headers['authorization'] || 'SAARE-TOKEN-DEFAULT';
@@ -45,7 +63,6 @@ app.post('/api/intercept', (req, res) => {
   res.json({ status: 'OK', receipt });
 });
 
-// Endpoint para SDKs de OpenAI / Python / LangChain (/v1/chat/completions)
 app.post('/v1/chat/completions', (req, res) => {
   const messages = req.body.messages || [];
   const lastMessage = messages.length > 0 ? messages[messages.length - 1].content : JSON.stringify(req.body);
@@ -62,7 +79,6 @@ app.post('/v1/chat/completions', (req, res) => {
   });
 });
 
-// Endpoint para consulta de registros
 app.get('/api/logs', (req, res) => {
   try {
     if (fs.existsSync(ledgerPath)) {
@@ -77,5 +93,5 @@ app.get('/api/logs', (req, res) => {
 });
 
 app.listen(3002, () => {
-  console.log('>>> SERVIDOR PUERTO 3002 ACTUALIZADO CON RUTAS /V1 <<<');
+  console.log('>>> SERVIDOR PUERTO 3002 ACTUALIZADO CON HASH-CHAINING <<<');
 });
