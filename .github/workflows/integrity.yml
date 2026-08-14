@@ -1,0 +1,33 @@
+﻿name: SAARE Pipeline Integrity Check
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate-saare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configurar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validar compilación del Proxy en Rust
+        working-directory: runtime/l7_proxy
+        run: cargo check
+
+      - name: Validar Integridad Criptográfica del Ledger
+        working-directory: control-plane
+        run: |
+          npm ci --if-present
+          node verifyLedger.js
