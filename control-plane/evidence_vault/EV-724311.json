@@ -1,0 +1,20 @@
+{
+  "evidenceId": "EV-724311",
+  "id": "EV-276199",
+  "runId": "RUN-1786701487180",
+  "timestamp": "11:58:07",
+  "timestampRaw": 1786701487180,
+  "token": "SAARE-TOKEN-ENT-M57TOVV",
+  "user": "Alfonso Ferrer (Auditor SOC)",
+  "prompt": "procesar nómina con dni 48596031Z",
+  "promptSummary": "procesar nómina con dni 48596031Z",
+  "verdict": "RECHAZADO",
+  "scene": "España - LOPDGDD & AEPD",
+  "scenarioApplied": "España - LOPDGDD & AEPD",
+  "sceneId": "ES_CUMPLIMIENTO_ESPANA",
+  "complianceFramework": "ISO 42001 / LOPDGDD Art. 5",
+  "action": "PDF Sellado",
+  "cryptoSeal": "AES256-AEPD-ES-2E7AF2E7",
+  "sha256Digest": "2E7AF2E7F5CD0CC36B2389C33163101C895F3C6AE23A72724965DB54779D2051",
+  "ramAddress": "0x7FFF1545"
+}

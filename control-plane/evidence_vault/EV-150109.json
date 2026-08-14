@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-150109",
+  "timestamp": "11:51:46",
+  "timestampRaw": 1786701106952,
+  "user": "Alfonso Ferrer (Auditor SOC)",
+  "token": "VK4WH7ZA7rnYNC9",
+  "prompt": "Procesar nómina con DNI 12345678Z",
+  "promptSummary": "Procesar nómina con DNI 12345678Z",
+  "scenarioApplied": "España - LOPDGDD & AEPD",
+  "sceneId": "ES_CUMPLIMIENTO_ESPANA",
+  "verdict": "RECHAZADO",
+  "action": "PDF Sellado",
+  "cryptoSeal": "AES256-AEPD-ES-B74A89C1",
+  "complianceFramework": "ISO 42001 / LOPDGDD Art. 5",
+  "ramAddress": "0x7FFF8A42B100"
+}
