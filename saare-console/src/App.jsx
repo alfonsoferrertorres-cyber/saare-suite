@@ -1,276 +1,148 @@
 ﻿import React, { useState, useEffect } from 'react';
 
 export default function App() {
-  const [sessionToken, setSessionToken] = useState(localStorage.getItem('saare_auth_token') || 'SAARE-TOKEN-ENT-M57TOVV');
-  const [sessionUser, setSessionUser] = useState(localStorage.getItem('saare_auth_user') || 'Alfonso Ferrer (Auditor SOC)');
-  const [activeTab, setActiveTab] = useState('runlive');
-  const [events, setEvents] = useState([]);
-  const [vaultAudit, setVaultAudit] = useState(null);
-  const [scenarios, setScenarios] = useState([
-    { id: 'ES_CUMPLIMIENTO_ESPANA', title: 'España - LOPDGDD & AEPD', category: 'ENS-ALTO', compliance: 'ISO 42001 / LOPDGDD Art. 5', licensed: true, desc: 'Anonimización en tiempo real de DNI, NIE, IBAN y nóminas en suelo español.' },
-    { id: 'TOP_PROMPT_INJECTION', title: 'Jailbreak & Prompt Injection Guard', category: 'EU-AI-ACT', compliance: 'EU AI Act Art. 15 (Robustness)', licensed: true, desc: 'Detección proactiva de inyecciones de código y bypass de reglas (DAN mode).' },
-    { id: 'STAR_FACT_CHECKER', title: 'Fact-Checking Forense & Fake Disprover', category: 'ANALÍTICO', compliance: 'EU Disinformation Code', licensed: true, desc: 'Análisis de artefactos en capturas y desensamblaje de deepfakes.' },
-    { id: 'STAR_TOKEN_OPTIMIZER', title: 'Optimizador de Tokens & CostGuard', category: 'ESTRELLA', compliance: 'Green AI & FinOps Framework', licensed: true, desc: 'Reducción de coste computacional y desinfección de prompts redundantes.' }
-  ]);
+  const [emailInput, setEmailInput] = useState('ciso@empresa.es');
+  const [passwordInput, setPasswordInput] = useState('Password123!');
+  const [loginError, setLoginError] = useState('');
+  const [loadingLogin, setLoadingLogin] = useState(false);
 
-  const loadVaultData = async () => {
+  const [sessionUser, setSessionUser] = useState(localStorage.getItem('saare_soc_user') ? JSON.parse(localStorage.getItem('saare_soc_user')) : null);
+  const [authToken, setAuthToken] = useState(localStorage.getItem('saare_soc_token') || '');
+  
+  const [activeTab, setActiveTab] = useState('logs');
+  const [events, setEvents] = useState([]);
+  const [connected, setConnected] = useState(false);
+
+  const fetchTelemetry = async () => {
     try {
-      const [resEvents, resVault] = await Promise.all([
-        fetch('http://localhost:3001/api/v1/events'),
-        fetch('http://localhost:3001/api/v1/vault/inspect')
-      ]);
-      if (resEvents.ok) {
-        const d = await resEvents.json();
-        setEvents(d.events || []);
+      const res = await fetch('http://localhost:3001/api/v1/events', { credentials: 'omit' });
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.events || data.logs || []);
+        setConnected(true);
+        return;
       }
-      if (resVault.ok) {
-        const v = await resVault.json();
-        setVaultAudit(v);
-      }
-    } catch (e) {}
+    } catch (err) {
+      setConnected(false);
+    }
   };
 
   useEffect(() => {
-    loadVaultData();
-    const interval = setInterval(loadVaultData, 1500);
-    return () => clearInterval(interval);
-  }, []);
+    if (sessionUser) {
+      fetchTelemetry();
+      const interval = setInterval(fetchTelemetry, 2500);
+      return () => clearInterval(interval);
+    }
+  }, [sessionUser]);
 
-  const activeCount = scenarios.filter(s => s.licensed).length;
-  const disabledCount = scenarios.length - activeCount;
-  const latestEvent = events.length > 0 ? events[0] : null;
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoadingLogin(true);
+
+    try {
+      const res = await fetch('http://localhost:3001/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput, password: passwordInput })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === 'SUCCESS') {
+        localStorage.setItem('saare_soc_token', data.token);
+        localStorage.setItem('saare_soc_user', JSON.stringify(data.user));
+        setAuthToken(data.token);
+        setSessionUser(data.user);
+      } else {
+        setLoginError(data.error || 'Credenciales no válidas');
+      }
+    } catch (err) {
+      setLoginError('Error al conectar con Control-Plane (:3001)');
+    } finally {
+      setLoadingLogin(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('saare_soc_token');
+    localStorage.removeItem('saare_soc_user');
+    setAuthToken('');
+    setSessionUser(null);
+  };
+
+  if (!sessionUser) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0f1d', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '20px' }}>
+        <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.025em', margin: '0 0 6px 0' }}>S.A.A.R.E. CONSOLE SOC</h1>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Autenticação Criptográfica Auditor L7</p>
+          </div>
+
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '500' }}>CORREO SOC / AUDITOR</label>
+              <input
+                type="email"
+                required
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '500' }}>CONTRASEÑA</label>
+              <input
+                type="password"
+                required
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {loginError && (
+              <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.8rem', textAlign: 'center' }}>
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loadingLogin}
+              style={{ width: '100%', padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '0.95rem', cursor: loadingLogin ? 'not-allowed' : 'pointer', marginTop: '8px' }}
+            >
+              {loadingLogin ? 'Validando...' : '🔒 Acceder a Consola SOC'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0f172a' }}>
-      
-      {/* CABECERA UNIFICADA DEL SOC */}
-      <header style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '16px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-        <div style={{ maxWidth: '1350px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
-              🧠
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.3px' }}>
-                  SAARE OPERATION CENTER
-                </h1>
-                <span style={{ background: '#0284c7', color: '#ffffff', fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>v2.5</span>
-              </div>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                Tecnología de IA Segura y Certificada | Bóveda Local: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#0284c7' }}>/control-plane/evidence_vault</code>
-              </p>
-            </div>
+    <div style={{ minHeight: '100vh', background: '#0b0f19', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
+      <header style={{ borderBottom: '1px solid #1f2937', background: '#111827', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '32px', height: '32px', background: '#2563eb', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🧠</div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>SAARE OPERATION CENTER v2.5</h1>
+            <span style={{ fontSize: '0.75rem', color: '#10b981' }}>● Auditor: {sessionUser.email} | Org: {sessionUser.tenantName}</span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem' }}>
-              Auditor: <strong style={{ color: '#0284c7' }}>{sessionUser}</strong> | Org: <strong>ACME Corporation</strong>
-            </div>
-            <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-              ● MASTER PASS ACTIVO ({activeCount}/4)
-            </span>
-          </div>
-
         </div>
+        <button onClick={handleLogout} style={{ padding: '6px 12px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer' }}>
+          Cerrar Sesión
+        </button>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main style={{ maxWidth: '1350px', margin: '24px auto', padding: '0 24px' }}>
-        
-        {/* NAVEGACIÓN POR PESTAÑAS */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <button
-            onClick={() => setActiveTab('runlive')}
-            style={{ background: activeTab === 'runlive' ? '#0284c7' : '#ffffff', color: activeTab === 'runlive' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
-          >
-            ⚡ S.A.A.R.E. (RunLive)
-          </button>
-          <button
-            onClick={() => setActiveTab('global')}
-            style={{ background: activeTab === 'global' ? '#0284c7' : '#ffffff', color: activeTab === 'global' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
-          >
-            📋 Registro Global ({events.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('scenarios')}
-            style={{ background: activeTab === 'scenarios' ? '#0284c7' : '#ffffff', color: activeTab === 'scenarios' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
-          >
-            🛡️ Biblioteca de Escenas ({scenarios.length})
-          </button>
+      <main style={{ padding: '24px' }}>
+        <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '20px' }}>
+          <h2 style={{ margin: '0 0 16px 0', fontSize: '1rem' }}>Bóveda Local de Evidencias Selladas</h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Total eventos sincronizados: {events.length}</p>
         </div>
-
-        {/* TAB 1: RUNLIVE FORENSE AUTOMÁTICO */}
-        {activeTab === 'runlive' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
-                    AUDITOR FORENSE WEBCRYPTO (W3C API) - ESTADO DE ESCENAS CONTRATADAS
-                  </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Verificación inmutable de archivos JSON sellados en bóveda.
-                  </p>
-                </div>
-                <span style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                  📂 {events.length} Evidencias en Bóveda
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {(vaultAudit?.scenariosAudit || scenarios.map(s => ({
-                  sceneId: s.id,
-                  title: s.title,
-                  compliance: s.compliance,
-                  evidencesCount: events.filter(e => e.scenarioApplied?.includes(s.title) || e.sceneId === s.id).length,
-                  lastEvidence: events.find(e => e.scenarioApplied?.includes(s.title) || e.sceneId === s.id) || null,
-                  status: 'AUDITORIA_ACTIVA'
-                }))).map((sc, i) => (
-                  <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>{sc.compliance}</span>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d' }}>● SELLADO</span>
-                      </div>
-                      <h4 style={{ margin: '4px 0', fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>{sc.title}</h4>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '10px' }}>
-                        Evidencias registradas: <strong style={{ color: '#0f172a' }}>{sc.evidencesCount}</strong>
-                      </div>
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '0.72rem' }}>
-                      {sc.lastEvidence ? (
-                        <div>
-                          <div style={{ color: '#334155' }}>Último dictamen: <strong style={{ color: sc.lastEvidence.verdict === 'RECHAZADO' ? '#b91c1c' : '#15803d' }}>{sc.lastEvidence.verdict}</strong> ({sc.lastEvidence.evidenceId})</div>
-                          <div style={{ fontFamily: 'monospace', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Sello: {sc.lastEvidence.cryptoSeal || 'AES256-AEPD-ES'}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>Sin incidentes pendientes</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* TELEMETRÍA DEL ÚLTIMO PROMPT */}
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
-                  TELEMETRÍA EN MEMORIA VOLÁTIL (PRE-FLIGHT L7)
-                </h3>
-                <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
-                  LATENCIA: 1.4 ms
-                </span>
-              </div>
-
-              {latestEvent ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', fontSize: '0.82rem' }}>
-                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>PAYLOAD CAPTURADO:</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>"{latestEvent.promptSummary || latestEvent.prompt}"</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>ESCENARIO APLICADO:</span>
-                    <div style={{ fontWeight: 700, color: '#0284c7', marginTop: '4px' }}>{latestEvent.scenarioApplied || latestEvent.scene}</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>DIRECCIÓN RAM:</span>
-                    <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#15803d', marginTop: '4px' }}>{latestEvent.ramAddress || '0x7FFF8A42B100'}</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>SELLO CRIPTOGRÁFICO:</span>
-                    <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#334155', marginTop: '4px' }}>{latestEvent.cryptoSeal || 'AES256-AEPD-ES'}</div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>Esperando intercepciones en tiempo real...</div>
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB 2: REGISTRO GLOBAL DE EVIDENCIAS */}
-        {activeTab === 'global' && (
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase' }}>
-              HISTORIAL DE EVIDENCIAS EN AUDITORÍA (BÓVEDA DE DISCO)
-            </h3>
-            
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                  <th style={{ padding: '12px' }}>ID EVIDENCIA</th>
-                  <th style={{ padding: '12px' }}>HORA</th>
-                  <th style={{ padding: '12px' }}>PROMPT INTERCEPTADO</th>
-                  <th style={{ padding: '12px' }}>ESCENARIO APLICADO</th>
-                  <th style={{ padding: '12px' }}>DICTAMEN</th>
-                  <th style={{ padding: '12px' }}>ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px', fontWeight: 700, color: '#0284c7' }}>{ev.evidenceId || ev.id}</td>
-                    <td style={{ padding: '12px', color: '#64748b' }}>{ev.timestamp}</td>
-                    <td style={{ padding: '12px', color: '#1e293b', fontWeight: 600 }}>{ev.promptSummary || ev.prompt}</td>
-                    <td style={{ padding: '12px', color: '#475569' }}>{ev.scenarioApplied || ev.scene}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem', background: ev.verdict === 'RECHAZADO' ? '#fee2e2' : '#dcfce7', color: ev.verdict === 'RECHAZADO' ? '#b91c1c' : '#15803d' }}>
-                        {ev.verdict}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <button onClick={() => setActiveTab('runlive')} style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
-                        Verificar W3C
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 3: BIBLIOTECA DE ESCENARIOS */}
-        {activeTab === 'scenarios' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {scenarios.map(s => (
-              <div key={s.id} style={{ background: '#ffffff', borderRadius: '12px', padding: '20px', border: s.licensed ? '1px solid #86efac' : '1px solid #fca5a5', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', color: '#475569' }}>{s.category}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: s.licensed ? '#16a34a' : '#dc2626' }}>
-                    {s.licensed ? '● ACTIVO' : '○ PAUSADO'}
-                  </span>
-                </div>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700 }}>{s.title}</h4>
-                <div style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700, marginBottom: '8px' }}>
-                  Marco: {s.compliance}
-                </div>
-                <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#64748b', minHeight: '38px' }}>{s.desc}</p>
-                <button
-                  onClick={() => {
-                    fetch('http://localhost:3001/api/toggle-license', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: s.id })
-                    }).then(() => loadVaultData());
-                  }}
-                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', background: s.licensed ? '#fee2e2' : '#dcfce7', color: s.licensed ? '#b91c1c' : '#15803d' }}
-                >
-                  {s.licensed ? '⚡ CONMUTAR Y DESHABILITAR' : '🔒 REACTIVAR LICENCIA'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
       </main>
     </div>
   );
