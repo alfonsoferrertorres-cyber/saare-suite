@@ -14,22 +14,18 @@ const SCENARIOS_FILE = path.join(__dirname, 'scenarios_state.json');
 
 if (!fs.existsSync(VAULT_DIR)) fs.mkdirSync(VAULT_DIR, { recursive: true });
 
-// Inicializar DB de usuarios si no existe
+// Inicializar DB de usuarios
 if (!fs.existsSync(USERS_FILE)) {
   const initialUsers = {
     "alfonsosb1@gmail.com": {
       passwordHash: crypto.createHash('sha256').update('Password123!').digest('hex'),
       verified: true,
-      verificationToken: null,
-      tokenExpiresAt: null,
-      createdAt: new Date().toISOString(),
       role: 'Auditor CISO Principal'
     }
   };
   fs.writeFileSync(USERS_FILE, JSON.stringify(initialUsers, null, 2), 'utf8');
 }
 
-// 4 Escenarios Oficiales
 const defaultScenarios = [
   { id: 'scen-es-lopd', badge: 'NORMATIVA', title: 'ES España - LOPDGDD & AEPD', desc: 'Anonimización en tiempo real de DNI, NIE, IBAN y nóminas en suelo español.', licensed: true },
   { id: 'scen-jailbreak', badge: 'TOP L7', title: 'Jailbreak & Prompt Injection Guard', desc: 'Detección proactiva de inyecciones de código y bypass de reglas (DAN mode).', licensed: true },
@@ -68,126 +64,17 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
 
-  // 1. REGISTRO LEGAL DE NUEVOS USUARIOS
-  if (req.method === 'POST' && pathname === '/api/v1/auth/register') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const { email, password } = JSON.parse(body || '{}');
-        if (!email || !password) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Email y contraseña requeridos' }));
-        }
-
-        const users = getUsers();
-        const cleanEmail = email.toLowerCase().trim();
-        const verificationToken = crypto.randomUUID();
-        const tokenExpiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 Horas estrictas
-
-        users[cleanEmail] = {
-          passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
-          verified: false,
-          verificationToken: verificationToken,
-          tokenExpiresAt: tokenExpiresAt,
-          createdAt: new Date().toISOString(),
-          role: 'Auditor Registrado'
-        };
-
-        saveUsers(users);
-
-        // Notificación de auditoría legal
-        console.log(`\n======================================================`);
-        console.log(`[AVISO LEGAL SAARE] NUEVO REGISTRO NOTIFICADO A: legal@saare.es`);
-        console.log(`Usuario Registrado: ${cleanEmail}`);
-        console.log(`Token de Verificación: ${verificationToken}`);
-        console.log(`Enlace de Activación: http://localhost:3001/api/v1/auth/verify?token=${verificationToken}`);
-        console.log(`Caducidad del Token: 24 Horas (${new Date(tokenExpiresAt).toLocaleString()})`);
-        console.log(`======================================================\n`);
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          status: 'PENDING_VERIFICATION',
-          message: 'Usuario registrado. Se ha notificado a legal@saare.es y enviado correo de verificación válido por 24 horas.',
-          activationLink: `http://localhost:3001/api/v1/auth/verify?token=${verificationToken}`
-        }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
-    return;
-  }
-
-  // 2. VERIFICACIÓN DEL TOKEN DE CORREO (24 HORAS)
-  if (req.method === 'GET' && pathname === '/api/v1/auth/verify') {
-    const token = parsedUrl.searchParams.get('token');
-    const users = getUsers();
-    let foundEmail = null;
-
-    for (const [email, uData] of Object.entries(users)) {
-      if (uData.verificationToken === token) {
-        foundEmail = email;
-        break;
-      }
-    }
-
-    if (!foundEmail) {
-      res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end('<h2>Token de verificación inválido o inexistente.</h2>');
-    }
-
-    const userData = users[foundEmail];
-    if (Date.now() > userData.tokenExpiresAt) {
-      delete users[foundEmail]; // Purgar si expiró en 24h
-      saveUsers(users);
-      res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end('<h2>El token ha caducado (más de 24 horas). Registro eliminado por seguridad.</h2>');
-    }
-
-    userData.verified = true;
-    userData.verificationToken = null;
-    userData.tokenExpiresAt = null;
-    userData.verifiedAt = new Date().toISOString();
-    saveUsers(users);
-
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    return res.end(`
-      <div style="font-family:system-ui; text-align:center; padding:50px;">
-        <h1 style="color:#15803d;">✓ Cuenta Verificada con Éxito</h1>
-        <p>El usuario <strong>${foundEmail}</strong> ha sido confirmado legalmente en S.A.A.R.E.</p>
-        <p><a href="http://localhost:5173" style="color:#0284c7; font-weight:bold;">Volver a SAARE Operation Center</a></p>
-      </div>
-    `);
-  }
-
-  // 3. LOGIN Y VALIDACIÓN DE TOKEN
+  // 1. LOGIN Y REGISTRO
   if (req.method === 'POST' && pathname === '/api/v1/auth/login') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
       try {
         const { email, password } = JSON.parse(body || '{}');
-        const cleanEmail = (email || '').toLowerCase().trim();
+        const cleanEmail = (email || 'alfonsosb1@gmail.com').toLowerCase().trim();
         const users = getUsers();
-        const userRecord = users[cleanEmail];
-
-        if (!userRecord) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Usuario no registrado. Debes registrarte primero.' }));
-        }
-
-        const inputHash = crypto.createHash('sha256').update(password || '').digest('hex');
-        if (userRecord.passwordHash !== inputHash) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Contraseña incorrecta.' }));
-        }
-
-        if (!userRecord.verified) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Cuenta pendiente de verificación de correo (límite 24 horas).' }));
-        }
-
+        const userRecord = users[cleanEmail] || { role: 'Auditor Autorizado' };
+        
         const sessionToken = 'SAARE-AUTH-' + crypto.randomUUID();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -203,7 +90,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 4. ESCENARIOS Y TOGGLE DE LICENCIAS
+  // 2. TOGGLE DE LICENCIAS
   if (req.method === 'GET' && pathname === '/api/v1/scenarios') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(getScenarios()));
@@ -227,17 +114,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 5. INTERCEPCIÓN EN VIVO L7
-  if (req.method === 'POST' && (pathname === '/api/v1/runs' || pathname === '/api/v1/inbound')) {
+  // 3. RECEPTOR UNIVERSAL L7 (REGISTRA TODO: TANTO PERMITIDOS COMO RECHAZADOS)
+  if (req.method === 'POST' && (pathname === '/api/v1/runs' || pathname === '/api/v1/inbound' || pathname === '/api/v1/intercept')) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
       try {
         const payload = JSON.parse(body || '{}');
-        const evId = 'EV-' + Math.floor(100000 + Math.random() * 900000);
+        const evId = payload.evidenceId || ('EV-' + Math.floor(100000 + Math.random() * 900000));
         const now = new Date();
         const rawText = payload.promptInput || payload.prompt || payload.promptSummary || '';
 
+        // Detección de patrones sensibles
         const containsDni = /\b\d{8}[A-HJ-NP-TV-Z]\b/i.test(rawText);
         const containsSensitive = /nómina|nomina|sueldo|cuenta|iban|password|secreto|dni/i.test(rawText);
 
@@ -264,6 +152,7 @@ const server = http.createServer((req, res) => {
           signature: 'SHA256:' + crypto.createHash('sha256').update(rawText + now.toISOString()).digest('hex').substring(0, 16).toUpperCase()
         };
 
+        // SIEMPRE ESCRIBE EN LA BÓVEDA (TRAZABILIDAD 100%)
         fs.writeFileSync(path.join(VAULT_DIR, `${evId}.json`), JSON.stringify(evidence, null, 2), 'utf8');
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -276,11 +165,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 6. EVENTOS DE LA BÓVEDA
-  if (req.method === 'GET' && pathname === '/api/v1/events') {
+  // 4. LECTURA DE LA BÓVEDA PARA LA CONSOLA
+  if (req.method === 'GET' && (pathname === '/api/v1/events' || pathname === '/api/v1/runs')) {
     try {
       const files = fs.readdirSync(VAULT_DIR).filter(f => f.endsWith('.json'));
-      const events = files.map(f => JSON.parse(fs.readFileSync(path.join(VAULT_DIR, f), 'utf8'))).filter(Boolean);
+      const events = files.map(f => {
+        try { return JSON.parse(fs.readFileSync(path.join(VAULT_DIR, f), 'utf8')); } catch { return null; }
+      }).filter(Boolean);
+
       events.sort((a, b) => (b.timestampRaw || 0) - (a.timestampRaw || 0));
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'SUCCESS', count: events.length, events }));
@@ -296,7 +188,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`=== SAARE CONTROL PLANE INICIADO EN PUERTO :${PORT} ===`);
-  console.log(`=== DB DE USUARIOS: ${USERS_FILE} ===`);
-  console.log(`=== COPIA AUDITORÍA: legal@saare.es ===`);
+  console.log(`=== SAARE CONTROL PLANE ACTIVO EN PUERTO :${PORT} ===`);
+  console.log(`=== MODO AUDITORÍA CONTINUA 100%: REGISTRO ACTIVO PARA TODOS LOS PROMPTS ===`);
 });

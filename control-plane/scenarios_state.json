@@ -18,13 +18,13 @@
     "badge": "ANALÍTICO",
     "title": "Fact-Checking Forense & Fake Disprover ★",
     "desc": "Análisis de artefactos en capturas y desensamblaje de deepfakes.",
-    "licensed": false
+    "licensed": true
   },
   {
     "id": "scen-tokens",
     "badge": "ESTRELLA",
     "title": "Optimizador de Tokens & CostGuard ★",
     "desc": "Reducción de coste computacional y desinfección de prompts redundantes.",
-    "licensed": false
+    "licensed": true
   }
 ]

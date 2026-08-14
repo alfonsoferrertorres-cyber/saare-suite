@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-107359",
+  "timestamp": "00:36:05",
+  "timestampRaw": 1786746965978,
+  "isoTimestamp": "2026-08-14T22:36:05.978Z",
+  "user": "Alfonso Ferrer (Auditor SOC)",
+  "promptSummary": "MI DNI ES 93804930H",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:4742291587D9DFF6"
+}
