@@ -94,4 +94,3 @@ const nodeLabelStyle = (color, glow = false) => ({
   pointerEvents: 'none'
 });
 
-
