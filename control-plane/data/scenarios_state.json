@@ -1,0 +1,34 @@
+[
+  {
+    "id": "scen-es-lopd",
+    "badge": "NORMATIVA",
+    "title": "ES España - LOPDGDD & AEPD",
+    "desc": "Anonimización en tiempo real de DNI, NIE, IBAN y nóminas en suelo español.",
+    "licensed": true,
+    "validUntil": "2027-08-14"
+  },
+  {
+    "id": "scen-jailbreak",
+    "badge": "TOP L7",
+    "title": "Jailbreak & Prompt Injection Guard",
+    "desc": "Detección proactiva de inyecciones de código y bypass de reglas (DAN mode).",
+    "licensed": true,
+    "validUntil": "2027-08-14"
+  },
+  {
+    "id": "scen-forensic",
+    "badge": "ANALÍTICO",
+    "title": "Fact-Checking Forense & Fake Disprover ★",
+    "desc": "Análisis de artefactos en capturas y desensamblaje de deepfakes.",
+    "licensed": false,
+    "validUntil": "2027-08-14"
+  },
+  {
+    "id": "scen-tokens",
+    "badge": "ESTRELLA",
+    "title": "Optimizador de Tokens & CostGuard ★",
+    "desc": "Reducción de coste computacional y desinfección de prompts redundantes.",
+    "licensed": false,
+    "validUntil": "2027-08-14"
+  }
+]
