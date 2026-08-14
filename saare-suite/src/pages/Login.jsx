@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,12 +10,26 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const sendAuditLog = async (promptText) => {
+  try {
+    const isSensitive = /tarjeta|secret_key|admin|password/i.test(promptText);
+    await fetch('http://localhost:3001/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: promptText,
+        usuario: 'USUARIO-WEB',
+        decision: isSensitive ? 'RECHAZADO' : 'PERMITIDO'
+      })
+    });
+  } catch (e) { console.error(e); }
+};
+const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!email || !password) {
-      setError('Por favor introduce tu correo profesional y contraseña.');
+      setError('Por favor introduce tu correo profesional y contraseÃ±a.');
       return;
     }
 
@@ -26,7 +40,7 @@ export default function Login() {
     if (res.success) {
       navigate('/dashboard');
     } else {
-      setError(res.error || 'Credenciales no válidas.');
+      setError(res.error || 'Credenciales no vÃ¡lidas.');
     }
   };
 
@@ -39,7 +53,7 @@ export default function Login() {
         style={{ backgroundImage: `url('/grc_bg.jpg')` }}
       />
       
-      {/* MÁSCARA MÁS LIGERA PARA PERMITIR TRASLUCIDEZ */}
+      {/* MÃSCARA MÃS LIGERA PARA PERMITIR TRASLUCIDEZ */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#050811]/40 via-[#050811]/70 to-[#050811]/90 pointer-events-none" />
 
       {/* Resplandor ambiental sobrio en oro */}
@@ -77,13 +91,13 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1.5">Contraseña</label>
+            <label className="block text-slate-300 mb-1.5">ContraseÃ±a</label>
             <input
               required
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               className="w-full bg-[#050811]/90 border border-slate-700/80 rounded-xl p-3 text-white placeholder-slate-500 focus:border-[#C5A059] focus:outline-none transition-colors"
             />
           </div>
@@ -93,13 +107,13 @@ export default function Login() {
             disabled={submitting}
             className="w-full bg-[#C5A059] hover:bg-white text-black font-extrabold p-3.5 rounded-xl font-mono uppercase tracking-wider transition-all shadow-lg shadow-[#C5A059]/20 cursor-pointer disabled:opacity-50 mt-2"
           >
-            {submitting ? 'Autenticando...' : 'Iniciar Sesión'}
+            {submitting ? 'Autenticando...' : 'Iniciar SesiÃ³n'}
           </button>
         </form>
 
         {/* PIE Y ENLACE A DISCOVERY */}
         <div className="text-center text-xs font-mono text-slate-400 pt-3 border-t border-slate-800/80">
-          ¿No tienes cuenta?{' '}
+          Â¿No tienes cuenta?{' '}
           <Link to="/discovery" className="text-[#C5A059] hover:underline font-bold">
             Solicitar Discovery
           </Link>
@@ -109,3 +123,4 @@ export default function Login() {
     </div>
   );
 }
+

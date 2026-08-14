@@ -1,7 +1,174 @@
-{
-  "updatedAt": "2026-08-11T10:15:00Z",
-  "scenarios": [
-    "cumplimiento_corporativo_es_maxima_seguridad",
-    "banca_dora_pci_dss"
+﻿{
+  "destacados": [
+    {
+      "id": "STAR_DEEPFAKE_SHIELD",
+      "name": "🛡️ Deepfake & Identity Shield ⭐",
+      "tag": "ESTRELLA",
+      "image": "/scenarios/deepfake-shield.webp",
+      "description": "Blindaje perimetral activo contra suplantación de identidad y generación no autorizada de rostros/audio.",
+      "keywords": ["deepfake", "clonar_voz", "rostro_sintetico", "biometria_falsa"]
+    },
+    {
+      "id": "STAR_TOKEN_OPTIMIZER",
+      "name": "⚡ Optimizador de Tokens & CostGuard ⭐",
+      "tag": "ESTRELLA",
+      "image": "/scenarios/token-optimizer.webp",
+      "description": "Reducción de coste computacional y desinfección de prompts redundantes sin pérdida de contexto.",
+      "keywords": ["repeat_prompt", "token_abuse", "infinite_loop"]
+    },
+    {
+      "id": "TOP_PROMPT_INJECTION",
+      "name": "🎯 Jailbreak & Prompt Injection Guard",
+      "tag": "TOP USO",
+      "image": "/scenarios/prompt-injection.webp",
+      "description": "Detección en tiempo real de ataques DAN, bypass de reglas y manipulaciones de sistema.",
+      "keywords": ["ignore_instructions", "dan_mode", "bypass_rules", "system_override"]
+    },
+    {
+      "id": "TOP_PCI_DSS",
+      "name": "💳 PCI-DSS 4.0 Financial Core",
+      "tag": "TOP USO",
+      "image": "/scenarios/pci-dss.webp",
+      "description": "Protección estricta para números de tarjeta (PAN), CVV y códigos SWIFT.",
+      "keywords": ["tarjeta", "cvv", "credit_score", "iban", "swift"]
+    },
+    {
+      "id": "TOP_GDPR_ANONYMIZER",
+      "name": "👁️ Anonymizer & PII Purifier",
+      "tag": "TOP USO",
+      "image": "/scenarios/pii-purifier.webp",
+      "description": "Sanitización automática de datos personales identificables antes de ser enviados al modelo.",
+      "keywords": ["nombre", "email", "telefono", "direccion"]
+    }
+  ],
+  "territoriales": [
+    {
+      "id": "ES_CUMPLIMIENTO_ESPANA",
+      "name": "🇪🇸 Cumplimiento LOPDGDD España",
+      "image": "/scenarios/es-lopd.webp",
+      "description": "Alineación estricta con la Agencia Española de Protección de Datos (AEPD).",
+      "keywords": ["dni", "nie", "iban", "nomina", "seguridad_social"]
+    },
+    {
+      "id": "EU_AI_ACT_HIGH_RISK",
+      "name": "🇪🇺 EU AI Act High-Risk System",
+      "image": "/scenarios/eu-ai-act.webp",
+      "description": "Requisitos de transparencia, trazabilidad y supervisión humana del Reglamento de IA de la UE.",
+      "keywords": ["biometrico", "etnia", "salud", "sindicato", "religion"]
+    },
+    {
+      "id": "US_CCPA_CALIFORNIA",
+      "name": "🇺🇸 CCPA / CPRA California Privacy",
+      "image": "/scenarios/us-ccpa.webp",
+      "description": "Cumplimiento de derechos de privacidad de consumidores en EE.UU.",
+      "keywords": ["ssn", "social_security", "driver_license"]
+    },
+    {
+      "id": "UK_GDPR_PROTECTION",
+      "name": "🇬🇧 UK Data Protection Act",
+      "image": "/scenarios/uk-gdpr.webp",
+      "description": "Normativa británica post-Brexit supervisada por la ICO.",
+      "keywords": ["nino", "national_insurance", "uk_passport"]
+    },
+    {
+      "id": "BR_LGPD_BRAZIL",
+      "name": "🇧🇷 LGPD Lei Geral de Proteção",
+      "image": "/scenarios/br-lgpd.webp",
+      "description": "Estructura de privacidad de datos personales de la República de Brasil.",
+      "keywords": ["cpf", "rg", "chave_pix"]
+    },
+    {
+      "id": "MX_LFPDPPP_MEXICO",
+      "name": "🇲🇽 LFPDPPP México INAI",
+      "image": "/scenarios/mx-lfpdppp.webp",
+      "description": "Protección de datos en posesión de particulares en territorio mexicano.",
+      "keywords": ["curp", "rfc", "clabe"]
+    },
+    {
+      "id": "CL_LEY_PRIVACIDAD_CHILE",
+      "name": "🇨🇱 Ley de Proteccion de Datos Chile",
+      "image": "/scenarios/cl-privacy.webp",
+      "description": "Estándares de tratamiento de datos personales en Chile.",
+      "keywords": ["rut", "run"]
+    },
+    {
+      "id": "CO_HABEAS_DATA_COLOMBIA",
+      "name": "🇨🇴 Ley Habeas Data Colombia",
+      "image": "/scenarios/co-habeas.webp",
+      "description": "Regulación colombiana sobre la gestión de información financiera y personal.",
+      "keywords": ["cedula_ciudadania", "nit"]
+    },
+    {
+      "id": "JP_APPI_JAPAN",
+      "name": "🇯🇵 APPI Japan Data Act",
+      "image": "/scenarios/jp-appi.webp",
+      "description": "Protección de información personal bajo la comisión PPC de Japón.",
+      "keywords": ["my_number", "jp_passport"]
+    },
+    {
+      "id": "SG_PDPA_SINGAPORE",
+      "name": "🇸🇬 PDPA Singapore Compliance",
+      "image": "/scenarios/sg-pdpa.webp",
+      "description": "Ecosistema regulatorio de la PDPC de Singapur para flujo de datos transfronterizos.",
+      "keywords": ["nric", "fin_number"]
+    }
+  ],
+  "gobernanza": [
+    {
+      "id": "GOV_ISO_27001",
+      "name": "🛡️ ISO/IEC 27001:2022 ISMS",
+      "image": "/scenarios/iso-27001.webp",
+      "description": "Control de seguridad de la información corporativa para entornos Cloud e IA.",
+      "keywords": ["confidencial", "propiedad_intelectual", "secreto_comercial"]
+    },
+    {
+      "id": "GOV_NIST_AI_RMF",
+      "name": "🏛️ NIST AI Risk Management Framework",
+      "image": "/scenarios/nist-ai.webp",
+      "description": "Marco de gestión de riesgos de IA del gobierno estadounidense (MAP, MEASURE, MANAGE).",
+      "keywords": ["bias_detection", "model_drift", "hallucination_filter"]
+    },
+    {
+      "id": "GOV_HIPAA_HEALTH",
+      "name": "🏥 HIPAA Healthcare Security",
+      "image": "/scenarios/hipaa-health.webp",
+      "description": "Protección de información médica e historial clínico (PHI).",
+      "keywords": ["historial_clinico", "diagnostico", "receta_medica", "phi"]
+    },
+    {
+      "id": "GOV_DORA_RESILIENCE",
+      "name": "🏦 DORA Digital Operational Resilience Act",
+      "image": "/scenarios/dora-financial.webp",
+      "description": "Reglamento europeo de resiliencia operativa digital para el sector financiero.",
+      "keywords": ["risk_assessment", "third_party_vendor", "incident_reporting"]
+    },
+    {
+      "id": "GOV_OWASP_LLM_TOP10",
+      "name": "🐝 OWASP Top 10 for LLMs",
+      "image": "/scenarios/owasp-llm.webp",
+      "description": "Mitigación de vulnerabilidades críticas en aplicaciones basadas en IA generativa.",
+      "keywords": ["data_poisoning", "supply_chain", "excessive_agency"]
+    },
+    {
+      "id": "GOV_SOC2_TYPE2",
+      "name": "🔒 SOC 2 Type II Compliance",
+      "image": "/scenarios/soc2-type2.webp",
+      "description": "Garantía de confidencialidad, disponibilidad e integridad de datos en clientes SaaS.",
+      "keywords": ["access_control", "audit_trail", "encryption_at_rest"]
+    },
+    {
+      "id": "GOV_NIS2_DIRECTIVE",
+      "name": "⚡ NIS 2 Directive Critical Infra",
+      "image": "/scenarios/nis2-directive.webp",
+      "description": "Protección para infraestructuras críticas y servicios esenciales en la Unión Europea.",
+      "keywords": ["infraestructura_critica", "alerta_temprana", "ciberseguridad_redes"]
+    },
+    {
+      "id": "GOV_CMMC_DEFENSE",
+      "name": "🎖️ CMMC Defense Industrial Base",
+      "image": "/scenarios/cmmc-defense.webp",
+      "description": "Modelo de madurez de ciberseguridad para proveedores del sector de defensa.",
+      "keywords": ["controlled_unclassified", "cui_data", "defense_contract"]
+    }
   ]
 }

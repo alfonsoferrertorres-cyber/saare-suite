@@ -1,19 +1,19 @@
-ï»¿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Activity, GitMerge, Layers, Sliders, ShieldCheck, Database, Server, 
   Terminal, CheckCircle2, RefreshCw, Play, ArrowRight, ChevronRight 
 } from 'lucide-react';
 
 const MODULES_DATA = [
-  { id: 'perimeter', name: 'PerimeterShield', type: 'L7 Proxy', desc: 'ProtecciÃ³n de datos sensibles (PII, PCI, IBAN) e inspecciÃ³n de payloads.', techMode: 'Deterministic RAM Enforcement' },
-  { id: 'rate', name: 'TokenMatrix', type: 'Throttle Engine', desc: 'Control de tasa de consumo por token y prevenciÃ³n de abusos.', techMode: 'Token Bucket / Sliding Window' },
-  { id: 'evidence', name: 'EvidenceVault', type: 'Ledger Engine', desc: 'Registro inmutable de evidencias con firmas criptogrÃ¡ficas Ed25519.', techMode: 'Cryptographic Ed25519 Signed' }
+  { id: 'perimeter', name: 'PerimeterShield', type: 'L7 Proxy', desc: 'Protección de datos sensibles (PII, PCI, IBAN) e inspección de payloads.', techMode: 'Deterministic RAM Enforcement' },
+  { id: 'rate', name: 'TokenMatrix', type: 'Throttle Engine', desc: 'Control de tasa de consumo por token y prevención de abusos.', techMode: 'Token Bucket / Sliding Window' },
+  { id: 'evidence', name: 'EvidenceVault', type: 'Ledger Engine', desc: 'Registro inmutable de evidencias con firmas criptográficas Ed25519.', techMode: 'Cryptographic Ed25519 Signed' }
 ];
 
 const PRESETS_DATA = {
   perimeter: [
-    { id: 'p1', name: 'Banking Shield', desc: 'MÃ¡xima rigidez para entornos bancarios y financieros.', toggles: ['PIIDetection', 'PCIDetection', 'IBANDetection'] },
-    { id: 'p2', name: 'Enterprise AI Guard', desc: 'ProtecciÃ³n enfocada en LLMs y prevenciÃ³n de Prompt Injections.', toggles: ['PromptInjection', 'EvidenceGeneration'] }
+    { id: 'p1', name: 'Banking Shield', desc: 'Máxima rigidez para entornos bancarios y financieros.', toggles: ['PIIDetection', 'PCIDetection', 'IBANDetection'] },
+    { id: 'p2', name: 'Enterprise AI Guard', desc: 'Protección enfocada en LLMs y prevención de Prompt Injections.', toggles: ['PromptInjection', 'EvidenceGeneration'] }
   ]
 };
 
@@ -86,11 +86,11 @@ export default function OperationCenter() {
         </div>
       </header>
 
-      {/* BODY CON SIDEBAR DE NAVEGACIÃ“N */}
+      {/* BODY CON SIDEBAR DE NAVEGACIÓN */}
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 border-r border-slate-800 bg-slate-900/40 p-4 flex flex-col justify-between hidden md:flex">
           <nav className="space-y-1">
-            <div className="text-[10px] font-mono font-semibold text-slate-500 tracking-wider px-3 mb-2 uppercase">OperaciÃ³n</div>
+            <div className="text-[10px] font-mono font-semibold text-slate-500 tracking-wider px-3 mb-2 uppercase">Operación</div>
             <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === 'overview' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
               <Activity className="w-4 h-4" /><span>Overview</span>
             </button>
@@ -120,7 +120,7 @@ export default function OperationCenter() {
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-2xl font-bold text-slate-100">Operation Center</h1>
-                  <p className="text-sm text-slate-400">Monitoreo determinista de gobernanza, intercepciones y evidencia criptogrÃ¡fica.</p>
+                  <p className="text-sm text-slate-400">Monitoreo determinista de gobernanza, intercepciones y evidencia criptográfica.</p>
                 </div>
                 <button onClick={() => setActiveTab('builder')} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm flex items-center space-x-2 shadow-lg shadow-cyan-500/10">
                   <GitMerge className="w-4 h-4" /><span>Configure New Pipeline</span>
@@ -151,7 +151,7 @@ export default function OperationCenter() {
           {activeTab !== 'overview' && (
             <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl">
               <h2 className="text-xl font-bold capitalize text-slate-100 mb-2">{activeTab} Section</h2>
-              <p className="text-xs text-slate-400 font-mono">[SYSTEM OK] MÃ³dulo activo en el runtime determinista.</p>
+              <p className="text-xs text-slate-400 font-mono">[SYSTEM OK] Módulo activo en el runtime determinista.</p>
             </div>
           )}
 
@@ -159,7 +159,7 @@ export default function OperationCenter() {
             <div className="mt-8 border border-cyan-500/30 bg-slate-900/90 rounded-xl p-4 font-mono text-xs text-slate-300">
               <div className="flex justify-between border-b border-slate-800 pb-2 mb-3">
                 <span className="text-cyan-400 font-bold">TECHNICAL TRACE (ENGINEER LEVEL)</span>
-                <button onClick={() => setShowTechnicalTrace(false)}>âœ•</button>
+                <button onClick={() => setShowTechnicalTrace(false)}>?</button>
               </div>
               <p>TRACE ID: SAARE-89F2A10B4 | CRYPTO RECEIPT: Ed25519 Verified</p>
             </div>

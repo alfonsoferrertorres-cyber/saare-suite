@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 export default function Discovery() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -9,13 +9,13 @@ export default function Discovery() {
     name: '',
     email: '',
     company: '',
-    role: 'CISO / Líder de Seguridad',
+    role: 'CISO / LÃ­der de Seguridad',
     env: 'AWS Cloud',
-    useCase: 'Flujos Agénticos y MCP',
+    useCase: 'Flujos AgÃ©nticos y MCP',
     complianceNeeds: ['EU AI Act']
   });
 
-  // Bloquear scroll de pantalla cuando el modal está activo
+  // Bloquear scroll de pantalla cuando el modal estÃ¡ activo
   useEffect(() => {
     document.body.style.overflow = isModalOpen ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
@@ -44,7 +44,21 @@ export default function Discovery() {
     link.remove();
   };
 
-  const handleSubmit = async (e) => {
+  const sendAuditLog = async (promptText) => {
+  try {
+    const isSensitive = /tarjeta|secret_key|admin|password/i.test(promptText);
+    await fetch('http://localhost:3001/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: promptText,
+        usuario: 'USUARIO-WEB',
+        decision: isSensitive ? 'RECHAZADO' : 'PERMITIDO'
+      })
+    });
+  } catch (e) { console.error(e); }
+};
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
@@ -94,7 +108,7 @@ export default function Discovery() {
         style={{ backgroundImage: `url('/grc_bg.jpg')` }}
       />
       
-      {/* MÁSCARA DE DEGRADADO PARA TRASLUCIDEZ */}
+      {/* MÃSCARA DE DEGRADADO PARA TRASLUCIDEZ */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#050811]/30 via-[#050811]/60 to-[#050811]/85 pointer-events-none" />
 
       {/* Resplandor ambiental sobrio en oro */}
@@ -105,21 +119,21 @@ export default function Discovery() {
         {/* HERO SECTION */}
         <div className="text-center max-w-4xl mx-auto space-y-4">
           <span className="font-mono text-[11px] uppercase tracking-widest text-[#C5A059] bg-[#C5A059]/10 px-4 py-1.5 rounded-full border border-[#C5A059]/40 inline-block backdrop-blur-md">
-            ENTORNO DE EVALUACIÓN • DISCOVERY ASSESSMENT
+            ENTORNO DE EVALUACIÃ“N â€¢ DISCOVERY ASSESSMENT
           </span>
           <h1 className="text-3xl sm:text-5xl font-serif font-extrabold tracking-tight text-[#C5A059] leading-tight drop-shadow-md">
             Audite la Postura de Seguridad de su IA
           </h1>
           <p className="text-slate-200 text-sm sm:text-base font-normal leading-relaxed max-w-2xl mx-auto drop-shadow">
-            Avance en un entorno local seguro (Sandbox) para auditar vulnerabilidades en tiempo de ejecución, prevenir fugas de datos confidenciales y verificar el cumplimiento regulatorio antes de un despliegue masivo.
+            Avance en un entorno local seguro (Sandbox) para auditar vulnerabilidades en tiempo de ejecuciÃ³n, prevenir fugas de datos confidenciales y verificar el cumplimiento regulatorio antes de un despliegue masivo.
           </p>
         </div>
 
-        {/* BLOQUE INTRODUCTORIO DE ORIENTACIÓN: DÓNDE ESTÁ Y PROPÓSITO */}
+        {/* BLOQUE INTRODUCTORIO DE ORIENTACIÃ“N: DÃ“NDE ESTÃ Y PROPÃ“SITO */}
         <div className="bg-[#0B0F19]/90 border border-[#C5A059]/40 rounded-2xl p-6 sm:p-8 backdrop-blur-md max-w-4xl mx-auto space-y-4 shadow-xl text-left font-sans">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] bg-[#C5A059]/15 px-3 py-1 rounded-md border border-[#C5A059]/40 font-bold">
-              FASE DE EVALUACIÓN TÉCNICA
+              FASE DE EVALUACIÃ“N TÃ‰CNICA
             </span>
             <span className="font-mono text-xs text-slate-400 hidden sm:inline-block">
               Entorno de Pruebas Sandbox & Diagnostics
@@ -129,32 +143,32 @@ export default function Discovery() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
             <div className="space-y-1.5">
               <h3 className="text-sm font-bold font-mono text-[#C5A059] uppercase tracking-wider">
-                ¿Dónde se encuentra?
+                Â¿DÃ³nde se encuentra?
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Está en el <strong className="text-white">Portal de Descubrimiento S.A.A.R.E.</strong>, la ruta de evaluación previa al despliegue en producción diseñada para equipos de Ciberseguridad, Compliance y Arquitectura.
+                EstÃ¡ en el <strong className="text-white">Portal de Descubrimiento S.A.A.R.E.</strong>, la ruta de evaluaciÃ³n previa al despliegue en producciÃ³n diseÃ±ada para equipos de Ciberseguridad, Compliance y Arquitectura.
               </p>
             </div>
 
             <div className="space-y-1.5">
               <h3 className="text-sm font-bold font-mono text-[#C5A059] uppercase tracking-wider">
-                ¿Cuál es el propósito?
+                Â¿CuÃ¡l es el propÃ³sito?
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Auditar sin impacto en sus sistemas reales el comportamiento del tráfico hacia modelos de IA, medir la latencia del middleware y verificar el bloqueo de inyecciones y datos PII/PHI.
+                Auditar sin impacto en sus sistemas reales el comportamiento del trÃ¡fico hacia modelos de IA, medir la latencia del middleware y verificar el bloqueo de inyecciones y datos PII/PHI.
               </p>
             </div>
           </div>
         </div>
 
-        {/* METODOLOGÍA Y PUNTOS A EVALUAR */}
+        {/* METODOLOGÃA Y PUNTOS A EVALUAR */}
         <div className="bg-[#0B0F19]/80 border border-[#C5A059]/40 p-6 sm:p-8 rounded-2xl space-y-6 max-w-4xl mx-auto backdrop-blur-md shadow-2xl">
           <div className="border-b border-slate-800 pb-4">
             <span className="font-mono text-xs font-bold text-[#C5A059] uppercase tracking-wider">
-              METODOLOGÍA DE EVALUACIÓN
+              METODOLOGÃA DE EVALUACIÃ“N
             </span>
             <h2 className="text-2xl font-serif font-bold text-white mt-1">
-              Alcance del Análisis y Entregables Técnicos
+              Alcance del AnÃ¡lisis y Entregables TÃ©cnicos
             </h2>
           </div>
 
@@ -162,21 +176,21 @@ export default function Discovery() {
             <div className="bg-[#050811]/70 border border-slate-800 p-4 rounded-xl space-y-2">
               <span className="font-bold text-[#C5A059]">01. Perfilado de Riesgos</span>
               <p className="text-slate-300 text-[11px] font-sans leading-relaxed">
-                Evaluación de vulnerabilidades frente a inyecciones de prompt directas e indirectas mediante conjuntos de pruebas estandarizados.
+                EvaluaciÃ³n de vulnerabilidades frente a inyecciones de prompt directas e indirectas mediante conjuntos de pruebas estandarizados.
               </p>
             </div>
 
             <div className="bg-[#050811]/70 border border-slate-800 p-4 rounded-xl space-y-2">
               <span className="font-bold text-white">02. Fugas de Datos (PII/PHI)</span>
               <p className="text-slate-300 text-[11px] font-sans leading-relaxed">
-                Inspección ex-ante en memoria RAM para la detección de datos sensibles y enmascaramiento determinista antes del reenvío a la nube.
+                InspecciÃ³n ex-ante en memoria RAM para la detecciÃ³n de datos sensibles y enmascaramiento determinista antes del reenvÃ­o a la nube.
               </p>
             </div>
 
             <div className="bg-[#050811]/70 border border-slate-800 p-4 rounded-xl space-y-2">
               <span className="font-bold text-slate-400">03. Mapeo Shadow AI</span>
               <p className="text-slate-300 text-[11px] font-sans leading-relaxed">
-                Identificación de endpoints no autorizados y llamadas directas no verificadas a proveedores de LLM dentro de la infraestructura.
+                IdentificaciÃ³n de endpoints no autorizados y llamadas directas no verificadas a proveedores de LLM dentro de la infraestructura.
               </p>
             </div>
           </div>
@@ -184,20 +198,20 @@ export default function Discovery() {
           {/* LISTA RESUMEN DE PUNTOS A EVALUAR */}
           <div className="pt-2 border-t border-slate-800/80">
             <h3 className="text-sm font-serif font-bold text-[#C5A059] mb-3">
-              Capacidades de Auditoría del Entorno Discovery:
+              Capacidades de AuditorÃ­a del Entorno Discovery:
             </h3>
             <ul className="text-xs font-mono text-slate-300 space-y-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <li className="flex items-center gap-2">
-                <span className="text-[#C5A059] font-bold">✓</span> Aislamiento volátil Zero-Disk en memoria RAM
+                <span className="text-[#C5A059] font-bold">âœ“</span> Aislamiento volÃ¡til Zero-Disk en memoria RAM
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-[#C5A059] font-bold">✓</span> Medición de latencia L7 sub-milisegundo
+                <span className="text-[#C5A059] font-bold">âœ“</span> MediciÃ³n de latencia L7 sub-milisegundo
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-[#C5A059] font-bold">✓</span> Trazabilidad criptográfica Ed25519
+                <span className="text-[#C5A059] font-bold">âœ“</span> Trazabilidad criptogrÃ¡fica Ed25519
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-[#C5A059] font-bold">✓</span> Control agéntico y guardarraíles para MCP
+                <span className="text-[#C5A059] font-bold">âœ“</span> Control agÃ©ntico y guardarraÃ­les para MCP
               </li>
             </ul>
           </div>
@@ -228,7 +242,7 @@ export default function Discovery() {
               aria-label="Cerrar modal"
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-mono text-sm cursor-pointer"
             >
-              ✕
+              âœ•
             </button>
 
             {!submitted ? (
@@ -240,10 +254,10 @@ export default function Discovery() {
                 </div>
                 
                 <h3 className="text-2xl font-serif font-bold text-white">
-                  Solicitar Acceso a Evaluación Discovery
+                  Solicitar Acceso a EvaluaciÃ³n Discovery
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Proporcione su contexto operativo para personalizar el entorno Sandbox y la evaluación del perfil de riesgo.
+                  Proporcione su contexto operativo para personalizar el entorno Sandbox y la evaluaciÃ³n del perfil de riesgo.
                 </p>
 
                 <div className="space-y-3 pt-2">
@@ -260,7 +274,7 @@ export default function Discovery() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 mb-1">Organización / Empresa *</label>
+                      <label className="block text-[11px] font-mono text-slate-400 mb-1">OrganizaciÃ³n / Empresa *</label>
                       <input
                         required
                         type="text"
@@ -285,16 +299,16 @@ export default function Discovery() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 mb-1">Cargo / Función</label>
+                      <label className="block text-[11px] font-mono text-slate-400 mb-1">Cargo / FunciÃ³n</label>
                       <select
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C5A059] cursor-pointer"
                         value={formData.role}
                         onChange={(e) => handleInputChange('role', e.target.value)}
                       >
-                        <option value="CISO / Lider de Seguridad">CISO / Líder de Seguridad</option>
+                        <option value="CISO / Lider de Seguridad">CISO / LÃ­der de Seguridad</option>
                         <option value="CTO / Arquitecto Principal">CTO / Arquitecto Principal</option>
                         <option value="Gobernanza de IA">Gobernanza de IA</option>
-                        <option value="Líder ISV / Producto">Líder ISV / Producto</option>
+                        <option value="LÃ­der ISV / Producto">LÃ­der ISV / Producto</option>
                         <option value="Compliance / DPO">Compliance / DPO</option>
                       </select>
                     </div>
@@ -322,7 +336,7 @@ export default function Discovery() {
                         value={formData.useCase}
                         onChange={(e) => handleInputChange('useCase', e.target.value)}
                       >
-                        <option value="Flujos Agénticos y MCP">Flujos Agénticos y MCP</option>
+                        <option value="Flujos AgÃ©nticos y MCP">Flujos AgÃ©nticos y MCP</option>
                         <option value="RAG Empresarial / Base de Conocimiento">RAG Empresarial</option>
                         <option value="Copilotos Externos">Copilotos Externos</option>
                         <option value="Pasarela Multi-LLM">Pasarela Multi-LLM</option>
@@ -348,7 +362,7 @@ export default function Discovery() {
                                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
                             }`}
                           >
-                            {active ? `✓ ${fw}` : `+ ${fw}`}
+                            {active ? `âœ“ ${fw}` : `+ ${fw}`}
                           </button>
                         );
                       })}
@@ -367,18 +381,18 @@ export default function Discovery() {
             ) : (
               <div className="text-center py-8 space-y-4">
                 <div className="w-14 h-14 bg-[#C5A059]/10 border border-[#C5A059] rounded-full flex items-center justify-center mx-auto text-[#C5A059] font-bold text-2xl">
-                  ✓
+                  âœ“
                 </div>
                 <h3 className="text-2xl font-serif font-bold text-white">Acceso Discovery Confirmado</h3>
                 <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
-                  Gracias, <span className="text-[#C5A059] font-bold">{formData.name}</span> ({formData.company}). Sus parámetros de evaluación han sido registrados. El paquete de documentación técnica se ha iniciado automáticamente.
+                  Gracias, <span className="text-[#C5A059] font-bold">{formData.name}</span> ({formData.company}). Sus parÃ¡metros de evaluaciÃ³n han sido registrados. El paquete de documentaciÃ³n tÃ©cnica se ha iniciado automÃ¡ticamente.
                 </p>
                 <div className="pt-2 flex flex-col gap-2">
                   <button
                     onClick={triggerPDFDownload}
                     className="text-xs text-[#C5A059] underline hover:text-white cursor-pointer font-mono"
                   >
-                    ¿No se descargó automáticamente? Haga clic aquí
+                    Â¿No se descargÃ³ automÃ¡ticamente? Haga clic aquÃ­
                   </button>
                   <button
                     onClick={closeModal}
@@ -395,3 +409,4 @@ export default function Discovery() {
     </div>
   );
 }
+

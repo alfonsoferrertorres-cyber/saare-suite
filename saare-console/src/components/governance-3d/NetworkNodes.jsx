@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+﻿import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, Line, Sphere } from '@react-three/drei';
 
@@ -6,17 +6,17 @@ export default function NetworkNodes({ activeFlow = true }) {
   const particle1 = useRef();
   const particle2 = useRef();
 
-  // Animación en tiempo real de los paquetes de datos viajando por la red
+  // AnimaciÃ³n en tiempo real de los paquetes de datos viajando por la red
   useFrame((state) => {
     const t = state.clock.getElapsedTime() * 2.5;
     
-    // Partícula 1: App Localhost -> SAARE Gateway (-4 a 0)
+    // PartÃ­cula 1: App Localhost -> SAARE Gateway (-4 a 0)
     if (particle1.current) {
       const progress1 = (t % 2) / 2;
       particle1.current.position.x = -4 + progress1 * 4;
     }
 
-    // Partícula 2: SAARE Gateway -> Proveedor LLM (0 a 4)
+    // PartÃ­cula 2: SAARE Gateway -> Proveedor LLM (0 a 4)
     if (particle2.current) {
       const progress2 = ((t + 1) % 2) / 2;
       particle2.current.position.x = 0 + progress2 * 4;
@@ -25,11 +25,11 @@ export default function NetworkNodes({ activeFlow = true }) {
 
   return (
     <group position={[0, -0.5, 0]}>
-      {/* Líneas Láser de Tráfico de Red */}
+      {/* LÃ­neas LÃ¡ser de TrÃ¡fico de Red */}
       <Line points={[[-4, 0, 0], [0, 0, 0]]} color="#00f0ff" lineWidth={2} />
       <Line points={[[0, 0, 0], [4, 0, 0]]} color="#00ff88" lineWidth={2} />
 
-      {/* Partículas de Prompts en Tránsito */}
+      {/* PartÃ­culas de Prompts en TrÃ¡nsito */}
       {activeFlow && (
         <>
           <mesh ref={particle1} position={[-4, 0, 0]}>
@@ -43,7 +43,7 @@ export default function NetworkNodes({ activeFlow = true }) {
         </>
       )}
 
-      {/* NODO 1: Aplicación Local (Cliente ISV) */}
+      {/* NODO 1: AplicaciÃ³n Local (Cliente ISV) */}
       <group position={[-4, 0, 0]}>
         <Sphere args={[0.4, 32, 32]}>
           <meshStandardMaterial color="#00f0ff" wireframe />
@@ -53,7 +53,7 @@ export default function NetworkNodes({ activeFlow = true }) {
         </Html>
       </group>
 
-      {/* NODO 2: SAARE PerimeterShield (Núcleo Central) */}
+      {/* NODO 2: SAARE PerimeterShield (NÃºcleo Central) */}
       <group position={[0, 0, 0]}>
         <Sphere args={[0.6, 32, 32]}>
           <meshStandardMaterial 
@@ -64,7 +64,7 @@ export default function NetworkNodes({ activeFlow = true }) {
           />
         </Sphere>
         <Html position={[0, 1.1, 0]} center distanceFactor={8}>
-          <div style={nodeLabelStyle('#00f0ff', true)}>SAARE L7 PROXY (:3002)</div>
+          <div style={nodeLabelStyle('#00f0ff', true)}>SAARE L7 PROXY (:3001)</div>
         </Html>
       </group>
 
@@ -93,3 +93,5 @@ const nodeLabelStyle = (color, glow = false) => ({
   whiteSpace: 'nowrap',
   pointerEvents: 'none'
 });
+
+

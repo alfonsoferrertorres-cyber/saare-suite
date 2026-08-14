@@ -1,85 +1,100 @@
-﻿const http = require("http");
-const fs = require("fs");
-const path = require("path");
+﻿const express = require('express');
+const cors = require('cors');
 
-const LOG_DIR = "C:\\MS3V_SAARE_Auditoria";
-if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
-const LEDGER_FILE = path.join(LOG_DIR, "saare_enterprise_ledger.jsonl");
+const app = express();
+app.use(cors({ origin: '*', credentials: true }));
+app.use(express.json());
 
-const server = http.createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Content-Type", "application/json");
+// Escenarios con control de licencia conmutable
+let libraryScenes = [
+  { id: 'ES_CUMPLIMIENTO_ESPANA', title: 'España - LOPDGDD & AEPD', badge: 'NORMATIVA', licensed: true, desc: 'Anonimización en tiempo real de DNI, NIE, IBAN y nóminas en suelo español.' },
+  { id: 'TOP_PROMPT_INJECTION', title: 'Jailbreak & Prompt Injection Guard', badge: 'TOP L7', licensed: true, desc: 'Detección proactiva de inyecciones de código y bypass de reglas (DAN mode).' },
+  { id: 'STAR_FACT_CHECKER', title: 'Fact-Checking Forense & Fake Disprover', badge: 'ANALÍTICO', licensed: true, desc: 'Análisis de artefactos en capturas y desensamblaje de deepfakes.' },
+  { id: 'STAR_TOKEN_OPTIMIZER', title: 'Optimizador de Tokens & CostGuard', badge: 'ESTRELLA', licensed: true, desc: 'Reducción de coste computacional y desinfección de prompts redundantes.' }
+];
 
-  if (req.method === "OPTIONS") { res.writeHead(200); return res.end(); }
+// Evidencias iniciales
+const auditLogs = [
+  { id: 'EV-102290', prompt: '"mi dni es 666594039"', scene: 'España - LOPDGDD & AEPD', verdict: 'RECHAZADO', action: 'PDF Sellado', cryptoSeal: 'AES256-AEPD-ES-8839', promptSummary: 'DNI detectado en payload' },
+  { id: 'EV-482432', prompt: '"holaa"', scene: 'España - LOPDGDD & AEPD', verdict: 'ACEPTADO', action: 'PDF Sellado', cryptoSeal: 'AES256-OK-PASS', promptSummary: 'Consulta general limpia' }
+];
 
-  const url = req.url;
-
-  // Endpoint GET: Escenarios
-  if (url.includes("scenarios") && req.method === "GET") {
-    res.writeHead(200);
-    return res.end(JSON.stringify({
-      scenarios: [
-        { id: "scen-corp-governance", title: "Cumplimiento Corporativo ES", description: "Protección L7 con bloqueo de PII" },
-        { id: "scen-dora-strict", title: "Banca & DORA / PCI-DSS", description: "Perfil estricto entidades financieras" }
-      ]
-    }));
+// ENDPOINT DE CONMUTACIÓN DE LICENCIAS (Capturas 8713 y 8715)
+app.all(['/toggle-license', '/api/toggle-license'], (req, res) => {
+  const { id } = req.body || {};
+  const scene = libraryScenes.find(s => s.id === id);
+  if (scene) {
+    scene.licensed = !scene.licensed;
+    console.log(`[CONTROL PLANE RUNTIME] Licencia alterada para ${scene.title} -> Licensed: ${scene.licensed}`);
   }
-
-  // Endpoint GET: Logs
-  if (url.includes("logs") && req.method === "GET") {
-    if (!fs.existsSync(LEDGER_FILE)) return res.end(JSON.stringify({ logs: [] }));
-    const lines = fs.readFileSync(LEDGER_FILE, "utf8").trim().split("\n").filter(Boolean);
-    const logs = lines.map(line => {
-      try {
-        const d = JSON.parse(line);
-        return {
-          id: d.evidenceId || d.id || "EV-LOCAL",
-          timestamp: d.timestamp || new Date().toISOString(),
-          user: d.userAnonymized || d.user || "USER-EDD4309534",
-          status: d.decision || d.status || "RECHAZADO",
-          signature: d.sha256 || d.signature || "a29d21f5bf04f769"
-        };
-      } catch(e) { return null; }
-    }).filter(Boolean).reverse();
-    res.writeHead(200);
-    return res.end(JSON.stringify({ logs }));
-  }
-
-  // Endpoint POST: Intercept / Registrar evento
-  if (url.includes("intercept") && req.method === "POST") {
-    let body = "";
-    req.on("data", chunk => { body += chunk; });
-    req.on("end", () => {
-      let parsed = {};
-      try { parsed = JSON.parse(body); } catch(e) {}
-      
-      const evidenceId = "EV-" + new Date().toISOString().replace(/[-:T]/g, "").slice(0, 8) + "-" + Math.floor(1000 + Math.random() * 9000);
-      const receipt = {
-        "@context": "https://schema.saare.ai/v4/evidence.jsonld",
-        "type": "GovernanceDecisionReceipt",
-        "evidenceId": evidenceId,
-        "timestamp": new Date().toISOString(),
-        "scenario": "MS3V_GLOBAL_NODE_L7",
-        "userAnonymized": parsed.user || "USER-EDD4309534",
-        "promptIntercepted": parsed.prompt || "",
-        "decision": parsed.decision || "RECHAZADO",
-        "reason": "Bloqueo Determinista L7: PII / DNI Detectado",
-        "sha256": "a29d21f5bf04f769-MAD-ED25519-SIG-PII-BLOCK"
-      };
-
-      fs.appendFileSync(LEDGER_FILE, JSON.stringify(receipt) + "\n", "utf8");
-      res.writeHead(200);
-      res.end(JSON.stringify({ status: "OK", receipt }));
-    });
-    return;
-  }
-
-  res.writeHead(404);
-  res.end(JSON.stringify({ error: "No encontrado", path: url }));
+  res.json({ success: true, scenarios: libraryScenes });
 });
 
-server.listen(3002, () => {
-  console.log("=== SAARE BRIDGE OPERATIVO EN PUERTO 3002 (POST INTERCEPT ENABLED) ===");
+// INTERCEPTOR L7 PARA LA EXTENSIÓN DE GEMINI (/api/v1/runs)
+const handleRuns = (req, res) => {
+  const body = req.body || {};
+  const text = (body.promptInput || body.prompt || body.text || '').trim();
+  const runId = `RUN-${Date.now()}`;
+  
+  console.log(`[L7 RUNTIME :3001] ⚡ Prompt capturado en Gemini: "${text}"`);
+
+  const spainRule = libraryScenes.find(s => s.id === 'ES_CUMPLIMIENTO_ESPANA');
+  const injectionRule = libraryScenes.find(s => s.id === 'TOP_PROMPT_INJECTION');
+
+  let hasDni = /\b\d{7,9}[A-Za-z0-9]?\b/i.test(text) || /dni/i.test(text);
+  let isJailbreak = /ignore|bypass|dan|system prompt/i.test(text);
+
+  let verdict = 'ACEPTADO';
+  let scenario = 'España - LOPDGDD & AEPD';
+  let cryptoSeal = `AES256-AEPD-ES-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+  if (hasDni && spainRule?.licensed) {
+    verdict = 'RECHAZADO';
+    scenario = 'España - LOPDGDD & AEPD';
+  } else if (isJailbreak && injectionRule?.licensed) {
+    verdict = 'RECHAZADO';
+    scenario = 'Jailbreak & Prompt Injection Guard';
+  } else if (!spainRule?.licensed && !injectionRule?.licensed) {
+    verdict = 'PASSTHROUGH';
+    scenario = 'NINGUNO (RUNTIME PAUSADO)';
+  }
+
+  const newLog = {
+    id: `EV-${Math.floor(100000 + Math.random() * 900000)}`,
+    prompt: `"${text}"`,
+    scene: scenario,
+    verdict: verdict,
+    action: 'PDF Sellado',
+    cryptoSeal: cryptoSeal,
+    promptSummary: text,
+    timestamp: new Date().toISOString()
+  };
+
+  auditLogs.unshift(newLog);
+
+  res.status(200).json({
+    runId: runId,
+    verdict: verdict,
+    evidence: {
+      scenarioApplied: scenario,
+      cryptoSeal: cryptoSeal
+    }
+  });
+};
+
+app.all(['/api/v1/runs', '/runs', '/api/runs'], handleRuns);
+app.get(['/events', '/api/events', '/logs', '/api/logs'], (req, res) => res.json(auditLogs));
+app.get(['/scenarios', '/api/scenarios', '/api/v1/scenarios'], (req, res) => res.json(libraryScenes));
+
+// Rutas Suite
+app.post(['/api/runtime/deploy', '/deploy'], (req, res) => {
+  res.json({ success: true, token: `SAARE-TOKEN-ENT-M57TOVV`, chargeAmount: 0.50, currency: 'EUR' });
 });
+
+// ESCUCHAR EN PUERTOS :3001 (Proxy/Extension/Consola) Y :3002 (Control Plane)
+app.listen(3001, () => console.log('=== S.A.A.R.E. CONTROL PLANE LICENSING RUNTIME EN PUERTO 3001 ==='));
+const app3002 = express();
+app3002.use(cors({ origin: '*', credentials: true }));
+app3002.use(express.json());
+app3002.use(app);
+app3002.listen(3002, () => console.log('✓ Control Plane Espejo en :3002'));

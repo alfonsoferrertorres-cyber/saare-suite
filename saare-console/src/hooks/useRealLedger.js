@@ -7,11 +7,11 @@ export function useRealLedger() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch('http://localhost:3002/api/logs');
+        const res = await fetch('http://localhost:3001/api/logs');
         if (res.ok) {
           const data = await res.json();
           setLogs(data.logs || data);
-          setStatus('CONECTADO (3002)');
+          setStatus('CONECTADO (3001)');
         }
       } catch (err) {
         setStatus('DISCONNECTED');
@@ -25,3 +25,4 @@ export function useRealLedger() {
 
   return { logs, status };
 }
+

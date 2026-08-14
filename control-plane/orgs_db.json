@@ -1,0 +1,18 @@
+{
+  "org_acme_001": {
+    "org_id": "org_acme_001",
+    "name": "ACME Corporation / Alfonso Admin",
+    "licenses": [
+      {
+        "id": "lic_ent_2026",
+        "type": "ENTERPRISE_PRO",
+        "status": "ACTIVE"
+      }
+    ],
+    "active_scenarios": [
+      "ES_CUMPLIMIENTO_ESPANA",
+      "PCI_DSS_BANKING",
+      "EU_AI_ACT_HIGH_RISK"
+    ]
+  }
+}

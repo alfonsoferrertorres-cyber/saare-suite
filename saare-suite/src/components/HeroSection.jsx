@@ -21,13 +21,13 @@ export default function HeroSection() {
         {/* Botonera Principal de Enlaces */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
           <a 
-            href="/console" 
+            href="http://localhost:5173" 
             className="px-6 py-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg shadow-blue-600/30"
           >
             Acceder a la Consola
           </a>
           <a 
-            href="https://console.saare.es" 
+            href="http://localhost:5173" 
             target="_blank" 
             rel="noopener noreferrer"
             className="px-6 py-3.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition"
@@ -35,7 +35,7 @@ export default function HeroSection() {
             Consola Directa (Edge)
           </a>
           <a 
-            href="#arquitectura" 
+            href="http://localhost:5173" 
             className="px-6 py-3.5 rounded-lg bg-transparent hover:bg-slate-900 text-slate-400 hover:text-white border border-slate-800 font-medium transition"
           >
             Ver Arquitectura
@@ -45,3 +45,8 @@ export default function HeroSection() {
     </section>
   );
 }
+
+
+
+
+

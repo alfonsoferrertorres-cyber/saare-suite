@@ -7,7 +7,7 @@ export async function processGovernanceReceipt(evidenceLog, userToken) {
 
   // B. Notificación y registro en Control-Plane con el Token del usuario
   try {
-    await fetch('http://localhost:3002/api/intercept', {
+    await fetch('http://localhost:3001/api/intercept', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -19,3 +19,4 @@ export async function processGovernanceReceipt(evidenceLog, userToken) {
     console.error('[CONTROL-PLANE] Error de sincronización con el token:', err);
   }
 }
+
