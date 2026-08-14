@@ -6,7 +6,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('runlive');
   const [events, setEvents] = useState([]);
   const [vaultAudit, setVaultAudit] = useState(null);
-  const [selectedSceneFilter, setSelectedSceneFilter] = useState('ALL');
   const [scenarios, setScenarios] = useState([
     { id: 'ES_CUMPLIMIENTO_ESPANA', title: 'España - LOPDGDD & AEPD', category: 'ENS-ALTO', compliance: 'ISO 42001 / LOPDGDD Art. 5', licensed: true, desc: 'Anonimización en tiempo real de DNI, NIE, IBAN y nóminas en suelo español.' },
     { id: 'TOP_PROMPT_INJECTION', title: 'Jailbreak & Prompt Injection Guard', category: 'EU-AI-ACT', compliance: 'EU AI Act Art. 15 (Robustness)', licensed: true, desc: 'Detección proactiva de inyecciones de código y bypass de reglas (DAN mode).' },
@@ -42,81 +41,85 @@ export default function App() {
   const latestEvent = events.length > 0 ? events[0] : null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#eef2f6', fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
+    <div style={{ minHeight: '100vh', background: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0f172a' }}>
       
-      {/* Banner Corporativo */}
-      <div style={{ background: '#ffffff', borderBottom: '1px solid #cbd5e1', padding: '24px 40px', display: 'flex', alignItems: 'center', gap: '30px' }}>
-        <div style={{ width: '80px', height: '80px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '42px' }}>
-          🧠
-        </div>
-        <div>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: 900, color: '#c5a059', margin: 0, letterSpacing: '-0.5px' }}>Tecnología de IA</h1>
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 900, color: '#c5a059', margin: 0, letterSpacing: '-0.5px' }}>Segura y Certificada</h2>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: '1300px', margin: '24px auto', padding: '0 20px' }}>
-        
-        {/* Barra de Estado y Gobernanza */}
-        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>SAARE OPERATION CENTER v2.5</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-              ORGANIZACIÓN: <strong>ACME Corporation</strong> | AUDITOR: <strong style={{ color: '#0284c7' }}>{sessionUser}</strong> | BÓVEDA LOCAL: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>/evidence_vault</code>
-              <span style={{ marginLeft: '12px', color: '#16a34a', fontWeight: 700 }}>● {activeCount} Habilitados</span>
-              <span style={{ marginLeft: '6px', color: '#dc2626', fontWeight: 700 }}>| {disabledCount} Deshabilitados</span>
-            </p>
+      {/* CABECERA UNIFICADA DEL SOC */}
+      <header style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '16px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+        <div style={{ maxWidth: '1350px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '48px', height: '48px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
+              🧠
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.3px' }}>
+                  SAARE OPERATION CENTER
+                </h1>
+                <span style={{ background: '#0284c7', color: '#ffffff', fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>v2.5</span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                Tecnología de IA Segura y Certificada | Bóveda Local: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#0284c7' }}>/control-plane/evidence_vault</code>
+              </p>
+            </div>
           </div>
-          <div>
-            <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '6px 14px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800 }}>
-              MASTER PASS RUNTIME ACTIVO ({activeCount} REGLAS)
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem' }}>
+              Auditor: <strong style={{ color: '#0284c7' }}>{sessionUser}</strong> | Org: <strong>ACME Corporation</strong>
+            </div>
+            <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
+              ● MASTER PASS ACTIVO ({activeCount}/4)
             </span>
           </div>
-        </div>
 
-        {/* 3 Botones Principales */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+        </div>
+      </header>
+
+      {/* CONTENIDO PRINCIPAL */}
+      <main style={{ maxWidth: '1350px', margin: '24px auto', padding: '0 24px' }}>
+        
+        {/* NAVEGACIÓN POR PESTAÑAS */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button
             onClick={() => setActiveTab('runlive')}
-            style={{ background: activeTab === 'runlive' ? '#0284c7' : '#ffffff', color: activeTab === 'runlive' ? '#ffffff' : '#334155', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+            style={{ background: activeTab === 'runlive' ? '#0284c7' : '#ffffff', color: activeTab === 'runlive' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
           >
-            S.A.A.R.E. (RunLive) ⚡
+            ⚡ S.A.A.R.E. (RunLive)
           </button>
           <button
             onClick={() => setActiveTab('global')}
-            style={{ background: activeTab === 'global' ? '#0284c7' : '#ffffff', color: activeTab === 'global' ? '#ffffff' : '#334155', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+            style={{ background: activeTab === 'global' ? '#0284c7' : '#ffffff', color: activeTab === 'global' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
           >
-            Registro Global ({events.length})
+            📋 Registro Global ({events.length})
           </button>
           <button
             onClick={() => setActiveTab('scenarios')}
-            style={{ background: activeTab === 'scenarios' ? '#0284c7' : '#ffffff', color: activeTab === 'scenarios' ? '#ffffff' : '#334155', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+            style={{ background: activeTab === 'scenarios' ? '#0284c7' : '#ffffff', color: activeTab === 'scenarios' ? '#ffffff' : '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.15s ease' }}
           >
-            Biblioteca de Escenas ({scenarios.length})
+            🛡️ Biblioteca de Escenas ({scenarios.length})
           </button>
         </div>
 
-        {/* TAB: RUNLIVE FORENSE AUTOMÁTICO (SIN FORMULARIOS DEMO) */}
+        {/* TAB 1: RUNLIVE FORENSE AUTOMÁTICO */}
         {activeTab === 'runlive' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* AUDITORÍA AUTOMÁTICA DE CADA UNA DE LAS ESCENAS CONTRATADAS */}
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1e293b' }}>
-                    🔍 AUDITOR FORENSE WEBCRYPTO (W3C API) - LECTURA DE BÓVEDA DE ESCENAS
-                  </h4>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
+                    AUDITOR FORENSE WEBCRYPTO (W3C API) - ESTADO DE ESCENAS CONTRATADAS
+                  </h3>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Validación inmutable de evidencias leídas desde el disco por el Runtime y Control Plane.
+                    Verificación inmutable de archivos JSON sellados en bóveda.
                   </p>
                 </div>
                 <span style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                  📂 {events.length} Archivos Periciales Sellados
+                  📂 {events.length} Evidencias en Bóveda
                 </span>
               </div>
 
-              {/* Grid de las 4 escenas contratadas */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 {(vaultAudit?.scenariosAudit || scenarios.map(s => ({
                   sceneId: s.id,
@@ -128,13 +131,13 @@ export default function App() {
                 }))).map((sc, i) => (
                   <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>{sc.compliance}</span>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d' }}>● INMUTABLE</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d' }}>● SELLADO</span>
                       </div>
-                      <h5 style={{ margin: '6px 0 4px 0', fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>{sc.title}</h5>
+                      <h4 style={{ margin: '4px 0', fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>{sc.title}</h4>
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '10px' }}>
-                        Evidencias registradas en bóveda: <strong style={{ color: '#0f172a' }}>{sc.evidencesCount}</strong>
+                        Evidencias registradas: <strong style={{ color: '#0f172a' }}>{sc.evidencesCount}</strong>
                       </div>
                     </div>
 
@@ -147,7 +150,7 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>Sin incidentes pendientes en esta escena</span>
+                        <span style={{ color: '#94a3b8' }}>Sin incidentes pendientes</span>
                       )}
                     </div>
                   </div>
@@ -155,12 +158,12 @@ export default function App() {
               </div>
             </div>
 
-            {/* TELEMETRÍA DEL ÚLTIMO PROMPT EN MEMORIA VOLÁTIL */}
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            {/* TELEMETRÍA DEL ÚLTIMO PROMPT */}
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#334155' }}>
-                  ⚡ TELEMETRÍA L7 EN MEMORIA VOLÁTIL (ÚLTIMA INTERCEPCIÓN)
-                </h4>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
+                  TELEMETRÍA EN MEMORIA VOLÁTIL (PRE-FLIGHT L7)
+                </h3>
                 <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
                   LATENCIA: 1.4 ms
                 </span>
@@ -173,32 +176,32 @@ export default function App() {
                     <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>"{latestEvent.promptSummary || latestEvent.prompt}"</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>ESCENARIO & MARCO:</span>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>ESCENARIO APLICADO:</span>
                     <div style={{ fontWeight: 700, color: '#0284c7', marginTop: '4px' }}>{latestEvent.scenarioApplied || latestEvent.scene}</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>DIRECCIÓN RAM VOLÁTIL:</span>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>DIRECCIÓN RAM:</span>
                     <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#15803d', marginTop: '4px' }}>{latestEvent.ramAddress || '0x7FFF8A42B100'}</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>FIRMA HARDWARE:</span>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>SELLO CRIPTOGRÁFICO:</span>
                     <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#334155', marginTop: '4px' }}>{latestEvent.cryptoSeal || 'AES256-AEPD-ES'}</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>Esperando intercepciones...</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>Esperando intercepciones en tiempo real...</div>
               )}
             </div>
 
           </div>
         )}
 
-        {/* TAB: REGISTRO GLOBAL DE EVIDENCIAS */}
+        {/* TAB 2: REGISTRO GLOBAL DE EVIDENCIAS */}
         {activeTab === 'global' && (
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase' }}>
-              HISTORIAL DE EVIDENCIAS EN AUDITORÍA (ARCHIVOS DE BÓVEDA)
-            </h4>
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase' }}>
+              HISTORIAL DE EVIDENCIAS EN AUDITORÍA (BÓVEDA DE DISCO)
+            </h3>
             
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
@@ -225,7 +228,7 @@ export default function App() {
                     </td>
                     <td style={{ padding: '12px' }}>
                       <button onClick={() => setActiveTab('runlive')} style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
-                        Auditar W3C
+                        Verificar W3C
                       </button>
                     </td>
                   </tr>
@@ -235,11 +238,11 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB: BIBLIOTECA DE ESCENARIOS */}
+        {/* TAB 3: BIBLIOTECA DE ESCENARIOS */}
         {activeTab === 'scenarios' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {scenarios.map(s => (
-              <div key={s.id} style={{ background: '#ffffff', borderRadius: '12px', padding: '20px', border: s.licensed ? '1px solid #86efac' : '1px solid #fca5a5', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div key={s.id} style={{ background: '#ffffff', borderRadius: '12px', padding: '20px', border: s.licensed ? '1px solid #86efac' : '1px solid #fca5a5', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', color: '#475569' }}>{s.category}</span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: s.licensed ? '#16a34a' : '#dc2626' }}>
@@ -268,7 +271,7 @@ export default function App() {
           </div>
         )}
 
-      </div>
+      </main>
     </div>
   );
 }

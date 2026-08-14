@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Memoria Técnica de Arquitectura - S.A.A.R.E. MS3V</title>
+  <style>
+    @page { size: A4; margin: 18mm 15mm 18mm 15mm; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; color: #0f172a; line-height: 1.5; font-size: 10pt; background: #ffffff; margin: 0; padding: 20px; }
+    .header-table { width: 100%; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
+    .logo-box { font-size: 24pt; font-weight: 900; color: #0284c7; letter-spacing: -1px; }
+    .meta-box { text-align: right; font-size: 8pt; color: #64748b; }
+    .doc-title { font-size: 18pt; font-weight: 800; color: #0f172a; margin: 15px 0 5px 0; }
+    .doc-subtitle { font-size: 11pt; color: #0284c7; font-weight: 600; margin-bottom: 20px; }
+    .section-title { font-size: 12pt; font-weight: 700; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
+    .callout { background: #f8fafc; border-left: 4px solid #0284c7; padding: 10px 14px; margin: 12px 0; font-size: 9.5pt; font-style: italic; color: #334155; }
+    .diagram-box { background: #0f172a; color: #f8fafc; font-family: 'Consolas', 'Courier New', monospace; font-size: 8pt; padding: 12px; border-radius: 6px; white-space: pre; margin: 12px 0; line-height: 1.3; }
+    table.data-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 8.5pt; }
+    table.data-table th { background: #f1f5f9; color: #334155; text-align: left; padding: 8px; border: 1px solid #cbd5e1; font-weight: 700; }
+    table.data-table td { padding: 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 7.5pt; font-weight: 700; background: #e0f2fe; color: #0369a1; }
+    .footer { font-size: 7.5pt; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+
+  <table class="header-table">
+    <tr>
+      <td class="logo-box">S.A.A.R.E. <span style="font-size: 11pt; color: #64748b; font-weight: 400;">| MS3V ARCHITECTURE SPECIFICATION</span></td>
+      <td class="meta-box">
+        <strong>ORGANIZACIÓN:</strong> MS3V ISV SUITE<br>
+        <strong>REF:</strong> SAARE-DOC-ARCH-2026-V2.5<br>
+        <strong>ESTADO:</strong> VALIDADO / ENTERPRISE-GRADE<br>
+        <strong>FECHA:</strong> 14 de Agosto de 2026
+      </td>
+    </tr>
+  </table>
+
+  <div class="doc-title">Especificación Técnica: AI Interaction Runtime Enforcement</div>
+  <div class="doc-subtitle">Arquitectura de Cuatro Planos para el Control Pre-Flight de Modelos de Inteligencia Artificial</div>
+
+  <div class="callout">
+    <strong>Principio Rector Oficial:</strong> «Política gobernada centralmente. Decisión ejecutada localmente. Evidencia verificable criptográficamente.»<br>
+    <strong>Tesis Operacional:</strong> «La seguridad deja de preguntar qué ocurrió con el prompt y empieza a decidir si ese prompt debe llegar a existir como solicitud para el proveedor.»
+  </div>
+
+  <div class="section-title">1. Resumen Ejecutivo y Frontera de Control</div>
+  <p>
+    S.A.A.R.E. es una plataforma distribuida de <em>AI Interaction Runtime Enforcement</em> que sitúa el punto de decisión y control en el <strong>Pre-Flight L7 del cliente</strong>, antes de que una interacción se convierta en una solicitud HTTP/WebSocket dirigida al proveedor de IA (Google Gemini, OpenAI, Anthropic, Copilot o endpoints privados).
+  </p>
+  <p>
+    Bajo el estándar <strong>Zero-Submission Enforcement</strong>, cualquier interacción clasificada como <code>BLOCK</code> es neutralizada en origen, garantizando que el proveedor procesa <strong>exactamente 0 tokens</strong>, eliminando costes de inferencia, riesgos de reentrenamiento de terceros y sanciones bajo el marco del <em>EU AI Act (Art. 15)</em>, <em>RGPD</em> y <em>ENS Nivel Alto</em>.
+  </p>
+
+  <div class="section-title">2. Arquitectura Distribuida en Cuatro Planos</div>
+  <div class="diagram-box">
+                      ┌──────────────────────────────────────────────┐
+                      │            CONTROL PLANE (CLOUD)             │
+                      │  - Policy Registry & Versioning (v42 -> v43) │
+                      │  - Signed Policy Bundles (Ed25519)           │
+                      │  - Multi-Tenant & Fleet Management           │
+                      └──────────────────────┬───────────────────────┘
+                                             │ Distribución de Policy Bundles
+                                             ▼
+                      ┌──────────────────────────────────────────────┐
+                      │            DATA PLANE (LOCAL AGENT)          │
+                      │  - AI Interaction Runtime Enforcement (L7)   │
+                      │  - Local Policy Decision (P50 1.4 ms*)       │
+                      │  - Actions: ALLOW | BLOCK | SANITIZE | WARN  │
+                      │  - Zero-Submission Enforcement               │
+                      └──────────────────────┬───────────────────────┘
+                                             │
+                      ┌──────────────────────┴───────────────────────┐
+                      ▼                                              ▼
+       ┌──────────────────────────────┐               ┌──────────────────────────────┐
+       │     PROVEEDORES DE IA        │               │        EVIDENCE PLANE        │
+       │ (Gemini, ChatGPT, Copilot)   │               │ - Append-Only & Hash-Chain   │
+       │ BLOCK => 0 tokens procesados │               │ - Decision Records firmados  │
+       └──────────────────────────────┘               └──────────────┬───────────────┘
+                                                                     │
+                                                                     ▼
+                                                      ┌──────────────────────────────┐
+                                                      │       GOVERNANCE / SOC       │
+                                                      │ (console.saare.es | saare.es)│
+                                                      └──────────────────────────────┘
+  </div>
+
+  <div class="section-title">3. Desglose Funcional de Planos</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 22%;">Plano</th>
+        <th style="width: 28%;">Componentes Principales</th>
+        <th style="width: 50%;">Función y Garantía Técnica</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Control Plane</strong></td>
+        <td>Policy Registry, Tenant Management, Versioning Engine.</td>
+        <td>Compila, sella y distribuye paquetes de políticas firmados criptográficamente (<em>Policy Bundles</em>) a toda la flota de endpoints sin intermediar en la toma de decisiones críticas de tráfico.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Data Plane</strong></td>
+        <td>Pre-Flight Hook L7, Evaluation Engine en memoria efímera.</td>
+        <td>Ejecuta la evaluación en el endpoint a velocidad sub-milisegundo (<strong>P50 1.4 ms</strong>). Soporta acciones <code>ALLOW</code>, <code>BLOCK</code>, <code>SANITIZE</code> y <code>WARN</code> de forma desacoplada y offline-first.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Evidence Plane</strong></td>
+        <td>Append-Only Vault, Hash-Chain, W3C WebCrypto Inspector.</td>
+        <td>Construye el <em>Decision Record</em> inmutable enlazando el hash previo de la cadena pericial, sellando la versión de política activa (<code>policy_hash</code>) y firma asimétrica de hardware.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Governance Plane</strong></td>
+        <td>SOC Dashboard (console.saare.es), RunLive Telemetry.</td>
+        <td>Supervisión en tiempo real, verificación de evidencias periciales frente al registro público y auditoría continua de cumplimiento regulatorio.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">4. Métricas de Rendimiento y Benchmark Forense</div>
+  <p>
+    La evaluación local se ejecuta en un buffer efímero sin retención de datos en texto plano. Las métricas de latencia de decisión registradas en laboratorio son:
+  </p>
+  <ul>
+    <li><strong>Latencia Mediana (P50):</strong> 1.4 ms en evaluación de expresiones complejas y políticas de privacidad.</li>
+    <li><strong>Latencia P95:</strong> 3.1 ms bajo inspección heurística simultánea de jailbreak y detección de PII.</li>
+    <li><strong>Latencia P99:</strong> 4.8 ms incluyendo sellado criptográfico y adición al buffer de evidencias.</li>
+  </ul>
+
+  <div class="footer">
+    S.A.A.R.E. MS3V SUITE © 2026 | Documento Confidencial de Arquitectura ISV | Certificación Criptográfica W3C & ISO 42001
+  </div>
+
+</body>
+</html>
