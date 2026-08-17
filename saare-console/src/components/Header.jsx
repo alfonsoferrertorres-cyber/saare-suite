@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export function Header() {
   const downloadStandaloneConsole = () => {
@@ -40,7 +40,7 @@ return (
       </div>
             <div className="flex items-center gap-3 border-l border-slate-700 pl-4">
           <div className="flex flex-col text-right">
-            <span className="text-xs font-semibold text-slate-300">alfonsosb1@gmail.com</span>
+            <span className="text-xs font-semibold text-slate-300">auditor@empresa.com</span>
             <span className="text-[10px] text-emerald-400 font-mono">ADMIN / CISO</span>
           </div>
           <button 

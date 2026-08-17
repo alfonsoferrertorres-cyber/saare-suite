@@ -1,11 +1,8 @@
 ﻿{
-  "version": "0.1.1",
-  "notes": "Actualización de interfaz y nombres de botones de navegación.",
-  "pub_date": "2026-08-11T17:16:03Z",
-  "platforms": {
-    "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbUpqK0lsSGR5S0lhTVMzYmlrYVBVQithZWFaNWV2VG1ROUtXTGhrRWR1bC8xSFVGaDR5K2tXTmlLRCt4NmtlaFl6TkVpTWFJVzFydDBMTjFCSUVqcVRsZlVnUldoL2dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2NDY4NTYwCWZpbGU6c2FhcmVfMC4xLjFfeDY0LXNldHVwLmV4ZQpmekYzTEJGUUsvbkpQaXNreCtEbFlOa3I2U2pGRitHcVppei9BdXpGV2ZWcjNLaFVtYmRXRGdEWGU5N0RzZysxbklGRlVHdGEzZ0FEWkZqd3JOU0ZDQT09Cg==",
-      "url": "https://www.saare.es/downloads/saare-setup.exe"
-    }
-  }
+    "version":  "2.5.0",
+    "name":  "S.A.A.R.E. AI Runtime Interceptor",
+    "rfc3161_sealed":  true,
+    "sha256":  "D84B6E025B910D5B2B0D66C90231868977968373A3F3D677949F58A1B74EE5F1",
+    "download_url":  "https://console.saare.es/downloads/saare-l7-extension-v2.5.0.zip",
+    "manifest_version":  3
 }
