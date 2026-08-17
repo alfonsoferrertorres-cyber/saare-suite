@@ -1,11 +1,4 @@
-
-              
-                ¿No tienes credenciales?
-                
-                  Registrarse / Comprar Licencia →
-                
-              
-            import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import cabeceraImg from './public/CABECERA WEB.jfif';
 
 const DEFAULT_BASE_SCENARIOS = [
@@ -145,7 +138,17 @@ export default function App() {
             >
               {isValidating ? 'Validando Custodio...' : 'Iniciar Sesión & Desbloquear'}
             </button>
-          </form>
+          
+              <div className="pt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-700/60 mt-3">
+                <span>¿No tienes credenciales?</span>
+                <a
+                  href="https://www.saare.es"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 font-medium underline-offset-4 transition-colors">Registrarse / Comprar Licencia &rarr;
+                </a>
+              </div>
+            </form>
 
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1e293b', fontSize: '11px', color: '#64748b' }}>
             Nodo Inmutable SHA-256: <span style={{ fontFamily: 'monospace', color: '#22d3ee' }}>128fa8c937f946a0...</span>
