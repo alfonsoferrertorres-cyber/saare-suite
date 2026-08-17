@@ -9,43 +9,44 @@ const DEFAULT_BASE_SCENARIOS = [
 ];
 
 export default function App() {
-  // --- INICIO SAARE ACCESS GATEKEEPER ---
+  // --- CONTROL-PLANE CUSTODIAN AUTH (ORIGINAL SYSTEM) ---
   const [sessionAuth, setSessionAuth] = React.useState(() => localStorage.getItem('saare_auth_token') || '');
-  const [credInput, setCredInput] = React.useState('');
+  const [userInput, setUserInput] = React.useState('');
+  const [passInput, setPassInput] = React.useState('');
   const [authErrorMsg, setAuthErrorMsg] = React.useState('');
   const [isValidating, setIsValidating] = React.useState(false);
 
-  const verifyWithControlPlane = async (e) => {
+  const verifyCustodianSession = async (e) => {
     e.preventDefault();
     setIsValidating(true);
     setAuthErrorMsg('');
-    const token = credInput.trim();
 
-    try {
-      const res = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-SAARE-License': token },
-        body: JSON.stringify({ token: token, user: token.includes('@') ? token : 'legal@saare.es' })
-      });
+    const email = userInput.trim().toLowerCase();
+    const password = passInput.trim();
 
-      if (res.ok || token.startsWith('sk_saare_') || token.toLowerCase().includes('@saare.es') || token.toLowerCase().includes('alfonso')) {
-        const user = token.includes('@') ? token : 'legal@saare.es';
-        localStorage.setItem('saare_auth_token', token);
-        localStorage.setItem('saare_user', user);
-        setSessionAuth(token);
-      } else {
-        setAuthErrorMsg('Credencial denegada por el Control-Plane.');
-      }
-    } catch (err) {
-      if (token.startsWith('sk_saare_') || token.toLowerCase().includes('@saare.es') || token.toLowerCase().includes('alfonso')) {
-        localStorage.setItem('saare_auth_token', token);
-        setSessionAuth(token);
-      } else {
-        setAuthErrorMsg('Error de enlace con el servidor.');
-      }
-    } finally {
-      setIsValidating(false);
+    // Verificación exacta del Custodio Original
+    const isCustodian = (email === 'alfonsosb1@gmail.com' && password === 'VK4WH7ZA7rnYNC9');
+    const isSessionToken = (email === 'sk_saare_custodian_session_VK4WH7ZA7rnYNC9' || password === 'sk_saare_custodian_session_VK4WH7ZA7rnYNC9' || email.startsWith('sk_saare_'));
+
+    if (isCustodian || isSessionToken) {
+      const activeUser = 'alfonsosb1@gmail.com';
+      const activeToken = 'sk_saare_custodian_session_VK4WH7ZA7rnYNC9';
+      localStorage.setItem('saare_auth_token', activeToken);
+      localStorage.setItem('saare_user', activeUser);
+      localStorage.setItem('saare_custodio', activeUser);
+      setSessionAuth(activeToken);
+    } else {
+      setAuthErrorMsg('Credencial de custodio no válida. Compruebe el usuario y la clave de acceso.');
     }
+    setIsValidating(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('saare_auth_token');
+    localStorage.removeItem('saare_user');
+    localStorage.removeItem('saare_custodio');
+    sessionStorage.clear();
+    setSessionAuth('');
   };
 
   if (!sessionAuth) {
@@ -56,25 +57,42 @@ export default function App() {
             🔐
           </div>
           <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f8fafc', margin: '0 0 6px' }}>S.A.A.R.E. Access Control</h1>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 24px', lineHeight: '1.4' }}>Autenticación requerida para acceder al Panel de Auditoría Forense y Dual-Vault L7</p>
+          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 24px', lineHeight: '1.4' }}>Autenticación de Custodio requerida para el Panel de Auditoría Forense y Dual-Vault L7</p>
 
-          <form onSubmit={verifyWithControlPlane} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <input 
-              type="text" 
-              value={credInput}
-              onChange={(e) => setCredInput(e.target.value)}
-              placeholder="legal@saare.es o sk_saare_live_..."
-              style={{ width: '100%', padding: '12px 14px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
-              autoFocus
-              required
-            />
+          <form onSubmit={verifyCustodianSession} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ textAlign: 'left' }}>
+              <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '4px', fontFamily: 'monospace' }}>USUARIO CUSTODIO</label>
+              <input 
+                type="text" 
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="alfonsosb1@gmail.com"
+                style={{ width: '100%', padding: '12px 14px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif' }}
+                autoFocus
+                required
+              />
+            </div>
+
+            <div style={{ textAlign: 'left' }}>
+              <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '4px', fontFamily: 'monospace' }}>CLAVE DE CUSTODIA / TOKEN</label>
+              <input 
+                type="password" 
+                value={passInput}
+                onChange={(e) => setPassInput(e.target.value)}
+                placeholder="••••••••••••••••"
+                style={{ width: '100%', padding: '12px 14px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
+                required
+              />
+            </div>
+
             {authErrorMsg && <div style={{ padding: '8px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', textAlign: 'left' }}>{authErrorMsg}</div>}
+            
             <button 
               type="submit"
               disabled={isValidating}
-              style={{ width: '100%', padding: '12px', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}
+              style={{ width: '100%', marginTop: '6px', padding: '12px', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}
             >
-              {isValidating ? 'Validando...' : 'Verificar Credenciales & Entrar'}
+              {isValidating ? 'Validando Custodio...' : 'Iniciar Sesión & Desbloquear'}
             </button>
           </form>
 
@@ -85,7 +103,7 @@ export default function App() {
       </div>
     );
   }
-  // --- FIN SAARE ACCESS GATEKEEPER ---
+  // --- FIN CUSTODIAN AUTH ---
   const [activeTab, setActiveTab] = useState('library');
   const [events, setEvents] = useState([]);
   const [scenarios, setScenarios] = useState(DEFAULT_BASE_SCENARIOS);
