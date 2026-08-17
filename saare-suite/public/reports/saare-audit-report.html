@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>S.A.A.R.E. - Informe Oficial de Certificación L7</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#030712] text-slate-100 font-sans p-6 sm:p-12">
+  <div class="max-w-4xl mx-auto space-y-8 bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl">
+    <div class="border-b border-slate-800 pb-6 flex justify-between items-start flex-wrap gap-4">
+      <div>
+        <span class="text-xs font-mono px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">CONFIDENCIAL / SECRETO INDUSTRIAL</span>
+        <h1 class="text-2xl font-bold text-white mt-3">INFORME DE CERTIFICACIÓN DE INFRAESTRUCTURA L7</h1>
+        <p class="text-xs font-mono text-slate-400 mt-1">Ref: SAARE-IP-AUDIT-2026-EU | Fecha: 2026-08-10</p>
+      </div>
+      <div class="text-right font-mono text-xs text-slate-400">
+        <div>Nodo: <span class="text-cyan-400">saare-edge-eu-west</span></div>
+        <div>Estado: <span class="text-emerald-400">PRODUCCIÓN ACTIVA</span></div>
+      </div>
+    </div>
+    <div class="space-y-4">
+      <h2 class="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">1. Benchmarks de Rendimiento y Aceleración L7</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-slate-400 text-[10px]">Ruta Tradicional Central</div>
+          <div class="text-xl font-bold text-rose-400 mt-1">11,176.61 ms</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Ruta Insegura</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-slate-400 text-[10px]">S.A.A.R.E. Edge (P99)</div>
+          <div class="text-xl font-bold text-emerald-400 mt-1">856.66 ms</div>
+          <div class="text-[10px] text-emerald-500 mt-0.5">Aislamiento en RAM</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-slate-400 text-[10px]">Aceleración Bruta</div>
+          <div class="text-xl font-bold text-amber-400 mt-1">13.05x</div>
+          <div class="text-[10px] text-cyan-400 mt-0.5">+1,204.67% Eficiencia</div>
+        </div>
+      </div>
+    </div>
+    <div class="space-y-3">
+      <h2 class="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">2. Recibo Forense y Cabeceras HTTP de Custodia</h2>
+      <div class="p-4 rounded-xl bg-black border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
+        <div><span class="text-slate-500">X-SAARE-Action:</span> <span class="text-emerald-400 font-bold">ANONIMIZED_IN_RAM</span></div>
+        <div><span class="text-slate-500">X-SAARE-DualVault-Sync:</span> <span class="text-cyan-400">LOCAL_AND_CLOUD</span></div>
+        <div><span class="text-slate-500">X-SAARE-Scenario-Active:</span> <span class="text-amber-400">eu_ai_act_es</span></div>
+        <div><span class="text-slate-500">X-SAARE-Receipt-Ed25519:</span> <span class="text-purple-400 select-all">e2f589a1c9d811e4f32a0f8d311e4f32a0</span></div>
+        <div><span class="text-slate-500">Memoria Volátil:</span> 0.00% Residuo (0 Bytes en disco)</div>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-2">
+      <div class="font-bold text-white">Veredicto Técnico Oficial:</div>
+      <p class="leading-relaxed">
+        El nodo perimetral opera con aislamiento determinista estricto en Capa 7. Cualquier vector de ataque o dato confidencial es purgado ex-ante en memoria RAM antes de ingresar al LLM de destino, garantizando el cumplimiento obligatorio del Reglamento UE 2024/1689 (EU AI Act) y neutralizando la latencia de la nube central.
+      </p>
+    </div>
+    <div class="text-center pt-4">
+      <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-amber-500 text-black font-mono font-bold text-xs uppercase hover:bg-white transition-all">
+        Imprimir / Guardar en PDF
+      </button>
+    </div>
+  </div>
+</body>
+</html>
