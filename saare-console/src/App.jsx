@@ -132,12 +132,16 @@ export default function App() {
             {authErrorMsg && <div style={{ padding: '8px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', textAlign: 'left' }}>{authErrorMsg}</div>}
             
             <button 
-              type="submit"
-              disabled={isValidating}
-              style={{ width: '100%', marginTop: '6px', padding: '12px', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}
-            >
-              {isValidating ? 'Validando Custodio...' : 'Iniciar Sesión & Desbloquear'}
-            </button>
+                            
+                Iniciar Sesión & Desbloquear
+              
+
+              
+                ¿No tienes credenciales de custodio?
+                
+                  Registrarse / Comprar Licencia →
+                
+              
           </form>
 
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1e293b', fontSize: '11px', color: '#64748b' }}>
@@ -546,11 +550,16 @@ export default function App() {
                   Cancelar
                 </button>
                 <button
-                  type="submit"
-                  style={{ padding: '8px 18px', background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', textTransform: 'uppercase' }}
-                >
-                  Confirmar y Guardar Filtro
-                </button>
+                                
+                Iniciar Sesión & Desbloquear
+              
+
+              
+                ¿No tienes credenciales de custodio?
+                
+                  Registrarse / Comprar Licencia →
+                
+              
               </div>
             </form>
           </div>
