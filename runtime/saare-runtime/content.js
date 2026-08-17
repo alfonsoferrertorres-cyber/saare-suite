@@ -197,3 +197,4 @@ window.addEventListener("click", (e) => {
   const btn = e.target.closest('button[aria-label*="Enviar"], button[aria-label*="Send"], button.send-button, .send-button-container button, mat-icon[data-mat-icon-name="send"], button:has(svg), .send-button');
   if (btn) handleIntercept(e);
 }, true);
+

@@ -1,10 +1,12 @@
-{
-  "alfonsosb1@gmail.com": {
-    "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "verified": true,
-    "verificationToken": null,
-    "tokenExpiresAt": null,
-    "createdAt": "2026-08-14T21:46:06.999Z",
-    "role": "Auditor CISO Principal"
+﻿[
+  {
+    "id": "usr_alfonso_root",
+    "email": "alfonsosb1@gmail.com",
+    "role": "CUSTODIO_ROOT",
+    "tenantId": "TENANT-SAARE-2026-ALF-0521",
+    "allocatedTokens": 25,
+    "vaultPath": "./evidence_vault/TENANT-SAARE-2026-ALF-0521",
+    "apiKey": "sk_saare_live_2607076315021",
+    "status": "VERIFIED_ACTIVE"
   }
-}
+]

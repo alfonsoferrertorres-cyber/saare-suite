@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-347736",
+  "timestamp": "02:00:08",
+  "timestampRaw": 1786752008064,
+  "isoTimestamp": "2026-08-15T00:00:08.064Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "PERO SE HABLA DE VIOLACIONES",
+  "scenario": "Auditoría Estándar ISO 42001",
+  "verdict": "PERMITIDO",
+  "signature": "SHA256:5702E4BD0466E72F"
+}

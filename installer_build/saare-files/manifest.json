@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "S.A.A.R.E. L7 Compliance Gateway",
+  "version": "2.5.0",
+  "description": "Control Perimetral y Peritaje Forense L7 en Memoria RAM",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://saare-api.alfonsoferrertorres.workers.dev/*",
+    "http://localhost:3001/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

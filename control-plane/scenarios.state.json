@@ -1,0 +1,65 @@
+﻿[
+  {
+    "id": "saare-espana-lopd",
+    "title": "España - LOPDGDD & AEPD",
+    "desc": "Detección y bloqueo perimetral de DNI, NIE, IBAN, nóminas y fuga de datos sensibles.",
+    "licensed": true,
+    "badge": "PRIVACIDAD ES",
+    "category": "compliance",
+    "price": "Incluido"
+  },
+  {
+    "id": "saare-l7-jailbreak",
+    "title": "TOP L7: Jailbreak & Prompt Injection Guard",
+    "desc": "Mitigación de ataques adversarios, modo DAN y anulación de directivas perimetrales.",
+    "licensed": true,
+    "badge": "CIBERSEGURIDAD",
+    "category": "security",
+    "price": "Incluido"
+  },
+  {
+    "id": "saare-forensic-factcheck",
+    "title": "Fact-Checking Forense & Fake Disprover",
+    "desc": "Trazabilidad y sellado criptográfico SHA-256 de consistencia documental e ISO 42001.",
+    "licensed": true,
+    "badge": "TRAZABILIDAD",
+    "category": "audit",
+    "price": "Incluido"
+  },
+  {
+    "id": "saare-token-costguard",
+    "title": "Optimizador de Tokens & CostGuard",
+    "desc": "Reducción de consumo de tokens (20-40%) y modo bypass para auditoría FinOps.",
+    "licensed": true,
+    "badge": "FINOPS IT",
+    "category": "finops",
+    "price": "Incluido"
+  },
+  {
+    "id": "saare-eu-ai-act-highrisk",
+    "title": "EU AI Act - Sistemas de Alto Riesgo (Anexo III)",
+    "desc": "Evaluación de conformidad técnica, supervisión humana y gestión de riesgos conforme al Reglamento UE 2024/1689.",
+    "licensed": false,
+    "badge": "AI ACT PRO",
+    "category": "compliance",
+    "price": "€149/mes"
+  },
+  {
+    "id": "saare-legal-caselaw",
+    "title": "Auditoría Forense Legal (Case-Law & Sentencias)",
+    "desc": "Extracción pericial automatizada de jurisprudencia del Tribunal Supremo y dictámenes jurídicos.",
+    "licensed": false,
+    "badge": "LEGALTECH",
+    "category": "legal",
+    "price": "€199/mes"
+  },
+  {
+    "id": "saare-pci-dss-fintech",
+    "title": "Fintech & Banca - PCI-DSS v4.0 Guard",
+    "desc": "Aislamiento criptográfico estricto de números PAN, CVV y credenciales financieras.",
+    "licensed": false,
+    "badge": "FINTECH SEC",
+    "category": "security",
+    "price": "€179/mes"
+  }
+]

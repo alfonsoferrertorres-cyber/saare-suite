@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-447519",
+  "timestamp": "22:31:19",
+  "timestampRaw": 1786825879849,
+  "promptSummary": "alfonso [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "Política Corporativa Interna",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:01bca7f4d2046e30b5521caa7c0a23a15816f36fcc5cf6d7a78d5314f1a66fc4",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "REGLA_PERSONALIZADA",
+    "reason": "Coincidencia con regla personalizada: \"alfonso\"",
+    "norma": "Política Corporativa Interna"
+  }
+}

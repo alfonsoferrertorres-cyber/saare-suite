@@ -1,28 +1,30 @@
 ﻿{
-  "manifest_version": 3,
-  "name": "S.A.A.R.E. AI Runtime Interceptor",
-  "version": "2.5.0",
-  "description": "Interceptor L7 in-memory y sellado de evidencia para chats de IA.",
-  "permissions": ["storage"],
-  "host_permissions": [
-    "http://localhost:3001/*",
-    "https://gemini.google.com/*",
-    "https://chatgpt.com/*",
-    "https://claude.ai/*"
-  ],
-  "content_scripts": [
-    {
-      "matches": [
-        "https://gemini.google.com/*",
-        "https://chatgpt.com/*",
-        "https://claude.ai/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_idle",
-      "all_frames": true
-    }
-  ],
-  "action": {
-    "default_popup": "popup.html"
-  }
+    "manifest_version":  3,
+    "name":  "S.A.A.R.E. AI Runtime Interceptor",
+    "version":  "2.5.0",
+    "description":  "Interceptor L7 in-memory y sellado de evidencia para chats de IA.",
+    "permissions":  [
+                        "storage"
+                    ],
+    "host_permissions":  [
+                             "http://localhost:3001/*",
+                             "https://gemini.google.com/*"
+                         ],
+    "content_scripts":  [
+                            {
+                                "matches":  [
+                                                "https://gemini.google.com/*",
+                                                "https://chatgpt.com/*",
+                                                "https://claude.ai/*"
+                                            ],
+                                "js":  [
+                                           "content.js"
+                                       ],
+                                "run_at":  "document_idle",
+                                "all_frames":  true
+                            }
+                        ],
+    "action":  {
+                   "default_popup":  "popup.html"
+               }
 }
