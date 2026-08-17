@@ -9,7 +9,7 @@ const DEFAULT_BASE_SCENARIOS = [
 ];
 
 export default function App() {
-  // --- CONTROL-PLANE ACCESS GATEKEEPER ---
+  // --- INICIO SAARE ACCESS GATEKEEPER ESTILIZADO ---
   const [sessionAuth, setSessionAuth] = React.useState(() => localStorage.getItem('saare_auth_token') || '');
   const [credInput, setCredInput] = React.useState('');
   const [authErrorMsg, setAuthErrorMsg] = React.useState('');
@@ -34,14 +34,14 @@ export default function App() {
         localStorage.setItem('saare_user', user);
         setSessionAuth(token);
       } else {
-        setAuthErrorMsg('Credencial rechazada por el Control-Plane.');
+        setAuthErrorMsg('Credencial denegada por el Control-Plane.');
       }
     } catch (err) {
       if (token.startsWith('sk_saare_') || token.toLowerCase().includes('@saare.es') || token.toLowerCase().includes('alfonso')) {
         localStorage.setItem('saare_auth_token', token);
         setSessionAuth(token);
       } else {
-        setAuthErrorMsg('Error de enlace con el servidor de autenticación.');
+        setAuthErrorMsg('Error de enlace con el servidor.');
       }
     } finally {
       setIsValidating(false);
@@ -50,42 +50,42 @@ export default function App() {
 
   if (!sessionAuth) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#070b14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ maxWidth: '440px', width: '100%', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '2.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', textAlign: 'center', color: '#f8fafc' }}>
-          <div style={{ width: '64px', height: '64px', backgroundColor: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.3)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem auto', fontSize: '28px' }}>
+      <div style={{ minHeight: '100vh', width: '100vw', backgroundColor: '#070b14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
+        <div style={{ maxWidth: '420px', width: '100%', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', textAlign: 'center' }}>
+          <div style={{ width: '56px', height: '56px', backgroundColor: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px' }}>
             🔐
           </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#ffffff', margin: '0 0 0.5rem 0' }}>S.A.A.R.E. Access Control</h1>
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 1.5rem 0', lineHeight: '1.4' }}>Autenticación requerida para acceder al Panel de Auditoría Forense y Dual-Vault L7</p>
+          <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f8fafc', margin: '0 0 6px' }}>S.A.A.R.E. Access Control</h1>
+          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 24px', lineHeight: '1.4' }}>Autenticación requerida para acceder al Panel de Auditoría Forense y Dual-Vault L7</p>
 
-          <form onSubmit={verifyWithControlPlane} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={verifyWithControlPlane} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <input 
               type="text" 
               value={credInput}
               onChange={(e) => setCredInput(e.target.value)}
               placeholder="legal@saare.es o sk_saare_live_..."
-              style={{ width: '100%', padding: '0.75rem 1rem', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
+              style={{ width: '100%', padding: '12px 14px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
               autoFocus
               required
             />
-            {authErrorMsg && <div style={{ padding: '0.5rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '0.75rem', textAlign: 'left' }}>{authErrorMsg}</div>}
+            {authErrorMsg && <div style={{ padding: '8px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', textAlign: 'left' }}>{authErrorMsg}</div>}
             <button 
               type="submit"
               disabled={isValidating}
-              style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(6, 182, 212, 0.25)' }}
+              style={{ width: '100%', padding: '12px', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}
             >
               {isValidating ? 'Validando...' : 'Verificar Credenciales & Entrar'}
             </button>
           </form>
 
-          <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #1e293b', fontSize: '0.7rem', color: '#64748b' }}>
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1e293b', fontSize: '11px', color: '#64748b' }}>
             Nodo Inmutable SHA-256: <span style={{ fontFamily: 'monospace', color: '#22d3ee' }}>128fa8c937f946a0...</span>
           </div>
         </div>
       </div>
     );
   }
-  // --- FIN ACCESS GATEKEEPER ---
+  // --- FIN SAARE ACCESS GATEKEEPER ESTILIZADO ---
   // --- CONTROL-PLANE API GATEKEEPER & DUAL-VAULT AUTH ---
   const [sessionAuth, setSessionAuth] = React.useState(() => localStorage.getItem('saare_auth_token') || '');
   const [credInput, setCredInput] = React.useState('');
