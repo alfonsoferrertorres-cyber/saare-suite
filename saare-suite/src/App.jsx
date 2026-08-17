@@ -58,6 +58,13 @@ export default function App() {
             <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-700 text-emerald-400 font-mono text-xs font-bold uppercase hover:bg-emerald-900/60 transition-all">
               <Activity className="w-3.5 h-3.5 animate-pulse" /><span>Consola Operativa</span><ExternalLink className="w-3 h-3" />
             </a>
+            <a 
+              href="/downloads/saare-installer-v2.5.zip" 
+              download 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-lg text-xs tracking-wider uppercase shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+            >
+              <span>⚡</span> Descargar Extensión L7
+            </a>
           </div>
         </div>
       </header>
