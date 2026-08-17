@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import cabeceraImg from './public/CABECERA WEB.jfif';
 
 const DEFAULT_BASE_SCENARIOS = [
@@ -24,9 +24,9 @@ export default function App() {
   const fetchData = async () => {
     try {
       const [rScen, rEv, rRules] = await Promise.all([
-        fetch('http://localhost:3001/api/v1/scenarios').catch(() => null),
-        fetch('http://localhost:3001/api/v1/events').catch(() => null),
-        fetch('http://localhost:3001/api/v1/custom-rules').catch(() => null)
+        fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/scenarios').catch(() => null),
+        fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/events').catch(() => null),
+        fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/custom-rules').catch(() => null)
       ]);
 
       if (rScen && rScen.ok) {
@@ -56,7 +56,7 @@ export default function App() {
 
   const executeToggle = async (id) => {
     try {
-      const res = await fetch('http://localhost:3001/api/v1/scenarios/toggle', {
+      const res = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/scenarios/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
@@ -91,7 +91,7 @@ export default function App() {
     e.preventDefault();
     if (!newPattern.trim()) return;
     try {
-      const res = await fetch('http://localhost:3001/api/v1/custom-rules', {
+      const res = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/custom-rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pattern: newPattern, label: newLabel })
@@ -110,7 +110,7 @@ export default function App() {
 
   const handleDeleteRule = async (id) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/v1/custom-rules/${id}`, { method: 'DELETE' });
+      const res = await fetch(`https://saare-api.alfonsoferrertorres.workers.dev/api/v1/custom-rules/${id}`, { method: 'DELETE' });
       if (res.ok) {
         const d = await res.json();
         setCustomRules(d.rules);

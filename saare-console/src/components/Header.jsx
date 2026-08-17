@@ -1,12 +1,18 @@
-﻿import React from 'react';
+import React from 'react';
 
 export function Header() {
   const downloadStandaloneConsole = () => {
     // Genera y descarga directamente la versión ejecutable cliente
-    window.open('http://localhost:3001/api/logs', '_blank');
+    window.open('https://saare-api.alfonsoferrertorres.workers.dev/api/logs', '_blank');
   };
 
-  return (
+    const handleLogout = () => {
+    localStorage.removeItem('saare_token');
+    localStorage.removeItem('saare_user');
+    sessionStorage.clear();
+    window.location.reload();
+  };
+return (
     <header className="flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 text-white">
       <div>
         <h1 className="text-xl font-bold tracking-wide text-cyan-400">S.A.A.R.E. Platform</h1>
@@ -32,7 +38,20 @@ export function Header() {
           DESCARGAR CONSOLA CLIENTE (.HTML)
         </a>
       </div>
-    </header>
+            <div className="flex items-center gap-3 border-l border-slate-700 pl-4">
+          <div className="flex flex-col text-right">
+            <span className="text-xs font-semibold text-slate-300">alfonsosb1@gmail.com</span>
+            <span className="text-[10px] text-emerald-400 font-mono">ADMIN / CISO</span>
+          </div>
+          <button 
+            onClick={handleLogout}
+            title="Cerrar sesión actual"
+            className="px-3 py-1.5 text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-md transition-all flex items-center gap-1.5"
+          >
+            <span>🚪</span> Salir
+          </button>
+        </div>
+</header>
   );
 }
 
