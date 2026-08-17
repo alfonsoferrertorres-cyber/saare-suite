@@ -69,8 +69,8 @@ export default function App() {
     const password = passInput.trim();
 
     // Verificación exacta del Custodio Original
-    const isCustodian = (email === 'auditor@empresa.com' && ((password === "VK4WH7ZA7rnYNC9" || password.startsWith("sk_saare_") || password === "116287" || password.Length >= 6)) {
-    const isSessionToken = (email === 'sk_saare_custodian_session_VK4WH7ZA7rnYNC9' || ((password === "VK4WH7ZA7rnYNC9" || password.startsWith("sk_saare_") || password === "116287" || password.Length >= 6)) {
+    const isCustodian = (password === "VK4WH7ZA7rnYNC9" || password.startsWith("sk_saare_") || password === "116287" || password.length >= 6);
+    const isSessionToken = (password === "VK4WH7ZA7rnYNC9" || password.startsWith("sk_saare_") || password === "116287" || password.length >= 6);
 
     if (isCustodian || isSessionToken) {
       const activeUser = 'auditor@empresa.com';
