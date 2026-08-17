@@ -1,4 +1,11 @@
-import React, { useState, useEffect } from 'react';
+
+              
+                ¿No tienes credenciales?
+                
+                  Registrarse / Comprar Licencia →
+                
+              
+            import React, { useState, useEffect } from 'react';
 import cabeceraImg from './public/CABECERA WEB.jfif';
 
 const DEFAULT_BASE_SCENARIOS = [
@@ -136,8 +143,7 @@ export default function App() {
               disabled={isValidating}
               style={{ width: '100%', marginTop: '6px', padding: '12px', background: 'linear-gradient(to right, #06b6d4, #2563eb)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}
             >
-              {isValidating ? 'Validando Custodio...' : 'Iniciar Sesión & Desbloquear
-              ¿No tienes credenciales?Registrarse / Comprar Licencia →'}
+              {isValidating ? 'Validando Custodio...' : 'Iniciar Sesión & Desbloquear'}
             </button>
           </form>
 
