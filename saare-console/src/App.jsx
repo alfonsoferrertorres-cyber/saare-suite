@@ -9,6 +9,23 @@ const DEFAULT_BASE_SCENARIOS = [
 ];
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('saare_auth') === 'true';
+  });
+  const [authEmail, setAuthEmail] = useState('');
+  const [authLicense, setAuthLicense] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if ((authEmail.toLowerCase().includes('saare.es') || authEmail.toLowerCase().includes('alfonso')) || authLicense.startsWith('sk_saare_')) {
+      localStorage.setItem('saare_auth', 'true');
+      localStorage.setItem('saare_user', authEmail || 'legal@saare.es');
+      setIsAuthenticated(true);
+    } else {
+      setAuthError('Credenciales no válidas. Use su correo corporativo o token sk_saare_...');
+    }
+  };
   const [activeTab, setActiveTab] = useState('library');
   const [events, setEvents] = useState([]);
   const [scenarios, setScenarios] = useState(DEFAULT_BASE_SCENARIOS);
