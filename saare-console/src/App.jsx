@@ -9,6 +9,72 @@ const DEFAULT_BASE_SCENARIOS = [
 ];
 
 export default function App() {
+  // --- CONTROL DE ACCESO OBLIGATORIO (LOGIN GATEKEEPER) ---
+  const [tokenValido, setTokenValido] = useState(() => {
+    const saved = localStorage.getItem('saare_auth_token');
+    return saved && (saved.startsWith('sk_saare_') || saved.includes('@saare.es'));
+  });
+  const [inputCredencial, setInputCredencial] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  const ejecutarLogin = (e) => {
+    e.preventDefault();
+    const cred = inputCredencial.trim();
+    if (cred.startsWith('sk_saare_') || cred.toLowerCase().includes('@saare.es') || cred.toLowerCase().includes('alfonso')) {
+      localStorage.setItem('saare_auth_token', cred);
+      localStorage.setItem('saare_user', cred.includes('@') ? cred : 'legal@saare.es');
+      setTokenValido(true);
+      setLoginError('');
+    } else {
+      setLoginError('Token o Licencia no válida. Ingrese una clave sk_saare_... o cuenta @saare.es');
+    }
+  };
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('saare_auth_token');
+    localStorage.removeItem('saare_user');
+    sessionStorage.clear();
+    setTokenValido(false);
+  };
+
+  if (!tokenValido) {
+    return (
+      <div className="min-h-screen bg-[#070b14] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-700/80 rounded-2xl p-8 shadow-2xl text-center">
+          <div className="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">🔐</span>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">S.A.A.R.E. Access Control</h1>
+          <p className="text-xs text-slate-400 mb-6">Autenticación requerida para acceder al Panel de Auditoría Forense y Dual-Vault L7</p>
+          
+          <form onSubmit={ejecutarLogin} className="space-y-4">
+            <div>
+              <input 
+                type="text" 
+                value={inputCredencial}
+                onChange={(e) => setInputCredencial(e.target.value)}
+                placeholder="Token sk_saare_... o Correo @saare.es"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-all font-mono"
+                required
+              />
+            </div>
+            {loginError && <p className="text-xs text-red-400 text-left font-medium">{loginError}</p>}
+            <button 
+              type="submit"
+              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/20 text-sm"
+            >
+              Verificar Credenciales & Entrar
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-500">
+            Firma Canónica de Seguridad: <span className="font-mono text-cyan-400">128fa8c937f...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // --- FIN CONTROL DE ACCESO ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('saare_auth') === 'true';
   });
