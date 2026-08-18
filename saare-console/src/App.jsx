@@ -171,6 +171,15 @@ export default function App() {
   const [newPattern, setNewPattern] = useState('');
   const [newLabel, setNewLabel] = useState('');
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('saare_custodian_token') || 'sk_saare_custodian_session_VK4WH7ZA7rnYNC9';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'X-SAARE-Custodian-Token': token
+    };
+  };
+
   const fetchData = async () => {
     try {
       const [rScen, rEv, rRules] = await Promise.all([
@@ -199,16 +208,31 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 1000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+
+    const load = async () => {
+      if (!isMounted) return;
+      try {
+        await fetchData();
+      } catch (err) {
+        console.error("[SAARE Polling Error]:", err);
+      }
+    };
+
+    load();
+    const intervalId = setInterval(load, 4000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const executeToggle = async (id) => {
     try {
       const res = await fetch('http://localhost:3001/api/v1/scenarios/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
@@ -243,7 +267,7 @@ export default function App() {
     try {
       const res = await fetch('http://localhost:3001/api/v1/custom-rules', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ pattern: newPattern, label: newLabel })
       });
       if (res.ok) {
