@@ -21,7 +21,11 @@ export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant,
               <h3 className="text-base font-bold text-white font-mono">Adquirir {numEmpleados} Tokens Corporativos</h3>
               <button onClick={() => setIsCheckout(false)} className="text-slate-400 hover:text-white font-bold"><X className="w-5 h-5" /></button>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); alert('Licencia de custodia asignada a ' + form.empresa); setIsCheckout(false); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); 
+    const qty = typeof checkoutData !== 'undefined' && checkoutData.seats ? checkoutData.seats : 1;
+    const email = typeof orgData !== 'undefined' && orgData.email ? orgData.email : '';
+    window.location.href = 'https://buy.stripe.com/TU_ENLACE_STRIPE?quantity=' + qty + '&prefilled_email=' + encodeURIComponent(email);
+ setIsCheckout(false); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" required placeholder="Empresa / Razón Social" value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono" />
                 <input type="text" required placeholder="CIF / NIF" value={form.cif} onChange={(e) => setForm({ ...form, cif: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono" />
