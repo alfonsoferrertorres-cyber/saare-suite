@@ -1,4 +1,4 @@
-/* S.A.A.R.E. L7 Compliance Gateway - Content Script v2.5.1 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v2.5.1 */
 console.log("[SAARE L7 Engine] Interceptor Dual Activo (Normativa Base + Reglas Personalizadas)");
 
 let customRulesCache = [];
@@ -180,3 +180,4 @@ window.addEventListener("click", (e) => {
     handleIntercept(e);
   }
 }, true);
+
