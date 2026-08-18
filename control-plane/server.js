@@ -91,7 +91,7 @@ app.get('/api/v1/events', (req, res) => {
   }
 });
 
-app.post('/api/v1/runs', (req, res) => {
+app.post(['/api/v1/runs', '/api/v1/events'], (req, res) => {
   const { promptInput, user, verdict, violationDetails } = req.body;
   const runId = 'EV-' + Math.floor(100000 + Math.random() * 900000);
   const now = new Date();

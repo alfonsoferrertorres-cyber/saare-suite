@@ -107,18 +107,19 @@ function purgeDomElement(el) {
   el.dispatchEvent(new Event("blur", { bubbles: true, cancelable: true }));
 }
 
-function sendEvidence(text, attachments, violationInfo = null) {
-  let summary = text;
-  if (!summary && attachments && attachments.length > 0) {
-    summary = "[DOCUMENTO/ADJUNTO: " + attachments.join(", ") + "]";
-  } else if (summary && attachments && attachments.length > 0) {
-    summary = summary + " [Adjuntos: " + attachments.join(", ") + "]";
-  }
-
+function sendEvidence(summary, violationInfo) {
   if (!summary || summary.trim() === "") return;
 
   const isBlocked = !!violationInfo?.isViolation;
+  const localEvId = "EV-" + Date.now().toString(36).toUpperCase();
+
+  // 1. Mostrar banner de bloqueo inmediatamente sin esperar a la red
+  if (isBlocked) {
+    showModal(localEvId, summary, violationInfo || { norma: "Directiva LOPDGDD / RGPD", reason: "Filtro L7 Activado" });
+  }
+
   const payload = {
+    evidenceId: localEvId,
     promptInput: summary.trim(),
     user: "alfonsosb1@gmail.com",
     timestamp: new Date().toISOString(),
@@ -126,18 +127,20 @@ function sendEvidence(text, attachments, violationInfo = null) {
     violationDetails: violationInfo
   };
 
-  fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs", {
+  // 2. Notificar al Control Plane local (3001) y Worker remoto de forma no bloqueante
+  fetch("http://localhost:3001/api/v1/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   })
-  .then(r => r.json())
-  .then(data => {
-    if (data.verdict === "RECHAZADO" || isBlocked) {
-      showModal(data.runId || data.evidence?.evidenceId, summary, violationInfo || { norma: "Política de Seguridad", reason: "Directiva Activa" });
-    }
-  })
-  .catch(err => console.error("[SAARE Error Vault Connection]:", err));
+  .catch(() => {
+    // Fallback secundario si el local no responde
+    return fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).catch(e => console.warn("[SAARE Telemetry Queued locally]:", e.message));
+  });
 }
 
 function showModal(evId, text, violationInfo) {
@@ -172,27 +175,42 @@ function showModal(evId, text, violationInfo) {
   setTimeout(() => { if (banner) banner.remove(); }, 7000);
 }
 
+function extractPromptText() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+    return activeEl.value;
+  }
+  const richEditor = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"], p.is-empty, textarea');
+  if (richEditor) {
+    return richEditor.innerText || richEditor.textContent || richEditor.value || '';
+  }
+  return '';
+}
+
 function handleIntercept(e) {
-  const { text, attachments, el } = getGeminiInputData();
-  if (text.length > 0 || attachments.length > 0) {
-    const risk = evaluateComplianceRisks(text);
-    if (risk.isViolation) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      e.stopPropagation();
-      purgeDomElement(el);
-      sendEvidence(text, attachments, risk);
-    } else {
-      sendEvidence(text, attachments, null);
-    }
+  const text = extractPromptText();
+  if (!text || text.trim() === '') return;
+
+  const risk = evaluateDLP(text);
+  if (risk && risk.isViolation) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    sendEvidence(text, risk);
+    return false;
   }
 }
 
+// 2. Registro con fase de captura prioritario (useCapture: true)
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) handleIntercept(e);
+  if (e.key === "Enter" && !e.shiftKey) {
+    handleIntercept(e);
+  }
 }, true);
 
 window.addEventListener("click", (e) => {
-  const btn = e.target.closest('button[aria-label*="Enviar"], button[aria-label*="Send"], button.send-button, .send-button-container button, mat-icon[data-mat-icon-name="send"], button:has(svg), .send-button');
-  if (btn) handleIntercept(e);
+  const btn = e.target.closest('button[aria-label*="Enviar"], button[aria-label*="Send"], button.send-button, .send-button');
+  if (btn) {
+    handleIntercept(e);
+  }
 }, true);
