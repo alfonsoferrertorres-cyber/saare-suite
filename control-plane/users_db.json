@@ -1,17 +1,38 @@
-{
-  "users": [
-    {
-      "email": "alfonsosb1@gmail.com",
-      "empresa": "S.A.A.R.E. Master Custodian",
-      "masterTenantId": "TENANT-SAARE-2026-ALF-0521",
-      "vaultId": "VAULT-FORENSIC-ROOT-128FA8C",
-      "sessionToken": "sk_saare_custodian_session_VK4WH7ZA7rnYNC9",
-      "active_scenarios": [
-        "compliance"
-      ],
-      "seats": 1,
-      "status": "ACTIVE",
-      "createdAt": "2026-08-18T14:17:54.934Z"
-    }
-  ]
+﻿{
+    "schema_version":  "v7.0_PRO",
+    "dual_vault_status":  "IMMUTABLE_SYNCED",
+    "users":  [
+                  {
+                      "empresa":  "S.A.A.R.E. Master Custodian",
+                      "license_key":  "SAARE-PRO-2026-1167-TEST",
+                      "valid_until":  "2027-08-18T23:59:59Z",
+                      "active_scenarios":  [
+                                               "compliance",
+                                               "dlp_l7",
+                                               "dual_vault",
+                                               "admin_audit"
+                                           ],
+                      "sessionToken":  "sk_saare_master_2026_root",
+                      "role":  "CISO / Global Admin",
+                      "tier":  "master_isv_enterprise",
+                      "status":  "ACTIVE",
+                      "email":  "alfonsosb1@gmail.com"
+                  },
+                  {
+                      "empresa":  "Cliente ISV - Certificación L7",
+                      "license_key":  "SAARE-PRO-2026-1167-TEST",
+                      "valid_until":  "2027-08-18T23:59:59Z",
+                      "active_scenarios":  [
+                                               "compliance",
+                                               "dlp_l7"
+                                           ],
+                      "sessionToken":  "sk_saare_tenant_patri_2026",
+                      "role":  "Tenant Auditor / Security Lead",
+                      "tier":  "enterprise_custodian",
+                      "status":  "ACTIVE",
+                      "email":  "pmaiquess@gmail.com"
+                  }
+              ],
+    "updated_at":  "2026-08-18T19:29:27Z",
+    "governance_engine":  "L7_PERIMETRAL_RAM_ISOLATED"
 }
