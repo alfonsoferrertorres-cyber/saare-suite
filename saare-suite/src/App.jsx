@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import HeroSection from './components/HeroSection';
 import ArchitectureSection from './components/ArchitectureSection';
 import SubventionsSection from './components/SubventionsSection';
@@ -56,7 +56,7 @@ export default function App() {
               <Sparkles className="w-3.5 h-3.5 text-black" /><span>Oferta -50% Lanzamiento</span>
             </button>
             <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-700 text-emerald-400 font-mono text-xs font-bold uppercase hover:bg-emerald-900/60 transition-all">
-              <Activity className="w-3.5 h-3.5 animate-pulse" /><span>Consola Operativa</span><ExternalLink className="w-3 h-3" />
+              <Activity className="w-3.5 h-3.5 animate-pulse" /><span>Login in saare-console</span><ExternalLink className="w-3 h-3" />
             </a>
             <a 
               href="/downloads/saare-installer-v2.5.zip" 
