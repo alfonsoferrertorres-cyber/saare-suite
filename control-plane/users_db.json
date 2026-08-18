@@ -4,7 +4,7 @@
     "users":  [
                   {
                       "empresa":  "S.A.A.R.E. Master Custodian",
-                      "license_key":  "SAARE-PRO-2026-1167-TEST",
+                      "license_key":  "SAARE-MASTER-2026-ROOT-001",
                       "valid_until":  "2027-08-18T23:59:59Z",
                       "active_scenarios":  [
                                                "compliance",
@@ -33,6 +33,6 @@
                       "email":  "pmaiquess@gmail.com"
                   }
               ],
-    "updated_at":  "2026-08-18T19:29:27Z",
+    "updated_at":  "2026-08-18T19:34:20Z",
     "governance_engine":  "L7_PERIMETRAL_RAM_ISOLATED"
 }
