@@ -115,6 +115,113 @@ app.post('/api/v1/runs', (req, res) => {
   res.json({ status: 'OK', runId, verdict: evidence.verdict, evidence });
 });
 
+
+// ==========================================
+// SAARE AUTH & STRIPE PROVISIONING ENDPOINTS
+// ==========================================
+
+// 1. Endpoint de Login / Validación de Credenciales
+app.post('/api/v1/auth/login', (req, res) => {
+  const { email, password, token } = req.body;
+  const usersDbPath = './users_db.json';
+  
+  if (!fs.existsSync(usersDbPath)) {
+    return res.status(500).json({ error: 'Base de datos de usuarios no inicializada' });
+  }
+
+  const db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
+  const user = db.users.find(u => u.email === email || u.sessionToken === token);
+
+  if (!user || user.status !== 'ACTIVE') {
+    return res.status(401).json({ error: 'Credenciales inválidas o suscripción inactiva' });
+  }
+
+  res.json({
+    success: true,
+    token: user.sessionToken || 'sk_saare_live_' + Date.now(),
+    user: {
+      email: user.email,
+      empresa: user.empresa || 'Empresa Custodia',
+      tenantId: user.masterTenantId || 'TENANT-DEFAULT',
+      active_scenarios: user.active_scenarios || ['compliance'],
+      seats: user.seats || 1
+    }
+  });
+});
+
+// 2. Endpoint de Validación de Token para Frontend Console
+app.get('/api/v1/auth/verify', (req, res) => {
+  const authHeader = req.headers.authorization || req.headers['x-saare-license'];
+  if (!authHeader) return res.status(401).json({ valid: false, error: 'Token no proporcionado' });
+
+  const rawToken = authHeader.replace('Bearer ', '');
+  const usersDbPath = './users_db.json';
+
+  if (!fs.existsSync(usersDbPath)) return res.status(500).json({ valid: false });
+
+  const db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
+  const user = db.users.find(u => u.sessionToken === rawToken);
+
+  if (!user || user.status !== 'ACTIVE') {
+    return res.status(403).json({ valid: false, error: 'Licencia inactiva o expirada' });
+  }
+
+  res.json({
+    valid: true,
+    email: user.email,
+    empresa: user.empresa,
+    tenantId: user.masterTenantId,
+    active_scenarios: user.active_scenarios || ['compliance'],
+    seats: user.seats || 1
+  });
+});
+
+// 3. Webhook de Stripe para Aprovisionamiento Automático
+app.post('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+  try {
+    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const email = session.customer_details?.email || session.prefilled_email;
+      const cif = session.client_reference_id || 'SIN_CIF';
+
+      const usersDbPath = './users_db.json';
+      let db = { users: [] };
+      if (fs.existsSync(usersDbPath)) {
+        db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
+      }
+
+      // Buscar o crear usuario
+      let user = db.users.find(u => u.email === email);
+      if (!user) {
+        user = {
+          email: email,
+          empresa: cif,
+          masterTenantId: 'TENANT-SAARE-' + Date.now(),
+          sessionToken: 'sk_saare_live_' + Buffer.from(email + Date.now()).toString('hex').slice(0, 16),
+          active_scenarios: ['compliance'],
+          seats: 1,
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString()
+        };
+        db.users.push(user);
+      } else {
+        user.status = 'ACTIVE';
+        user.active_scenarios = ['compliance'];
+      }
+
+      fs.writeFileSync(usersDbPath, JSON.stringify(db, null, 2), 'utf8');
+      console.log(`✔ Licencia aprovisionada para: ${email}`);
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Error procesando webhook:', err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
 app.listen(3001, () => {
   console.log('====================================================');
   console.log('[SAARE Control-Plane] ACTIVO Y ESCUCHANDO EN :3001');

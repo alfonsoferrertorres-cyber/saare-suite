@@ -1,12 +1,17 @@
-﻿[
-  {
-    "id": "usr_alfonso_root",
-    "email": "alfonsosb1@gmail.com",
-    "role": "CUSTODIO_ROOT",
-    "tenantId": "TENANT-SAARE-2026-ALF-0521",
-    "allocatedTokens": 25,
-    "vaultPath": "./evidence_vault/TENANT-SAARE-2026-ALF-0521",
-    "apiKey": "sk_saare_live_2607076315021",
-    "status": "VERIFIED_ACTIVE"
-  }
-]
+{
+  "users": [
+    {
+      "email": "alfonsosb1@gmail.com",
+      "empresa": "S.A.A.R.E. Master Custodian",
+      "masterTenantId": "TENANT-SAARE-2026-ALF-0521",
+      "vaultId": "VAULT-FORENSIC-ROOT-128FA8C",
+      "sessionToken": "sk_saare_custodian_session_VK4WH7ZA7rnYNC9",
+      "active_scenarios": [
+        "compliance"
+      ],
+      "seats": 1,
+      "status": "ACTIVE",
+      "createdAt": "2026-08-18T14:17:54.934Z"
+    }
+  ]
+}
