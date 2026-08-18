@@ -3,3 +3,7 @@ dist/
 .env
 target/
 *.log
+
+# Ignorar paquetes comprimidos
+*.zip
+!saare-console/public/saare-extension.zip
