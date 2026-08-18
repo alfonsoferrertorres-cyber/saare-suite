@@ -208,25 +208,29 @@ export default function App() {
   };
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
-    const load = async () => {
-      if (!isMounted) return;
+    const executeFetch = async () => {
+      if (!active) return;
       try {
         await fetchData();
       } catch (err) {
-        console.error("[SAARE Polling Error]:", err);
+        console.warn("[SAARE Sync Fallback]:", err.message);
       }
     };
 
-    load();
-    const intervalId = setInterval(load, 4000);
+    executeFetch();
+    const interval = setInterval(executeFetch, 4000);
 
     return () => {
-      isMounted = false;
-      clearInterval(intervalId);
+      active = false;
+      clearInterval(interval);
     };
   }, []);
+
+
+
+  
 
   const executeToggle = async (id) => {
     try {
