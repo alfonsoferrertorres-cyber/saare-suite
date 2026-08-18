@@ -1,29 +1,28 @@
-﻿export async function onRequestPost(context) {
-  try {
-    const data = await context.request.json();
-    const { seats, plan, totalAmount, email, companyName, cif } = data;
+﻿export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  
+  // Obtener parámetros de la URL o del cuerpo de la petición
+  let seats = url.searchParams.get("seats") || "1";
+  let amount = url.searchParams.get("amount") || "72.00";
+  let email = url.searchParams.get("email") || "";
+  let company = url.searchParams.get("company") || "";
 
-    // Validación básica de parámetros
-    const quantity = parseInt(seats) || 1;
-    const finalPrice = parseFloat(totalAmount) || (quantity * (plan === 'annual' ? 72 : 108));
-
-    // Retornar URL de pago dinámica (Stripe Checkout / Redsys)
-    // Puedes inyectar STRIPE_SECRET_KEY en las variables de entorno de Cloudflare
-    return new Response(JSON.stringify({
-      success: true,
-      orderId: `SAARE-${Date.now()}`,
-      seats: quantity,
-      totalAmount: finalPrice,
-      currency: "EUR",
-      // Si usas Stripe Payment Link con cantidad dinámica:
-      checkoutUrl: `https://buy.stripe.com/TU_ENLACE_BASE?quantity=${quantity}&client_reference_id=${encodeURIComponent(cif || 'B2B')}&prefilled_email=${encodeURIComponent(email || '')}`
-    }), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+  if (context.request.method === "POST") {
+    try {
+      const body = await context.request.json();
+      seats = body.seats || seats;
+      amount = body.totalAmount || amount;
+      email = body.email || email;
+      company = body.companyName || company;
+    } catch (e) {}
   }
+
+  const quantity = parseInt(seats) || 1;
+
+  // URL de Pasarela Stripe Checkout con cantidad de asientos dinámica
+  // Sustituye TU_PAYMENT_LINK por tu enlace de Stripe (ej: https://buy.stripe.com/...)
+  const stripePaymentLink = `https://buy.stripe.com/TU_PAYMENT_LINK?quantity=${quantity}&client_reference_id=${encodeURIComponent(company || 'B2B')}&prefilled_email=${encodeURIComponent(email)}`;
+
+  // Redireccionar al usuario directamente a la pasarela de pago segura
+  return Response.redirect(stripePaymentLink, 302);
 }
