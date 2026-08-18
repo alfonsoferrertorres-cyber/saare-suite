@@ -1,8 +1,7 @@
 ﻿{
-    "version":  "2.5.0",
-    "name":  "S.A.A.R.E. AI Runtime Interceptor",
-    "rfc3161_sealed":  true,
-    "sha256":  "D84B6E025B910D5B2B0D66C90231868977968373A3F3D677949F58A1B74EE5F1",
-    "download_url":  "https://console.saare.es/downloads/saare-l7-extension-v2.5.0.zip",
-    "manifest_version":  3
+  "version": "2.5.0",
+  "build_date": "2026-08-18",
+  "channel": "stable-cloud",
+  "endpoint": "https://console.saare.es/api",
+  "download_url": "https://console.saare.es/downloads/saare-extension.zip"
 }
