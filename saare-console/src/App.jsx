@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import cabeceraImg from './public/CABECERA WEB.jfif';
 
 const DEFAULT_BASE_SCENARIOS = [
@@ -292,7 +292,7 @@ export default function App() {
               PANEL DE CONTROL GRC &amp; CUMPLIMIENTO CORPORATIVO IA V2.5
             </h2>
             <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
-              ORGANIZACION: <strong style={{ color: '#0f172a' }}>ACME Corporation</strong> &nbsp;|&nbsp; 
+              ORGANIZACION: <strong style={{ color: '#0f172a' }}>alfonsosb1@gmail.com</strong> &nbsp;|&nbsp; 
               DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeCount} Activas</strong> &nbsp;|&nbsp; 
               <strong style={{ color: '#dc2626' }}>{disabledCount} Deshabilitadas</strong> &nbsp;|&nbsp; 
               REGLAS PERSONALIZADAS: <strong style={{ color: '#0284c7' }}>{customRules.length} Filtros</strong>
@@ -300,6 +300,15 @@ export default function App() {
           </div>
           <div style={{ background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', padding: '6px 14px', borderRadius: '4px', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase' }}>
             MASTER PASS RUNTIME ACTIVO
+                
+                 {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }}
+                  style={{ marginLeft: '12px', background: '#7f1d1d', border: '1px solid #ef4444', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  🔒 Cerrar Sesión
           </div>
         </div>
 

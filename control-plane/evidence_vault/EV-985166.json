@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-985166",
+  "timestamp": "10:00:38",
+  "timestampRaw": 1787040038684,
+  "promptSummary": "HOLA MMI CUENTA ES 6969 5858 4747 3838",
+  "scenario": "RGPD Arts. 5, 25, 32 / LOPDGDD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:dc1299c5a0f02b86741cc9ee9d70298e6cb1a4c730f3271099e4df95d16cccc3",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "PRIVACIDAD_LOPD_AEPD",
+    "reason": "Detección de Identificadores (DNI/NIE/NIF) o Datos Sensibles no disociados (RGPD Art. 5/25, LOPDGDD)",
+    "norma": "RGPD Arts. 5, 25, 32 / LOPDGDD"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-379555",
+  "timestamp": "10:01:18",
+  "timestampRaw": 1787040078793,
+  "promptSummary": "ALFONSO",
+  "scenario": "Política Corporativa Interna",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:bc4e01c6c2e46825754bdf7a287625ccad3024d73c7ffb9db2edc8632ae1049f",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "REGLA_PERSONALIZADA",
+    "reason": "Coincidencia con regla personalizada: \"ALFONSO\"",
+    "norma": "Política Corporativa Interna"
+  }
+}

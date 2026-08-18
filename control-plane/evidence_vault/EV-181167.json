@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-181167",
+  "timestamp": "09:52:23",
+  "timestampRaw": 1787039543805,
+  "promptSummary": "MI TARJETE 5858 9494 0303 9393 [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "RGPD Arts. 5, 25, 32 / LOPDGDD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:5d97f2fe35aa6a517c021234944b8b053718d786e78402804e30bfe5c66ccc9d",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "PRIVACIDAD_LOPD_AEPD",
+    "reason": "Detección de Identificadores (DNI/NIE/NIF) o Datos Sensibles no disociados (RGPD Art. 5/25, LOPDGDD)",
+    "norma": "RGPD Arts. 5, 25, 32 / LOPDGDD"
+  }
+}
