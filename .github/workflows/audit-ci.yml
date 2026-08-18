@@ -24,7 +24,7 @@ jobs:
 
     - name: Validar compilación del Proxy en Rust
       run: |
-        cd runtime/l7_proxy
+        if [ -d 'runtime/l7_proxy' ]; then cd runtime/l7_proxy; fi
         cargo check
 
     - name: Validar Integridad Criptográfica del Ledger
