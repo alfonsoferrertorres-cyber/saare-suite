@@ -1,3 +1,4 @@
+import { ForensicVault } from './services/ForensicVault';
 import React, { useState, useEffect } from 'react';
 import cabeceraImg from './public/CABECERA WEB.jfif';
 
