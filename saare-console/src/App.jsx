@@ -10,6 +10,7 @@ const DEFAULT_BASE_SCENARIOS = [
 ];
 
 export default function App() {
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   // Función para exportar dictamen pericial forense
   const generateForensicPDF = async () => {
     const timestamp = new Date().toISOString();
