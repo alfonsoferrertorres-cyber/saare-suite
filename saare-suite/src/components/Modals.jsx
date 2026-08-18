@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { X, Download } from 'lucide-react';
 
-export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant, numEmpleados, calculo, form, setForm }) {
+export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant, numEmpleados, calculo, form, setForm, plan }) {
   const downloadExpediente = () => {
     const link = document.createElement('a');
     link.href = '/docs/SAARE-Technical-Whitepaper-v14.pdf';
@@ -18,7 +18,14 @@ export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant,
     const email = form?.email || '';
     const cif = form?.cif || '';
     const empresa = form?.empresa || '';
-    window.location.href = `https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003?quantity=${encodeURIComponent(qty)}&client_reference_id=${encodeURIComponent(cif || empresa)}&prefilled_email=${encodeURIComponent(email)}`;
+    
+    // Detección automática del plan seleccionado (mensual vs anual)
+    const isMonthly = calculo?.plan === 'mensual' || plan === 'mensual' || (typeof calculo?.total === 'number' && calculo.total === qty * 12);
+    const stripeBase = isMonthly
+      ? 'https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004'
+      : 'https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003';
+
+    window.location.href = `${stripeBase}?quantity=${encodeURIComponent(qty)}&client_reference_id=${encodeURIComponent(cif || empresa)}&prefilled_email=${encodeURIComponent(email)}`;
   };
 
   return (
@@ -63,7 +70,7 @@ export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant,
                 type="submit"
                 className="w-full py-3.5 rounded-xl bg-[#C5A059] text-black font-black font-mono text-xs uppercase tracking-wider hover:bg-[#dfba6f] transition-all shadow-lg cursor-pointer"
               >
-                Confirmar Pedido • {calculo?.total || 72} €
+                Confirmar Pedido • {calculo?.total || 12} €
               </button>
             </form>
           </div>
