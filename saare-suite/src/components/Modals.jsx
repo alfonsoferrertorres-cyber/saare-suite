@@ -18,7 +18,7 @@ export default function Modals({ isCheckout, setIsCheckout, isGrant, setIsGrant,
     const email = form?.email || '';
     const cif = form?.cif || '';
     const empresa = form?.empresa || '';
-    window.location.href = `https://buy.stripe.com/TU_ENLACE_STRIPE?quantity=${encodeURIComponent(qty)}&client_reference_id=${encodeURIComponent(cif || empresa)}&prefilled_email=${encodeURIComponent(email)}`;
+    window.location.href = `https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003?quantity=${encodeURIComponent(qty)}&client_reference_id=${encodeURIComponent(cif || empresa)}&prefilled_email=${encodeURIComponent(email)}`;
   };
 
   return (
