@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-387523",
+  "timestamp": "17:38:12",
+  "timestampRaw": 1787067492879,
+  "promptSummary": "Autorizo la domiciliación bancaria a la cuenta ES21 1465 0100 72 2030876293 con DNI 48123456K",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:c2524dbebf36ff33caabdb7c4537fa1db0d3bef6fecb5480d5a38879a823ecdb",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "PII_DOCUMENTO",
+    "norma": "España - LOPDGDD & AEPD",
+    "reason": "Detección de DNI/NIE en texto de entrada"
+  }
+}
