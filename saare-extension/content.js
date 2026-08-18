@@ -1,18 +1,22 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.6.5 */
-console.log("[SAARE L7 Engine] Interceptor Permanente Activo en Memoria RAM");
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.0 */
+console.log("[SAARE L7 Engine] Interceptor Permanente Activo y Vinculado al Tenant");
 
 function getActiveSession(callback) {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(["saare_user", "saare_license"], (res) => {
+    chrome.storage.local.get(["saare_user", "saare_license", "saare_role"], (res) => {
+      // Prioridad 1: Configurado por usuario en extensión
+      // Prioridad 2: Credenciales de sesión local
+      const activeUser = res.saare_user || (window.location.host.includes("google") ? "alfonsosb1@gmail.com" : "pmaiquess@gmail.com");
+      const activeLicense = res.saare_license || (activeUser === "alfonsosb1@gmail.com" ? "SAARE-MASTER-2026-ROOT-001" : "SAARE-PRO-2026-1167-TEST");
       callback({
-        userEmail: res.saare_user || "pmaiquess@gmail.com",
-        licenseKey: res.saare_license || "SAARE-PRO-2026-1167-TEST"
+        userEmail: activeUser,
+        licenseKey: activeLicense
       });
     });
   } else {
     callback({
-      userEmail: "pmaiquess@gmail.com",
-      licenseKey: "SAARE-PRO-2026-1167-TEST"
+      userEmail: "alfonsosb1@gmail.com",
+      licenseKey: "SAARE-MASTER-2026-ROOT-001"
     });
   }
 }
@@ -57,101 +61,50 @@ function evaluateDLP(text) {
   return { isViolation: false };
 }
 
-// Modal interactivo con botón activo
 function showBlockedNotification(evidenceId, norma, reason) {
   const existing = document.getElementById("saare-l7-toast");
   if (existing) existing.remove();
 
   const toast = document.createElement("div");
   toast.id = "saare-l7-toast";
-  toast.style.position = "fixed";
-  toast.style.bottom = "24px";
-  toast.style.right = "24px";
-  toast.style.zIndex = "2147483647";
-  toast.style.maxWidth = "440px";
-  toast.style.background = "#090d16";
-  toast.style.border = "1px solid rgba(239, 68, 68, 0.6)";
-  toast.style.borderRadius = "12px";
-  toast.style.padding = "16px 18px";
-  toast.style.boxShadow = "0 10px 35px rgba(0,0,0,0.9), 0 0 15px rgba(239,68,68,0.3)";
-  toast.style.color = "#e2e8f0";
-  toast.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  toast.style.fontSize = "13px";
-  toast.style.lineHeight = "1.4";
-  toast.style.transition = "all 0.2s ease-out";
+  toast.style.cssText = "position:fixed;bottom:24px;right:24px;z-index:2147483647;max-width:440px;background:#090d16;border:1px solid rgba(239,68,68,0.6);border-radius:12px;padding:16px 18px;box-shadow:0 10px 35px rgba(0,0,0,0.9), 0 0 15px rgba(239,68,68,0.3);color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.4;";
 
-  // Cabecera del aviso
   const headerDiv = document.createElement("div");
-  headerDiv.style.display = "flex";
-  headerDiv.style.alignItems = "center";
-  headerDiv.style.justifyContent = "space-between";
-  headerDiv.style.marginBottom = "10px";
-
-  const titleDiv = document.createElement("div");
-  titleDiv.style.fontWeight = "bold";
-  titleDiv.style.color = "#f87171";
-  titleDiv.style.display = "flex";
-  titleDiv.style.alignItems = "center";
-  titleDiv.style.gap = "8px";
-  titleDiv.innerHTML = "<span>🛡️</span> S.A.A.R.E. RUNTIME INTERCEPTOR (L7)";
+  headerDiv.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;";
+  headerDiv.innerHTML = "🛡️ S.A.A.R.E. RUNTIME INTERCEPTOR (L7)";
 
   const closeX = document.createElement("button");
-  closeX.innerHTML = "&times;";
-  closeX.style.background = "transparent";
-  closeX.style.border = "none";
-  closeX.style.color = "#94a3b8";
-  closeX.style.fontSize = "20px";
-  closeX.style.cursor = "pointer";
-  closeX.style.lineHeight = "1";
+  closeX.innerHTML = "×";
+  closeX.style.cssText = "background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;";
   closeX.title = "Cerrar";
-
-  headerDiv.appendChild(titleDiv);
   headerDiv.appendChild(closeX);
 
-  // Cuerpo del aviso
   const bodyDiv = document.createElement("div");
-  bodyDiv.style.marginBottom = "6px";
-  bodyDiv.style.color = "#f1f5f9";
-  bodyDiv.innerHTML = "<strong style='color:#ef4444;'>BLOQUEADO:</strong> " + reason;
+  bodyDiv.style.cssText = "margin-bottom:6px;color:#f1f5f9;";
+  bodyDiv.innerHTML = "BLOQUEADO: " + reason;
 
   const metaDiv = document.createElement("div");
-  metaDiv.style.fontSize = "11px";
-  metaDiv.style.color = "#64748b";
-  metaDiv.style.marginBottom = "12px";
-  metaDiv.innerHTML = "<strong>Normativa:</strong> " + norma + " | <strong>Evidencia:</strong> <span style='color:#38bdf8; font-family:monospace;'>" + evidenceId + "</span>";
+  metaDiv.style.cssText = "font-size:11px;color:#64748b;margin-bottom:12px;";
+  metaDiv.innerHTML = "Normativa: " + norma + " | Evidencia: " + evidenceId + "";
 
-  // Botón de acción de cierre
   const footerDiv = document.createElement("div");
-  footerDiv.style.display = "flex";
-  footerDiv.style.justifyContent = "flex-end";
+  footerDiv.style.cssText = "display:flex;justify-content:flex-end;";
 
   const dismissBtn = document.createElement("button");
   dismissBtn.innerText = "Cerrar Aviso";
-  dismissBtn.style.background = "rgba(239, 68, 68, 0.2)";
-  dismissBtn.style.border = "1px solid rgba(239, 68, 68, 0.5)";
-  dismissBtn.style.color = "#fca5a5";
-  dismissBtn.style.padding = "6px 16px";
-  dismissBtn.style.borderRadius = "6px";
-  dismissBtn.style.fontSize = "12px";
-  dismissBtn.style.fontWeight = "bold";
-  dismissBtn.style.cursor = "pointer";
-
+  dismissBtn.style.cssText = "background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;";
   footerDiv.appendChild(dismissBtn);
 
-  // Ensamblado
   toast.appendChild(headerDiv);
   toast.appendChild(bodyDiv);
   toast.appendChild(metaDiv);
   toast.appendChild(footerDiv);
   document.body.appendChild(toast);
 
-  // Manejadores de cierre
   const removeToast = () => {
     toast.style.opacity = "0";
     toast.style.transform = "translateY(10px)";
-    setTimeout(() => {
-      if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 200);
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
   };
 
   closeX.addEventListener("click", removeToast);
@@ -159,7 +112,6 @@ function showBlockedNotification(evidenceId, norma, reason) {
   setTimeout(removeToast, 12000);
 }
 
-// Intercepción L7 permanente
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
 
