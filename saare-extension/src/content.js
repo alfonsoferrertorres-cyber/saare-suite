@@ -1,4 +1,4 @@
-// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE
+﻿// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE
 console.log("[SAARE L7 Engine] Interceptor Dual Activo (Normativa Base + Reglas Personalizadas)");
 
 let dynamicCustomRules = [];

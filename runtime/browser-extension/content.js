@@ -1,10 +1,10 @@
-// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE
+﻿// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE
 console.log("[SAARE L7 Engine] Interceptor Dual (Normativa Base + Reglas Personalizadas)");
 
 let dynamicCustomRules = [];
 
 function syncCustomRules() {
-  fetch("http://localhost:3001/api/v1/custom-rules")
+  fetch("https://console.saare.es/api/api/v1/custom-rules")
     .then(r => r.json())
     .then(data => { if (Array.isArray(data)) dynamicCustomRules = data; })
     .catch(() => {});
@@ -127,7 +127,7 @@ function sendEvidence(text, attachments, violationInfo = null) {
     violationDetails: violationInfo
   };
 
-  fetch("http://localhost:3001/api/v1/runs", {
+  fetch("https://console.saare.es/api/api/v1/runs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
