@@ -84,21 +84,21 @@ function showBlockedNotification(evidenceId, norma, reason) {
   `;
 
   toast.innerHTML = `
-    
-      
-        🛡️ S.A.A.R.E. RUNTIME INTERCEPTOR (L7)
-      
-      ×
-    
-    
-      BLOQUEADO: ${reason}
-    
-    
-      Normativa: ${norma} | Evidencia: ${evidenceId}
-    
-    
-      Cerrar Aviso
-    
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f87171;">
+        <span style="font-size: 16px;">🛡️</span> S.A.A.R.E. RUNTIME INTERCEPTOR (L7)
+      </div>
+      <button id="saare-close-x" style="background: transparent; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; line-height: 1;" title="Cerrar">&times;</button>
+    </div>
+    <div style="margin-bottom: 4px; color: #cbd5e1;">
+      <strong style="color: #ef4444;">BLOQUEADO:</strong> ${reason}
+    </div>
+    <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
+      <strong>Normativa:</strong> ${norma} | <strong>Evidencia:</strong> <span style="color: #38bdf8;">${evidenceId}</span>
+    </div>
+    <div style="display: flex; justify-content: flex-end;">
+      <button id="saare-dismiss-btn" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">Cerrar Aviso</button>
+    </div>
   `;
 
   document.body.appendChild(toast);
@@ -107,11 +107,17 @@ function showBlockedNotification(evidenceId, norma, reason) {
     toast.style.opacity = "0";
     toast.style.transform = "translateY(10px)";
     toast.style.transition = "all 0.2s ease-out";
-    setTimeout(() => toast.remove(), 200);
+    setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+    }, 200);
   };
 
-  document.getElementById("saare-close-x").addEventListener("click", closeToast);
-  document.getElementById("saare-dismiss-btn").addEventListener("click", closeToast);
+  const btnX = document.getElementById("saare-close-x");
+  const btnDismiss = document.getElementById("saare-dismiss-btn");
+
+  if (btnX) btnX.addEventListener("click", closeToast);
+  if (btnDismiss) btnDismiss.addEventListener("click", closeToast);
+  
   setTimeout(closeToast, 15000);
 }
 
