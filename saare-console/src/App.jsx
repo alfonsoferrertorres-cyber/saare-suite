@@ -299,7 +299,7 @@ export default function App() {
             </p>
           </div>
           <div style={{ background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', padding: '6px 14px', borderRadius: '4px', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase' }}>
-            MASTER PASS RUNTIME ACTIVO
+            MASTER PASS RUNTIME ACTIVO { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="ml-3 px-2 py-0.5 bg-red-900/80 hover:bg-red-800 border border-red-500 text-white rounded text-[11px] font-bold cursor-pointer transition">🔒 Cerrar Sesión
                 
                  {
                     localStorage.clear();
@@ -631,5 +631,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
