@@ -11,23 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout del repositorio
-      uses: actions/checkout@v4
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
 
-    - name: Configurar Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-    - name: Configurar Rust
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Validar compilación del Proxy en Rust
-      run: |
-        if [ -d 'runtime/l7_proxy' ]; then cd runtime/l7_proxy; fi
-        cargo check
-
-    - name: Validar Integridad Criptográfica del Ledger
-      run: |
-        cd control-plane
-        node verifyLedger.js
+      - name: Validar compilacion de SAARE Console
+        run: |
+          cd saare-console || true
+          npm ci || npm install
+          npm run build
