@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import HeaderBanner from './assets/CABECERA WEB.jfif';
+
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -165,7 +165,7 @@ export default function App() {
       {/* 1. CABECERA CON EL CEREBRO ORIGINAL */}
       <div style={{ width: '100%', background: '#e2e8f0', borderBottom: '2px solid #94a3b8', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <img 
-          src={HeaderBanner} 
+          src="/CABECERA WEB.jfif" onError={(e) => { e.target.style.display = "none"; }} 
           alt="Tecnología de IA - Control Perimetral y Peritaje Forense" 
           style={{ width: '100%', maxHeight: '180px', objectFit: 'cover' }}
         />
@@ -408,3 +408,4 @@ export default function App() {
     </div>
   );
 }
+
