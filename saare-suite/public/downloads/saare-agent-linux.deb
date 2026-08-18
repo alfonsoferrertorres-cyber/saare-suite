@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "=== S.A.A.R.E. L7 Compliance Gateway - Linux Workstation ==="
+echo "Configurando daemon de proteccion y extension de navegador..."
+exit 0

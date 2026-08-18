@@ -1,0 +1,16 @@
+﻿{
+    "maxDevices":  3,
+    "tier":  "Enterprise L7 Full Access",
+    "expiresAt":  "2027-08-18T16:20:14Z",
+    "issueDate":  "2026-08-18T16:20:14Z",
+    "status":  "ACTIVE",
+    "assignedEmail":  "amiga.evaluacion@empresa.com",
+    "features":  [
+                     "DLP_BANK",
+                     "DLP_DNI",
+                     "PCI_DSS",
+                     "JAILBREAK_GUARD",
+                     "CUSTOM_RULES"
+                 ],
+    "licenseKey":  "SAARE-PRO-2026-1167-TEST"
+}
