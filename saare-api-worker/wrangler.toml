@@ -1,9 +1,12 @@
-name = "saare-api"
+﻿name = "saare-api"
 main = "src/index.js"
 compatibility_date = "2026-08-17"
 
 [vars]
 CORS_ORIGIN = "*"
 ENVIRONMENT = "production"
-STRIPE_WEBHOOK_SECRET = "whsec_YOUR_STRIPE_WEBHOOK_SECRET"
 PRIMARY_AUDITOR = "alfonsosb1@gmail.com"
+
+kv_namespaces = [
+  { binding = "SAARE_KV", id = "846a2913940249f5aa44ab5fdfae957d" }
+]
