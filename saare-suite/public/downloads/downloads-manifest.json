@@ -1,0 +1,39 @@
+{
+  "version": "2.5.1",
+  "releaseDate": "2026-08-18",
+  "packages": [
+    {
+      "id": "universal-zip",
+      "name": "Extensión Universal Web",
+      "platform": "Universal (Chrome, Edge, Brave, Firefox)",
+      "format": ".ZIP",
+      "file": "/downloads/saare-extension-universal-v2.5.1.zip",
+      "recommended": true,
+      "description": "Instalación rápida directa en el navegador sin permisos de administrador."
+    },
+    {
+      "id": "windows-exe",
+      "name": "Instalador Windows Corporativo",
+      "platform": "Windows 10 / 11 / Server",
+      "format": ".EXE",
+      "file": "/downloads/saare-agent-windows-setup.exe",
+      "description": "Agente perimetral con registro de políticas y ejecución desatendida."
+    },
+    {
+      "id": "linux-appimage",
+      "name": "Paquete Linux Workstation",
+      "platform": "Ubuntu / Debian / RedHat / Arch",
+      "format": ".AppImage / .DEB",
+      "file": "/downloads/saare-agent-linux.AppImage",
+      "description": "Binario autocontenido y servicio systemd de supervisión perimetral."
+    },
+    {
+      "id": "macos-dmg",
+      "name": "Paquete macOS & Safari",
+      "platform": "macOS Ventura, Sonoma, Sequoia / iOS MDM",
+      "format": ".DMG",
+      "file": "/downloads/saare-agent-macos.dmg",
+      "description": "Contenedor de extensión firmado para Safari y perfil corporativo."
+    }
+  ]
+}

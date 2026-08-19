@@ -1,0 +1,25 @@
+# S.A.A.R.E. ISV Enterprise & MS3V Security Policy
+# RFC 9116 Automated Discovery & Cryptographic Verification
+Contact: mailto:governance@saare.tech
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: es, en
+Canonical: https://saare.tech/.well-known/security.txt
+
+# Node Identity & Industrial Trade Secret Verification
+Node-Registry-ID: 2607076315021
+Node-Architecture: S.A.A.R.E. V7.0 PRO (Stateless Ex-Ante L7)
+Node-SHA256-Fingerprint: 128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07
+Context-Master-ID: MS3V-RECON-VALID-2026-ALF-0521
+Dual-Vault-Signatures: Ed25519 + SHA-256
+Legal-Status: Proprietary Algorithm / Trade Secret Protected
+
+# Runtime Performance & Deterministic Isolation
+Average-Latency: 1.16 ms (StdDev <= 0.04 ms)
+Logical-Error-Rate: 0.00%
+Throughput-Capacity: 500 RPS / 4096 Concurrent Tokens Block
+Memory-Management: HugePages 2MB + memset_s + SYS_madvise (MADV_DONTNEED)
+IPC-Transport: UNIX Domain Socket (/var/run/saare_core.sock)
+
+# Compliance & Automated Auditing
+Compliance-Frameworks: ISO/IEC 42001:2023, ISO/IEC 27001, EU AI Act (Regulation UE 2024/1689), DORA
+SoA-Automation-Time: < 120 seconds

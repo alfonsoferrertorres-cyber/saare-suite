@@ -1,0 +1,7 @@
+﻿{
+  "version": "2.5.0",
+  "build_date": "2026-08-18",
+  "channel": "stable-cloud",
+  "endpoint": "https://console.saare.es/api",
+  "download_url": "https://console.saare.es/downloads/saare-extension.zip"
+}

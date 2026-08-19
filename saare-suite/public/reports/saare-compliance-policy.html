@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>S.A.A.R.E. - Políticas de Gobernanza & Cumplimiento GRC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#030712] text-slate-100 font-sans p-6 sm:p-12">
+  <div class="max-w-4xl mx-auto space-y-8 bg-slate-950 border border-slate-800 p-8 sm:p-10 rounded-2xl shadow-2xl">
+    
+    <div class="border-b border-slate-800 pb-6 flex justify-between items-start flex-wrap gap-4">
+      <div>
+        <span class="text-xs font-mono px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase">
+          DOCUMENTO OFICIAL GRC & COMPLIANCE
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-white mt-3">Marco de Políticas de Gobernanza y Cumplimiento</h1>
+        <p class="text-xs font-mono text-slate-400 mt-1">Ref: SAARE-POL-GRC-2026-V1 | Fecha de Emisión: Agosto 2026</p>
+      </div>
+      <div class="text-right font-mono text-xs text-slate-400">
+        <div>Ámbito: <span class="text-cyan-400">Unión Europea / Internacional</span></div>
+        <div>Estado: <span class="text-emerald-400 font-bold">100% AUDITADO</span></div>
+      </div>
+    </div>
+
+    <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+      <h2 class="text-base font-bold text-white font-mono uppercase tracking-wider text-cyan-400">1. Objeto y Alcance Regulatorio</h2>
+      <p>
+        El presente documento establece las políticas de gobierno corporativo y control perimetral aplicadas por la infraestructura <strong>S.A.A.R.E. V7.0 PRO</strong> para garantizar que el despliegue e inferencia de modelos lingüísticos (LLMs) se ejecute bajo los principios de legalidad, proporcionalidad, transparencia y trazabilidad técnica ex-ante.
+      </p>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div class="font-bold text-white font-mono text-xs text-[#C5A059]">EU AI ACT (Reglamento UE 2024/1689)</div>
+          <p class="text-xs text-slate-400">
+            Control de sistemas de alto riesgo (Anexo III) y provisión automatizada de la documentación técnica y registros de eventos exigidos por el Anexo IV.
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div class="font-bold text-white font-mono text-xs text-emerald-400">ESTÁNDAR ISO/IEC 42001:2023 & ISO 27001</div>
+          <p class="text-xs text-slate-400">
+            Extracción en caliente de matrices de aplicabilidad (SoA) en menos de 120 segundos mediante telemetría volátil sin persistencia en disco.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+      <h2 class="text-base font-bold text-white font-mono uppercase tracking-wider text-cyan-400">2. Políticas de Custodia y No Repudio (Dual-Vault)</h2>
+      <p>
+        Cada transacción ejecutada en el perímetro genera de forma síncrona un recibo forense firmado con <strong>SHA-256</strong> y firma asimétrica <strong>Ed25519</strong>. Esta firma vincula la marca temporal, el escenario normativo evaluado y el hash del payload procesado, garantizando plena validez probatoria sin almacenar datos de los usuarios en almacenamiento secundario.
+      </p>
+    </div>
+
+    <div class="border-t border-slate-800 pt-6 flex justify-between items-center flex-wrap gap-4 text-xs font-mono">
+      <div class="text-slate-400">S.A.A.R.E. Governance & Compliance Unit</div>
+      <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-[#C5A059] text-black font-bold uppercase hover:bg-white transition-all shadow-lg">
+        Descargar Informe GRC en PDF
+      </button>
+    </div>
+
+  </div>
+</body>
+</html>

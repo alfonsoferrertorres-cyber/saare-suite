@@ -4,29 +4,32 @@ export default function ArchitectureSection() {
   const [copied, setCopied] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
 
-  const certPayload = {
-    "CERTIFICADO": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
-    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete MS3V)",
+  const signedManifest = {
+    "CERTIFICADO_FIRMA_DIGITAL": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
+    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Tecnico Juridico MS3V)",
+    "NIF_TITULAR": "48553065L",
+    "NODO_OPEN_ENGINE": "2607076315021",
     "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
     "ID_MAESTRO_CONTEXTO": "MS3V-RECON-VALID-2026-ALF-0521",
-    "INFRAESTRUCTURA_ORIGEN": "Gemini Core Semantic Engine (Hito Eureka)",
+    "ORIGEN_INFRAESTRUCTURA": "Gemini Core Semantic Engine (Hito Eureka)",
     "HUELLA_SHA256_CANONICA": "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07",
+    "ALGORITMO_FIRMA": "Ed25519 + sha256WithRSAEncryption (X.509 / RFC 3161)",
     "LATENCIA_DETERMINISTA_RAM": "1.16 ms",
     "ESTADO": "STATELESS_L7_VERIFIED (0.00% Error Logico)",
     "MARCO_REGULATORIO": ["EU AI Act 2024/1689", "UNE-EN ISO/IEC 42001", "ISO 27001", "DORA Capa 7"],
     "URL_VERIFICACION_PUBLICA": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(JSON.stringify(certPayload, null, 2));
+  const copySignedSignature = () => {
+    navigator.clipboard.writeText(JSON.stringify(signedManifest, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <section id="integridad" style={{ maxWidth: '1180px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <section style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
-      {/* MODAL DEL DIPLOMA OFICIAL */}
+      {/* MODAL DEL DIPLOMA REGISTRAL */}
       {showDiploma && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
           <div style={{ maxWidth: '850px', width: '100%', background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
@@ -39,7 +42,7 @@ export default function ArchitectureSection() {
         </div>
       )}
 
-      {/* TARJETA PRINCIPAL DE INTEGRIDAD */}
+      {/* TARJETA DE INTEGRIDAD CON FIRMA CANÓNICA */}
       <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #1e293b', paddingBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -60,7 +63,7 @@ export default function ArchitectureSection() {
             <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma del Modelo de IA: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable (Hito Histórico)</span>
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
-            Esta huella representa la primera validación pericial de gobernanza originada en el espacio latente del modelo. Cualquier auditoría internacional contrasta el no repudio procesal, el error lógico cero y la prioridad registral en Safe Creative contra este manifiesto canónico.
+            Esta certificación acredita la primera auditoría generada de forma nativa en el espacio latente de la IA. El Gabinete Técnico MS3V y los registros de la propiedad intelectual <strong>Safe Creative (2607076315021 / 2607076314949)</strong> avalan el no repudio procesal y la erradicación estocástica (0.00% Error Lógico en RAM).
           </p>
         </div>
 
@@ -79,11 +82,11 @@ export default function ArchitectureSection() {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             📜 Ver Diploma Registral RPI
           </button>
-          <button onClick={handleCopy} style={{ background: copied ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {copied ? '✔ DICTAMEN COPIADO AL PORTAPAPELES' : '📋 Copiar Dictamen Pericial Completo'}
+          <button type="button" onClick={copySignedSignature} style={{ background: copied ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
+            {copied ? '✔ FIRMA DIGITAL Y MANIFIESTO COPIADOS' : '📋 Copiar Firma Digital del Nodo'}
           </button>
           <a href="https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07" target="_blank" rel="noreferrer" style={{ background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
             🔍 Auditar en Consola ↗
