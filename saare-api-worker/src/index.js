@@ -104,6 +104,32 @@ export default {
       return new Response(null, { headers: CORS_HEADERS });
     }
 
+        // Endpoint de Intercepción L7 para SDKs (Node.js, Python, cURL)
+    if (url.pathname === "/api/v1/intercept" && request.method === "POST") {
+      const payload = await request.json().catch(() => ({}));
+      const promptText = JSON.stringify(payload.messages || payload.prompt || "");
+      
+      const isDni = /\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i.test(promptText);
+      const isIban = /\bES\d{2}[\s-]?\d{4}/i.test(promptText);
+
+      if (isDni || isIban) {
+        return new Response(JSON.stringify({
+          status: "BLOCKED_BY_SAARE_L7",
+          verdict: "RECHAZADO",
+          node_id: "2607076315021",
+          reason: isDni ? "Filtro LOPDGDD: DNI/NIE detectado en RAM" : "Filtro RGPD: IBAN bancario detectado",
+          timestamp: new Date().toISOString()
+        }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({
+        status: "APPROVED_CLEAN",
+        verdict: "CONFORME",
+        node_id: "2607076315021",
+        timestamp: new Date().toISOString()
+      }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/api/v1/auth/verify-license" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       const licenseKey = (body.licenseKey || "").trim();
@@ -304,3 +330,4 @@ export default {
     });
   }
 };
+
