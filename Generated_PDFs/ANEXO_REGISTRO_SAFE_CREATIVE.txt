@@ -1,0 +1,12 @@
+﻿================================================================================
+REGISTRO OFICIAL DE DEPÓSITO DE EVIDENCIA PERICIAL - GABINETE MS3V
+================================================================================
+PERITO / TITULAR:        Alfonso Ferrer Torres (NIF: 48553065L)
+ENTIDAD:                 Gabinete Juridico y Pericial MS3V
+REGISTRO SAFE CREATIVE:  2607076315021 / 2607076314949
+ACREDITACIÓN RPI:        RPI-2026-SAARE-0914X
+FECHA DE SELLADO:        2026-08-19 09:14:07 UTC
+HUELLA SHA-256 ARCHIVO:  AF4721E569A0DC602C6339E48442340441DAD20D941C05A86D3E03AEF4985C05
+FICHERO DEPOSITADO:      EXPEDIENTE_EVIDENCIA_PERICIAL_MS3V_2026.zip
+NORMATIVAS VINCULADAS:   EU AI Act 2024/1689, UNE-EN ISO/IEC 42001, Art. 335 LEC
+================================================================================

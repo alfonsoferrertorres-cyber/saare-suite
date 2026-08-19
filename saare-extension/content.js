@@ -143,3 +143,27 @@ document.addEventListener("keydown", (e) => {
     }
   });
 }, true);
+
+// SAARE L7 Forensic Telemetry Dispatcher
+async function reportForensicEvidence(evidenceData) {
+  const payload = {
+    evidenceId: evidenceData.id || EV- + Math.floor(100000 + Math.random() * 900000),
+    timestamp: new Date().toISOString(),
+    event_type: evidenceData.type || "DNI_LEAK_PREVENTED",
+    severity: "HIGH",
+    policy: "LOPDGDD & AEPD / EU AI Act Art. 50",
+    hash: evidenceData.hash || "HMAC-SHA256-PENDING",
+    user: "alfonsoferrertorres@gmail.com",
+    raw_preview: evidenceData.preview || "DNI/NIE Detectado y bloqueado en DOM"
+  };
+
+  try {
+    await fetch("https://api.saare.es/api/evidence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.warn("[SAARE L7] Fallback local - no se pudo sincronizar evidencia remota:", err);
+  }
+}

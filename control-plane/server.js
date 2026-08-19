@@ -1,13 +1,12 @@
-﻿import express from 'express';
-import cors from 'cors';
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import express from 'express';
+import cors from 'cors';
 const app = express();
 
 // Middleware CORS universal compatible con Express 4 y Express 5
@@ -319,3 +318,41 @@ app.listen(3001, () => {
   console.log('[SAARE Control-Plane] ACTIVO Y ESCUCHANDO EN :3001');
   console.log('====================================================');
 });
+
+// ==========================================
+// SAARE EVIDENCE & DUAL-VAULT ROUTER
+// ==========================================
+const SAARE_VAULT = path.join(__dirname, 'evidence_vault');
+if (!fs.existsSync(SAARE_VAULT)) fs.mkdirSync(SAARE_VAULT, { recursive: true });
+
+app.post('/api/evidence', (req, res) => {
+  try {
+    const evidence = req.body;
+    evidence.server_received_at = new Date().toISOString();
+    
+    const hmac = crypto.createHmac('sha256', process.env.HMAC_SECRET || 'saare-secret-key');
+    evidence.immutable_hash = hmac.update(JSON.stringify(evidence)).digest('hex');
+
+    const fileName = (evidence.evidenceId || EV- + Date.now()) + '.json';
+    fs.writeFileSync(path.join(SAARE_VAULT, fileName), JSON.stringify(evidence, null, 2));
+
+    res.status(201).json({ status: "SEALED", hash: evidence.immutable_hash, id: evidence.evidenceId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/evidence', (req, res) => {
+  try {
+    const files = fs.readdirSync(SAARE_VAULT).filter(f => f.endsWith('.json'));
+    const logs = files.map(file => {
+      const data = fs.readFileSync(path.join(SAARE_VAULT, file), 'utf8');
+      return JSON.parse(data);
+    }).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    res.json({ total: logs.length, logs });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
