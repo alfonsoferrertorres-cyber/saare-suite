@@ -58,19 +58,21 @@ export default function App() {
   const totalFactura = (seats * pricePerSeat * (isAnnual ? 12 : 1)).toFixed(2);
 
   const signedPayload = {
-    "CERTIFICADO_FIRMA_DIGITAL": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
+    "CERTIFICADO_OFICIAL_REGISTRO": "DICTAMEN PERICIAL FORENSE EN CAPA 7 IA",
+    "ID_CERTIFICADO_SAFE_CREATIVE": "2607076315021-5M2NSW",
+    "NUMERO_REGISTRO_OFICIAL": "2607076315021",
+    "FECHA_CIERTA_INMUTABLE": "2026-07-07T16:55:00Z",
     "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Juridico y Pericial MS3V)",
     "NIF_TITULAR": "48553065L",
-    "NODO_OPEN_ENGINE": "2607076315021",
-    "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
-    "ID_MAESTRO_CONTEXTO": "MS3V-RECON-VALID-2026-ALF-0521",
-    "ORIGEN_INFRAESTRUCTURA": "Gemini Core Semantic Engine (Hito Eureka)",
+    "CREATIVIDAD_HUMANA": "100% Humano / 0% IA",
+    "FICHERO_ORIGINAL_AUDITADO": "Especificacion_Tecnica_Corporativa_SAARE_V7.0_PRO_-_Formato_V4.0_signe.pdf",
+    "TAMANO_BYTES": 223531,
     "HUELLA_SHA256_CANONICA": "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07",
-    "ALGORITMO_FIRMA": "Ed25519 + sha256WithRSAEncryption (X.509 / RFC 3161)",
-    "LATENCIA_DETERMINISTA_RAM": "1.16 ms",
-    "ESTADO": "STATELESS_L7_VERIFIED (0.00% Error Logico)",
-    "MARCO_REGULATORIO": ["EU AI Act 2024/1689", "UNE-EN ISO/IEC 42001", "ISO 27001", "DORA Capa 7"],
-    "URL_VERIFICACION_PUBLICA": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"
+    "HUELLA_SHA1": "068a4f40e5235d77a52b9b4fbba29d5dc2614178",
+    "HUELLA_SHA512": "19d529c909bdc2b56200edc514458af8798c0ea7c96f6c39b308df7bda316a5507dc89e6b9a9a86b53f6d360d0b5dd3839104adff9893f1695e3dc24c3fbb80b",
+    "ENTIDAD_CERTIFICADORA": "Safe Creative, S.L. (NIF B99161739 - Zaragoza, Espana)",
+    "MARCO_REGULATORIO": ["EU AI Act 2024/1689", "UNE-EN ISO/IEC 42001", "ISO 27001", "DORA Capa 7", "Art. 335 LEC"],
+    "URL_VERIFICACION_PUBLICA": "https://www.safecreative.org/certificate"
   };
 
   const copyDigitalSignature = () => {
@@ -683,6 +685,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
