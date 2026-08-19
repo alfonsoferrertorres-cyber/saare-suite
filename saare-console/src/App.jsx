@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -145,7 +145,7 @@ export default function App() {
           
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <div style={{ fontSize: '24px', marginBottom: '6px', color: '#38bdf8', fontWeight: 'bold' }}>[ S.A.A.R.E. ]</div>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#38bdf8', margin: '0 0 4px 0' }}>S.A.A.R.E. CONSOLE</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#38bdf8', margin: '0 0 4px 0' }}>S.A.A.R.E. CONSOLE</h2></div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Autenticacion en Boveda Forense L7</p>
           </div>
 
@@ -274,9 +274,9 @@ export default function App() {
         
         <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px 20px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}><img src="/logo_saare.png" alt="MS3V SAARE" style={{ width: '32px', height: '32px', objectFit: 'contain' }} /><h2 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.3px' }}>
               PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
-            </h2>
+            </h2></div>
             <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px' }}>
               USUARIO: <strong style={{ color: '#0284c7' }}>{session.user}</strong> &nbsp;|&nbsp; 
               ROL: <strong style={{ color: '#16a34a' }}>{session.role}</strong> &nbsp;|&nbsp; 
@@ -490,3 +490,4 @@ export default function App() {
     </div>
   );
 }
+
