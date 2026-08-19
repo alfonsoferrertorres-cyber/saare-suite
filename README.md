@@ -12,16 +12,7 @@
 
 Este repositorio actúa como plugin oficial de seguridad para agentes de DeepSeek Harness. Activa el sellado criptográfico HMAC-SHA256 y la redacción de datos sensibles antes del envío de tokens.
 
-\\\ash
-# Instalación del plugin de Gobernanza
+### Instalación del plugin de Gobernanza
+
+```bash
 dsh plugin add @saare/dsh-governance-plugin
-\\\
-
-## ⚖️ Acreditación Jurídica y Normativa
-
-- **Certificación**: Safe Creative 2607076315021 / 2607076314949
-- **Gabinete Autorizado**: MS3V
-- **Cumplimiento**: EU AI Act, DORA, RGPD (Art. 5.1.c), ISO/IEC 42001.
-
-Para acceder a la consola oficial y expedir tokens de auditoría, visita:
-👉 **[www.saare.es](https://www.saare.es)**
