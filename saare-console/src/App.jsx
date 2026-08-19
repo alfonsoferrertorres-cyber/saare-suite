@@ -217,46 +217,95 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑAS Y TABLA */}
+                {/* PESTAÑAS ACTIVAS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <button style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #0284c7', background: '#0284c7', color: '#fff', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>REGISTRO GLOBAL (1)</button>
-          <button style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #94a3b8', background: '#fff', color: '#0f172a', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>S.A.A.R.E. (RUNLIVE)</button>
-          <button style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #94a3b8', background: '#fff', color: '#0f172a', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>CONFIGURACIÓN (4)</button>
+          <button onClick={() => setActiveTab('registro')} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #0284c7', background: activeTab === 'registro' ? '#0284c7' : '#fff', color: activeTab === 'registro' ? '#fff' : '#0f172a', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>REGISTRO GLOBAL ({runs.length})</button>
+          <button onClick={() => setActiveTab('runlive')} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #0284c7', background: activeTab === 'runlive' ? '#0284c7' : '#fff', color: activeTab === 'runlive' ? '#fff' : '#0f172a', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>S.A.A.R.E. (RUNLIVE) ⚡</button>
+          <button onClick={() => setActiveTab('config')} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #0284c7', background: activeTab === 'config' ? '#0284c7' : '#fff', color: activeTab === 'config' ? '#fff' : '#0f172a', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>CONFIGURACIÓN (4)</button>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '800', textTransform: 'uppercase' }}>EVIDENCIAS FORENSES REGISTRADAS ({session.user})</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #cbd5e1' }}>
-                <th style={{ padding: '10px 10px 10px 0' }}>ID EVIDENCIA</th>
-                <th style={{ padding: '10px' }}>FECHA / HORA</th>
-                <th style={{ padding: '10px' }}>VEREDICTO</th>
-                <th style={{ padding: '10px' }}>MOTIVO / NORMATIVA</th>
-                <th style={{ padding: '10px', textAlign: 'right' }}>DICTAMEN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((r, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '14px 10px 14px 0', fontFamily: 'monospace', color: '#0284c7', fontWeight: 'bold' }}>{r.evidenceId}</td>
-                  <td style={{ padding: '14px 10px', color: '#64748b' }}>{r.timestamp}</td>
-                  <td style={{ padding: '14px 10px' }}>
-                    <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{r.verdict}</span>
-                  </td>
-                  <td style={{ padding: '14px 10px', color: '#334155' }}>{r.violationDetails?.reason}</td>
-                  <td style={{ padding: '14px 0', textAlign: 'right' }}>
-                    <button onClick={() => downloadForensicReport(r)} style={{ background: 'transparent', border: 'none', color: '#0284c7', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>
-                      Descargar RFC 3161
-                    </button>
-                  </td>
+        {/* CONTENIDO TAB 1: REGISTRO GLOBAL */}
+        {activeTab === 'registro' && (
+          <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '800', textTransform: 'uppercase' }}>EVIDENCIAS FORENSES REGISTRADAS ({session.user})</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #cbd5e1' }}>
+                  <th style={{ padding: '10px 10px 10px 0' }}>ID EVIDENCIA</th>
+                  <th style={{ padding: '10px' }}>FECHA / HORA</th>
+                  <th style={{ padding: '10px' }}>VEREDICTO</th>
+                  <th style={{ padding: '10px' }}>MOTIVO / NORMATIVA</th>
+                  <th style={{ padding: '10px', textAlign: 'right' }}>DICTAMEN</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {runs.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '14px 10px 14px 0', fontFamily: 'monospace', color: '#0284c7', fontWeight: 'bold' }}>{r.evidenceId}</td>
+                    <td style={{ padding: '14px 10px', color: '#64748b' }}>{r.timestamp}</td>
+                    <td style={{ padding: '14px 10px' }}>
+                      <span style={{ background: r.verdict === 'RECHAZADO' ? '#fee2e2' : '#dcfce7', color: r.verdict === 'RECHAZADO' ? '#b91c1c' : '#16a34a', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{r.verdict}</span>
+                    </td>
+                    <td style={{ padding: '14px 10px', color: '#334155' }}>{r.violationDetails?.reason || 'Detección L7'}</td>
+                    <td style={{ padding: '14px 0', textAlign: 'right' }}>
+                      <button onClick={() => downloadForensicReport(r)} style={{ background: 'transparent', border: 'none', color: '#0284c7', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>
+                        Descargar RFC 3161
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* CONTENIDO TAB 2: S.A.A.R.E. (RUNLIVE) */}
+        {activeTab === 'runlive' && (
+          <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>S.A.A.R.E. RUNLIVE — TELEMETRÍA Y PRUEBAS EX-ANTE EN RAM</h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Pruebe la capacidad de intercepción determinista en Capa 7.</p>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#334155', marginBottom: '6px' }}>Payload de Entrada (Prompt a Evaluar):</label>
+              <textarea defaultValue="Auditar crédito del titular con DNI 48593021X y cuenta ES21 1465 0100 2030 4050." rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '13px', boxSizing: 'border-box' }}></textarea>
+            </div>
+
+            <button style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '20px' }}>
+              ⚡ EJECUTAR RUNTIME EX-ANTE (RAM L7)
+            </button>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+              <div style={{ padding: '10px', borderRadius: '6px', textAlign: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>1. Ingesta POSIX</div>
+              <div style={{ padding: '10px', borderRadius: '6px', textAlign: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>2. Normalización</div>
+              <div style={{ padding: '10px', borderRadius: '6px', textAlign: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>3. Inspección</div>
+              <div style={{ padding: '10px', borderRadius: '6px', textAlign: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>4. Veredicto</div>
+            </div>
+          </div>
+        )}
+
+        {/* CONTENIDO TAB 3: CONFIGURACIÓN */}
+        {activeTab === 'config' && (
+          <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '800' }}>DIRECTIVAS DE CUMPLIMIENTO L7</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong>Protección LOPDGDD (DNI / NIE)</strong><div style={{ fontSize: '11px', color: '#64748b' }}>Bloqueo inmediato de identificadores nacionales</div></div>
+                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ACTIVA</span>
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong>Protección RGPD (IBAN / Tarjetas)</strong><div style={{ fontSize: '11px', color: '#64748b' }}>Filtro de exfiltración de datos bancarios</div></div>
+                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ACTIVA</span>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
   );
 }
+
