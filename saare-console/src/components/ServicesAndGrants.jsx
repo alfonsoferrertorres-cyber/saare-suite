@@ -3,7 +3,7 @@
 export default function ServicesAndGrants() {
   const [seats, setSeats] = useState(25);
   const [isAnnual, setIsAnnual] = useState(true);
-  const pricePerSeat = isAnnual ? 4.50 : 9.00;
+  const pricePerSeat = isAnnual ? 6.00 : 12.00;
   const totalFactura = (seats * pricePerSeat * (isAnnual ? 12 : 1)).toFixed(2);
 
   return (
@@ -123,3 +123,4 @@ export default function ServicesAndGrants() {
     </div>
   );
 }
+
