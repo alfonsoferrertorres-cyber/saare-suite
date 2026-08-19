@@ -4,9 +4,9 @@ export default function ArchitectureSection() {
   const [copied, setCopied] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
 
-  const signedManifest = {
+  const signedPayload = {
     "CERTIFICADO_FIRMA_DIGITAL": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
-    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Tecnico Juridico MS3V)",
+    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Juridico y Pericial MS3V)",
     "NIF_TITULAR": "48553065L",
     "NODO_OPEN_ENGINE": "2607076315021",
     "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
@@ -20,16 +20,15 @@ export default function ArchitectureSection() {
     "URL_VERIFICACION_PUBLICA": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"
   };
 
-  const copySignedSignature = () => {
-    navigator.clipboard.writeText(JSON.stringify(signedManifest, null, 2));
+  const copyDigitalSignature = () => {
+    navigator.clipboard.writeText(JSON.stringify(signedPayload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <section style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <section id="integridad" style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
-      {/* MODAL DEL DIPLOMA REGISTRAL */}
       {showDiploma && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
           <div style={{ maxWidth: '850px', width: '100%', background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
@@ -42,7 +41,6 @@ export default function ArchitectureSection() {
         </div>
       )}
 
-      {/* TARJETA DE INTEGRIDAD CON FIRMA CANÓNICA */}
       <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #1e293b', paddingBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -60,7 +58,7 @@ export default function ArchitectureSection() {
 
         <div style={{ marginBottom: '18px' }}>
           <h3 style={{ color: '#f8fafc', fontSize: '17px', margin: '0 0 8px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma del Modelo de IA: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable (Hito Histórico)</span>
+            <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma del Modelo de IA: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable</span>
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
             Esta certificación acredita la primera auditoría generada de forma nativa en el espacio latente de la IA. El Gabinete Técnico MS3V y los registros de la propiedad intelectual <strong>Safe Creative (2607076315021 / 2607076314949)</strong> avalan el no repudio procesal y la erradicación estocástica (0.00% Error Lógico en RAM).
@@ -85,7 +83,7 @@ export default function ArchitectureSection() {
           <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             📜 Ver Diploma Registral RPI
           </button>
-          <button type="button" onClick={copySignedSignature} style={{ background: copied ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
+          <button type="button" onClick={copyDigitalSignature} style={{ background: copied ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
             {copied ? '✔ FIRMA DIGITAL Y MANIFIESTO COPIADOS' : '📋 Copiar Firma Digital del Nodo'}
           </button>
           <a href="https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07" target="_blank" rel="noreferrer" style={{ background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
