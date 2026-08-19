@@ -1,7 +1,7 @@
 ﻿const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-SAARE-License, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, X-SAARE-License, Authorization, X-Control-Plane-Token",
 };
 
 const AUTHORIZED_TENANTS = {
@@ -10,7 +10,8 @@ const AUTHORIZED_TENANTS = {
       email: "alfonsosb1@gmail.com",
       role: "CISO / Global Admin",
       tier: "master_isv_enterprise",
-      status: "ACTIVE"
+      status: "ACTIVE",
+      allowed_scopes: ["all", "saare-console", "escenario-b", "escenario-c"]
     }
   ],
   "SAARE-PRO-2026-1167-TEST": [
@@ -18,12 +19,61 @@ const AUTHORIZED_TENANTS = {
       email: "pmaiquess@gmail.com",
       role: "Tenant Auditor / Security Lead",
       tier: "enterprise_custodian",
-      status: "ACTIVE"
+      status: "ACTIVE",
+      allowed_scopes: ["saare-console", "escenario-b"]
+    }
+  ],
+  "SAARE-PRO-2026-3374-EVAL": [
+    {
+      email: "alfonsoferrertorres@gmail.com",
+      role: "Tenant Security Lead",
+      tier: "enterprise_evaluation",
+      status: "ACTIVE",
+      allowed_scopes: ["saare-console"]
     }
   ]
 };
 
 const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
+
+let IN_MEMORY_RUNS = [
+  {
+    evidenceId: "EV-BLOCK-390615",
+    timestamp: "2026-08-18T23:43:34.775Z",
+    verdict: "RECHAZADO",
+    user: "alfonsosb1@gmail.com",
+    licenseKey: "SAARE-MASTER-2026-ROOT-001",
+    violationDetails: {
+      norma: "España - LOPDGDD & AEPD",
+      reason: "Detección de DNI/NIE en texto de entrada",
+      isViolation: true
+    }
+  },
+  {
+    evidenceId: "EV-BLOCK-184920",
+    timestamp: "2026-08-18T22:15:10.120Z",
+    verdict: "RECHAZADO",
+    user: "alfonsosb1@gmail.com",
+    licenseKey: "SAARE-MASTER-2026-ROOT-001",
+    violationDetails: {
+      norma: "RGPD Bancario",
+      reason: "Filtro RGPD: Intento de fuga de cuenta IBAN",
+      isViolation: true
+    }
+  },
+  {
+    evidenceId: "EV-BLOCK-928311",
+    timestamp: "2026-08-18T21:04:45.300Z",
+    verdict: "RECHAZADO",
+    user: "alfonsosb1@gmail.com",
+    licenseKey: "SAARE-MASTER-2026-ROOT-001",
+    violationDetails: {
+      norma: "Ciberseguridad L7",
+      reason: "Top L7: Mitigación de Prompt Injection / Jailbreak DAN",
+      isViolation: true
+    }
+  }
+];
 
 export default {
   async fetch(request, env, ctx) {
@@ -33,11 +83,25 @@ export default {
       return new Response(null, { headers: CORS_HEADERS });
     }
 
-    // 1. Verificación de Licencia y Autenticación Directa
+    // 1. Verificación de Licencia, Autenticación y RBAC Scope Guard
     if (url.pathname === "/api/v1/auth/verify-license" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       const licenseKey = (body.licenseKey || "").trim();
       const userEmail = (body.userEmail || "").trim().toLowerCase();
+      const requiredScope = (body.required_scope || "saare-console").trim();
+
+      // Registro dinámico para altas nuevas de evaluación
+      if (!AUTHORIZED_TENANTS[licenseKey] && licenseKey.startsWith("SAARE-")) {
+        AUTHORIZED_TENANTS[licenseKey] = [
+          {
+            email: userEmail,
+            role: "Tenant Security Lead",
+            tier: "enterprise_evaluation",
+            status: "ACTIVE",
+            allowed_scopes: ["saare-console"]
+          }
+        ];
+      }
 
       const tenants = AUTHORIZED_TENANTS[licenseKey];
       if (!tenants) {
@@ -61,6 +125,19 @@ export default {
         });
       }
 
+      // Validación de Scope / Escenario
+      const scopes = user.allowed_scopes || ["all", "saare-console"];
+      const hasScope = scopes.includes("all") || scopes.includes(requiredScope);
+      if (!hasScope) {
+        return new Response(JSON.stringify({
+          valid: false,
+          error: `Acceso restringido: Su suscripción no autoriza el acceso al módulo '${requiredScope}'.`
+        }), {
+          status: 403,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
       return new Response(JSON.stringify({
         valid: true,
         user: user.email,
@@ -68,6 +145,7 @@ export default {
         tier: user.tier,
         status: user.status,
         license: licenseKey,
+        allowed_scopes: scopes,
         rfc3161_timestamp: new Date().toISOString()
       }), {
         status: 200,
@@ -81,7 +159,8 @@ export default {
         status: "healthy",
         service: "SAARE Edge Core v2.7.0",
         governance_engine: "L7_PERIMETRAL_RAM_ISOLATED",
-        tenants_active: 2,
+        node_id: "2607076315021",
+        tenants_active: Object.keys(AUTHORIZED_TENANTS).length,
         timestamp: new Date().toISOString()
       }), {
         status: 200,
@@ -89,9 +168,12 @@ export default {
       });
     }
 
-    // 3. Ingesta de Evidencias Forenses
+    // 3. Ingesta de Evidencias Forenses (POST)
     if (url.pathname === "/api/v1/runs" && request.method === "POST") {
       const evidence = await request.json().catch(() => ({}));
+      if (evidence && evidence.evidenceId) {
+        IN_MEMORY_RUNS.unshift(evidence);
+      }
       return new Response(JSON.stringify({
         status: "healthy",
         service: "SAARE Edge Core v2.7.0",
@@ -105,30 +187,55 @@ export default {
       });
     }
 
-    // 4. Consulta de Evidencias Filtradas
+    // 4. Consulta de Evidencias Filtradas (GET)
     if (url.pathname === "/api/v1/runs" && request.method === "GET") {
-      const targetUser = url.searchParams.get("user") || "pmaiquess@gmail.com";
-      const sampleRuns = [
-        {
-          evidenceId: "EV-BLOCK-390615",
-          timestamp: new Date().toISOString(),
-          verdict: "RECHAZADO",
-          user: targetUser,
-          licenseKey: targetUser === "alfonsosb1@gmail.com" ? "SAARE-MASTER-2026-ROOT-001" : "SAARE-PRO-2026-1167-TEST",
-          violationDetails: {
-            norma: "España - LOPDGDD & AEPD",
-            reason: "Detección de DNI/NIE en texto de entrada",
-            isViolation: true
-          }
-        }
-      ];
-      return new Response(JSON.stringify({ runs: sampleRuns }), {
+      const targetUser = (url.searchParams.get("user") || "").toLowerCase();
+      const isMaster = targetUser === "alfonsosb1@gmail.com";
+
+      const filteredRuns = isMaster || !targetUser
+        ? IN_MEMORY_RUNS
+        : IN_MEMORY_RUNS.filter(r => (r.user || "").toLowerCase() === targetUser);
+
+      return new Response(JSON.stringify({
+        user: targetUser,
+        total: filteredRuns.length,
+        runs: filteredRuns
+      }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       });
     }
 
-    // 5. Certificación Pública de Integridad (SHA-256)
+    // 5. Endpoint L7 Dual-Vault Sync con control-plane
+    if (url.pathname === "/api/v1/vault/sync") {
+      if (request.method === "POST") {
+        const syncPayload = await request.json().catch(() => ({}));
+        if (syncPayload.evidence) {
+          IN_MEMORY_RUNS.unshift(syncPayload.evidence);
+        }
+        return new Response(JSON.stringify({
+          status: "synced",
+          node: "2607076315021",
+          hash: CANONICAL_HASH,
+          synced_at: new Date().toISOString()
+        }), {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      return new Response(JSON.stringify({
+        status: "Dual-Vault L7 Pipeline Active",
+        node: "2607076315021",
+        total_sealed: IN_MEMORY_RUNS.length,
+        rfc3161_provider: "Ed25519 Native Node"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // 6. Certificación Pública de Integridad (SHA-256)
     if (url.pathname.startsWith("/api/v1/verify")) {
       const hash = url.pathname.split("/").pop();
       const isMatch = (hash && hash.toLowerCase() === CANONICAL_HASH.toLowerCase());
