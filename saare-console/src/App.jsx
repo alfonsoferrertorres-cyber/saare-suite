@@ -405,7 +405,7 @@ export default function App() {
                 <input type="range" min="5" max="250" step="5" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                 <div style={{ fontSize: '20px', color: '#10b981', fontWeight: 'bold', marginTop: '14px' }}>Total Factura: {totalFactura} € / año</div>
               </div>
-              <button onClick={() => window.open('https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY', '_blank')} style={{ padding: '12px 28px', background: '#0284c7', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>Expedir {seats} Tokens con Descuento (-50%) ↗</button>
+              <button onClick={() => window.open('https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003', '_blank')} style={{ padding: '12px 28px', background: '#0284c7', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>Expedir {seats} Tokens con Descuento (-50%) ↗</button>
             </div>
           </section>
 
@@ -639,4 +639,5 @@ export default function App() {
     </div>
   );
 }
+
 

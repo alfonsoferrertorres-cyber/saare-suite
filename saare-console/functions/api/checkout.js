@@ -1,7 +1,6 @@
 ﻿export async function onRequest(context) {
   const { request } = context;
 
-  // Manejo de CORS Preflight
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -23,7 +22,6 @@
       params = {};
     }
   } else {
-    // Parámetros por Query String (GET)
     params = {
       quantity: url.searchParams.get("quantity") || url.searchParams.get("seats") || 1,
       email: url.searchParams.get("email") || url.searchParams.get("prefilled_email") || "",
@@ -33,19 +31,17 @@
   }
 
   const quantity = Math.max(1, parseInt(params.quantity || 1, 10));
-  const userEmail = encodeURIComponent(params.email || "");
-  const companyRef = encodeURIComponent(params.company || "SAARE-Enterprise");
-  const isAnnual = (params.plan === "anual" || params.plan === "annual" || !params.plan);
+  const userEmail = params.email ? encodeURIComponent(params.email) : "";
+  const companyRef = params.company ? encodeURIComponent(params.company) : "";
+  const isAnnual = (params.plan === "anual" || params.plan === "annual");
 
-  // Enlaces de Stripe
-  // 1. Enlace Anual (-50%): 72,00 € / asiento / año (6,00 € / mes)
-  const STRIPE_LINK_ANUAL = "https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003";
-  // 2. Enlace Mensual Regular: 12,00 € / asiento / mes
-  const STRIPE_LINK_MENSUAL = "https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003"; 
+  // Enlaces directos de Stripe
+  const STRIPE_ANUAL_72 = "https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003";
+  const STRIPE_MENSUAL_12 = "https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004";
 
-  const baseStripeLink = isAnnual ? STRIPE_LINK_ANUAL : STRIPE_LINK_MENSUAL;
+  const baseLink = isAnnual ? STRIPE_ANUAL_72 : STRIPE_MENSUAL_12;
+  const targetUrl = new URL(baseLink);
 
-  const targetUrl = new URL(baseStripeLink);
   targetUrl.searchParams.set("quantity", quantity.toString());
   if (userEmail) targetUrl.searchParams.set("prefilled_email", decodeURIComponent(userEmail));
   if (companyRef) targetUrl.searchParams.set("client_reference_id", decodeURIComponent(companyRef));
