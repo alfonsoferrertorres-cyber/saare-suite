@@ -444,8 +444,11 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    const baseUrl = isAnnual ? 'https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003' : 'https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004';
-                    window.open(`${baseUrl}?quantity=${seats}&plan=${isAnnual ? 'anual' : 'mensual'}`, '_blank');
+                    const baseUrl = isAnnual 
+                      ? "https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003" 
+                      : "https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004";
+                    const finalCheckoutUrl = `${baseUrl}?quantity=${seats}`;
+                    window.open(finalCheckoutUrl, '_blank');
                   }} 
                   style={{ width: '100%', padding: '16px', background: isAnnual ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '900', fontSize: '14px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: isAnnual ? '0 8px 20px rgba(16, 185, 129, 0.3)' : '0 8px 20px rgba(2, 132, 199, 0.3)' }}
                 >
@@ -685,6 +688,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
