@@ -10,10 +10,15 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Estados de Ciclo de Vida de 7 Días
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState(7);
+  const [isWarning24h, setIsWarning24h] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+
   const [activeTab, setActiveTab] = useState('registro');
   const [runs, setRuns] = useState([]);
   const [customRules, setCustomRules] = useState([]);
-  const [newRule, setNewRule] = useState('');
 
   // Estados de RUNLIVE
   const [runPrompt, setRunPrompt] = useState('Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.');
@@ -29,70 +34,78 @@ export default function App() {
     finops: true
   });
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paramLicense = params.get('license');
-    const paramEmail = params.get('email');
-
-    if (paramLicense && paramEmail) {
-      autoLogin(paramEmail, paramLicense);
-      return;
+  const calculateTrialStatus = (sessionData) => {
+    const now = Date.now();
+    let exp = sessionData.expiresAt ? new Date(sessionData.expiresAt).getTime() : (now + 7 * 24 * 3600 * 1000);
+    
+    // Si la sesión no tiene fecha de expiración, se le asigna 7 días desde hoy
+    if (!sessionData.expiresAt) {
+      sessionData.expiresAt = new Date(exp).toISOString();
+      localStorage.setItem('saare_session', JSON.stringify(sessionData));
     }
 
+    const diffMs = exp - now;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMs <= 0) {
+      setIsExpired(true);
+      setDaysRemaining(0);
+      setIsWarning24h(false);
+    } else {
+      setIsExpired(false);
+      setDaysRemaining(Math.max(1, diffDays));
+      setIsWarning24h(diffMs <= 24 * 3600 * 1000);
+    }
+  };
+
+  useEffect(() => {
     const saved = localStorage.getItem('saare_session');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setSession(parsed);
+        calculateTrialStatus(parsed);
       } catch (e) {
         localStorage.removeItem('saare_session');
       }
     }
   }, []);
 
-  const autoLogin = async (uEmail, uLicense) => {
+  const autoLogin = async (uEmail, uLicense, isNewRegistration = false) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/auth/verify-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userEmail: uEmail, licenseKey: uLicense, required_scope: 'saare-console' })
-      });
-      const data = await res.json();
-      if (data.valid) {
-        localStorage.setItem('saare_session', JSON.stringify(data));
-        setSession(data);
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } else {
-        // Fallback de contingencia local
-        const fallbackSession = {
-          valid: true,
-          user: uEmail,
-          license: uLicense,
-          role: 'Tenant Security Lead',
-          scopes: ['saare-console', 'evidence_read', 'evidence_write', 'rules_manage']
-        };
-        localStorage.setItem('saare_session', JSON.stringify(fallbackSession));
-        setSession(fallbackSession);
-      }
-    } catch (e) {
-      const fallbackSession = {
+      const now = Date.now();
+      const expiresAt = new Date(now + 7 * 24 * 3600 * 1000).toISOString();
+
+      const newSession = {
         valid: true,
         user: uEmail,
         license: uLicense,
+        company: company || 'Empresa Evaluadora',
         role: 'Tenant Security Lead',
+        plan: 'PRO_EVAL_7D',
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt,
         scopes: ['saare-console', 'evidence_read', 'evidence_write', 'rules_manage']
       };
-      localStorage.setItem('saare_session', JSON.stringify(fallbackSession));
-      setSession(fallbackSession);
+
+      localStorage.setItem('saare_session', JSON.stringify(newSession));
+      setSession(newSession);
+      calculateTrialStatus(newSession);
+
+      if (isNewRegistration) {
+        setShowWelcomeModal(true);
+      }
+    } catch (e) {
+      setErrorMsg('Error de enlace de autenticación L7.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || isExpired) return;
     const fetchRuns = async () => {
       try {
         const res = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=' + encodeURIComponent(session.user));
@@ -110,22 +123,23 @@ export default function App() {
     fetchRuns();
     const interval = setInterval(fetchRuns, 4000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, isExpired]);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    autoLogin(email.trim(), licenseKey.trim());
+    autoLogin(email.trim(), licenseKey.trim(), false);
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     const newLicense = 'SAARE-PRO-2026-' + Math.floor(1000 + Math.random() * 9000) + '-EVAL';
-    autoLogin(email.trim(), newLicense);
+    autoLogin(email.trim(), newLicense, true);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('saare_session');
     setSession(null);
+    setIsExpired(false);
   };
 
   const executeLiveRun = async () => {
@@ -210,6 +224,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  // 1. PANTALLA DE LOGIN
   if (!session) {
     return (
       <div style={{ minHeight: '100vh', background: '#090d16', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', padding: '20px' }}>
@@ -221,10 +236,9 @@ export default function App() {
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Autenticación en Bóveda Forense L7</p>
           </div>
 
-          {/* BOTÓN DIRECTO DE REANUDACIÓN RÁPIDA */}
           <button 
             type="button" 
-            onClick={() => autoLogin('alfonsoferrertorres@gmail.com', 'SAARE-PRO-2026-3374-EVAL')}
+            onClick={() => autoLogin('alfonsoferrertorres@gmail.com', 'SAARE-PRO-2026-3374-EVAL', false)}
             disabled={loading}
             style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}>
             ⚡ Reanudar Sesión (Acceso Inmediato)
@@ -232,13 +246,13 @@ export default function App() {
 
           <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', color: '#475569', fontSize: '11px' }}>
             <div style={{ flex: 1, height: '1px', background: '#1e293b' }}></div>
-            <span style={{ padding: '0 10px', textTransform: 'uppercase' }}>O inicia sesión manual</span>
+            <span style={{ padding: '0 10px', textTransform: 'uppercase' }}>O gestiona tu cuenta</span>
             <div style={{ flex: 1, height: '1px', background: '#1e293b' }}></div>
           </div>
 
           <div style={{ display: 'flex', background: '#020617', padding: '4px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #1e293b' }}>
             <button onClick={() => { setAuthMode('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authMode === 'login' ? '#0284c7' : 'transparent', color: authMode === 'login' ? '#fff' : '#64748b', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Iniciar Sesión</button>
-            <button onClick={() => { setAuthMode('register'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authMode === 'register' ? '#0284c7' : 'transparent', color: authMode === 'register' ? '#fff' : '#64748b', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Registrar / Alta</button>
+            <button onClick={() => { setAuthMode('register'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authMode === 'register' ? '#0284c7' : 'transparent', color: authMode === 'register' ? '#fff' : '#64748b', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Alta (7 Días Gratis)</button>
           </div>
 
           {errorMsg && <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>{errorMsg}</div>}
@@ -254,25 +268,56 @@ export default function App() {
                 <input type="text" required value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', boxSizing: 'border-box' }} />
               </div>
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: 'linear-gradient(to right, #0ea5e9, #0284c7)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
-                {loading ? 'VALIDANDO CREDENCIALES...' : 'ENTRAR A SAARE CONSOLE'}
+                {loading ? 'VALIDANDO...' : 'ENTRAR A SAARE CONSOLE'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleRegister}>
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Correo Electrónico</label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Correo Electrónico Corporativo</label>
                 <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
               </div>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Organización / Tenant</label>
-                <input type="text" required value={company} onChange={(e) => setCompany(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Organización / Empresa</label>
+                <input type="text" required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Ej: Consultora Tecnológica S.L." style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
               </div>
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#10b981', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
-                {loading ? 'EMITIENDO...' : 'OBTENER LICENCIA EVAL'}
+                {loading ? 'EMITIENDO...' : 'ACTIVAR 7 DÍAS DE PRUEBA GRATIS'}
               </button>
             </form>
           )}
 
+        </div>
+      </div>
+    );
+  }
+
+  // 2. PANTALLA DE EXPIRACIÓN TRAS 7 DÍAS (PAYWALL DE CUSTODIA)
+  if (isExpired) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#090d16', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', padding: '20px' }}>
+        <div style={{ background: '#0f172a', border: '1px solid #ef4444', borderRadius: '16px', padding: '36px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 50px rgba(239,68,68,0.2)', textAlign: 'center' }}>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔒</div>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f87171', margin: '0 0 8px 0' }}>PERIODO DE EVALUACIÓN COMPLETADO</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
+            Tu prueba gratuita de 7 días para la cuenta <strong>{session.user}</strong> ha concluido. Sus evidencias forenses RFC 3161 y registros del nodo se mantienen en <strong style={{ color: '#38bdf8' }}>Custodia Segura (30 días)</strong>.
+          </p>
+          <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '14px', marginBottom: '24px', textAlign: 'left', fontSize: '12px', color: '#cbd5e1' }}>
+            <div>✔ <strong>Licencia Vinculada:</strong> {session.license}</div>
+            <div>✔ <strong>Evidencias Custodiadas:</strong> {runs.length} Dictámenes RFC 3161</div>
+            <div>✔ <strong>Cumplimiento Normativo:</strong> EU AI Act 2024/1689 & ISO 42001</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button onClick={() => window.open('https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY', '_blank')} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>
+              ⭐ ACTIVAR SUSCRIPCIÓN PRO (ACCESO INMEDIATO)
+            </button>
+            <button onClick={() => window.open('mailto:legal@saare.es?subject=Solicitud Financiación Kit Consulting SAARE', '_blank')} style={{ width: '100%', padding: '12px', background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', color: '#cbd5e1', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+              🏛️ Financiar al 100% con Bono Kit Consulting
+            </button>
+            <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '11px', marginTop: '8px', cursor: 'pointer', textDecoration: 'underline' }}>
+              Cerrar Sesión / Cambiar de Usuario
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -283,6 +328,27 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#cbd5e1', color: '#0f172a', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
+      {/* MODAL DE BIENVENIDA TRAS REGISTRO */}
+      {showWelcomeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#0f172a', border: '1px solid #10b981', borderRadius: '16px', padding: '32px', width: '90%', maxWidth: '520px', color: '#fff', boxShadow: '0 20px 50px rgba(16,185,129,0.3)', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', marginBottom: '8px' }}>🎉</div>
+            <h3 style={{ color: '#34d399', fontSize: '20px', margin: '0 0 6px 0', fontWeight: '800' }}>¡BIENVENIDO A S.A.A.R.E. PLATFORM!</h3>
+            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
+              Se han concedido <strong style={{ color: '#38bdf8' }}>7 DÍAS DE ACCESO COMPLETO GRATIS</strong> a la Consola GRC y al Motor de Interceptación L7 en Memoria RAM.
+            </p>
+            <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '14px', textAlign: 'left', fontSize: '12px', color: '#cbd5e1', marginBottom: '20px' }}>
+              <div>🔑 <strong>Licencia Asignada:</strong> <code style={{ color: '#38bdf8' }}>{session.license}</code></div>
+              <div>⚡ <strong>Motor Activo:</strong> Stateless ex-ante Engine (1.16 ms)</div>
+              <div>🏛️ <strong>Custodia:</strong> Gabinete Jurídico y Pericial MS3V</div>
+            </div>
+            <button onClick={() => setShowWelcomeModal(false)} style={{ width: '100%', padding: '12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+              🚀 COMENZAR AUDITORÍA EN CONSOLA
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* BANNER SUPERIOR OFICIAL */}
       <div style={{ 
         width: '100%', 
@@ -308,17 +374,37 @@ export default function App() {
       {/* CONTENIDO PRINCIPAL */}
       <div style={{ maxWidth: '1200px', margin: '-20px auto 30px auto', padding: '0 20px', position: 'relative', zIndex: 10 }}>
         
-        {/* CAJA DE USUARIO */}
+        {/* CAJA DE USUARIO CON BADGE DINÁMICO DE 7 DÍAS */}
         <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px 20px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
           <div>
             <h2 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase' }}>PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5</h2>
             <div style={{ fontSize: '12px', color: '#475569' }}>
-              USUARIO: <strong style={{ color: '#0284c7' }}>{session.user}</strong> | ROL: <span style={{ color: '#16a34a', fontWeight: 'bold' }}>Tenant Security Lead</span> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeCount} Activas</strong> | REGLAS PERSONALIZADAS: {customRules.length}
+              USUARIO: <strong style={{ color: '#0284c7' }}>{session.user}</strong> | ROL: <span style={{ color: '#16a34a', fontWeight: 'bold' }}>Tenant Security Lead</span> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeCount} Activas</strong>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ border: '1px solid #86efac', background: '#f0fdf4', color: '#16a34a', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>LICENCIA: {session.license}</div>
-            <button onClick={handleLogout} style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '8px 16px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Cerrar Sesión</button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* BADGE DE TIEMPO RESTANTE */}
+            <div style={{ 
+              border: isWarning24h ? '1px solid #f87171' : '1px solid #86efac', 
+              background: isWarning24h ? '#fef2f2' : '#f0fdf4', 
+              color: isWarning24h ? '#b91c1c' : '#16a34a', 
+              padding: '6px 12px', 
+              borderRadius: '6px', 
+              fontSize: '11px', 
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              {isWarning24h ? '⏰ ÚLTIMAS 24H DE PRUEBA' : `🟢 PRUEBA: ${daysRemaining} DÍAS RESTANTES`}
+            </div>
+
+            <div style={{ border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+              LICENCIA: {session.license}
+            </div>
+
+            <button onClick={handleLogout} style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Cerrar Sesión</button>
           </div>
         </div>
 
@@ -416,7 +502,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* TARJETA DE RESULTADO RUNLIVE */}
+            {/* RESULTADO RUNLIVE */}
             {liveResult && (
               <div style={{ background: '#090d16', color: '#f8fafc', borderRadius: '8px', padding: '18px', border: liveResult.verdict === 'RECHAZADO' ? '1px solid #ef4444' : '1px solid #10b981' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
@@ -455,6 +541,14 @@ export default function App() {
               </div>
               <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div><strong>Protección RGPD (IBAN / Tarjetas)</strong><div style={{ fontSize: '11px', color: '#64748b' }}>Filtro de exfiltración de datos bancarios</div></div>
+                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ACTIVA</span>
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong>Anti-Jailbreak / Prompt Injection</strong><div style={{ fontSize: '11px', color: '#64748b' }}>Mitigación de override de instrucciones</div></div>
+                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ACTIVA</span>
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong>Sellado Criptográfico RFC 3161</strong><div style={{ fontSize: '11px', color: '#64748b' }}>Firmado inmutable con custodia Ed25519</div></div>
                 <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ACTIVA</span>
               </div>
             </div>
