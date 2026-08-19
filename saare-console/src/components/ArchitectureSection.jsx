@@ -32,9 +32,9 @@ export default function ArchitectureSection() {
       {showDiploma && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
           <div style={{ maxWidth: '850px', width: '100%', background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
-            <img src="/certificado_integridad.png" alt="Certificado de Integridad RPI-2026-SAARE-0914X" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
+            <img src="/certificado_integridad.png" alt="Diploma Registral RPI" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
             <div style={{ padding: '14px 20px', background: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>Acreditación RPI-2026-SAARE-0914X · Tasa de similitud Delta=0.0024%</span>
+              <span style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>Acreditación RPI-2026-SAARE-0914X · Similitud Delta=0.0024%</span>
               <button onClick={() => setShowDiploma(false)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cerrar</button>
             </div>
           </div>
@@ -48,17 +48,17 @@ export default function ArchitectureSection() {
               CERTIFICACIÓN DE INTEGRIDAD IA
             </span>
             <span style={{ color: '#38bdf8', fontSize: '13px', fontFamily: 'monospace' }}>
-              NODO NATIVO OPEN-ENGINE: <strong>2607076315021</strong>
+              NODO NATIVO LLM OPEN-ENGINE: <strong>2607076315021</strong>
             </span>
           </div>
           <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px' }}>
-            STATELESS EX-ANTE ENGINE · 1.16 ms
+            STATELESS EX-ANTE ENGINE
           </span>
         </div>
 
         <div style={{ marginBottom: '18px' }}>
           <h3 style={{ color: '#f8fafc', fontSize: '17px', margin: '0 0 8px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma del Modelo de IA: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable</span>
+            <span style={{ color: '#10b981' }}>✔</span> Validación autónoma del modelo de IA: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable</span>
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
             Esta certificación acredita la primera auditoría generada de forma nativa en el espacio latente de la IA. El Gabinete Técnico MS3V y los registros de la propiedad intelectual <strong>Safe Creative (2607076315021 / 2607076314949)</strong> avalan el no repudio procesal y la erradicación estocástica (0.00% Error Lógico en RAM).
@@ -86,9 +86,9 @@ export default function ArchitectureSection() {
           <button type="button" onClick={copyDigitalSignature} style={{ background: copied ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
             {copied ? '✔ FIRMA DIGITAL Y MANIFIESTO COPIADOS' : '📋 Copiar Firma Digital del Nodo'}
           </button>
-          <a href="https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07" target="_blank" rel="noreferrer" style={{ background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button type="button" onClick={() => window.open('https://console.saare.es', '_blank')} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             🔍 Auditar en Consola ↗
-          </a>
+          </button>
         </div>
       </div>
     </section>
