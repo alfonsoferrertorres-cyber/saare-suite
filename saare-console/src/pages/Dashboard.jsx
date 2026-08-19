@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { 
   ShieldCheck, HardDrive, Cloud, FileCheck, CheckCircle2, 
   Terminal, Lock, RefreshCw, Layers, ExternalLink, Download, Folder
@@ -7,27 +7,27 @@ import {
 const SCENARIOS = [
   {
     id: 'eu_ai_act_es',
-    name: 'EU AI Act  España',
+    name: 'EU AI Act  EspaÃ±a',
     category: 'Cumplimiento Normativo',
-    desc: 'Anonimización DNI/IBAN/NIF ex-ante, auditoría AESIA y firma criptográfica Ed25519.',
-    badge: 'Máxima Seguridad',
-    rules: ['DLP España (DNI, IBAN, NIF)', 'Trazabilidad Algorítmica', 'Control de Sesgo', 'Firma Ed25519']
+    desc: 'AnonimizaciÃ³n DNI/IBAN/NIF ex-ante, auditorÃ­a AESIA y firma criptogrÃ¡fica Ed25519.',
+    badge: 'MÃ¡xima Seguridad',
+    rules: ['DLP EspaÃ±a (DNI, IBAN, NIF)', 'Trazabilidad AlgorÃ­tmica', 'Control de Sesgo', 'Firma Ed25519']
   },
   {
     id: 'banking_dora',
     name: 'Banca & Finanzas DORA',
-    category: 'Perímetro Financiero',
-    desc: 'Protección PCI-DSS, detección de tarjetas y cifrado de transacciones L7.',
+    category: 'PerÃ­metro Financiero',
+    desc: 'ProtecciÃ³n PCI-DSS, detecciÃ³n de tarjetas y cifrado de transacciones L7.',
     badge: 'DORA / PCI-DSS',
-    rules: ['DLP Financiero', 'Mapeo Shadow AI', 'Vault Volátil RAM']
+    rules: ['DLP Financiero', 'Mapeo Shadow AI', 'Vault VolÃ¡til RAM']
   },
   {
     id: 'mcp_agent_shield',
-    name: 'Agentes Autónomos & MCP',
-    category: 'Cortacircuito Agéntico',
-    desc: 'Guardarraíles para llamadas a herramientas y prevención de bucles infinitos.',
-    badge: 'Control Agéntico',
-    rules: ['Límite de bucles MCP', 'Inspección de Payloads', 'Firma de llamadas']
+    name: 'Agentes AutÃ³nomos & MCP',
+    category: 'Cortacircuito AgÃ©ntico',
+    desc: 'GuardarraÃ­les para llamadas a herramientas y prevenciÃ³n de bucles infinitos.',
+    badge: 'Control AgÃ©ntico',
+    rules: ['LÃ­mite de bucles MCP', 'InspecciÃ³n de Payloads', 'Firma de llamadas']
   }
 ];
 
@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [activeScenario, setActiveScenario] = useState('eu_ai_act_es');
   const [airGapped, setAirGapped] = useState(false);
   const [logs] = useState([
-    { id: 'REC-8801', time: '06:32:01', event: 'Validación de Prompt', result: 'Aprobado', hash: 'e2f5...89a1', synced: true },
+    { id: 'REC-8801', time: '06:32:01', event: 'ValidaciÃ³n de Prompt', result: 'Aprobado', hash: 'e2f5...89a1', synced: true },
     { id: 'REC-8802', time: '06:33:14', event: 'DNI Detectado (Filtro ES)', result: 'Anonimizado en RAM', hash: 'a4b1...32f0', synced: true },
     { id: 'REC-8803', time: '06:34:02', event: 'Registro Inmutable Dual-Vault', result: 'Firmado Local + Cloud', hash: 'c9d8...11e4', synced: true }
   ]);
@@ -72,10 +72,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Panel Principal: Selección de Escenarios */}
+        {/* Panel Principal: SelecciÃ³n de Escenarios */}
         <div className="space-y-4">
           <h2 className="text-sm font-mono text-[#C5A059] uppercase tracking-wider">
-            1. Escenario de Protección Activo
+            1. Escenario de ProtecciÃ³n Activo
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {SCENARIOS.map((sc) => {
@@ -113,7 +113,7 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
             <div>
               <h2 className="text-lg font-bold text-white">2. Arquitectura de Almacenamiento Dual-Vault</h2>
-              <p className="text-xs text-slate-400">Garantía de inmutabilidad y soberanía de datos sincrónica.</p>
+              <p className="text-xs text-slate-400">GarantÃ­a de inmutabilidad y soberanÃ­a de datos sincrÃ³nica.</p>
             </div>
             <span className="text-xs font-mono text-[#C5A059] bg-[#C5A059]/10 px-3 py-1 rounded-lg border border-[#C5A059]/30">
               Escenario Actual: {currentScenarioObj?.name}
@@ -156,11 +156,11 @@ export default function Dashboard() {
               <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
                 <p className="text-slate-400 text-[11px]">Destino de respaldo inmutable:</p>
                 <p className="text-[#00f0ff] font-bold break-all">
-                  {airGapped ? 'Conexión pausada por política' : 'https://vault.saare.es/tenant/01-es'}
+                  {airGapped ? 'ConexiÃ³n pausada por polÃ­tica' : 'https://vault.saare.es/tenant/01-es'}
                 </p>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Únicamente se sincronizan recibos con hashes sin contenido sensible para permitir auditorías remotas.
+                Ãšnicamente se sincronizan recibos con hashes sin contenido sensible para permitir auditorÃ­as remotas.
               </p>
             </div>
 
@@ -169,7 +169,7 @@ export default function Dashboard() {
           {/* Tabla de Registro de Evidencias */}
           <div className="pt-2">
             <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-3">
-              Registro de Actividad y Evidencias Criptográficas
+              Registro de Actividad y Evidencias CriptogrÃ¡ficas
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left font-mono text-xs">
@@ -177,7 +177,7 @@ export default function Dashboard() {
                   <tr className="border-b border-slate-800 text-slate-500 uppercase text-[10px]">
                     <th className="pb-2">ID Recibo</th>
                     <th className="pb-2">Hora</th>
-                    <th className="pb-2">Evento / Intercepción</th>
+                    <th className="pb-2">Evento / IntercepciÃ³n</th>
                     <th className="pb-2">Veredicto</th>
                     <th className="pb-2">Hash Ed25519</th>
                     <th className="pb-2">Estado Dual-Vault</th>
@@ -213,3 +213,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
