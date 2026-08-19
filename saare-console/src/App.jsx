@@ -1,4 +1,5 @@
-﻿import RealDashboardConsole from './components/RealDashboardConsole';
+﻿import EnterpriseFAQ from './components/EnterpriseFAQ';
+import RealDashboardConsole from './components/RealDashboardConsole';
 import SandboxExperience from './components/SandboxExperience';
 import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
 import ComplianceAndRegulations from './components/ComplianceAndRegulations';
@@ -329,6 +330,7 @@ export default function App() {
       <UniversalLLMCompatibility />
       <SandboxExperience />
       <RealDashboardConsole />
+      <EnterpriseFAQ />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -750,6 +752,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
