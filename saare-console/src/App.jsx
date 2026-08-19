@@ -1,4 +1,5 @@
-﻿import EnterpriseFAQ from './components/EnterpriseFAQ';
+﻿import FinalCTA from './components/FinalCTA';
+import EnterpriseFAQ from './components/EnterpriseFAQ';
 import RealDashboardConsole from './components/RealDashboardConsole';
 import SandboxExperience from './components/SandboxExperience';
 import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
@@ -331,6 +332,7 @@ export default function App() {
       <SandboxExperience />
       <RealDashboardConsole />
       <EnterpriseFAQ />
+      <FinalCTA />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -752,6 +754,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
