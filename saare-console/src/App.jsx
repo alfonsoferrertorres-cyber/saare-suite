@@ -396,16 +396,60 @@ export default function App() {
             </div>
           </section>
 
-          {/* CALCULADORA Y FINANCIACIÓN */}
+                    {/* CALCULADORA Y FINANCIACIÓN */}
           <section id="financiacion" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
             <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
-              <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', margin: '0 0 10px 0' }}>Calculadora y Despliegue de Asientos (-50% Lanzamiento)</h2>
-              <div style={{ maxWidth: '500px', margin: '20px auto' }}>
-                <label style={{ display: 'block', color: '#cbd5e1', marginBottom: '10px', fontSize: '14px' }}>Asientos: <strong style={{ color: '#38bdf8' }}>{seats} empleados</strong></label>
-                <input type="range" min="5" max="250" step="5" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                <div style={{ fontSize: '20px', color: '#10b981', fontWeight: 'bold', marginTop: '14px' }}>Total Factura: {totalFactura} € / año</div>
+              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>GOBERNANZA COMPLETA • TODOS LOS ESCENARIOS INCLUIDOS</span>
+              <h2 style={{ color: '#fff', fontSize: '26px', fontWeight: '800', margin: '6px 0' }}>Calculadora y Despliegue de Asientos</h2>
+              <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Ajuste el número exacto de empleados con la ruleta. Disfrute del 50% de descuento directo en el plan anual.</p>
+              
+              <div style={{ maxWidth: '650px', margin: '30px auto' }}>
+                <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#cbd5e1', fontSize: '14px', fontWeight: 'bold', marginBottom: '14px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>👤 ASIENTOS A CONTRATAR</span>
+                    <span style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid #0284c7', color: '#38bdf8', padding: '4px 12px', borderRadius: '6px', fontSize: '15px' }}>{seats} asientos</span>
+                  </label>
+                  <input type="range" min="5" max="250" step="5" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                  <div 
+                    onClick={() => setIsAnnual(true)}
+                    style={{ background: isAnnual ? 'rgba(16, 185, 129, 0.1)' : '#020617', border: isAnnual ? '2px solid #10b981' : '1px solid #334155', borderRadius: '10px', padding: '16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease' }}
+                  >
+                    <div style={{ color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>Plan Anual Lanzamiento</div>
+                    <div style={{ color: '#10b981', fontWeight: '900', fontSize: '16px' }}>6.00 € <span style={{ fontSize: '10px', fontWeight: 'normal' }}>/ empleado / mes</span></div>
+                    <div style={{ color: '#10b981', fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>Ahorro del 50% el primer año</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setIsAnnual(false)}
+                    style={{ background: !isAnnual ? 'rgba(2, 132, 199, 0.1)' : '#020617', border: !isAnnual ? '2px solid #0284c7' : '1px solid #334155', borderRadius: '10px', padding: '16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease' }}
+                  >
+                    <div style={{ color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>Plan Mensual Regular</div>
+                    <div style={{ color: '#94a3b8', fontWeight: '900', fontSize: '16px' }}>12.00 € <span style={{ fontSize: '10px', fontWeight: 'normal' }}>/ empleado / mes</span></div>
+                    <div style={{ color: '#64748b', fontSize: '10px', marginTop: '4px' }}>Sin permanencia</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+                  <div style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>TOTAL A FACTURAR:</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: '#fff', fontSize: '26px', fontWeight: '900' }}>{totalFactura} € <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'normal' }}>+ IVA</span></div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px' }}>{isAnnual ? 'Facturación Anual' : 'Facturación Mensual'}</div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const baseUrl = isAnnual ? 'https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003' : 'https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004';
+                    window.open(`${baseUrl}?quantity=${seats}&plan=${isAnnual ? 'anual' : 'mensual'}`, '_blank');
+                  }} 
+                  style={{ width: '100%', padding: '16px', background: isAnnual ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '900', fontSize: '14px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: isAnnual ? '0 8px 20px rgba(16, 185, 129, 0.3)' : '0 8px 20px rgba(2, 132, 199, 0.3)' }}
+                >
+                  EXPEDIR {seats} TOKENS ({isAnnual ? 'PLAN ANUAL -50%' : 'PLAN MENSUAL'}) ↗
+                </button>
               </div>
-              <button onClick={() => window.open('https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003', '_blank')} style={{ padding: '12px 28px', background: '#0284c7', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>Expedir {seats} Tokens con Descuento (-50%) ↗</button>
             </div>
           </section>
 
@@ -639,5 +683,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
