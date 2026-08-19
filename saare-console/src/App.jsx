@@ -1,4 +1,5 @@
-﻿import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
+﻿import SandboxExperience from './components/SandboxExperience';
+import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
 import ComplianceAndRegulations from './components/ComplianceAndRegulations';
 import ForensicEvidence from './components/ForensicEvidence';
 import SecurityAndPrivacy from './components/SecurityAndPrivacy';
@@ -325,6 +326,7 @@ export default function App() {
       <ForensicEvidence />
       <ComplianceAndRegulations />
       <UniversalLLMCompatibility />
+      <SandboxExperience />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -746,6 +748,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
