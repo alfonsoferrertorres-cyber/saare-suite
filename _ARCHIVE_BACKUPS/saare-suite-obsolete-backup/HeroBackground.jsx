@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useEffect, useRef } from 'react';
 
 export default function HeroBackground() {
   const canvasRef = useRef(null);
@@ -132,3 +132,4 @@ export default function HeroBackground() {
     />
   );
 }
+

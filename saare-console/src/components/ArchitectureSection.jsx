@@ -1,171 +1,90 @@
-import React, { useState } from 'react';
-
-const LAYERS = [
-  {
-    id: 'data_plane',
-    number: '01 / PLANO DE DATOS',
-    title: 'Entorno de Ejecución S.A.A.R.E.',
-    shortDesc: 'Intercepción L7 y aplicación de políticas en memoria.',
-    activeTitle: 'Entorno de Ejecución S.A.A.R.E. (Plano de Datos)',
-    subHeader: 'Inspección de intercepción y memoria de Capa 7',
-    techs: [
-      {
-        name: 'Rust',
-        desc: 'Core nativo en Rust enfocado en seguridad de memoria (Memory Safety) sin recolector de basura, garantizando latencias ultra-bajas (~140ms P99) en intercepción de microservicios.'
-      },
-      {
-        name: 'C-ABI Nativo',
-        desc: 'Interoperabilidad directa vía C-ABI para incrustar el motor de gobernanza directamente en arquitecturas legacy o binarios personalizados de alta frecuencia.'
-      },
-      {
-        name: 'WebAssembly',
-        desc: 'Sandboxing ligero mediante módulos Wasm/WASI para la ejecución de políticas dinámicas aisladas en nodos Edge con cero impacto en el host.'
-      },
-      {
-        name: 'Docker',
-        desc: 'Despliegue contenerizado mediante Sidecar o Ingress Proxy determinista para orquestación directa en clústeres Kubernetes y entornos Cloud Native.'
-      }
-    ]
-  },
-  {
-    id: 'control_plane',
-    number: '02 / CAPA TRANSVERSAL',
-    title: 'Plano de Control',
-    shortDesc: 'Orquestación centralizada de políticas y control de licencias.',
-    activeTitle: 'Plano de Control y Gobernanza (Control Plane)',
-    subHeader: 'Orquestación centralizada y control de licencias',
-    techs: [
-      {
-        name: 'gRPC',
-        desc: 'Canal de comunicación asíncrono y de alto rendimiento mediante HTTP/2 e interfaces Protocol Buffers para la distribución masiva de reglas de compliance.'
-      },
-      {
-        name: 'eBPF',
-        desc: 'Sondeo transparente a nivel de Kernel Linux para la trazabilidad completa del tráfico de sockets y validación de llamadas al sistema sin modificar código.'
-      },
-      {
-        name: 'OpenTelemetry',
-        desc: 'Exportación unificada de métricas, trazas y registros de auditoría hacia los sistemas SIEM/Observabilidad existentes (Datadog, Splunk, Prometheus).'
-      },
-      {
-        name: 'Kubernetes',
-        desc: 'Operador nativo (CRDs) para sincronizar automáticamente el estado deseado de cumplimiento y el ciclo de vida de los PEPs en múltiples clusters.'
-      }
-    ]
-  },
-  {
-    id: 'evidence_vault',
-    number: '03 / EVIDENCIA Y GOBERNANZA',
-    title: 'Garantía S.A.A.R.E.',
-    shortDesc: 'Paquetes de auditoría y registro de evidencia criptográfica.',
-    activeTitle: 'Garantía y Bóveda de Evidencias (Evidence Vault)',
-    subHeader: 'Trazas probatorias e inmutabilidad criptográfica',
-    techs: [
-      {
-        name: 'Ed25519',
-        desc: 'Firma digital de curva elíptica de alta velocidad que certifica el origen inmutable y el estado del payload antes de ser procesado por la IA.'
-      },
-      {
-        name: 'SHA-256',
-        desc: 'Generación de huellas digitales unívocas (Hashes) para garantizar la integridad absoluta de los paquetes de auditoría presentados ante reguladores.'
-      },
-      {
-        name: 'JSON-LD',
-        desc: 'Formato de datos enlazados estandarizado para la exportación de evidencias legibles e interoperables por sistemas de auditoría externos.'
-      },
-      {
-        name: 'EU AI Act Header',
-        desc: 'Inyección ex-ante del cabezal probatorio de cumplimiento que acompaña la petición durante toda la cadena de ejecución del LLM.'
-      }
-    ]
-  }
-];
+﻿import React, { useState } from 'react';
 
 export default function ArchitectureSection() {
-  const [activeLayer, setActiveLayer] = useState(LAYERS[0]);
-  const [activeTech, setActiveTech] = useState(LAYERS[0].techs[0]);
+  const [copied, setCopied] = useState(false);
 
-  const handleLayerChange = (layer) => {
-    setActiveLayer(layer);
-    setActiveTech(layer.techs[0]);
+  const certPayload = {
+    "CERTIFICADO": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
+    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Tecnico Comercial MS3V)",
+    "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
+    "ID_MAESTRO_CONTEXTO": "MS3V-RECON-VALID-2026-ALF-0521",
+    "INFRAESTRUCTURA_ORIGEN": "Gemini Core Semantic Engine (Hito Eureka)",
+    "HUELLA_SHA256_CANONICA": "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07",
+    "LATENCIA_DETERMINISTA_RAM": "1.16 ms",
+    "ESTADO": "STATELESS_L7_VERIFIED (0.00% Error Logico)",
+    "MARCO_REGULATORIO": ["EU AI Act 2024/1689", "UNE-EN ISO/IEC 42001", "ISO 27001", "DORA Capa 7"],
+    "URL_VERIFICACION_PUBLICA": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(JSON.stringify(certPayload, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <header className="text-center mb-10">
-        <span className="font-mono text-[10px] tracking-widest text-[#C5A059] border border-[#C5A059]/40 bg-[#C5A059]/10 px-3 py-1 rounded-full uppercase">
-          JERARQUÍA DE LA ARQUITECTURA CENTRAL
-        </span>
-        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white mt-4">
-          Arquitectura de Capas Unificadas
-        </h2>
-        <p className="text-slate-400 text-xs sm:text-sm mt-2">
-          Seleccione cualquier capa para inspeccionar las capacidades y especificaciones técnicas.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {LAYERS.map((layer) => {
-          const isActive = activeLayer.id === layer.id;
-          return (
-            <button
-              key={layer.id}
-              onClick={() => handleLayerChange(layer)}
-              className={`text-left p-6 rounded-2xl border transition-all duration-200 ${
-                isActive
-                  ? 'bg-slate-900/90 border-[#C5A059] shadow-lg shadow-[#C5A059]/10'
-                  : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              <span className="text-[10px] font-mono tracking-wider text-slate-400 block mb-2">
-                {layer.number}
-              </span>
-              <h3 className="text-base font-bold text-white mb-2">{layer.title}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{layer.shortDesc}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6 mb-6">
-          <div>
-            <span className="text-[10px] font-mono text-[#C5A059] uppercase tracking-wider block mb-1">
-              ESPECIFICACIÓN DE LA CAPA ACTIVA
+    <section style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+        
+        {/* CABECERA DE LA TARJETA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              CERTIFICACIÓN DE INTEGRIDAD IA
             </span>
-            <h3 className="text-xl font-bold text-white">{activeLayer.activeTitle}</h3>
-            <p className="text-xs text-slate-400 mt-1">{activeLayer.subHeader}</p>
+            <span style={{ color: '#38bdf8', fontSize: '13px', fontFamily: 'monospace' }}>
+              NODO NATIVO OPEN-ENGINE: <strong>2607076315021</strong>
+            </span>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {activeLayer.techs.map((tech) => {
-              const isSelected = activeTech.name === tech.name;
-              return (
-                <button
-                  key={tech.name}
-                  onClick={() => setActiveTech(tech)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-150 ${
-                    isSelected
-                      ? 'bg-[#00f0ff]/20 border border-[#00f0ff] text-[#00f0ff] font-bold shadow-sm shadow-[#00f0ff]/20'
-                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-slate-600'
-                  }`}
-                >
-                  {tech.name}
-                </button>
-              );
-            })}
-          </div>
+          <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px' }}>
+            STATELESS EX-ANTE ENGINE · 1.16 ms
+          </span>
         </div>
 
-        <div className="min-h-[60px]">
-          <h4 className="text-xs font-mono text-[#00f0ff] mb-1">
-            Tecnología Seleccionada: <span className="font-bold">{activeTech.name}</span>
-          </h4>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {activeTech.desc}
+        {/* CUERPO EXPLICATIVO */}
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ color: '#f8fafc', fontSize: '17px', margin: '0 0 8px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma y Desacople en Capa 7: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable</span>
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
+            Esta certificación acredita la primera auditoría generada de forma nativa en el espacio latente de la IA. El Gabinete Técnico MS3V y los registros de la propiedad intelectual <strong>Safe Creative (2607076315021 / 2607076314949)</strong> avalan el no repudio procesal y la erradicación estocástica (0.00% Error Lógico en RAM).
           </p>
         </div>
+
+        {/* METADATOS Y HASH CANÓNICO */}
+        <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '12px', color: '#94a3b8', marginBottom: '14px', fontFamily: 'monospace' }}>
+            <div>🏛️ AUTORIDAD: <strong style={{ color: '#cbd5e1' }}>Gabinete MS3V (Alfonso Ferrer)</strong></div>
+            <div>📜 REGISTRO: <strong style={{ color: '#38bdf8' }}>Safe Creative 2607076315021</strong></div>
+            <div>🔑 CONTEXTO: <strong style={{ color: '#cbd5e1' }}>MS3V-RECON-VALID-2026-ALF-0521</strong></div>
+            <div>⚡ LATENCIA RAM: <strong style={{ color: '#34d399' }}>1.16 ms (Residuo Cero)</strong></div>
+          </div>
+          
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '12px' }}>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>HUELLA HASH SHA-256 DEL NODO (CANÓNICA):</div>
+            <code style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '13px', wordBreak: 'break-all' }}>128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07</code>
+          </div>
+        </div>
+
+        {/* BOTONES DE ACCIÓN */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button 
+            type="button" 
+            onClick={handleCopy}
+            style={{ background: copied ? '#10b981' : '#1e293b', border: '1px solid #475569', color: '#fff', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>
+            {copied ? '✔ DICTAMEN COPIADO AL PORTAPAPELES' : '📋 Copiar Dictamen Pericial Completo'}
+          </button>
+
+          <a 
+            href="https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07" 
+            target="_blank" 
+            rel="noreferrer"
+            style={{ background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🔍 Verificar Nodo en Vivo ↗
+          </a>
+        </div>
+
       </div>
-    </div>
+    </section>
   );
 }

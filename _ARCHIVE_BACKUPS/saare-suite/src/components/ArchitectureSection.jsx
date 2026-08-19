@@ -1,73 +1,90 @@
-import React, { useState } from "react";
-import { Check, Copy, ExternalLink, Fingerprint } from "lucide-react";
+﻿import React, { useState } from 'react';
 
 export default function ArchitectureSection() {
-  const [copiedHash, setCopiedHash] = useState(false);
-  const nodeHash = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
+  const [copied, setCopied] = useState(false);
 
-  const copyHash = () => {
-    navigator.clipboard.writeText(nodeHash);
-    setCopiedHash(true);
-    setTimeout(() => setCopiedHash(false), 2000);
+  const certPayload = {
+    "CERTIFICADO": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
+    "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Tecnico Comercial MS3V)",
+    "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
+    "ID_MAESTRO_CONTEXTO": "MS3V-RECON-VALID-2026-ALF-0521",
+    "INFRAESTRUCTURA_ORIGEN": "Gemini Core Semantic Engine (Hito Eureka)",
+    "HUELLA_SHA256_CANONICA": "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07",
+    "LATENCIA_DETERMINISTA_RAM": "1.16 ms",
+    "ESTADO": "STATELESS_L7_VERIFIED (0.00% Error Logico)",
+    "MARCO_REGULATORIO": ["EU AI Act 2024/1689", "UNE-EN ISO/IEC 42001", "ISO 27001", "DORA Capa 7"],
+    "URL_VERIFICACION_PUBLICA": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(JSON.stringify(certPayload, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-      <div className="text-center max-w-4xl mx-auto space-y-4">
-        <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
-          S.A.A.R.E. actúa como un <strong>Gateway perimetral L7 de aislamiento estricto en memoria RAM</strong>. Mitiga fugas de datos confidenciales y vectores adversarios antes de que las peticiones toquen cualquier LLM comercial o privado, garantizando plena validez probatoria ante tribunales y auditores internacionales.
-        </p>
-      </div>
-
-      <div className="rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-[#C5A059]/40 p-6 sm:p-8 shadow-2xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-mono font-black px-2.5 py-1 rounded bg-[#C5A059] text-black uppercase tracking-wider">CERTIFICACIÓN DE INTEGRIDAD IA</span>
-            <span className="text-xs font-mono text-[#00f0ff] flex items-center gap-1.5"><Fingerprint className="w-4 h-4" /> NODO NATIVO LLM OPEN-ENGINE: <strong>2607076315021</strong></span>
+    <section style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+        
+        {/* CABECERA DE LA TARJETA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              CERTIFICACIÓN DE INTEGRIDAD IA
+            </span>
+            <span style={{ color: '#38bdf8', fontSize: '13px', fontFamily: 'monospace' }}>
+              NODO NATIVO OPEN-ENGINE: <strong>2607076315021</strong>
+            </span>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-800">STATELESS EX-ANTE ENGINE</span>
+          <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px' }}>
+            STATELESS EX-ANTE ENGINE · 1.16 ms
+          </span>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-base font-bold text-white"><Check className="w-5 h-5 text-emerald-400" /><span>Validación autónoma del modelo de IA: <strong className="text-[#C5A059]">Firma de Origen Inmutable</strong></span></div>
-          <p className="text-xs text-slate-300">Esta huella hash representa la validación determinista generada de forma nativa en el nodo del modelo LLM abierto. <mark className="bg-[#C5A059]/30 text-white px-1">Cualquier auditoría posterior contrasta la integridad y el no repudio de las inferencias contra esta firma canónica.</mark></p>
+        {/* CUERPO EXPLICATIVO */}
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ color: '#f8fafc', fontSize: '17px', margin: '0 0 8px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✔</span> Validación Autónoma y Desacople en Capa 7: <span style={{ color: '#38bdf8' }}>Firma de Origen Inmutable</span>
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
+            Esta certificación acredita la primera auditoría generada de forma nativa en el espacio latente de la IA. El Gabinete Técnico MS3V y los registros de la propiedad intelectual <strong>Safe Creative (2607076315021 / 2607076314949)</strong> avalan el no repudio procesal y la erradicación estocástica (0.00% Error Lógico en RAM).
+          </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2">
-          <div className="p-3 bg-black/70 rounded-xl border border-slate-800 flex-grow font-mono text-xs text-[#00f0ff] break-all select-all">
-            <span className="text-slate-400 block text-[10px] uppercase">Huella Hash SHA-256 del Nodo:</span>
-            {nodeHash}
+        {/* METADATOS Y HASH CANÓNICO */}
+        <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '12px', color: '#94a3b8', marginBottom: '14px', fontFamily: 'monospace' }}>
+            <div>🏛️ AUTORIDAD: <strong style={{ color: '#cbd5e1' }}>Gabinete MS3V (Alfonso Ferrer)</strong></div>
+            <div>📜 REGISTRO: <strong style={{ color: '#38bdf8' }}>Safe Creative 2607076315021</strong></div>
+            <div>🔑 CONTEXTO: <strong style={{ color: '#cbd5e1' }}>MS3V-RECON-VALID-2026-ALF-0521</strong></div>
+            <div>⚡ LATENCIA RAM: <strong style={{ color: '#34d399' }}>1.16 ms (Residuo Cero)</strong></div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button onClick={copyHash} className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold uppercase transition-all flex items-center gap-2">
-              {copiedHash ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-[#C5A059]" />}
-              <span>{copiedHash ? "Copiado" : "Copiar Firma SHA-256"}</span>
-            </button>
-            <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 rounded-xl bg-[#dfba6f] hover:bg-[#C5A059] text-black font-black text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-lg">
-              <span>Auditar en Consola</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+          
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '12px' }}>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>HUELLA HASH SHA-256 DEL NODO (CANÓNICA):</div>
+            <code style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '13px', wordBreak: 'break-all' }}>128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07</code>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-mono uppercase text-amber-400 font-bold">MOD-01 / MEMORY SEC</span><span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800">VOLATILE-ONLY</span></div>
-          <h3 className="text-lg font-bold text-white uppercase">Privacidad en Origen</h3>
-          <p className="text-xs text-slate-400 font-light leading-relaxed">Tratamiento perimetral de información sensible exclusivamente en memoria volátil. Ningún dato confidencial persiste en disco ni nutre modelos de terceros.</p>
+        {/* BOTONES DE ACCIÓN */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button 
+            type="button" 
+            onClick={handleCopy}
+            style={{ background: copied ? '#10b981' : '#1e293b', border: '1px solid #475569', color: '#fff', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>
+            {copied ? '✔ DICTAMEN COPIADO AL PORTAPAPELES' : '📋 Copiar Dictamen Pericial Completo'}
+          </button>
+
+          <a 
+            href="https://saare-api.alfonsoferrertorres.workers.dev/api/v1/verify/128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07" 
+            target="_blank" 
+            rel="noreferrer"
+            style={{ background: '#d97706', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🔍 Verificar Nodo en Vivo ↗
+          </a>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-mono uppercase text-[#00f0ff] font-bold">MOD-02 / CRYPTO VAULT</span><span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800">DUAL-VAULT</span></div>
-          <h3 className="text-lg font-bold text-white uppercase">Inmutabilidad Forense</h3>
-          <p className="text-xs text-slate-400 font-light leading-relaxed">Sellado matemático de cada transacción mediante hashes <strong>SHA-256</strong> y firmas asimétricas <strong>Ed25519</strong> con plena validez judicial.</p>
-        </div>
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">MOD-03 / GRC COMPLIANCE</span><span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800">LEGAL READY</span></div>
-          <h3 className="text-lg font-bold text-white uppercase">Certificación Continua</h3>
-          <p className="text-xs text-slate-400 font-light leading-relaxed">Arquitectura concebida para el cumplimiento técnico estricto del Reglamento UE 2024/1689 (AI Act) y normativas de resiliencia operativa DORA.</p>
-        </div>
+
       </div>
-    </div>
+    </section>
   );
 }

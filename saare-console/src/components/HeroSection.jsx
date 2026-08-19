@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import HeroBackground from './canvas/HeroBackground';
 
 export default function HeroSection() {
@@ -32,3 +32,4 @@ export default function HeroSection() {
     </section>
   );
 }
+
