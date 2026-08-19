@@ -1,5 +1,0 @@
-﻿{
-  "buildCommand": "cd saare-console && npm install && npm run build",
-  "outputDirectory": "saare-console/dist",
-  "framework": "vite"
-}
