@@ -1,0 +1,21 @@
+{
+  "name": "@saare/dsh-governance-plugin",
+  "version": "2.5.0",
+  "description": "Enterprise L7 AI Governance & Forensic Evidence Vault for DeepSeek Harness",
+  "main": "saare-extension/content.js",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ai-governance",
+    "iso42001",
+    "dora"
+  ],
+  "author": "Gabinete MS3V & S.A.A.R.E. ISV Enterprise",
+  "license": "MIT",
+  "homepage": "https://www.saare.es",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alfonsoferrertorres-cyber/saare-suite.git"
+  }
+}
