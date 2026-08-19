@@ -51,7 +51,7 @@ export default function App() {
   const [jsonCopied, setJsonCopied] = useState(false);
 
   // Calculadora y Snippets de Landing
-  const [seats, setSeats] = useState(25);
+  const [seats, setSeats] = useState(1);
   const [isAnnual, setIsAnnual] = useState(true);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
   const pricePerSeat = isAnnual ? 6.00 : 12.00;
@@ -409,7 +409,7 @@ export default function App() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>👤 ASIENTOS A CONTRATAR</span>
                     <span style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid #0284c7', color: '#38bdf8', padding: '4px 12px', borderRadius: '6px', fontSize: '15px' }}>{seats} asientos</span>
                   </label>
-                  <input type="range" min="5" max="250" step="5" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }} />
+                  <input type="range" min="1" max="250" step="1" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }} />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
@@ -683,6 +683,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
