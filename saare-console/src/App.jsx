@@ -1,4 +1,5 @@
-﻿import ComplianceAndRegulations from './components/ComplianceAndRegulations';
+﻿import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
+import ComplianceAndRegulations from './components/ComplianceAndRegulations';
 import ForensicEvidence from './components/ForensicEvidence';
 import SecurityAndPrivacy from './components/SecurityAndPrivacy';
 import TrustCenterPricingFAQ from './components/TrustCenterPricingFAQ';
@@ -323,6 +324,7 @@ export default function App() {
       <SecurityAndPrivacy />
       <ForensicEvidence />
       <ComplianceAndRegulations />
+      <UniversalLLMCompatibility />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -744,6 +746,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
