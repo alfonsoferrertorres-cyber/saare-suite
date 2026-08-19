@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import B2BDecisionHero from './components/B2BDecisionHero';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'console' | 'auth'
@@ -312,6 +313,7 @@ export default function App() {
               </div>
             </div>
           </header>
+      <B2BDecisionHero />
 
           <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '60px 20px 40px 20px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '11.5px', fontWeight: 'bold', padding: '6px 14px', borderRadius: '20px', marginBottom: '20px' }}>
@@ -728,6 +730,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
