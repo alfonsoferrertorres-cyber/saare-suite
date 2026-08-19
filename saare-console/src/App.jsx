@@ -1,4 +1,5 @@
-﻿import SandboxExperience from './components/SandboxExperience';
+﻿import RealDashboardConsole from './components/RealDashboardConsole';
+import SandboxExperience from './components/SandboxExperience';
 import UniversalLLMCompatibility from './components/UniversalLLMCompatibility';
 import ComplianceAndRegulations from './components/ComplianceAndRegulations';
 import ForensicEvidence from './components/ForensicEvidence';
@@ -327,6 +328,7 @@ export default function App() {
       <ComplianceAndRegulations />
       <UniversalLLMCompatibility />
       <SandboxExperience />
+      <RealDashboardConsole />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -748,6 +750,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
