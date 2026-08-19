@@ -474,10 +474,8 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    const baseUrl = isAnnual 
-                      ? "https://buy.stripe.com/00weVd8XX8Ch0pJ8858g003" 
-                      : "https://buy.stripe.com/cNiaEX2zz2dTegz2NL8g004";
-                    window.open(`${baseUrl}?quantity=${seats}`, '_blank');
+                    const planType = isAnnual ? "anual" : "mensual";
+                    window.location.href = `/api/checkout?seats=${seats}&plan=${planType}`;
                   }} 
                   style={{ 
                     width: '100%', 

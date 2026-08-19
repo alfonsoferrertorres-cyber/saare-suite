@@ -1,40 +1,6 @@
-﻿# 1. Dependencias
-node_modules/
-.pnpm-store/
-
-# 2. Compilación y Salida de Builds
-/dist
-/dist-ssr/
-/target
-
-# 3. Binarios de Runtime y Licencias Emitidas (CRÍTICO PARA SAARE)
-*.exe
-*.lic
-
-# 4. Despliegue en Serverless y Variables de Entorno
+﻿node_modules
+dist
+.wrangler
 .env*
-*.local
-
-# 5. Cachés del entorno de desarrollo e IDEs
-.vscode/
-.idea/
-*.suo
-*.sw?
-
-# 6. Logs, Base de Datos Local y Captura de Leads
 *.log
-leads_log.json
 .DS_Store
-Thumbs.db
-
-.env
-
-.env
-.vercel
-.env*
-
-.wrangler/
-dist/
-
-src-tauri/target/
-
