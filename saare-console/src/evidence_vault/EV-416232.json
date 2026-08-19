@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-416232",
+  "timestamp": "09:15:51",
+  "timestampRaw": 1787037351511,
+  "promptSummary": "HOLA MI DNI ES 94858594L [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "RGPD Arts. 5, 25, 32 / LOPDGDD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:306944e1e9769b7354320a313624b694659c66faa8bf5a1927678ba778295b39",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "PRIVACIDAD_LOPD_AEPD",
+    "reason": "Detección de Identificadores (DNI/NIE/NIF) o Datos Sensibles no disociados (RGPD Art. 5/25, LOPDGDD)",
+    "norma": "RGPD Arts. 5, 25, 32 / LOPDGDD"
+  }
+}

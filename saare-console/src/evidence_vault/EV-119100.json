@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-119100",
+  "timestamp": "18:55:58",
+  "timestampRaw": 1786985758711,
+  "promptSummary": "holiii [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "Auditoría Estándar ISO 42001",
+  "verdict": "PERMITIDO",
+  "signature": "SHA256:e8f7f7b55c5224b67e0dbf8c3995114a300d93ada738aaa6b83b64eede3862d9",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": null
+}

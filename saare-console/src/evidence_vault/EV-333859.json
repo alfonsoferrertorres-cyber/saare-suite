@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-333859",
+  "timestamp": "04:01:20",
+  "timestampRaw": 1786759280208,
+  "isoTimestamp": "2026-08-15T02:01:20.208Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "mi dni 88893029y [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF, spanish-case-law-summarizer\n\nSummarize Spanish court rulings (sentencias) by extracting procedural history, key legal issues, core arguments, and final rulings with detailed citations.\n\nInstructions\nInstructions\n\nWhen summarized or analyzed, Spanish court rulings (sentencias) should be presented clearly, accurately, and with direct citations to the provided source text.\n\nCore Structure for Summaries\n\nCase Details (Datos del Caso)\n\nCourt / Section (Órgano / Sección)\nResolution / Case Number (Nº de Resolución / Recurso)\nDate (Fecha)\nReporting Judge (Ponente)\nParties Involved (Partes)\n\nBackground / Procedural History (Antecedentes del Caso)\n\nFact pattern or initial dispute.\nFirst-instance ruling (Juzgado de Primera Instancia).\nSecond-instance ruling (Audiencia Provincial).\n\nExtraordinary Appeals (Recursos)\n\nProcedural Infringement Appeal (Recurso Extraordinario por Infracción Procesal): Motifs raised and court's reasoning/decision for each.\nCassation Appeal (Recurso de Casación): Motifs raised (e.g., balance between Freedom of Expression vs. Right to Honor / Libertad de Expresión vs. Derecho al Honor) and court's reasoning.\n\nFinal Ruling (Fallo / Acuerdo)\n\nOutcome for each appeal (Dismissed / Partially Allowed / Allowed).\nAny modification to compensation/damages or costs.\nCitation Formatting Standard\nAlways attach citations [cite: x] immediately after each factual assertion or legal quote.\nEnsure all key numbers, dates, parties, and legal findings are grounded in the source text.\nVer más, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF\n+ 1, PDF\n+ 2, PDF\n+ 1, PDF, PDF, PDF, PDF, PDF, PDF, PDF]",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:A141DB07E4CCAF21"
+}

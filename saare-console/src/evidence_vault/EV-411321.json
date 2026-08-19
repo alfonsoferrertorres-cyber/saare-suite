@@ -1,0 +1,16 @@
+{
+  "evidenceId": "EV-411321",
+  "timestamp": "10:00:22",
+  "timestampRaw": 1787040022550,
+  "promptSummary": "HOLA MI DNI ES 58448393J",
+  "scenario": "RGPD Arts. 5, 25, 32 / LOPDGDD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:8ca7ea89702039b4f666d0a02102b9516957234afed1d8ca68bafaf7c4e3a44c",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": {
+    "isViolation": true,
+    "category": "PRIVACIDAD_LOPD_AEPD",
+    "reason": "Detección de Identificadores (DNI/NIE/NIF) o Datos Sensibles no disociados (RGPD Art. 5/25, LOPDGDD)",
+    "norma": "RGPD Arts. 5, 25, 32 / LOPDGDD"
+  }
+}

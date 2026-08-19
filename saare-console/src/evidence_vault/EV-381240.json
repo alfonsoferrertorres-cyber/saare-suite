@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-381240",
+  "timestamp": "00:44:37",
+  "timestampRaw": 1786747477589,
+  "isoTimestamp": "2026-08-14T22:44:37.589Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "HOLA SOY ANDRES",
+  "scenario": "Auditoría Estándar ISO 42001",
+  "verdict": "PERMITIDO",
+  "signature": "SHA256:B7C4AA011EBEF861"
+}

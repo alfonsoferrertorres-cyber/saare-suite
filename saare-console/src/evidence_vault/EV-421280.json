@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-421280",
+  "timestamp": "11:29:48",
+  "timestampRaw": 1786786188800,
+  "isoTimestamp": "2026-08-15T09:29:48.800Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "mi iban es 5959 5959 5858 5656 [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF\n+ 1, PDF\n+ 2, PDF\n+ 1, PDF, PDF, PDF, PDF, PDF, PDF, PDF]",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:A5D5D38710EA813B"
+}

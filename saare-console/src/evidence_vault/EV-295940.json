@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-295940",
+  "timestamp": "22:30:02",
+  "timestampRaw": 1786825802687,
+  "promptSummary": "hola flujo [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "Auditoría Estándar ISO 42001",
+  "verdict": "PERMITIDO",
+  "signature": "SHA256:613fbc8bec43dfe79a96a23b59f100d8b1713f7aa1a9bd6ff6f3fa4386c3bdac",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": null
+}

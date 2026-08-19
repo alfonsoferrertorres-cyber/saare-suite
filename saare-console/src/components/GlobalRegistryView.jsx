@@ -1,35 +1,67 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { createEvidenceReceipt } from "../services/evidenceVault";
 
+// Carga directa de los 60 JSONs de la carpeta física mediante Vite
+const rawVaultFiles = import.meta.glob('../evidence_vault/*.json', { eager: true });
+
 export function GlobalRegistryView() {
-  const [logs, setLogs] = useState([
-    {
-      id: "EV-20260731-1891",
-      timestamp: "2026-07-30T23:43:14Z",
-      user: "USER-25AC6AC0",
-      status: "PERMITIDO",
-      signature: "de8c464db03ecb47bbab31f0823266057a8a0ca897434dccac9cdc40fb22"
-    },
-    {
-      id: "EV-20260811-0012",
-      timestamp: "2026-08-11T12:48:10Z",
-      user: "USER-EDD4309534",
-      status: "RECHAZADO",
-      signature: "a29d21f5bf04f769-MAD-ED25519-SIG-PII-BLOCK"
-    }
-  ]);
+  // Parsear y normalizar los 60 archivos de la carpeta evidence_vault
+  const initialRecords = useMemo(() => {
+    return Object.values(rawVaultFiles).map((mod) => {
+      const d = mod.default || mod;
+      return {
+        id: d.evidenceId || d.id || `EV-${Date.now()}`,
+        timestamp: d.isoTimestamp || (d.timestamp ? `2026-08-15T${d.timestamp}Z` : new Date().toISOString()),
+        user: d.user || "alfonsosb1@gmail.com",
+        status: d.verdict === "RECHAZADO" ? "RECHAZADO" : (d.verdict || "PERMITIDO"),
+        signature: (d.hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").slice(0, 32) + "...",
+        scenario: d.scenario || d.promptSummary || "Auditoría L7"
+      };
+    }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, []);
+
+  const [logs, setLogs] = useState(initialRecords);
 
   useEffect(() => {
+    // 1. Consultar endpoint unificado de control-plane / Worker
+    async function fetchLiveRuns() {
+      try {
+        const res = await fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com");
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.runs || []);
+          if (list.length > 0) {
+            setLogs(prev => {
+              const ids = new Set(prev.map(p => p.id));
+              const newItems = list.filter(item => !ids.has(item.evidenceId || item.id)).map(r => ({
+                id: r.evidenceId || r.id,
+                timestamp: r.isoTimestamp || new Date().toISOString(),
+                user: r.user || "alfonsosb1@gmail.com",
+                status: r.verdict || "PERMITIDO",
+                signature: (r.hash || "e3b0c442").slice(0, 32) + "...",
+                scenario: r.scenario || r.promptSummary || "Validación L7"
+              }));
+              return [...newItems, ...prev];
+            });
+          }
+        }
+      } catch (err) {}
+    }
+    fetchLiveRuns();
+
+    // 2. Escucha de intercepciones en caliente desde el navegador
     const handleInterceptEvent = (event) => {
       if (event.data && event.data.type === "SAARE_PROMPT_INTERCEPTED") {
+        const payload = event.data.payload || {};
         const newLog = {
           id: 'EV-' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 8) + '-' + Math.floor(1000 + Math.random() * 9000),
           timestamp: new Date().toISOString(),
-          user: event.data.user || "USER-EDD4309534",
-          status: event.data.hasPII ? "RECHAZADO" : "PERMITIDO",
-          signature: 'sha256-' + Math.random().toString(36).substring(2, 34) + '-ED25519-SIG'
+          user: "alfonsosb1@gmail.com",
+          status: payload.action === "REDACTED" ? "RECHAZADO" : "PERMITIDO",
+          signature: (payload.hash || "a29d21f5bf04f769-MAD-ED25519").slice(0, 32) + "...",
+          scenario: payload.rule || "Filtro Ex-Ante RAM"
         };
-        setLogs((prevLogs) => [newLog, ...prevLogs]);
+        setLogs((prev) => [newLog, ...prev]);
       }
     };
 
@@ -37,70 +69,33 @@ export function GlobalRegistryView() {
     return () => window.removeEventListener("message", handleInterceptEvent);
   }, []);
 
-  const handleDownloadReceipt = async (log) => {
-    const receipt = await createEvidenceReceipt(
-      "MS3V_GLOBAL_NODE_L7",
-      { user: log.user, prompt: "Auditor�a en Nodo L7" },
-      log.status
-    );
-
-    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "receipt_" + receipt.execution_id + ".jsonld";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
-    <div className="space-y-4 font-mono text-xs text-slate-300">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-        <div>
-          <span className="text-amber-400 font-bold block">CAPA DE REGISTRO & AUDITOR�A L7 (NODO MS3V)</span>
-          <h2 className="text-lg font-bold text-white mt-0.5">REGISTRO GLOBAL <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded ml-2">ISO 42001 READY</span></h2>
-        </div>
-        <div className="text-right">
-          <span className="text-slate-400 text-[10px] block">Registros en Tiempo Real (Inmutable JSONL Ledger)</span>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
-        <table className="w-full text-left border-collapse">
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-900/80 text-slate-400 border-b border-slate-800 text-[11px]">
-              <th className="p-3">ID Evidencia</th>
-              <th className="p-3">Timestamp (UTC)</th>
-              <th className="p-3">Usuario Anonimizado</th>
-              <th className="p-3">Estado / Acci�n DLP</th>
-              <th className="p-3">Firma SHA-256</th>
-              <th className="p-3 text-right">Recibo Forense</th>
+            <tr className="border-b border-slate-700 text-slate-400 font-mono">
+              <th className="py-2 px-3">ID / HORA</th>
+              <th className="py-2 px-3">USUARIO / ORIGEN</th>
+              <th className="py-2 px-3">EVENTO / DETECCIÓN</th>
+              <th className="py-2 px-3">ESTADO / ACCIÓN</th>
+              <th className="py-2 px-3">FIRMA DIGITAL</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60">
+          <tbody className="divide-y divide-slate-800 font-mono">
             {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-slate-900/40 transition-colors">
-                <td className="p-3 font-bold text-amber-400">{log.id}</td>
-                <td className="p-3 text-slate-400">{log.timestamp}</td>
-                <td className="p-3 text-emerald-400 font-bold">{log.user}</td>
-                <td className="p-3">
+              <tr key={log.id} className="hover:bg-slate-800/40">
+                <td className="py-2 px-3 text-cyan-400">{log.id}<br/><span className="text-slate-500 text-[10px]">{log.timestamp.split('T')[1]?.slice(0,8) || log.timestamp}</span></td>
+                <td className="py-2 px-3 text-slate-300">{log.user}</td>
+                <td className="py-2 px-3 text-slate-300">{log.scenario}</td>
+                <td className="py-2 px-3">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    log.status === "PERMITIDO" || log.status === "ALLOWED" 
-                      ? "bg-emerald-950 text-emerald-400 border border-emerald-800" 
-                      : "bg-rose-950 text-rose-400 border border-rose-800"
+                    log.status === "RECHAZADO" ? "bg-amber-900/50 text-amber-300 border border-amber-700" : "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
                   }`}>
-                    {log.status}
+                    {log.status === "RECHAZADO" ? "REDACTED (RAM)" : "LOGGED (ISO 42001)"}
                   </span>
                 </td>
-                <td className="p-3 text-slate-500 font-mono text-[10px] truncate max-w-xs">{log.signature}</td>
-                <td className="p-3 text-right">
-                  <button
-                    onClick={() => handleDownloadReceipt(log)}
-                    className="bg-slate-800 text-amber-400 border border-amber-500/30 px-2 py-1 rounded text-[10px] hover:bg-slate-700 transition-all"
-                  >
-                    DESCARGAR EVIDENCIA
-                  </button>
-                </td>
+                <td className="py-2 px-3 text-slate-500 text-[10px]">{log.signature}</td>
               </tr>
             ))}
           </tbody>
@@ -109,3 +104,4 @@ export function GlobalRegistryView() {
     </div>
   );
 }
+export default GlobalRegistryView;

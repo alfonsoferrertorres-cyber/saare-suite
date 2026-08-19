@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-519836",
+  "timestamp": "09:16:03",
+  "timestampRaw": 1787037363131,
+  "promptSummary": "[DOCUMENTO/ADJUNTO: Convertir chat a PDF\nAbrir este chat en Acrobat]",
+  "scenario": "Auditoría Estándar ISO 42001",
+  "verdict": "PERMITIDO",
+  "signature": "SHA256:f08d8720530da747e309706b9737338ad92224f3a41881292e7df5309fee36df",
+  "auditor": "alfonsosb1@gmail.com",
+  "violationDetails": null
+}

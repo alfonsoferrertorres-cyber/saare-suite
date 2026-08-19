@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-760313",
+  "timestamp": "11:29:24",
+  "timestampRaw": 1786786164046,
+  "isoTimestamp": "2026-08-15T09:29:24.046Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "48665169p [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF\n+ 1, PDF\n+ 2, PDF\n+ 1, PDF, PDF, PDF, PDF, PDF, PDF, PDF]",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:85EDC1855DDE5647"
+}

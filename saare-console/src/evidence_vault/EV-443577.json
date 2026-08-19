@@ -1,0 +1,11 @@
+{
+  "evidenceId": "EV-443577",
+  "timestamp": "11:28:59",
+  "timestampRaw": 1786786139812,
+  "isoTimestamp": "2026-08-15T09:28:59.812Z",
+  "user": "alfonsosb1@gmail.com",
+  "promptSummary": "mi dni es 3948392i [Adjuntos: Convertir chat a PDF\nAbrir este chat en Acrobat, PDF\nsentencia, PDF, PDF, PDF, PDF, PDF, PDF, PDF, PDF\n+ 1, PDF\n+ 2, PDF\n+ 1, PDF, PDF, PDF, PDF, PDF, PDF, PDF]",
+  "scenario": "España - LOPDGDD & AEPD",
+  "verdict": "RECHAZADO",
+  "signature": "SHA256:FDA52ED15F60550D"
+}
