@@ -1,4 +1,5 @@
-﻿import ForensicEvidence from './components/ForensicEvidence';
+﻿import ComplianceAndRegulations from './components/ComplianceAndRegulations';
+import ForensicEvidence from './components/ForensicEvidence';
 import SecurityAndPrivacy from './components/SecurityAndPrivacy';
 import TrustCenterPricingFAQ from './components/TrustCenterPricingFAQ';
 import VerticalUseCasesAndIntegration from './components/VerticalUseCasesAndIntegration';
@@ -321,6 +322,7 @@ export default function App() {
           </header>
       <SecurityAndPrivacy />
       <ForensicEvidence />
+      <ComplianceAndRegulations />
       <B2BDecisionHero />
       <ArchitectureAndDataLifecycle />
       <ComparisonAndStakeholders />
@@ -742,6 +744,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
