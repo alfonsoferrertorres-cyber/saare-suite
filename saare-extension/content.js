@@ -1,10 +1,9 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Full ISO 42001 Telemetry Engine v3.1.0 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Full ISO 42001 Telemetry Engine v3.3.0 */
 console.log("%c[SAARE L7 Engine] Auditoría Continua 100% Activa (ISO 42001 / RGPD)", "color: #06b6d4; font-weight: bold;");
 
 const USER_CONFIG = {
   user: "alfonsosb1@gmail.com",
-  licenseKey: "SAARE-MASTER-2026-ROOT-001",
-  endpoint: "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com"
+  licenseKey: "SAARE-MASTER-2026-ROOT-001"
 };
 
 let isProcessing = false;
@@ -47,7 +46,7 @@ function showToast(evidenceId, norma, reason) {
     </div>
   `;
 
-  document.body.appendChild(toast);
+  (document.body || document.documentElement).appendChild(toast);
   const remove = () => toast.remove();
   toast.querySelector("#saare-toast-close").onclick = remove;
   toast.querySelector("#saare-btn-dismiss").onclick = remove;
@@ -66,72 +65,49 @@ function processSecurityCheck(target, event) {
   const hashBytes = Array.from(crypto.getRandomValues(new Uint8Array(32)));
   const hashHex = hashBytes.map(b => b.toString(16).padStart(2, "0")).join("");
 
+  const payload = {
+    evidenceId: evidenceId,
+    timestamp: new Date().toISOString(),
+    event: result.isViolation ? `Exfiltración PII: ${result.category}` : "Interacción IA Conforme",
+    verdict: result.isViolation ? "RECHAZADO" : "CONFORME",
+    user: USER_CONFIG.user,
+    licenseKey: USER_CONFIG.licenseKey,
+    origin: window.location.hostname,
+    action: result.isViolation ? "REDACTED (RAM)" : "LOGGED",
+    status: result.isViolation ? "RECHAZADO" : "CONFORME",
+    violationDetails: result.isViolation ? result : { isViolation: false, category: "NINGUNA" },
+    hash: hashHex
+  };
+
   if (result.isViolation) {
-    // FLUJO BLOQUEADO: Detener evento y alertar
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
     }
     showToast(evidenceId, result.norma, result.reason);
-
-    const blockedPayload = {
-      evidenceId: evidenceId,
-      timestamp: new Date().toISOString(),
-      event: `Exfiltración PII: ${result.category}`,
-      verdict: "RECHAZADO",
-      user: USER_CONFIG.user,
-      licenseKey: USER_CONFIG.licenseKey,
-      origin: window.location.hostname,
-      action: "REDACTED (RAM)",
-      status: "RECHAZADO",
-      violationDetails: result,
-      hash: hashHex
-    };
-
-    sendAudit(blockedPayload);
-  } else {
-    // FLUJO CONFORME: El mensaje continúa a la IA y se registra en segundo plano
-    const conformPayload = {
-      evidenceId: evidenceId,
-      timestamp: new Date().toISOString(),
-      event: "Interacción IA Conforme",
-      verdict: "CONFORME",
-      user: USER_CONFIG.user,
-      licenseKey: USER_CONFIG.licenseKey,
-      origin: window.location.hostname,
-      action: "LOGGED",
-      status: "CONFORME",
-      violationDetails: { isViolation: false, category: "NINGUNA" },
-      hash: hashHex
-    };
-
-    sendAudit(conformPayload);
   }
-}
 
-function sendAudit(payload) {
   isProcessing = true;
-  fetch(USER_CONFIG.endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).finally(() => {
+  chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload }, () => {
     setTimeout(() => { isProcessing = false; }, 300);
   });
 }
 
-// 1. Teclado (Enter)
+// 1. Detección por Teclado (Enter)
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     processSecurityCheck(e.target, e);
   }
 }, true);
 
-// 2. Ratón (Botón de Enviar)
+// 2. Detección por Clic (Botón Enviar)
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
+  const btn = e.target.closest('button, [role="button"]');
   if (btn) {
-    const inputArea = document.querySelector('div[contenteditable="true"], textarea, rich-textarea p');
+    const inputArea = document.querySelector(
+      'div[contenteditable="true"], textarea, rich-textarea, #prompt-textarea, [data-placeholder]'
+    );
     if (inputArea) {
       processSecurityCheck(inputArea, e);
     }

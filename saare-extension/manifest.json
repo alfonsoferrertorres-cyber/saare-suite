@@ -1,54 +1,54 @@
 ﻿{
-    "manifest_version":  3,
-    "name":  "S.A.A.R.E. L7 Compliance Gateway - Gabinete MS3V",
-    "version":  "3.3.0",
-    "description":  "Middleware perimetral L7 en RAM para prevención de fugas PII, anti-jailbreak y peritaje forense ISO 42001.",
-    "permissions":  [
-                        "storage",
-                        "activeTab"
-                    ],
-    "host_permissions":  [
-                             "*://*.saare.es/*",
-                             "https://gemini.google.com/*",
-                             "https://chatgpt.com/*",
-                             "https://chat.openai.com/*",
-                             "https://claude.ai/*",
-                             "https://saare-api.alfonsoferrertorres.workers.dev/*"
-                         ],
-    "content_scripts":  [
-                            {
-                                "matches":  [
-                                                "*://*.saare.es/*",
-                                                "https://gemini.google.com/*",
-                                                "https://chatgpt.com/*",
-                                                "https://chat.openai.com/*",
-                                                "https://claude.ai/*"
-                                            ],
-                                "js":  [
-                                           "content.js"
-                                       ],
-                                "run_at":  "document_start"
-                            }
-                        ],
-    "icons":  {
-                  "16":  "icons/icon16.png",
-                  "32":  "icons/icon32.png",
-                  "48":  "icons/icon48.png",
-                  "128":  "icons/icon128.png"
-              },
-    "action":  {
-                   "default_icon":  {
-                                        "16":  "icons/icon16.png",
-                                        "32":  "icons/icon32.png"
-                                    },
-                   "default_title":  "S.A.A.R.E. L7 Active Shield - Gabinete MS3V"
-               },
-    "externally_connectable":  {
-                                   "matches":  [
-                                                   "https://console.saare.es/*",
-                                                   "https://*.saare.es/*",
-                                                   "http://localhost:*/*"
-                                               ]
-                               }
+  "manifest_version": 3,
+  "name": "S.A.A.R.E. L7 Compliance Gateway - Gabinete MS3V",
+  "version": "3.3.0",
+  "description": "Middleware perimetral L7 en RAM para prevención de fugas PII, anti-jailbreak y peritaje forense ISO 42001.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.saare.es/*",
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://saare-api.alfonsoferrertorres.workers.dev/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.saare.es/*",
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    },
+    "default_title": "S.A.A.R.E. L7 Active Shield - Gabinete MS3V"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://console.saare.es/*",
+      "https://*.saare.es/*",
+      "http://localhost:*/*"
+    ]
+  }
 }
-
