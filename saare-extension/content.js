@@ -1,4 +1,4 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v4.1.0 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v4.1.1 */
 console.log("%c[SAARE L7 Engine] Escudo Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
 try {
@@ -46,11 +46,23 @@ function showToast(evidenceId, norma, reason) {
   `;
 
   (document.body || document.documentElement).appendChild(toast);
-  const remove = () => toast.remove();
+
+  const remove = (ev) => {
+    if (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+    toast.remove();
+  };
+
   toast.querySelector("#saare-toast-close").onclick = remove;
   toast.querySelector("#saare-btn-dismiss").onclick = remove;
-  toast.querySelector("#saare-btn-registry").onclick = () => { window.open("https://console.saare.es", "_blank"); remove(); };
-  setTimeout(remove, 10000);
+  toast.querySelector("#saare-btn-registry").onclick = (ev) => {
+    window.open("https://console.saare.es", "_blank");
+    remove(ev);
+  };
+
+  setTimeout(() => { if (document.body.contains(toast)) toast.remove(); }, 10000);
 }
 
 function processAndDispatch(violationInfo) {
@@ -78,6 +90,11 @@ function processAndDispatch(violationInfo) {
 }
 
 function handleInputCheck(e) {
+  // Ignorar clics si ocurren dentro del Toast de SAARE
+  if (e.target.closest("#saare-toast")) {
+    return;
+  }
+
   const inputEl = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"], textarea, #prompt-textarea');
   const rawText = inputEl ? (inputEl.innerText || inputEl.value || inputEl.textContent || "") : "";
   const result = evaluateText(rawText);
