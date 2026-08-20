@@ -1,6 +1,6 @@
-﻿name = "saare-api"
+name = "saare-api"
 main = "src/index.js"
-compatibility_date = "2026-08-17"
+compatibility_date = "2026-08-11"
 
 [vars]
 CORS_ORIGIN = "*"
