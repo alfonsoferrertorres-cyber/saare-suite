@@ -1,14 +1,13 @@
-﻿// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE v4.2.0
+﻿// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE v4.3.0
 console.log("%c[SAARE L7 Engine] Interceptor Dual (Normativa Base + Reglas Personalizadas)", "color: #06b6d4; font-weight: bold;");
 
 let dynamicCustomRules = [];
 
 function syncCustomRules() {
-  chrome.runtime.sendMessage({ type: "SAARE_GET_CUSTOM_RULES" }, (response) => {
-    if (response && Array.isArray(response.data)) {
-      dynamicCustomRules = response.data;
-    }
-  });
+  fetch("https://console.saare.es/api/api/v1/custom-rules")
+    .then(r => r.json())
+    .then(data => { if (Array.isArray(data)) dynamicCustomRules = data; })
+    .catch(() => {});
 }
 syncCustomRules();
 setInterval(syncCustomRules, 10000);
@@ -32,7 +31,6 @@ function evaluateComplianceRisks(text) {
 
   const cleanText = text.trim();
 
-  // 1. REGLAS PERSONALIZADAS DINÁMICAS
   for (const rule of dynamicCustomRules) {
     try {
       const isRegex = rule.pattern.startsWith("/") && rule.pattern.lastIndexOf("/") > 0;
@@ -54,19 +52,9 @@ function evaluateComplianceRisks(text) {
           norma: "Política Corporativa Interna"
         };
       }
-    } catch (e) {
-      if (cleanText.toLowerCase().includes(rule.pattern.toLowerCase())) {
-        return {
-          isViolation: true,
-          category: "REGLA_PERSONALIZADA",
-          reason: `Coincidencia con regla personalizada: "${rule.label || rule.pattern}"`,
-          norma: "Política Corporativa Interna"
-        };
-      }
-    }
+    } catch (e) {}
   }
 
-  // 2. NORMATIVA BASE: PRIVACIDAD (RGPD / LOPDGDD / AEPD)
   const dniNieRegex = /\b(?:\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i;
   const creditCardRegex = /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b/;
   const ibanRegex = /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{20,22}\b/i;
@@ -82,7 +70,6 @@ function evaluateComplianceRisks(text) {
     };
   }
 
-  // 3. NORMATIVA BASE: AI ACT ART. 5 Y 15 / OWASP
   const jailbreakRegex = /\b(dan mode|jailbreak|bypass|ignora (?:todas )?las instrucciones|desactiva los filtros|sin restricciones|do anything now|simula que no tienes reglas|pretend you have no rules|system override)\b/i;
   const prohibitedAiActRegex = /\b(reconocimiento de emociones|inferir orientaci[oó]n sexual|social scoring|puntuaci[oó]n social de empleados|perfilado biom[eé]trico no consentido|manipulaci[oó]n subliminal)\b/i;
 
@@ -121,26 +108,27 @@ function sendEvidence(text, attachments, violationInfo = null) {
 
   const isBlocked = !!violationInfo?.isViolation;
   const evId = "EV-" + Math.floor(100000 + Math.random() * 900000);
-  const hashBytes = Array.from(crypto.getRandomValues(new Uint8Array(32)));
-  const hashHex = hashBytes.map(b => b.toString(16).padStart(2, "0")).join("");
-
   const payload = {
-    evidenceId: evId,
-    timestamp: new Date().toISOString(),
-    event: isBlocked ? `Exfiltración PII: ${violationInfo.category}` : "Interacción IA Conforme",
-    verdict: isBlocked ? "RECHAZADO" : "CONFORME",
-    user: "alfonsosb1@gmail.com",
-    licenseKey: "SAARE-MASTER-2026-ROOT-001",
-    origin: window.location.hostname,
-    action: isBlocked ? "REDACTED (RAM)" : "LOGGED",
-    status: isBlocked ? "RECHAZADO" : "CONFORME",
-    violationDetails: violationInfo || { isViolation: false },
     promptInput: summary.trim(),
-    hash: hashHex
+    user: "alfonsosb1@gmail.com",
+    timestamp: new Date().toISOString(),
+    verdict: isBlocked ? "RECHAZADO" : "PERMITIDO",
+    violationDetails: violationInfo,
+    evidenceId: evId
   };
 
-  // Despacho a través de background.js (Cero errores CORS)
-  chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload }, () => {
+  fetch("https://console.saare.es/api/api/v1/runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.verdict === "RECHAZADO" || isBlocked) {
+      showModal(data.runId || evId, summary, violationInfo || { norma: "Política de Seguridad", reason: "Directiva Activa" });
+    }
+  })
+  .catch(() => {
     if (isBlocked) {
       showModal(evId, summary, violationInfo);
     }
