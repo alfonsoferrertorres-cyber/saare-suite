@@ -4,6 +4,9 @@ const ENDPOINT_API = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/r
 const USER_EMAIL = "alfonsosb1@gmail.com";
 const LICENSE_KEY = "SAARE-MASTER-2026-ROOT-001";
 
+// BANDERA ANTI-COLAPSO (Evita el Event Loop Recursivo)
+let isSanitizing = false;
+
 const PII_RULES = [
   { name: 'DNI/NIE', regex: /\b(\d{8}[a-z]|[xyz]\d{7}[a-z])\b/gi, replacement: '[REDACTED_DNI]' },
   { name: 'IBAN', regex: /\b[a-z]{2}\d{2}[a-z0-9\s]{12,30}\b/gi, replacement: '[REDACTED_IBAN]' },
@@ -40,10 +43,9 @@ async function emitVaultEvent(types, method, isBlocked) {
     action: actionName,
     latency: '1.16 ms',
     hash: hashHex,
-    status: 'Ed25519 VERIFIED'
+    status: isBlocked ? 'RECHAZADO' : 'CONFORME'
   };
 
-  // 1. Persistencia local inmediata
   try {
     if (chrome?.storage?.local) {
       chrome.storage.local.get({ saare_logs: [] }, (res) => {
@@ -53,7 +55,6 @@ async function emitVaultEvent(types, method, isBlocked) {
     }
   } catch (e) {}
 
-  // 2. Persistencia en Cloudflare D1 / KV (Control Plane Central)
   try {
     fetch(ENDPOINT_API, {
       method: "POST",
@@ -65,17 +66,30 @@ async function emitVaultEvent(types, method, isBlocked) {
 }
 
 function processInput(target, rawText, method) {
-  if (!rawText || !rawText.trim()) return;
+  // BLOQUEO DE REENTRADA
+  if (!rawText || !rawText.trim() || isSanitizing) return;
+  
   const audit = sanitizePayload(rawText);
 
   if (audit.isBlocked) {
     console.warn(`%c[SAARE L7] Amenaza Mitigada: ${audit.types.join(', ')}`, "color: #ef4444; font-weight: bold;");
+    
+    // Activar bandera antes de inyectar el texto redactado
+    isSanitizing = true;
+
     if (target.isContentEditable) {
       target.innerText = audit.sanitized;
     } else {
       target.value = audit.sanitized;
     }
+    
+    // Notificar a React sin desencadenar un bucle infinito
     target.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Liberar el hilo de ejecución rápidamente
+    setTimeout(() => {
+      isSanitizing = false;
+    }, 50);
   }
 
   emitVaultEvent(audit.types, method, audit.isBlocked);
