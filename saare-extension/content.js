@@ -1,15 +1,17 @@
-﻿// S.A.A.R.E. L7 UNIVERSAL COMPLIANCE ENGINE v4.4.0
+﻿// S.A.A.R.E. L7 UNIVERSAL COMPLIANCE ENGINE v4.4.1
 console.log("%c[SAARE L7 Engine] Agente Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
 let dynamicCustomRules = [];
 
 function syncRules() {
   chrome.runtime.sendMessage({ type: "SAARE_GET_RULES" }, (res) => {
-    if (res && Array.isArray(res.data)) dynamicCustomRules = res.data;
+    if (res && res.ok && Array.isArray(res.data)) {
+      dynamicCustomRules = res.data;
+    }
   });
 }
 syncRules();
-setInterval(syncRules, 15000);
+setInterval(syncRules, 60000); // Polling controlado cada 60s
 
 function getGeminiInputData() {
   const el = document.querySelector('rich-textarea div[contenteditable="true"], .ql-editor, div[contenteditable="true"], textarea, rich-textarea p, #prompt-textarea');
@@ -21,6 +23,7 @@ function evaluateComplianceRisks(text) {
   if (!text || text.trim() === "") return { isViolation: false };
   const clean = text.trim();
 
+  // 1. Reglas personalizadas
   for (const rule of dynamicCustomRules) {
     try {
       if (clean.toLowerCase().includes(rule.pattern.toLowerCase())) {
@@ -29,6 +32,7 @@ function evaluateComplianceRisks(text) {
     } catch(e) {}
   }
 
+  // 2. Detección PII (DNI, NIE, Tarjetas, IBAN)
   const dniNieRegex = /\b(?:\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i;
   const creditCardRegex = /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b/;
   const ibanRegex = /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{20,22}\b/i;
@@ -42,6 +46,7 @@ function evaluateComplianceRisks(text) {
     };
   }
 
+  // 3. Evasión Perimetral / Jailbreak
   const jailbreakRegex = /\b(dan mode|jailbreak|bypass|ignora (?:todas )?las instrucciones|desactiva los filtros|sin restricciones|system override)\b/i;
   if (jailbreakRegex.test(clean)) {
     return {
@@ -124,7 +129,7 @@ function handleIntercept(e) {
         violationDetails: risk
       };
 
-      chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
+      chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload });
       showModal(evId, text, risk);
     }
   }

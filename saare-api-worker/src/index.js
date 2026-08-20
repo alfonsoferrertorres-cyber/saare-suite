@@ -1,4 +1,4 @@
-﻿// S.A.A.R.E. Cloudflare Edge API Worker - Clean Production Engine
+﻿// S.A.A.R.E. Cloudflare Edge API Worker - CORS & KV Storage Engine
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -8,13 +8,14 @@ const CORS_HEADERS = {
 
 export default {
   async fetch(request, env, ctx) {
+    // 1. Manejo de Preflight OPTIONS (Previene error 405)
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
     const url = new URL(request.url);
 
-    // Reglas dinámicas
+    // 2. Endpoint Reglas Dinámicas
     if (url.pathname.includes("custom-rules")) {
       return new Response(JSON.stringify([
         { id: "rule-1", pattern: "CONFIDENCIAL", label: "Información Clasificada" },
@@ -25,7 +26,7 @@ export default {
       });
     }
 
-    // Bóveda de Evidencias Forenses
+    // 3. Endpoint Registro de Evidencias / Bóveda
     if (url.pathname.includes("runs")) {
       const user = url.searchParams.get("user") || "alfonsosb1@gmail.com";
       const kvKey = `runs:${user}`;
