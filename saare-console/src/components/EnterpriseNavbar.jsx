@@ -110,3 +110,4 @@ export default function EnterpriseNavbar() {
     </header>
   );
 }
+

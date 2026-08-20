@@ -138,3 +138,4 @@ export default function B2BDecisionHero() {
     </div>
   );
 }
+
