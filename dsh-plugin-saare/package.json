@@ -1,0 +1,24 @@
+﻿{
+  "name": "dsh-plugin-saare",
+  "version": "1.0.0",
+  "description": "Enterprise L7 Governance, PII Redaction and Forensic Evidence Vault Plugin for DeepSeek Harness (dsh)",
+  "main": "index.js",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ai-governance",
+    "iso42001",
+    "dora",
+    "ed25519",
+    "pii-redaction",
+    "security-gateway"
+  ],
+  "author": "Gabinete Jurídico Técnico MS3V & S.A.A.R.E. ISV Enterprise",
+  "license": "MIT",
+  "homepage": "https://www.saare.es",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alfonsoferrertorres-cyber/dsh-plugin-saare.git"
+  }
+}
