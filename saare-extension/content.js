@@ -112,7 +112,7 @@ document.addEventListener("keydown", (e) => {
         hash: hashHex
       };
 
-      fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=" + encodeURIComponent(session.userEmail), {
+      fetch(`https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=${encodeURIComponent(session.userEmail)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
