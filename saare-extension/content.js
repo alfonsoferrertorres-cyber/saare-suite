@@ -1,4 +1,4 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.1 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.2 */
 console.log("[SAARE L7 Engine] Interceptor Permanente Activo y Vinculado al Tenant");
 
 function getActiveSession(callback) {
@@ -85,16 +85,12 @@ document.addEventListener("keydown", (e) => {
 
   const target = e.target;
   const promptText = target.value || target.innerText || target.textContent || "";
-  
-  // 1. EVALUAR DE FORMA SÍNCRONA
   const vResult = evaluateDLP(promptText);
 
   if (vResult.isViolation) {
-    // 2. BLOQUEAR DE FORMA SÍNCRONA (Evita el error de Chrome)
     e.preventDefault();
     e.stopPropagation();
 
-    // 3. RECUPERAR SESIÓN DE FORMA ASÍNCRONA PARA EL ENVÍO A LA NUBE
     getActiveSession((session) => {
       const evidenceId = "EV-" + Math.floor(100000 + Math.random() * 900000);
       showBlockedNotification(evidenceId, vResult.norma, vResult.reason);
@@ -116,7 +112,7 @@ document.addEventListener("keydown", (e) => {
         hash: hashHex
       };
 
-      fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs", {
+      fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=" + encodeURIComponent(session.userEmail), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
