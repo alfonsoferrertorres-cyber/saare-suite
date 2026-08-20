@@ -1,11 +1,10 @@
 ﻿{
   "manifest_version": 3,
   "name": "S.A.A.R.E. L7 Compliance Gateway - Gabinete MS3V",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Middleware perimetral L7 en RAM para prevención de fugas PII y peritaje forense ISO 42001.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "*://*.saare.es/*",
     "https://gemini.google.com/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
@@ -18,7 +17,6 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.saare.es/*",
         "https://gemini.google.com/*",
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
@@ -32,12 +30,10 @@
     {
       "resources": ["inject.js"],
       "matches": [
-        "*://*.saare.es/*",
         "https://gemini.google.com/*",
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://claude.ai/*",
-        "http://localhost:*/*"
+        "https://claude.ai/*"
       ]
     }
   ],

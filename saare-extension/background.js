@@ -2,22 +2,22 @@
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === "SAARE_LOG_EVENT") {
-    // Bóveda 1: Local Storage
+    // 1. Guardar en Storage Local
     chrome.storage.local.get({ saare_logs: [] }, (result) => {
       const currentLogs = Array.isArray(result.saare_logs) ? result.saare_logs : [];
       const updatedLogs = [message.payload, ...currentLogs].slice(0, 100);
       chrome.storage.local.set({ saare_logs: updatedLogs });
     });
 
-    // Bóveda 2: Cloudflare Edge KV
+    // 2. Envío a Cloudflare KV
     fetch(ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(message.payload)
-    }).then(res => sendResponse({ status: "SENT", ok: res.ok }))
-      .catch(err => sendResponse({ status: "ERROR", error: err.message }));
+    })
+      .then((res) => sendResponse({ status: "SENT", ok: res.ok }))
+      .catch((err) => sendResponse({ status: "ERROR", error: err.message }));
 
-    return true;
+    return true; // Mantiene el canal abierto para respuesta asíncrona
   }
-  return false;
 });
