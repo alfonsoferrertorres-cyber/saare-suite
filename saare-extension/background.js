@@ -1,28 +1,28 @@
-﻿const WORKER_ENDPOINT = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com";
+﻿const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message && message.type === "SAARE_LOG_EVENT") {
-    // 1. Bóveda 1: Local Storage
+  if (message?.type === "SAARE_LOG_EVENT") {
+    // 1. Persistencia Local
     chrome.storage.local.get({ saare_logs: [] }, (result) => {
-      const currentLogs = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-      const updatedLogs = [message.payload, ...currentLogs].slice(0, 100);
-      chrome.storage.local.set({ saare_logs: updatedLogs });
+      const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
+      chrome.storage.local.set({ saare_logs: [message.payload, ...current].slice(0, 100) });
     });
 
-    // 2. Bóveda 2: Cloudflare Edge KV Worker
-    fetch(WORKER_ENDPOINT, {
+    // 2. Despacho directo a Cloudflare Worker KV
+    fetch(`${WORKER_URL}/runs?user=alfonsosb1@gmail.com`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(message.payload)
-    })
-      .then(res => sendResponse({ status: "SENT", ok: res.ok }))
-      .catch(err => sendResponse({ status: "ERROR", error: err.message }));
+    }).then(res => sendResponse({ ok: res.ok })).catch(() => {});
 
     return true;
   }
 
-  if (message && message.type === "SAARE_GET_CUSTOM_RULES") {
-    sendResponse({ data: [] });
+  if (message?.type === "SAARE_GET_RULES") {
+    fetch(`${WORKER_URL}/custom-rules`)
+      .then(r => r.json())
+      .then(data => sendResponse({ data }))
+      .catch(() => sendResponse({ data: [] }));
     return true;
   }
 });

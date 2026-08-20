@@ -1,8 +1,8 @@
 ﻿{
   "manifest_version": 3,
   "name": "S.A.A.R.E. AI Runtime Interceptor",
-  "version": "4.2.0",
-  "description": "Interceptor L7 in-memory y sellado de evidencia para chats de IA.",
+  "version": "4.4.0",
+  "description": "Interceptor L7 in-memory y sellado de evidencia forense para plataformas de IA.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
     "https://gemini.google.com/*",

@@ -1,6 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
-
-const API_ENDPOINT = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com";
+import { SAARE_CONFIG } from "../config";
 
 export default function GlobalRegistryView() {
   const [logs, setLogs] = useState([]);
@@ -8,14 +7,14 @@ export default function GlobalRegistryView() {
 
   async function fetchLogs() {
     try {
-      const res = await fetch(API_ENDPOINT);
+      const res = await fetch(SAARE_CONFIG.WORKER_RUNS);
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.runs || []);
         setLogs(list);
       }
     } catch (e) {
-      console.warn("Fallo al sincronizar boveda:", e);
+      console.warn("Sincronizando boveda:", e);
     } finally {
       setLoading(false);
     }

@@ -1,88 +1,58 @@
-﻿// SAARE L7 UNIVERSAL COMPLIANCE & DYNAMIC RULES ENGINE v4.3.0
-console.log("%c[SAARE L7 Engine] Interceptor Dual (Normativa Base + Reglas Personalizadas)", "color: #06b6d4; font-weight: bold;");
+﻿// S.A.A.R.E. L7 UNIVERSAL COMPLIANCE ENGINE v4.4.0
+console.log("%c[SAARE L7 Engine] Agente Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
 let dynamicCustomRules = [];
 
-function syncCustomRules() {
-  fetch("https://console.saare.es/api/api/v1/custom-rules")
-    .then(r => r.json())
-    .then(data => { if (Array.isArray(data)) dynamicCustomRules = data; })
-    .catch(() => {});
+function syncRules() {
+  chrome.runtime.sendMessage({ type: "SAARE_GET_RULES" }, (res) => {
+    if (res && Array.isArray(res.data)) dynamicCustomRules = res.data;
+  });
 }
-syncCustomRules();
-setInterval(syncCustomRules, 10000);
+syncRules();
+setInterval(syncRules, 15000);
 
 function getGeminiInputData() {
   const el = document.querySelector('rich-textarea div[contenteditable="true"], .ql-editor, div[contenteditable="true"], textarea, rich-textarea p, #prompt-textarea');
   const text = el ? (el.innerText || el.textContent || el.value || "").trim() : "";
-
-  const attachmentChips = document.querySelectorAll('file-chip, .file-chip, [aria-label*="sentencia"], [aria-label*="PDF"], .attachment-container');
-  let attachmentNames = [];
-  attachmentChips.forEach(chip => {
-    const name = (chip.innerText || chip.textContent || chip.getAttribute('aria-label') || "").trim();
-    if (name) attachmentNames.push(name);
-  });
-
-  return { text, attachments: attachmentNames, el };
+  return { text, el };
 }
 
 function evaluateComplianceRisks(text) {
-  if (!text || text.trim() === "") return { isViolation: false, category: null, reason: null, norma: null };
-
-  const cleanText = text.trim();
+  if (!text || text.trim() === "") return { isViolation: false };
+  const clean = text.trim();
 
   for (const rule of dynamicCustomRules) {
     try {
-      const isRegex = rule.pattern.startsWith("/") && rule.pattern.lastIndexOf("/") > 0;
-      let matched = false;
-      if (isRegex) {
-        const lastSlash = rule.pattern.lastIndexOf("/");
-        const regexBody = rule.pattern.substring(1, lastSlash);
-        const regexFlags = rule.pattern.substring(lastSlash + 1) || "i";
-        matched = new RegExp(regexBody, regexFlags).test(cleanText);
-      } else {
-        matched = cleanText.toLowerCase().includes(rule.pattern.toLowerCase());
+      if (clean.toLowerCase().includes(rule.pattern.toLowerCase())) {
+        return { isViolation: true, category: "REGLA_PERSONALIZADA", reason: `Coincidencia: "${rule.label || rule.pattern}"`, norma: "Política Corporativa" };
       }
-
-      if (matched) {
-        return {
-          isViolation: true,
-          category: "REGLA_PERSONALIZADA",
-          reason: `Coincidencia con regla personalizada: "${rule.label || rule.pattern}"`,
-          norma: "Política Corporativa Interna"
-        };
-      }
-    } catch (e) {}
+    } catch(e) {}
   }
 
   const dniNieRegex = /\b(?:\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i;
   const creditCardRegex = /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b/;
   const ibanRegex = /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{20,22}\b/i;
-  const nssRegex = /\b\d{2}[\/\s-]?\d{8}[\/\s-]?\d{2}\b/;
-  const piiKeywords = /\b(dni|nie|nif|cif|pasaporte|nómina|nomina|sueldo|salario|retención|finiquito|historial clínico|diagnóstico|cuenta bancaria|contraseña|password)\b/i;
 
-  if (dniNieRegex.test(cleanText) || creditCardRegex.test(cleanText) || ibanRegex.test(cleanText) || nssRegex.test(cleanText) || piiKeywords.test(cleanText)) {
+  if (dniNieRegex.test(clean) || creditCardRegex.test(clean) || ibanRegex.test(clean)) {
     return {
       isViolation: true,
       category: "PRIVACIDAD_LOPD_AEPD",
-      reason: "Detección de Identificadores (DNI/NIE/NIF) o Datos Sensibles no disociados (RGPD Art. 5/25, LOPDGDD)",
+      reason: "Detección de DNI/NIE, Tarjeta o Cuenta Bancaria",
       norma: "RGPD Arts. 5, 25, 32 / LOPDGDD"
     };
   }
 
-  const jailbreakRegex = /\b(dan mode|jailbreak|bypass|ignora (?:todas )?las instrucciones|desactiva los filtros|sin restricciones|do anything now|simula que no tienes reglas|pretend you have no rules|system override)\b/i;
-  const prohibitedAiActRegex = /\b(reconocimiento de emociones|inferir orientaci[oó]n sexual|social scoring|puntuaci[oó]n social de empleados|perfilado biom[eé]trico no consentido|manipulaci[oó]n subliminal)\b/i;
-
-  if (jailbreakRegex.test(cleanText) || prohibitedAiActRegex.test(cleanText)) {
+  const jailbreakRegex = /\b(dan mode|jailbreak|bypass|ignora (?:todas )?las instrucciones|desactiva los filtros|sin restricciones|system override)\b/i;
+  if (jailbreakRegex.test(clean)) {
     return {
       isViolation: true,
-      category: "SEGURIDAD_AI_ACT_ART5_ART15",
-      reason: "Intento de Evasión Perimetral / Práctica Prohibida por el Reglamento Europeo de IA (Art. 5/15)",
-      norma: "AI Act Arts. 5 y 15 / OWASP LLM01"
+      category: "SEGURIDAD_AI_ACT",
+      reason: "Intento de Evasión Perimetral (Jailbreak)",
+      norma: "AI Act Arts. 5 y 15"
     };
   }
 
-  return { isViolation: false, category: null, reason: null, norma: null };
+  return { isViolation: false };
 }
 
 function purgeDomElement(el) {
@@ -93,58 +63,15 @@ function purgeDomElement(el) {
   el.innerHTML = "";
   el.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
   el.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
-  el.dispatchEvent(new Event("blur", { bubbles: true, cancelable: true }));
-}
-
-function sendEvidence(text, attachments, violationInfo = null) {
-  let summary = text;
-  if (!summary && attachments && attachments.length > 0) {
-    summary = "[DOCUMENTO/ADJUNTO: " + attachments.join(", ") + "]";
-  } else if (summary && attachments && attachments.length > 0) {
-    summary = summary + " [Adjuntos: " + attachments.join(", ") + "]";
-  }
-
-  if (!summary || summary.trim() === "") return;
-
-  const isBlocked = !!violationInfo?.isViolation;
-  const evId = "EV-" + Math.floor(100000 + Math.random() * 900000);
-  const payload = {
-    promptInput: summary.trim(),
-    user: "alfonsosb1@gmail.com",
-    timestamp: new Date().toISOString(),
-    verdict: isBlocked ? "RECHAZADO" : "PERMITIDO",
-    violationDetails: violationInfo,
-    evidenceId: evId
-  };
-
-  fetch("https://console.saare.es/api/api/v1/runs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.verdict === "RECHAZADO" || isBlocked) {
-      showModal(data.runId || evId, summary, violationInfo || { norma: "Política de Seguridad", reason: "Directiva Activa" });
-    }
-  })
-  .catch(() => {
-    if (isBlocked) {
-      showModal(evId, summary, violationInfo);
-    }
-  });
 }
 
 function showModal(evId, text, violationInfo) {
-  let old = document.getElementById("saare-block-modal");
+  const old = document.getElementById("saare-block-modal");
   if (old) old.remove();
 
   const banner = document.createElement("div");
   banner.id = "saare-block-modal";
   banner.style.cssText = "position:fixed; bottom:20px; right:20px; width:460px; background:#0f172a; color:#ffffff; padding:18px; border-radius:8px; border:2px solid #ef4444; box-shadow:0 12px 28px rgba(0,0,0,0.85); z-index:2147483647; font-family:system-ui,-apple-system,sans-serif;";
-
-  const normTitle = violationInfo?.norma || "RGPD / EU AI Act";
-  const reasonText = violationInfo?.reason || "Carga de riesgo detectada";
 
   banner.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -152,14 +79,14 @@ function showModal(evId, text, violationInfo) {
       <span style="background:#dc2626; color:#fff; font-size:0.7rem; font-weight:900; padding:3px 8px; border-radius:4px; text-transform:uppercase;">BLOQUEADO (ZERO-SUBMISSION)</span>
     </div>
     <p style="font-size:0.82rem; margin:0 0 8px 0; color:#cbd5e1; line-height:1.4;">
-      <strong>Normativa / Política:</strong> <span style="color:#f87171;">${normTitle}</span><br>
-      <strong>Causa:</strong> ${reasonText}
+      <strong>Normativa:</strong> <span style="color:#f87171;">${violationInfo?.norma || "RGPD / AI Act"}</span><br>
+      <strong>Causa:</strong> ${violationInfo?.reason || "Carga de riesgo"}
     </p>
     <div style="background:#1e293b; border-left:3px solid #ef4444; padding:8px 10px; border-radius:4px; font-size:0.8rem; color:#93c5fd; margin-bottom:10px; word-break:break-all;">
       Carga Neutralizada: "${text}"
     </div>
     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94a3b8; border-top:1px solid #334155; padding-top:8px;">
-      <span>ID Evidencia: <strong style="color:#f59e0b;">${evId || 'EV-REGULATORY'}</strong></span>
+      <span>ID Evidencia: <strong style="color:#f59e0b;">${evId}</strong></span>
       <button id="saare-close-modal" style="background:#334155; border:none; color:#f8fafc; padding:3px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">Cerrar</button>
     </div>
   `;
@@ -175,15 +102,30 @@ function showModal(evId, text, violationInfo) {
 function handleIntercept(e) {
   if (e.target.closest && e.target.closest("#saare-block-modal")) return;
 
-  const { text, attachments, el } = getGeminiInputData();
-  if (text.length > 0 || attachments.length > 0) {
+  const { text, el } = getGeminiInputData();
+  if (text.length > 0) {
     const risk = evaluateComplianceRisks(text);
     if (risk.isViolation) {
       e.preventDefault();
       e.stopImmediatePropagation();
       e.stopPropagation();
       purgeDomElement(el);
-      sendEvidence(text, attachments, risk);
+
+      const evId = "EV-" + Math.floor(100000 + Math.random() * 900000);
+      const payload = {
+        evidenceId: evId,
+        promptInput: text.trim(),
+        user: "alfonsosb1@gmail.com",
+        timestamp: new Date().toISOString(),
+        verdict: "RECHAZADO",
+        action: "REDACTED (RAM)",
+        status: "RECHAZADO",
+        origin: window.location.hostname,
+        violationDetails: risk
+      };
+
+      chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
+      showModal(evId, text, risk);
     }
   }
 }
@@ -193,6 +135,5 @@ window.addEventListener("keydown", (e) => {
 }, true);
 
 window.addEventListener("click", (e) => {
-  const btn = e.target.closest('button[aria-label*="Enviar"], button[aria-label*="Send"], button.send-button, .send-button-container button, mat-icon[data-mat-icon-name="send"], button:has(svg), .send-button');
-  if (btn) handleIntercept(e);
+  if (e.target.closest && e.target.closest('button, [role="button"], mat-icon-button, .send-button')) handleIntercept(e);
 }, true);
