@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import GlobalRegistryView from './components/GlobalRegistryView';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const isInitialConsole = typeof window !== 'undefined' && (
@@ -359,42 +360,23 @@ export default function App() {
           )}
 
           {/* PESTAÑA: REGISTRO GLOBAL */}
-          {consoleTab === 'logs' && (
-            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-md border border-slate-200">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-sm font-extrabold uppercase text-slate-900">Bóveda Forense de Evidencias (Evidence Vault)</h3>
-                  <p className="text-xs text-slate-500 font-mono">Trazabilidad inmutable con firma criptográfica asimétrica</p>
-                </div>
-                <button onClick={handleDownloadProof} className="bg-slate-900 hover:bg-slate-800 text-cyan-400 font-mono text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-700 shadow-sm transition-all">
-                  📥 Exportar Bóveda (JSON)
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-600 border-b border-slate-200">
-                      <th className="p-3.5">ID / HORA</th>
-                      <th className="p-3.5">EVENTO / DETECCIÓN</th>
-                      <th className="p-3.5">ORIGEN</th>
-                      <th className="p-3.5">ACCIÓN</th>
-                      <th className="p-3.5">ESTADO</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map((item, idx) => (
-                      <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td className="p-3.5 text-slate-500 font-bold">{item.timestamp}<br/><span className="text-[10px] text-slate-400">{item.id}</span></td>
-                        <td className="p-3.5 font-semibold text-slate-900">{item.event}<br/><span className="text-[10px] text-cyan-600 break-all">{item.hash.substring(0, 24)}...</span></td>
-                        <td className="p-3.5 text-slate-600 text-[11px]">{item.origin}</td>
-                        <td className="p-3.5"><span className={`px-2 py-1 rounded font-bold text-[10px] border ${item.action.includes('WARNING') ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>{item.action}</span></td>
-                        <td className="p-3.5"><span className={`px-2 py-1 rounded font-bold text-[10px] border ${item.status.includes('FLAGGED') ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-emerald-50 border-emerald-300 text-emerald-700'}`}>{item.status}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+{activeTab === 'registry' || activeTab === 'REGISTRO_GLOBAL' || activeTab === 'GLOBAL' ? (
+  <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl">
+    <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+      <div>
+        <h3 className="text-sm font-extrabold uppercase text-white tracking-wider">Bóveda Forense de Evidencias (Evidence Vault)</h3>
+        <p className="text-xs text-slate-400">Trazabilidad inmutable con firma criptográfica en tiempo real</p>
+      </div>
+      <button 
+        onClick={() => window.open('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com', '_blank')}
+        className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg border border-slate-700 font-mono"
+      >
+        Exportar Bóveda (JSON)
+      </button>
+    </div>
+    <GlobalRegistryView />
+  </div>
+) : null}
             </div>
           )}
 
@@ -870,4 +852,5 @@ export default function App() {
     </div>
   );
 }
+
 
