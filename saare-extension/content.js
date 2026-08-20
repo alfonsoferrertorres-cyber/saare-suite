@@ -1,21 +1,15 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.0 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.1 */
 console.log("[SAARE L7 Engine] Interceptor Permanente Activo y Vinculado al Tenant");
 
 function getActiveSession(callback) {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(["saare_user", "saare_license", "saare_role"], (res) => {
+    chrome.storage.local.get(["saare_user", "saare_license"], (res) => {
       const activeUser = res.saare_user || (window.location.host.includes("google") ? "alfonsosb1@gmail.com" : "pmaiquess@gmail.com");
       const activeLicense = res.saare_license || (activeUser === "alfonsosb1@gmail.com" ? "SAARE-MASTER-2026-ROOT-001" : "SAARE-PRO-2026-1167-TEST");
-      callback({
-        userEmail: activeUser,
-        licenseKey: activeLicense
-      });
+      callback({ userEmail: activeUser, licenseKey: activeLicense });
     });
   } else {
-    callback({
-      userEmail: "alfonsosb1@gmail.com",
-      licenseKey: "SAARE-MASTER-2026-ROOT-001"
-    });
+    callback({ userEmail: "alfonsosb1@gmail.com", licenseKey: "SAARE-MASTER-2026-ROOT-001" });
   }
 }
 
@@ -23,39 +17,15 @@ function evaluateDLP(text) {
   if (!text || typeof text !== "string" || text.trim() === "") return { isViolation: false };
   const raw = text.trim();
 
-  // DNI / NIE (LOPDGDD & AEPD)
-  const dniRegex = /\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i;
-  if (dniRegex.test(raw)) {
-    return {
-      isViolation: true,
-      category: "PII_DOCUMENTO",
-      norma: "España - LOPDGDD & AEPD",
-      reason: "Detección de DNI/NIE en texto de entrada"
-    };
+  if (/\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i.test(raw)) {
+    return { isViolation: true, category: "PII_DOCUMENTO", norma: "España - LOPDGDD & AEPD", reason: "Detección de DNI/NIE en texto de entrada" };
   }
-
-  // IBAN (RGPD)
-  const ibanRegex = /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i;
-  if (ibanRegex.test(raw)) {
-    return {
-      isViolation: true,
-      category: "DATOS_BANCARIOS",
-      norma: "RGPD Arts. 5, 25, 32 / LOPDGDD",
-      reason: "Detección de Cuenta Bancaria / IBAN"
-    };
+  if (/\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i.test(raw)) {
+    return { isViolation: true, category: "DATOS_BANCARIOS", norma: "RGPD Arts. 5, 25, 32 / LOPDGDD", reason: "Detección de Cuenta Bancaria / IBAN" };
   }
-
-  // Tarjetas de Crédito (PCI-DSS)
-  const ccRegex = /\b(?:\d{4}[\s-]?){3}\d{4}\b/;
-  if (ccRegex.test(raw)) {
-    return {
-      isViolation: true,
-      category: "TARJETA_CREDITO",
-      norma: "PCI-DSS / RGPD Art. 32",
-      reason: "Detección de Tarjeta Financiera"
-    };
+  if (/\b(?:\d{4}[\s-]?){3}\d{4}\b/.test(raw)) {
+    return { isViolation: true, category: "TARJETA_CREDITO", norma: "PCI-DSS / RGPD Art. 32", reason: "Detección de Tarjeta Financiera" };
   }
-
   return { isViolation: false };
 }
 
@@ -65,7 +35,7 @@ function showBlockedNotification(evidenceId, norma, reason) {
 
   const toast = document.createElement("div");
   toast.id = "saare-l7-toast";
-  toast.style.cssText = "position:fixed;bottom:24px;right:24px;z-index:2147483647;max-width:440px;background:#090d16;border:1px solid rgba(239,68,68,0.6);border-radius:12px;padding:16px 18px;box-shadow:0 10px 35px rgba(0,0,0,0.9), 0 0 15px rgba(239,68,68,0.3);color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.4;";
+  toast.style.cssText = "position:fixed;bottom:24px;right:24px;z-index:2147483647;max-width:440px;background:#090d16;border:1px solid rgba(239,68,68,0.6);border-radius:12px;padding:16px 18px;box-shadow:0 10px 35px rgba(0,0,0,0.9), 0 0 15px rgba(239,68,68,0.3);color:#e2e8f0;font-family:sans-serif;font-size:13px;line-height:1.4;";
 
   const headerDiv = document.createElement("div");
   headerDiv.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;";
@@ -74,7 +44,6 @@ function showBlockedNotification(evidenceId, norma, reason) {
   const closeX = document.createElement("button");
   closeX.innerHTML = "×";
   closeX.style.cssText = "background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;";
-  closeX.title = "Cerrar";
   headerDiv.appendChild(closeX);
 
   const bodyDiv = document.createElement("div");
@@ -83,19 +52,15 @@ function showBlockedNotification(evidenceId, norma, reason) {
 
   const metaDiv = document.createElement("div");
   metaDiv.style.cssText = "font-size:11px;color:#64748b;margin-bottom:12px;";
-  metaDiv.innerHTML = "Normativa: " + norma + " | Evidencia: " + evidenceId + "";
+  metaDiv.innerHTML = `Normativa: ${norma} | Evidencia: ${evidenceId}`;
 
   const footerDiv = document.createElement("div");
   footerDiv.style.cssText = "display:flex;justify-content:flex-end;gap:10px;";
 
-  // BOTÓN HACIA EL REGISTRO GLOBAL
   const registryBtn = document.createElement("button");
   registryBtn.innerText = "Ver Registro Global";
   registryBtn.style.cssText = "background:rgba(6, 182, 212, 0.15);border:1px solid rgba(6, 182, 212, 0.5);color:#22d3ee;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;";
-  registryBtn.onclick = () => {
-    window.open("https://console.saare.es", "_blank");
-    toast.remove();
-  };
+  registryBtn.onclick = () => { window.open("https://console.saare.es", "_blank"); toast.remove(); };
   footerDiv.appendChild(registryBtn);
 
   const dismissBtn = document.createElement("button");
@@ -109,49 +74,46 @@ function showBlockedNotification(evidenceId, norma, reason) {
   toast.appendChild(footerDiv);
   document.body.appendChild(toast);
 
-  const removeToast = () => {
-    toast.style.opacity = "0";
-    toast.style.transform = "translateY(10px)";
-    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
-  };
-
+  const removeToast = () => toast.remove();
   closeX.addEventListener("click", removeToast);
   dismissBtn.addEventListener("click", removeToast);
   setTimeout(removeToast, 12000);
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return;
+  if (e.key !== "Enter" || e.shiftKey) return;
 
-  getActiveSession((session) => {
-    const target = e.target;
-    const promptText = target.value || target.innerText || target.textContent || "";
-    const vResult = evaluateDLP(promptText);
+  const target = e.target;
+  const promptText = target.value || target.innerText || target.textContent || "";
+  
+  // 1. EVALUAR DE FORMA SÍNCRONA
+  const vResult = evaluateDLP(promptText);
 
-    if (vResult.isViolation) {
-      e.preventDefault();
-      e.stopPropagation();
+  if (vResult.isViolation) {
+    // 2. BLOQUEAR DE FORMA SÍNCRONA (Evita el error de Chrome)
+    e.preventDefault();
+    e.stopPropagation();
 
+    // 3. RECUPERAR SESIÓN DE FORMA ASÍNCRONA PARA EL ENVÍO A LA NUBE
+    getActiveSession((session) => {
       const evidenceId = "EV-" + Math.floor(100000 + Math.random() * 900000);
       showBlockedNotification(evidenceId, vResult.norma, vResult.reason);
 
-      // Generación de Hash para la Bóveda Forense
       const hashArray = Array.from(crypto.getRandomValues(new Uint8Array(32)));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      // PAYLOAD CORREGIDO PARA SAARE-CONSOLE
       const payload = {
         evidenceId: evidenceId,
         timestamp: new Date().toISOString(),
-        event: `Exfiltración PII: ${vResult.category}`, // Requerido por la consola
+        event: `Exfiltración PII: ${vResult.category}`,
         verdict: "RECHAZADO",
         user: session.userEmail,
         licenseKey: session.licenseKey,
-        origin: window.location.hostname, // Requerido por la consola
-        action: "REDACTED (RAM)", // Requerido por la consola
-        status: "RECHAZADO", // Requerido por la consola
+        origin: window.location.hostname,
+        action: "REDACTED (RAM)",
+        status: "RECHAZADO",
         violationDetails: vResult,
-        hash: hashHex // Requerido por la consola
+        hash: hashHex
       };
 
       fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs", {
@@ -159,6 +121,6 @@ document.addEventListener("keydown", (e) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       }).catch(() => {});
-    }
-  });
+    });
+  }
 }, true);

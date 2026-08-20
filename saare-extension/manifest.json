@@ -2,7 +2,7 @@
     "manifest_version":  3,
     "name":  "S.A.A.R.E. L7 Compliance Gateway - Gabinete MS3V",
     "version":  "3.3.0",
-    "description":  "Middleware perimetral L7 en RAM para prevenciÃ³n de fugas PII, anti-jailbreak y peritaje forense ISO 42001.",
+    "description":  "Middleware perimetral L7 en RAM para prevención de fugas PII, anti-jailbreak y peritaje forense ISO 42001.",
     "permissions":  [
                         "storage",
                         "activeTab"
@@ -51,3 +51,4 @@
                                                ]
                                }
 }
+
