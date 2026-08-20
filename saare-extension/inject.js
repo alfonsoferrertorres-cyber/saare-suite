@@ -1,42 +1,43 @@
-﻿/* S.A.A.R.E. L7 Perimeter Engine - Deep RAM Hook */
+﻿/* S.A.A.R.E. L7 RAM Network Interceptor */
 (function() {
-  const DLP_PATTERNS = {
-    dni: /\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i,
-    iban: /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i,
-    card: /\b(?:\d{4}[\s-]?){3}\d{4}\b/
+  const DLP = {
+    // Acepta cualquier letra tras 8 dígitos para frenar pruebas y erratas (incluida la 'U')
+    dni: /\b(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i,
+    iban: /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{20,22}\b/i,
+    card: /\b(?:\d{4}[\s-]?){3}\d{4}\b|\b\d{15,16}\b/
   };
 
-  function inspectContent(str) {
+  function checkPayload(str) {
     if (!str || typeof str !== "string") return null;
-    if (DLP_PATTERNS.dni.test(str)) return { category: "PII_DNI", norma: "España - LOPDGDD & AEPD", reason: "Detección de DNI/NIE en memoria RAM" };
-    if (DLP_PATTERNS.iban.test(str.replace(/\s+/g, ""))) return { category: "DATOS_BANCARIOS", norma: "RGPD Art. 5, 32 / LOPDGDD", reason: "Detección de IBAN" };
-    if (DLP_PATTERNS.card.test(str.replace(/[\s-]+/g, ""))) return { category: "TARJETA_CREDITO", norma: "PCI-DSS / RGPD", reason: "Detección de Tarjeta Financiera" };
+    if (DLP.dni.test(str)) return { category: "PII_DNI", norma: "España - LOPDGDD & AEPD", reason: "Detección de DNI/NIE en memoria RAM" };
+    if (DLP.iban.test(str.replace(/\s+/g, ""))) return { category: "DATOS_BANCARIOS", norma: "RGPD Art. 5, 32 / LOPDGDD", reason: "Detección de Cuenta Bancaria / IBAN" };
+    if (DLP.card.test(str.replace(/[\s-]+/g, ""))) return { category: "TARJETA_CREDITO", norma: "PCI-DSS / RGPD", reason: "Detección de Tarjeta Financiera" };
     return null;
   }
 
-  // Interceptar XMLHttpRequest (Gemini StreamGenerate)
-  const origSend = XMLHttpRequest.prototype.send;
+  // Interceptar XMLHttpRequest (StreamGenerate de Gemini)
+  const rawSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
     if (body && typeof body === "string") {
-      const violation = inspectContent(body);
+      const violation = checkPayload(body);
       if (violation) {
-        window.postMessage({ type: "SAARE_PERIMETER_BLOCKED", violation: violation, payloadRaw: body.substring(0, 100) }, "*");
-        throw new Error("[S.A.A.R.E. L7] Petición abortada en RAM por infracción de cumplimiento.");
+        window.postMessage({ type: "SAARE_BLOCKED_EVENT", violation: violation }, "*");
+        throw new Error("[S.A.A.R.E. L7] Petición cancelada en RAM: Infracción de Cumplimiento.");
       }
     }
-    return origSend.apply(this, arguments);
+    return rawSend.apply(this, arguments);
   };
 
   // Interceptar Fetch nativo
-  const origFetch = window.fetch;
+  const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     if (config && config.body && typeof config.body === "string") {
-      const violation = inspectContent(config.body);
+      const violation = checkPayload(config.body);
       if (violation) {
-        window.postMessage({ type: "SAARE_PERIMETER_BLOCKED", violation: violation, payloadRaw: config.body.substring(0, 100) }, "*");
-        return new Response(JSON.stringify({ error: "S.A.A.R.E. L7 Blocked" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        window.postMessage({ type: "SAARE_BLOCKED_EVENT", violation: violation }, "*");
+        return new Response(JSON.stringify({ error: "S.A.A.R.E. Security Intercept" }), { status: 400, headers: { "Content-Type": "application/json" } });
       }
     }
-    return origFetch.apply(this, arguments);
+    return rawFetch.apply(this, arguments);
   };
 })();
