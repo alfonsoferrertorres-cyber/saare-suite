@@ -99,6 +99,19 @@ async function sendDeliveryEmail(apiKey, toEmail, licenseKey, scopes) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/" || url.pathname === "") {
+      return new Response(JSON.stringify({
+        status: "ONLINE",
+        service: "S.A.A.R.E. Cloud Control Plane L7",
+        version: "2.5.0-PROD",
+        endpoints: {
+          runs: "/api/v1/runs?user=alfonsosb1@gmail.com",
+          health: "/api/v1/health"
+        }
+      }, null, 2), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+    }
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
@@ -330,4 +343,5 @@ export default {
     });
   }
 };
+
 
