@@ -1,4 +1,4 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v4.1.1 */
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v4.1.2 */
 console.log("%c[SAARE L7 Engine] Escudo Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
 try {
@@ -62,7 +62,7 @@ function showToast(evidenceId, norma, reason) {
     remove(ev);
   };
 
-  setTimeout(() => { if (document.body.contains(toast)) toast.remove(); }, 10000);
+  setTimeout(() => { if (document.body && document.body.contains(toast)) toast.remove(); }, 10000);
 }
 
 function processAndDispatch(violationInfo) {
@@ -86,14 +86,12 @@ function processAndDispatch(violationInfo) {
     hash: hashHex
   };
 
+  // Enviar a background.js (el Service Worker se encarga de la red sin bloqueos CORS)
   chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
 }
 
 function handleInputCheck(e) {
-  // Ignorar clics si ocurren dentro del Toast de SAARE
-  if (e.target.closest("#saare-toast")) {
-    return;
-  }
+  if (e.target.closest && e.target.closest("#saare-toast")) return;
 
   const inputEl = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"], textarea, #prompt-textarea');
   const rawText = inputEl ? (inputEl.innerText || inputEl.value || inputEl.textContent || "") : "";
@@ -112,7 +110,7 @@ window.addEventListener("keydown", (e) => {
 }, true);
 
 window.addEventListener("click", (e) => {
-  if (e.target.closest('button, [role="button"], mat-icon-button, .send-button')) handleInputCheck(e);
+  if (e.target.closest && e.target.closest('button, [role="button"], mat-icon-button, .send-button')) handleInputCheck(e);
 }, true);
 
 window.addEventListener("message", (e) => {
