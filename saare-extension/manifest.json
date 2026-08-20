@@ -1,8 +1,8 @@
 ﻿{
   "manifest_version": 3,
-  "name": "S.A.A.R.E. L7 Compliance Gateway - Gabinete MS3V",
-  "version": "4.1.0",
-  "description": "Middleware perimetral L7 en RAM para prevención de fugas PII y peritaje forense ISO 42001.",
+  "name": "S.A.A.R.E. AI Runtime Interceptor",
+  "version": "4.2.0",
+  "description": "Interceptor L7 in-memory y sellado de evidencia para chats de IA.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
     "https://gemini.google.com/*",
@@ -23,20 +23,13 @@
         "https://claude.ai/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_start"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["inject.js"],
-      "matches": [
-        "https://gemini.google.com/*",
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://claude.ai/*"
-      ]
-    }
-  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
