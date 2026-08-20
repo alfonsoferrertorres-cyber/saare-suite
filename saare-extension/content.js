@@ -10,7 +10,7 @@ script.onload = () => script.remove();
 const DLP = {
   dni: /\b(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i,
   iban: /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{20,22}\b/i,
-  card: /\b(?:\d{4}[\s-]?){3}\d{4}\b|\b\d{15,16}\b/
+  card: /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b/
 };
 
 function evaluateText(raw) {
@@ -102,3 +102,4 @@ window.addEventListener("message", (e) => {
     processAndDispatch(e.data.violation);
   }
 });
+
