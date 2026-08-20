@@ -1,115 +1,164 @@
-﻿console.log("%c[SAARE L7 Engine] Interceptor Permanente Activo y Vinculado al Tenant", "color: #06b6d4; font-weight: bold; font-size: 11px;");
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Always-On Interceptor Engine v2.7.0 */
+console.log("[SAARE L7 Engine] Interceptor Permanente Activo y Vinculado al Tenant");
 
-const ENDPOINT_API = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs";
-const USER_EMAIL = "alfonsosb1@gmail.com";
-const LICENSE_KEY = "SAARE-MASTER-2026-ROOT-001";
-
-// BANDERA ANTI-COLAPSO (Evita el Event Loop Recursivo)
-let isSanitizing = false;
-
-const PII_RULES = [
-  { name: 'DNI/NIE', regex: /\b(\d{8}[a-z]|[xyz]\d{7}[a-z])\b/gi, replacement: '[REDACTED_DNI]' },
-  { name: 'IBAN', regex: /\b[a-z]{2}\d{2}[a-z0-9\s]{12,30}\b/gi, replacement: '[REDACTED_IBAN]' },
-  { name: 'API_KEY', regex: /\b(sk-[a-zA-Z0-9_-]{20,}|ghp_[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16})\b/g, replacement: '[REDACTED_KEY]' }
-];
-
-function sanitizePayload(text) {
-  let modified = text;
-  let detected = [];
-  for (const rule of PII_RULES) {
-    if (rule.regex.test(modified)) {
-      detected.push(rule.name);
-      modified = modified.replace(rule.regex, rule.replacement);
-    }
+function getActiveSession(callback) {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(["saare_user", "saare_license", "saare_role"], (res) => {
+      const activeUser = res.saare_user || (window.location.host.includes("google") ? "alfonsosb1@gmail.com" : "pmaiquess@gmail.com");
+      const activeLicense = res.saare_license || (activeUser === "alfonsosb1@gmail.com" ? "SAARE-MASTER-2026-ROOT-001" : "SAARE-PRO-2026-1167-TEST");
+      callback({
+        userEmail: activeUser,
+        licenseKey: activeLicense
+      });
+    });
+  } else {
+    callback({
+      userEmail: "alfonsosb1@gmail.com",
+      licenseKey: "SAARE-MASTER-2026-ROOT-001"
+    });
   }
-  return { isBlocked: detected.length > 0, sanitized: modified, types: detected };
 }
 
-async function emitVaultEvent(types, method, isBlocked) {
-  const hashArray = Array.from(crypto.getRandomValues(new Uint8Array(32)));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+function evaluateDLP(text) {
+  if (!text || typeof text !== "string" || text.trim() === "") return { isViolation: false };
+  const raw = text.trim();
 
-  const eventName = isBlocked ? `Exfiltración PII: ${types.join(', ')}` : `Prompt (${method})`;
-  const actionName = isBlocked ? 'REDACTED (RAM)' : 'LOGGED';
+  // DNI / NIE (LOPDGDD & AEPD)
+  const dniRegex = /\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i;
+  if (dniRegex.test(raw)) {
+    return {
+      isViolation: true,
+      category: "PII_DOCUMENTO",
+      norma: "España - LOPDGDD & AEPD",
+      reason: "Detección de DNI/NIE en texto de entrada"
+    };
+  }
 
-  const logPayload = {
-    evidenceId: `EV-${Date.now().toString(36).toUpperCase()}`,
-    timestamp: new Date().toISOString(),
-    event: eventName,
-    verdict: isBlocked ? "RECHAZADO" : "CONFORME",
-    user: USER_EMAIL,
-    licenseKey: LICENSE_KEY,
-    origin: window.location.hostname,
-    action: actionName,
-    latency: '1.16 ms',
-    hash: hashHex,
-    status: isBlocked ? 'RECHAZADO' : 'CONFORME'
+  // IBAN (RGPD)
+  const ibanRegex = /\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i;
+  if (ibanRegex.test(raw)) {
+    return {
+      isViolation: true,
+      category: "DATOS_BANCARIOS",
+      norma: "RGPD Arts. 5, 25, 32 / LOPDGDD",
+      reason: "Detección de Cuenta Bancaria / IBAN"
+    };
+  }
+
+  // Tarjetas de Crédito (PCI-DSS)
+  const ccRegex = /\b(?:\d{4}[\s-]?){3}\d{4}\b/;
+  if (ccRegex.test(raw)) {
+    return {
+      isViolation: true,
+      category: "TARJETA_CREDITO",
+      norma: "PCI-DSS / RGPD Art. 32",
+      reason: "Detección de Tarjeta Financiera"
+    };
+  }
+
+  return { isViolation: false };
+}
+
+function showBlockedNotification(evidenceId, norma, reason) {
+  const existing = document.getElementById("saare-l7-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.id = "saare-l7-toast";
+  toast.style.cssText = "position:fixed;bottom:24px;right:24px;z-index:2147483647;max-width:440px;background:#090d16;border:1px solid rgba(239,68,68,0.6);border-radius:12px;padding:16px 18px;box-shadow:0 10px 35px rgba(0,0,0,0.9), 0 0 15px rgba(239,68,68,0.3);color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.4;";
+
+  const headerDiv = document.createElement("div");
+  headerDiv.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;";
+  headerDiv.innerHTML = "🛡️ S.A.A.R.E. RUNTIME INTERCEPTOR (L7)";
+
+  const closeX = document.createElement("button");
+  closeX.innerHTML = "×";
+  closeX.style.cssText = "background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;";
+  closeX.title = "Cerrar";
+  headerDiv.appendChild(closeX);
+
+  const bodyDiv = document.createElement("div");
+  bodyDiv.style.cssText = "margin-bottom:6px;color:#f1f5f9;";
+  bodyDiv.innerHTML = "BLOQUEADO: " + reason;
+
+  const metaDiv = document.createElement("div");
+  metaDiv.style.cssText = "font-size:11px;color:#64748b;margin-bottom:12px;";
+  metaDiv.innerHTML = "Normativa: " + norma + " | Evidencia: " + evidenceId + "";
+
+  const footerDiv = document.createElement("div");
+  footerDiv.style.cssText = "display:flex;justify-content:flex-end;gap:10px;";
+
+  // BOTÓN HACIA EL REGISTRO GLOBAL
+  const registryBtn = document.createElement("button");
+  registryBtn.innerText = "Ver Registro Global";
+  registryBtn.style.cssText = "background:rgba(6, 182, 212, 0.15);border:1px solid rgba(6, 182, 212, 0.5);color:#22d3ee;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;";
+  registryBtn.onclick = () => {
+    window.open("https://console.saare.es", "_blank");
+    toast.remove();
+  };
+  footerDiv.appendChild(registryBtn);
+
+  const dismissBtn = document.createElement("button");
+  dismissBtn.innerText = "Cerrar Aviso";
+  dismissBtn.style.cssText = "background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;";
+  footerDiv.appendChild(dismissBtn);
+
+  toast.appendChild(headerDiv);
+  toast.appendChild(bodyDiv);
+  toast.appendChild(metaDiv);
+  toast.appendChild(footerDiv);
+  document.body.appendChild(toast);
+
+  const removeToast = () => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
   };
 
-  try {
-    if (chrome?.storage?.local) {
-      chrome.storage.local.get({ saare_logs: [] }, (res) => {
-        const current = Array.isArray(res.saare_logs) ? res.saare_logs : [];
-        chrome.storage.local.set({ saare_logs: [logPayload, ...current].slice(0, 100) });
-      });
-    }
-  } catch (e) {}
-
-  try {
-    fetch(ENDPOINT_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(logPayload),
-      mode: "cors"
-    }).catch(() => {});
-  } catch (e) {}
+  closeX.addEventListener("click", removeToast);
+  dismissBtn.addEventListener("click", removeToast);
+  setTimeout(removeToast, 12000);
 }
 
-function processInput(target, rawText, method) {
-  // BLOQUEO DE REENTRADA
-  if (!rawText || !rawText.trim() || isSanitizing) return;
-  
-  const audit = sanitizePayload(rawText);
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
 
-  if (audit.isBlocked) {
-    console.warn(`%c[SAARE L7] Amenaza Mitigada: ${audit.types.join(', ')}`, "color: #ef4444; font-weight: bold;");
-    
-    // Activar bandera antes de inyectar el texto redactado
-    isSanitizing = true;
-
-    if (target.isContentEditable) {
-      target.innerText = audit.sanitized;
-    } else {
-      target.value = audit.sanitized;
-    }
-    
-    // Notificar a React sin desencadenar un bucle infinito
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Liberar el hilo de ejecución rápidamente
-    setTimeout(() => {
-      isSanitizing = false;
-    }, 50);
-  }
-
-  emitVaultEvent(audit.types, method, audit.isBlocked);
-}
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  getActiveSession((session) => {
     const target = e.target;
-    let rawText = target.value || target.innerText || target.textContent || "";
-    processInput(target, rawText, "Teclado");
-  }
-}, true);
+    const promptText = target.value || target.innerText || target.textContent || "";
+    const vResult = evaluateDLP(promptText);
 
-document.addEventListener('click', (e) => {
-  const botonClicado = e.target.closest('button');
-  if (botonClicado) {
-    const target = document.querySelector('div[contenteditable="true"], textarea, input[type="text"]');
-    if (target) {
-      let rawText = target.value || target.innerText || target.textContent || "";
-      processInput(target, rawText, "Ratón");
+    if (vResult.isViolation) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const evidenceId = "EV-" + Math.floor(100000 + Math.random() * 900000);
+      showBlockedNotification(evidenceId, vResult.norma, vResult.reason);
+
+      // Generación de Hash para la Bóveda Forense
+      const hashArray = Array.from(crypto.getRandomValues(new Uint8Array(32)));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // PAYLOAD CORREGIDO PARA SAARE-CONSOLE
+      const payload = {
+        evidenceId: evidenceId,
+        timestamp: new Date().toISOString(),
+        event: `Exfiltración PII: ${vResult.category}`, // Requerido por la consola
+        verdict: "RECHAZADO",
+        user: session.userEmail,
+        licenseKey: session.licenseKey,
+        origin: window.location.hostname, // Requerido por la consola
+        action: "REDACTED (RAM)", // Requerido por la consola
+        status: "RECHAZADO", // Requerido por la consola
+        violationDetails: vResult,
+        hash: hashHex // Requerido por la consola
+      };
+
+      fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
     }
-  }
+  });
 }, true);
