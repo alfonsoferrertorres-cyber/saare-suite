@@ -1,5 +1,5 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - Full ISO 42001 Telemetry Engine v3.3.0 */
-console.log("%c[SAARE L7 Engine] Auditoría Continua 100% Activa (ISO 42001 / RGPD)", "color: #06b6d4; font-weight: bold;");
+﻿/* S.A.A.R.E. L7 Engine - Universal Real-Time Interceptor v3.4.0 */
+console.log("%c[SAARE L7 Engine] Interceptor Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
 const USER_CONFIG = {
   user: "alfonsosb1@gmail.com",
@@ -8,23 +8,44 @@ const USER_CONFIG = {
 
 let isProcessing = false;
 
-function evaluatePrompt(text) {
-  if (!text || typeof text !== "string" || !text.trim()) return { isViolation: false };
-  const raw = text.trim();
+// 1. Extractor universal de texto para Gemini, ChatGPT y Claude
+function getActivePromptText() {
+  // Gemini Rich Textarea
+  const geminiInput = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"][role="textbox"], rich-textarea p');
+  if (geminiInput && geminiInput.innerText) {
+    return geminiInput.innerText.trim();
+  }
 
+  // ChatGPT & Claude Textarea / ContentEditable
+  const genericInput = document.querySelector('#prompt-textarea, textarea, div[contenteditable="true"]');
+  if (genericInput) {
+    return (genericInput.value || genericInput.innerText || genericInput.textContent || "").trim();
+  }
+
+  return "";
+}
+
+// 2. Motor de Inspección DLP
+function evaluatePrompt(raw) {
+  if (!raw) return { isViolation: false };
+
+  // DNI / NIE
   if (/\b(\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i.test(raw)) {
     return { isViolation: true, category: "PII_DOCUMENTO", norma: "España - LOPDGDD & AEPD", reason: "Detección de DNI/NIE en texto de entrada" };
   }
-  if (/\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i.test(raw)) {
+  // IBAN Bancario
+  if (/\bES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}\b|\bES\d{22}\b/i.test(raw.replace(/\s+/g, ''))) {
     return { isViolation: true, category: "DATOS_BANCARIOS", norma: "RGPD Arts. 5, 25, 32 / LOPDGDD", reason: "Detección de Cuenta Bancaria / IBAN" };
   }
-  if (/\b(?:\d{4}[\s-]?){3}\d{4}\b/.test(raw)) {
+  // Tarjetas de Crédito (PCI-DSS)
+  if (/\b(?:\d{4}[\s-]?){3}\d{4}\b/.test(raw.replace(/[\s-]+/g, ''))) {
     return { isViolation: true, category: "TARJETA_CREDITO", norma: "PCI-DSS / RGPD Art. 32", reason: "Detección de Tarjeta Financiera" };
   }
 
   return { isViolation: false };
 }
 
+// 3. Notificación Modal Toast
 function showToast(evidenceId, norma, reason) {
   const oldToast = document.getElementById("saare-toast");
   if (oldToast) oldToast.remove();
@@ -54,11 +75,12 @@ function showToast(evidenceId, norma, reason) {
   setTimeout(remove, 10000);
 }
 
-function processSecurityCheck(target, event) {
+// 4. Interceptación y Despacho de Evidencia
+function handleExecution(event) {
   if (isProcessing) return;
 
-  const rawText = target.value || target.innerText || target.textContent || "";
-  if (!rawText.trim()) return;
+  const rawText = getActivePromptText();
+  if (!rawText) return;
 
   const result = evaluatePrompt(rawText);
   const evidenceId = "EV-" + Math.floor(100000 + Math.random() * 900000);
@@ -80,6 +102,7 @@ function processSecurityCheck(target, event) {
   };
 
   if (result.isViolation) {
+    // Freno inmediato en fase de captura
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -94,22 +117,16 @@ function processSecurityCheck(target, event) {
   });
 }
 
-// 1. Detección por Teclado (Enter)
-document.addEventListener("keydown", (e) => {
+// 5. Escucha en fase de Captura de Ventana (Prioridad Máxima sobre frameworks)
+window.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
-    processSecurityCheck(e.target, e);
+    handleExecution(e);
   }
 }, true);
 
-// 2. Detección por Clic (Botón Enviar)
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest('button, [role="button"]');
+window.addEventListener("click", (e) => {
+  const btn = e.target.closest('button, [role="button"], mat-icon-button, .send-button');
   if (btn) {
-    const inputArea = document.querySelector(
-      'div[contenteditable="true"], textarea, rich-textarea, #prompt-textarea, [data-placeholder]'
-    );
-    if (inputArea) {
-      processSecurityCheck(inputArea, e);
-    }
+    handleExecution(e);
   }
 }, true);
