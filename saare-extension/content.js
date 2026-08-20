@@ -1,11 +1,14 @@
-﻿/* S.A.A.R.E. L7 Compliance Gateway - v4.0.0 */
-console.log("%c[SAARE L7 Engine] Escudo Perimetral Universal Activo", "color: #06b6d4; font-weight: bold;");
+﻿/* S.A.A.R.E. L7 Compliance Gateway - Content Script v4.1.0 */
+console.log("%c[SAARE L7 Engine] Escudo Perimetral Activo en LLM", "color: #06b6d4; font-weight: bold;");
 
-// Inyectar el interceptor en el contexto principal
-const script = document.createElement("script");
-script.src = chrome.runtime.getURL("inject.js");
-(document.head || document.documentElement).appendChild(script);
-script.onload = () => script.remove();
+try {
+  if (chrome.runtime && chrome.runtime.getURL) {
+    const script = document.createElement("script");
+    script.src = chrome.runtime.getURL("inject.js");
+    (document.head || document.documentElement).appendChild(script);
+    script.onload = () => script.remove();
+  }
+} catch(e) {}
 
 const DLP = {
   dni: /\b(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])\b/i,
@@ -74,7 +77,6 @@ function processAndDispatch(violationInfo) {
   chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
 }
 
-// 1. Detección DOM en fase de Captura
 function handleInputCheck(e) {
   const inputEl = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"], textarea, #prompt-textarea');
   const rawText = inputEl ? (inputEl.innerText || inputEl.value || inputEl.textContent || "") : "";
@@ -96,10 +98,8 @@ window.addEventListener("click", (e) => {
   if (e.target.closest('button, [role="button"], mat-icon-button, .send-button')) handleInputCheck(e);
 }, true);
 
-// 2. Detección desde Hook de Red L7
 window.addEventListener("message", (e) => {
   if (e.data && e.data.type === "SAARE_BLOCKED_EVENT") {
     processAndDispatch(e.data.violation);
   }
 });
-
