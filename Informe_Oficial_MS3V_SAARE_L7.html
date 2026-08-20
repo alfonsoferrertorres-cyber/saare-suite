@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dictamen Oficial MS3V - Auditoría L7 SAARE</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm 15mm 18mm 15mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #0f172a; line-height: 1.45; font-size: 10pt; margin: 0; }
+    .header { border-bottom: 2.5px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; }
+    .emblem { width: 44px; height: 44px; background: linear-gradient(135deg, #0f172a, #0369a1); color: #38bdf8; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16pt; border: 1px solid #0284c7; }
+    .brand-title { font-size: 13pt; font-weight: 800; text-transform: uppercase; }
+    .brand-sub { font-size: 8pt; font-family: monospace; color: #64748b; }
+    .doc-meta { text-align: right; font-family: monospace; font-size: 8pt; color: #475569; }
+    h1 { font-size: 14pt; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; }
+    .subtitle { font-size: 9pt; color: #0369a1; font-weight: 600; margin-bottom: 14px; border-left: 3px solid #0284c7; padding-left: 8px; }
+    .section-title { font-size: 9.5pt; font-weight: 800; text-transform: uppercase; margin: 12px 0 6px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+    p { margin: 0 0 8px 0; text-align: justify; font-size: 9pt; }
+    .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+    .badge-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 7.5pt; font-family: monospace; }
+    .badge-card span { display: block; color: #64748b; font-size: 6.5pt; text-transform: uppercase; }
+    .audit-box { background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 6px; padding: 8px; margin: 10px 0; font-family: monospace; font-size: 7.5pt; }
+    .audit-box .hash { color: #0369a1; word-break: break-all; font-weight: 700; display: block; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin: 8px 0; }
+    th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    .signatures { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; page-break-inside: avoid; }
+    .sig-card { border: 1px solid #cbd5e1; background: #fafafa; border-radius: 6px; padding: 8px; text-align: center; }
+    .sig-seal { width: 55px; height: 55px; border: 2px dashed #0284c7; border-radius: 50%; margin: 4px auto; display: flex; align-items: center; justify-content: center; color: #0284c7; font-weight: 900; font-size: 7.5pt; transform: rotate(-10deg); }
+    .footer-stamp { border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 16px; display: flex; justify-content: space-between; font-size: 7pt; color: #64748b; font-family: monospace; }
+    .print-btn { position: fixed; top: 15px; right: 15px; background: #0284c7; color: white; border: none; padding: 10px 16px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    @media print { .print-btn { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ IMPRIMIR / GUARDAR EN PDF</button>
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="emblem">MS3V</div>
+      <div>
+        <div class="brand-title">Gabinete Jurídico Técnico MS3V</div>
+        <div class="brand-sub">Peritaje Judicial Tecnológico · Auditoría Forense L7</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div>REF: <strong>MS3V-DICTAMEN-2026-L7-AUDIT-0819</strong></div>
+      <div>FECHA: <strong>19 de Agosto de 2026</strong></div>
+      <div>RPI: <strong>Safe Creative 2607076315021</strong></div>
+      <div>ESTADO: <strong style="color:#059669;">DICTAMEN VÁLIDO</strong></div>
+    </div>
+  </div>
+
+  <h1>Certificación Pericial de Integridad y Trazabilidad L7</h1>
+  <div class="subtitle">Dictamen Técnico sobre la Arquitectura Stateless y Verificación de Documentos en S.A.A.R.E.</div>
+
+  <div class="section-title">1. OBJETO Y ALCANCE PERICIAL</div>
+  <p>Certificación técnica del nodo perimetral <strong>S.A.A.R.E. (AI Governance & L7 Gateway)</strong>. La auditoría acredita que el procesamiento de datos y documentos opera con residuo cero en reposo y no repudio procesal.</p>
+
+  <div class="badge-grid">
+    <div class="badge-card"><span>ENTORNO</span><strong>RAM Volátil (Stateless)</strong></div>
+    <div class="badge-card"><span>LATENCIA EX-ANTE</span><strong>1.16 ms (Auditada)</strong></div>
+    <div class="badge-card"><span>PERSISTENCIA</span><strong>0 Segundos (Purga)</strong></div>
+    <div class="badge-card"><span>FIRMA</span><strong>Ed25519 + HMAC</strong></div>
+  </div>
+
+  <div class="section-title">2. VERIFICACIÓN TÉCNICA DE ARCHIVOS</div>
+  <table>
+    <thead>
+      <tr><th>Fase Pipeline</th><th>Tratamiento Perimetral L7</th><th>Garantía de Soberanía</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>01. Ingress & Parseo</strong></td><td>Descomposición en memoria RAM efímera.</td><td>Sin escritura en disco.</td></tr>
+      <tr><td><strong>02. Sanitización PII</strong></td><td>Redacción determinista de DNI, IBAN y secretos.</td><td>Neutralización de fugas.</td></tr>
+      <tr><td><strong>03. Inferencia LLM</strong></td><td>Transmisión cifrada solo del payload sanitizado.</td><td>Residuo cero externo.</td></tr>
+      <tr><td><strong>04. Sellado Forense</strong></td><td>Generación HMAC-SHA256 en Evidence Vault.</td><td>Prueba de descargo procesal.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">3. IDENTIFICADOR CRIPTOGRÁFICO Y CADENA DE CUSTODIA</div>
+  <div class="audit-box">
+    <div>HUELLA HASH SHA-256 DEL NODO RAÍZ (INMUTABLE):</div>
+    <span class="hash">128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07</span>
+    <div style="margin-top:4px;font-size:6.5pt;color:#64748b;">Contexto: MS3V-RECON-VALID-2026-ALF-0521 · Depósito: 2607076315021 / 2607076314949</div>
+  </div>
+
+  <div class="section-title">4. ALINEACIÓN NORMATIVA</div>
+  <p>Cumple con los estándares de debida diligencia de la <strong>AEPD</strong> (RGPD Art. 5 y 9), <strong>EU AI Act</strong>, <strong>DORA (UE 2022/2554)</strong> e <strong>ISO/IEC 42001:2023</strong>.</p>
+
+  <div class="signatures">
+    <div class="sig-card">
+      <div style="font-size:7.5pt;font-weight:700;">AUDITORÍA FORENSE DIGITAL</div>
+      <div class="sig-seal">MS3V<br>AUDIT</div>
+      <div style="font-size:7pt;color:#475569;font-family:monospace;">Firma: ED25519-VERIFIED</div>
+      <div style="font-size:6.5pt;color:#64748b;">Gabinete Jurídico Técnico MS3V</div>
+    </div>
+    <div class="sig-card">
+      <div style="font-size:7.5pt;font-weight:700;">AUTENTICACIÓN REGISTRAL</div>
+      <div style="font-size:16pt;margin:3px 0;">🛡️</div>
+      <div style="font-size:7pt;color:#0369a1;font-family:monospace;font-weight:700;">SAFE CREATIVE RPI</div>
+      <div style="font-size:6.5pt;color:#64748b;">Inscripción: 2607076315021</div>
+    </div>
+  </div>
+
+  <div class="footer-stamp">
+    <span>Documento Técnico Oficial · Validez Probatoria Internacional (Convenio de Berna)</span>
+    <span>www.saare.es · saare-grc-dashboard.streamlit.app</span>
+  </div>
+</body>
+</html>

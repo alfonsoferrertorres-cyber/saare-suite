@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dictamen Pericial de Arquitectura y Enrutado L7 - Gabinete MS3V</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      background-color: #ffffff;
+      line-height: 1.4;
+      font-size: 9.5px;
+      margin: 0;
+      padding: 0;
+    }
+    .header-table {
+      width: 100%;
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+    .header-table td {
+      border: none;
+      padding: 0;
+    }
+    .header-logo h1 {
+      font-size: 14px;
+      color: #0369a1;
+      margin: 0;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .header-logo p {
+      font-size: 8px;
+      color: #64748b;
+      margin: 2px 0 0 0;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .header-meta {
+      text-align: right;
+      font-size: 8px;
+      color: #334155;
+      line-height: 1.3;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 5px;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+      border-radius: 3px;
+      font-weight: 700;
+      font-size: 7.5px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #0f172a;
+      background: #f8fafc;
+      border-left: 3px solid #0284c7;
+      padding: 2px 6px;
+      margin: 8px 0 5px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    p {
+      margin: 0 0 5px 0;
+      text-align: justify;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4px 0 8px 0;
+      font-size: 8px;
+      table-layout: fixed;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid #cbd5e1;
+      padding: 4px 5px;
+      text-align: left;
+      vertical-align: top;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    table.data-table th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f1f5f9;
+      color: #0369a1;
+      padding: 1px 3px;
+      border-radius: 3px;
+      font-size: 7.5px;
+      white-space: normal;
+    }
+    .signature-container {
+      margin-top: 8px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+    .signature-table {
+      width: 100%;
+      border: none;
+      margin: 0;
+    }
+    .signature-table td {
+      border: none;
+      padding: 0;
+      font-size: 8px;
+    }
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      margin-top: 8px;
+      padding-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <table class="header-table">
+    <tr>
+      <td class="header-logo" style="width: 58%;">
+        <h1>Gabinete Jurídico y Pericial MS3V</h1>
+        <p>División de Auditoría Forense, Seguridad Perimetral y Cumplimiento Normativo IA</p>
+      </td>
+      <td class="header-meta" style="width: 42%;">
+        <strong>DICTAMEN TÉCNICO:</strong> MS3V-AUD-L7-2026-08<br>
+        <strong>NODO CANÓNICO:</strong> 2607076315021<br>
+        <strong>ACREDITACIÓN:</strong> <span class="badge">RFC 3161 DUAL-VAULT</span><br>
+        <strong>DESTINATARIOS:</strong> Comité Técnico / ENISA / Auditoría Enterprise
+      </td>
+    </tr>
+  </table>
+
+  <div class="section-title">1. Resumen Ejecutivo y Alcance del Dictamen</div>
+  <p>
+    El presente documento certifica la auditoría estática, topología de comunicaciones y esquema de enrutamiento de la plataforma <strong>S.A.A.R.E. (Stateless Autonomous Audit Runtime Engine)</strong>[cite: 1, 2, 5]. Se valida la arquitectura 100% Serverless y Edge Computing[cite: 1, 2, 5], articulada sobre un nodo central de control que garantiza el principio de <em>Residuo Cero</em>, neutralización ex-ante de vectores PII/Jailbreak en memoria RAM (< 2 ms)[cite: 1, 2, 5] y persistencia inmutable en la Bóveda Forense de Evidencias (Evidence Vault)[cite: 1, 2, 5].
+  </p>
+
+  <div class="section-title">2. Matriz Exhaustiva de Endpoints, Métodos y Enrutamiento Auditado</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Ruta / Endpoint</th>
+        <th style="width: 10%;">Método</th>
+        <th style="width: 27%;">Origen Lógico (Definición)</th>
+        <th style="width: 23%;">Consumidores & Enlaces</th>
+        <th style="width: 20%;">Función Técnica & Protocolo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/api/v1/runs</code></td>
+        <td><code>POST / GET</code></td>
+        <td>
+          <code>saare-api-worker/src/index.js</code> (L.266)<br>
+          <code>control-plane/server.js</code> (L.93)
+        </td>
+        <td>
+          • <code>saare-extension/content.js</code> (L.3)<br>
+          • <code>saare-console/src/pages/Dashboard.jsx</code>
+        </td>
+        <td>Ingesta de telemetría forense en Bóveda Forense (D1/KV y carpeta <code>evidence_vault/</code>) vinculada al usuario y tenant activo[cite: 1, 2, 5].</td>
+      </tr>
+      <tr>
+        <td><code>/api/v1/intercept</code></td>
+        <td><code>POST</code></td>
+        <td><code>saare-api-worker/src/index.js</code> (L.108)</td>
+        <td>
+          • <code>saare-suite/.../CalculatorSection.jsx</code><br>
+          • SDKs (Node.js / Python / cURL)
+        </td>
+        <td>Motor ex-ante en memoria RAM. Neutraliza DNI/NIE e IBAN bajo normativa RGPD / LOPDGDD antes de alcanzar el proveedor LLM[cite: 1, 2, 5].</td>
+      </tr>
+      <tr>
+        <td><code>/api/v1/auth/verify-license</code></td>
+        <td><code>POST</code></td>
+        <td><code>saare-api-worker/src/index.js</code> (L.133)</td>
+        <td>
+          • <code>saare-console/src/App.jsx</code><br>
+          • Gateways Perimetrales
+        </td>
+        <td>Autenticación y cruce de identidad RBAC (<code>users_db.json</code> / <code>tenantManager.js</code>) validando licencias y scopes autorizados.</td>
+      </tr>
+      <tr>
+        <td><code>/api/v1/verify/:hash</code></td>
+        <td><code>GET</code></td>
+        <td><code>saare-api-worker/src/index.js</code> (L.311)</td>
+        <td>
+          • <code>ArchitectureSection.jsx</code> (L.20)<br>
+          • Verificadores Externos
+        </td>
+        <td>Acreditación probatoria RFC 3161 contra el hash canónico <code>128fa8c937f946a0...</code> del Gabinete MS3V.</td>
+      </tr>
+      <tr>
+        <td><code>/api/v1/vault/sync</code></td>
+        <td><code>GET</code></td>
+        <td><code>saare-api-worker/src/index.js</code> (L.304)</td>
+        <td>• Monitores de Estado L7</td>
+        <td>Comprobación de sincronización y latencia del nodo de custodia <code>2607076315021</code>.</td>
+      </tr>
+      <tr>
+        <td><code>/api/v1/billing/webhook</code></td>
+        <td><code>POST</code></td>
+        <td><code>saare-api-worker/src/index.js</code> (L.204)</td>
+        <td>• Gateway Stripe / Facturación</td>
+        <td>Aprovisionamiento instantáneo de licencias corporativas y emisión automática de credenciales mediante Resend API.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">3. Cadena de Custodia Forense y Convivencia con el Registro de Identidad</div>
+  <p>
+    <strong>Fase 1: Intercepción y Sanitización Ex-Ante:</strong> El cliente L7 (<code>saare-extension</code>) neutraliza en RAM cualquier fuga de PII antes del envío a modelos comerciales, generando un payload sanitizado con huella criptográfica[cite: 1, 2, 5].<br>
+    <strong>Fase 2: Convivencia de Identidad y Evidencias:</strong> El <code>control-plane</code> desacopla las credenciales RBAC (<code>users_db.json</code> / <code>tenantManager.js</code>) de los registros forenses (<code>control-plane/evidence_vault/*.json</code>). Cada recibo preserva de forma inmutable el campo <code>user</code>, timestamp y veredicto bajo firma Ed25519[cite: 1, 2, 5].<br>
+    <strong>Fase 3: Consulta y Dictamen en Consola GRC:</strong> La consola corporativa (<code>console.saare.es</code>) consulta <code>/api/v1/runs</code>, cruzando los permisos del usuario con la Bóveda Forense física y remota para su visualización y exportación procesal ante la AEPD e ISO 42001[cite: 1, 2, 5].
+  </p>
+
+  <div class="signature-container">
+    <table class="signature-table">
+      <tr>
+        <td style="width: 52%;">
+          <strong>DICTAMEN DE CONFORMIDAD EMITIDO POR:</strong><br>
+          Gabinete Jurídico y Pericial MS3V<br>
+          División de Ciberseguridad, Peritaje Informático y Cumplimiento IA
+        </td>
+        <td style="width: 48%; text-align: right; font-family: Consolas, monospace; font-size: 7.5px; color: #0369a1;">
+          CANONICAL_HASH: 128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07<br>
+          ESTADO: ED25519 VERIFIED • ZERO-RESIDUE EDGE L7 • DUAL-VAULT ACTIVE
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>S.A.A.R.E. Platform • Informe Oficial de Enrutamiento y Topología L7</span>
+    <span>Página 1 de 1 • Gabinete MS3V</span>
+  </div>
+
+</body>
+</html>

@@ -1,8 +1,11 @@
 {
-  "name": "@saare/dsh-governance-plugin",
+  "name": "dsh-plugin-saare",
   "version": "2.5.0",
   "description": "Enterprise L7 AI Governance & Forensic Evidence Vault for DeepSeek Harness",
   "main": "saare-extension/content.js",
+  "files": [
+    "saare-extension"
+  ],
   "keywords": [
     "dsh",
     "dsh-plugin",

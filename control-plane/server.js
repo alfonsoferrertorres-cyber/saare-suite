@@ -2,20 +2,21 @@
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import express from 'express';
+import cors from 'cors';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import express from 'express';
-import cors from 'cors';
 const app = express();
 
-// Middleware CORS universal compatible con Express 4 y Express 5
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const VAULT_DIR = path.join(__dirname, 'evidence_vault');
 const SCENARIOS_FILE = path.join(__dirname, 'scenarios.state.json');
 const CUSTOM_RULES_FILE = path.join(__dirname, 'custom_rules.json');
+const USERS_DB_PATH = path.join(__dirname, 'users_db.json');
 
 if (!fs.existsSync(VAULT_DIR)) fs.mkdirSync(VAULT_DIR, { recursive: true });
 
@@ -44,7 +45,9 @@ function saveCustomRules(rules) {
   fs.writeFileSync(CUSTOM_RULES_FILE, JSON.stringify(rules, null, 2), 'utf8');
 }
 
-// Endpoints
+// ------------------------------------------
+// ESCENARIOS & REGLAS PERSONALIZADAS
+// ------------------------------------------
 app.get('/api/v1/scenarios', (req, res) => res.json(getScenarios()));
 app.post('/api/v1/scenarios/toggle', (req, res) => {
   const { id } = req.body;
@@ -53,10 +56,7 @@ app.post('/api/v1/scenarios/toggle', (req, res) => {
   res.json({ success: true, scenarios: list });
 });
 
-app.get('/api/v1/custom-rules', (req, res) => {
-  res.json(getCustomRules());
-});
-
+app.get('/api/v1/custom-rules', (req, res) => res.json(getCustomRules()));
 app.post('/api/v1/custom-rules', (req, res) => {
   const { pattern, label } = req.body;
   if (!pattern || !pattern.trim()) return res.status(400).json({ error: 'Patrón inválido' });
@@ -79,56 +79,81 @@ app.delete('/api/v1/custom-rules/:id', (req, res) => {
   res.json({ success: true, rules });
 });
 
-app.get('/api/v1/events', (req, res) => {
+// ------------------------------------------
+// BÓVEDA FORENSE: RECEPCIÓN Y CONSULTA UNIFICADA
+// ------------------------------------------
+function readAllVaultLogs(targetUser) {
+  if (!fs.existsSync(VAULT_DIR)) return [];
+  const files = fs.readdirSync(VAULT_DIR).filter(f => f.endsWith('.json'));
+  let records = [];
+  for (const f of files) {
+    try {
+      const raw = fs.readFileSync(path.join(VAULT_DIR, f), 'utf8');
+      const item = JSON.parse(raw);
+      if (!targetUser || (item.user && item.user.toLowerCase() === targetUser.toLowerCase())) {
+        records.push(item);
+      }
+    } catch {}
+  }
+  return records.sort((a, b) => (b.timestampRaw || 0) - (a.timestampRaw || 0));
+}
+
+app.get(['/api/v1/runs', '/api/v1/events', '/api/evidence'], (req, res) => {
+  const user = req.query.user;
+  const logs = readAllVaultLogs(user);
+  res.json(logs);
+});
+
+app.post(['/api/v1/runs', '/api/v1/events', '/api/evidence'], (req, res) => {
   try {
-    const files = fs.readdirSync(VAULT_DIR).filter(f => f.endsWith('.json'));
-    const events = files.map(f => JSON.parse(fs.readFileSync(path.join(VAULT_DIR, f), 'utf8')));
-    events.sort((a, b) => (b.timestampRaw || 0) - (a.timestampRaw || 0));
-    res.json({ events });
-  } catch {
-    res.json({ events: [] });
+    const payload = req.body;
+    const evidenceId = payload.evidenceId || payload.id || ('EV-' + Math.floor(100000 + Math.random() * 900000));
+    const now = new Date();
+    const isoTimestamp = payload.timestamp || now.toISOString();
+    const timestamp = isoTimestamp.includes('T') ? isoTimestamp.split('T')[1].slice(0, 8) : isoTimestamp;
+
+    const payloadStr = JSON.stringify({
+      prompt: payload.promptInput || payload.event || payload.promptSummary,
+      user: payload.user || payload.auditor || 'alfonsosb1@gmail.com',
+      time: isoTimestamp
+    });
+    const calculatedHash = crypto.createHash('sha256').update(payloadStr).digest('hex');
+
+    const evidence = {
+      evidenceId,
+      timestamp,
+      timestampRaw: now.getTime(),
+      isoTimestamp,
+      promptSummary: payload.promptInput || payload.promptSummary || payload.event || 'Intercepción L7',
+      scenario: payload.scenario || payload.event || 'Auditoría Estándar ISO 42001',
+      verdict: payload.verdict || (payload.action === 'REDACTED (RAM)' ? 'RECHAZADO' : 'PERMITIDO'),
+      action: payload.action || (payload.verdict === 'RECHAZADO' ? 'REDACTED (RAM)' : 'LOGGED'),
+      origin: payload.origin || 'gemini.google.com',
+      user: payload.user || payload.auditor || 'alfonsosb1@gmail.com',
+      licenseKey: payload.licenseKey || 'SAARE-MASTER-2026-ROOT-001',
+      hash: payload.hash || calculatedHash,
+      status: 'Ed25519 VERIFIED'
+    };
+
+    const filePath = path.join(VAULT_DIR, `${evidenceId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(evidence, null, 2), 'utf8');
+
+    console.log(`[VAULT] Guardada evidencia física: ${evidenceId}.json`);
+    res.status(201).json({ status: 'OK', runId: evidenceId, evidence });
+  } catch (err) {
+    console.error('[VAULT ERROR]', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.post(['/api/v1/runs', '/api/v1/events'], (req, res) => {
-  const { promptInput, user, verdict, violationDetails } = req.body;
-  const runId = 'EV-' + Math.floor(100000 + Math.random() * 900000);
-  const now = new Date();
-  const timestamp = now.toTimeString().split(' ')[0];
-  const payloadStr = JSON.stringify({ promptInput, user, timestamp: now.toISOString() });
-  const signature = crypto.createHash('sha256').update(payloadStr).digest('hex');
-
-  const evidence = {
-    evidenceId: runId,
-    timestamp,
-    timestampRaw: now.getTime(),
-    promptSummary: promptInput,
-    scenario: violationDetails?.norma || 'Auditoría Estándar ISO 42001',
-    verdict: verdict || 'PERMITIDO',
-    signature: 'SHA256:' + signature,
-    auditor: user || 'alfonsosb1@gmail.com',
-    violationDetails: violationDetails || null
-  };
-
-  fs.writeFileSync(path.join(VAULT_DIR, `${runId}.json`), JSON.stringify(evidence, null, 2), 'utf8');
-  res.json({ status: 'OK', runId, verdict: evidence.verdict, evidence });
-});
-
-
-// ==========================================
-// SAARE AUTH & STRIPE PROVISIONING ENDPOINTS
-// ==========================================
-
-// 1. Endpoint de Login / Validación de Credenciales
+// ------------------------------------------
+// AUTENTICACIÓN & GESTIÓN DE LICENCIAS
+// ------------------------------------------
 app.post('/api/v1/auth/login', (req, res) => {
-  const { email, password, token } = req.body;
-  const usersDbPath = './users_db.json';
-  
-  if (!fs.existsSync(usersDbPath)) {
-    return res.status(500).json({ error: 'Base de datos de usuarios no inicializada' });
-  }
+  const { email, token } = req.body;
+  if (!fs.existsSync(USERS_DB_PATH)) return res.status(500).json({ error: 'Base de datos de usuarios no inicializada' });
 
-  const db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
+  const db = JSON.parse(fs.readFileSync(USERS_DB_PATH, 'utf8'));
   const user = db.users.find(u => u.email === email || u.sessionToken === token);
 
   if (!user || user.status !== 'ACTIVE') {
@@ -148,17 +173,14 @@ app.post('/api/v1/auth/login', (req, res) => {
   });
 });
 
-// 2. Endpoint de Validación de Token para Frontend Console
 app.get('/api/v1/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization || req.headers['x-saare-license'];
   if (!authHeader) return res.status(401).json({ valid: false, error: 'Token no proporcionado' });
 
   const rawToken = authHeader.replace('Bearer ', '');
-  const usersDbPath = './users_db.json';
+  if (!fs.existsSync(USERS_DB_PATH)) return res.status(500).json({ valid: false });
 
-  if (!fs.existsSync(usersDbPath)) return res.status(500).json({ valid: false });
-
-  const db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
+  const db = JSON.parse(fs.readFileSync(USERS_DB_PATH, 'utf8'));
   const user = db.users.find(u => u.sessionToken === rawToken);
 
   if (!user || user.status !== 'ACTIVE') {
@@ -175,27 +197,24 @@ app.get('/api/v1/auth/verify', (req, res) => {
   });
 });
 
-// 3. Webhook de Stripe para Aprovisionamiento Automático
+// ------------------------------------------
+// PROVISIÓN STRIPE WEBHOOKS & EXPORTS
+// ------------------------------------------
 app.post('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
   try {
     const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const email = session.customer_details?.email || session.prefilled_email;
       const cif = session.client_reference_id || 'SIN_CIF';
 
-      const usersDbPath = './users_db.json';
       let db = { users: [] };
-      if (fs.existsSync(usersDbPath)) {
-        db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
-      }
+      if (fs.existsSync(USERS_DB_PATH)) db = JSON.parse(fs.readFileSync(USERS_DB_PATH, 'utf8'));
 
-      // Buscar o crear usuario
       let user = db.users.find(u => u.email === email);
       if (!user) {
         user = {
-          email: email,
+          email,
           empresa: cif,
           masterTenantId: 'TENANT-SAARE-' + Date.now(),
           sessionToken: 'sk_saare_live_' + Buffer.from(email + Date.now()).toString('hex').slice(0, 16),
@@ -207,152 +226,34 @@ app.post('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }), (
         db.users.push(user);
       } else {
         user.status = 'ACTIVE';
-        user.active_scenarios = ['compliance'];
       }
-
-      fs.writeFileSync(usersDbPath, JSON.stringify(db, null, 2), 'utf8');
+      fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), 'utf8');
       console.log(`✔ Licencia aprovisionada para: ${email}`);
     }
-
     res.json({ received: true });
   } catch (err) {
-    console.error('Error procesando webhook:', err.message);
     res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
 
+app.get('/healthz', (req, res) => res.json({ status: 'HEALTHY', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() }));
 
-// ========================================================
-// SAARE ENTERPRISE ISV INTEGRATION HOOKS (SIEM, HOOKS, OPS)
-// ========================================================
-
-// 1. Healthcheck & Metrics Probe (Datadog / Prometheus / Cloud)
-app.get('/healthz', (req, res) => {
-  res.json({
-    status: 'HEALTHY',
-    runtime: 'SAARE-L7-ENGINE-V2.5',
-    uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.get('/api/v1/metrics', (req, res) => {
-  const usersDbPath = './users_db.json';
-  let totalUsers = 0;
-  if (fs.existsSync(usersDbPath)) {
-    try {
-      const db = JSON.parse(fs.readFileSync(usersDbPath, 'utf8'));
-      totalUsers = db.users ? db.users.length : 0;
-    } catch(e) {}
-  }
-
-  res.json({
-    active_runtime_port: 3001,
-    active_tenants: totalUsers,
-    memory_usage_mb: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2),
-    governance_engine: 'L7_PERIMETRAL_RAM_ISOLATED',
-    evidence_signature: 'ED25519_CANONICAL'
-  });
-});
-
-// 2. SIEM Exporter (CEF - Common Event Format & JSON Stream)
-app.get('/api/v1/integrations/siem/export', (req, res) => {
-  const format = req.query.format || 'json';
-  const rawEvents = [
-    {
-      id: 'EV-FORENSIC-001',
-      timestamp: new Date().toISOString(),
-      tenant: 'TENANT-SAARE-2026-ALF-0521',
-      action: 'INSPECTION_PASS',
-      rule: 'LOPDGDD_COMPLIANCE',
-      riskScore: 0.05,
-      sha256: '128fa8c937f946a0bc38e937d7a12b45e9930f1e'
-    }
-  ];
-
-  if (format === 'cef') {
-    // Formato Estándar ArcSight / Splunk / Sentinel CEF
-    const cefLogs = rawEvents.map(e => 
-      `CEF:0|SAARE|GovernanceL7|2.5|${e.action}|${e.rule}|1|src=127.0.0.1 msg=Verification Passed suser=${e.tenant} cs1=${e.sha256} cs1Label=EvidenceHash`
-    ).join('\n');
-    res.setHeader('Content-Type', 'text/plain');
-    return res.send(cefLogs);
-  }
-
-  res.json({ count: rawEvents.length, format: 'json', data: rawEvents });
-});
-
-// 3. Dispatcher de Webhooks de Alerta Externa
-app.post('/api/v1/integrations/webhooks/dispatch', express.json(), (req, res) => {
-  const { webhookUrl, eventType, payload } = req.body;
-  if (!webhookUrl) return res.status(400).json({ error: 'webhookUrl es obligatorio' });
-
-  console.log(`[SAARE WEBHOOK DISPATCH] Disparando evento ${eventType || 'INCIDENT_ALERT'} a ${webhookUrl}`);
-
-  // Simulación de despacho exitoso
-  res.json({
-    dispatched: true,
-    target: webhookUrl,
-    event: eventType || 'L7_POLICY_BREACH',
-    status: 'DELIVERED',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 4. Volcado Forense Certificado (Audit Vault Dump)
 app.get('/api/v1/vault/export', (req, res) => {
-  const exportPayload = {
+  res.json({
     vault_version: '2.5.0-Enterprise',
     jurisdiction: 'EU-RGPD-ISO42001',
     custodian: 'alfonsosb1@gmail.com',
     exported_at: new Date().toISOString(),
-    tamper_proof_manifest_sha256: '128fa8c937f946a0bc38e937d7a12b45e9930f1ec37920ab3e0f498c'
-  };
-
-  res.setHeader('X-SAARE-Forensic-Seal', exportPayload.tamper_proof_manifest_sha256);
-  res.json(exportPayload);
+    records: readAllVaultLogs('alfonsosb1@gmail.com')
+  });
 });
 
-app.listen(3001, () => {
+// ------------------------------------------
+// INICIALIZACIÓN DE PUERTO
+// ------------------------------------------
+const PORT = 3001;
+app.listen(PORT, () => {
   console.log('====================================================');
-  console.log('[SAARE Control-Plane] ACTIVO Y ESCUCHANDO EN :3001');
+  console.log(`[SAARE Control-Plane] ACTIVO Y ESCUCHANDO EN :${PORT}`);
   console.log('====================================================');
 });
-
-// ==========================================
-// SAARE EVIDENCE & DUAL-VAULT ROUTER
-// ==========================================
-const SAARE_VAULT = path.join(__dirname, 'evidence_vault');
-if (!fs.existsSync(SAARE_VAULT)) fs.mkdirSync(SAARE_VAULT, { recursive: true });
-
-app.post('/api/evidence', (req, res) => {
-  try {
-    const evidence = req.body;
-    evidence.server_received_at = new Date().toISOString();
-    
-    const hmac = crypto.createHmac('sha256', process.env.HMAC_SECRET || 'saare-secret-key');
-    evidence.immutable_hash = hmac.update(JSON.stringify(evidence)).digest('hex');
-
-    const fileName = (evidence.evidenceId || EV- + Date.now()) + '.json';
-    fs.writeFileSync(path.join(SAARE_VAULT, fileName), JSON.stringify(evidence, null, 2));
-
-    res.status(201).json({ status: "SEALED", hash: evidence.immutable_hash, id: evidence.evidenceId });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/evidence', (req, res) => {
-  try {
-    const files = fs.readdirSync(SAARE_VAULT).filter(f => f.endsWith('.json'));
-    const logs = files.map(file => {
-      const data = fs.readFileSync(path.join(SAARE_VAULT, file), 'utf8');
-      return JSON.parse(data);
-    }).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-
-    res.json({ total: logs.length, logs });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-

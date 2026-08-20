@@ -7,7 +7,7 @@ export function GlobalRegistryView() {
     async function loadLogs() {
       let combined = [];
 
-      // 1. Leer directamente de chrome.storage.local (capturas inmediatas de Gemini)
+      // 1. Lectura de chrome.storage.local (capturas inmediatas de extensión)
       try {
         if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
           const localData = await new Promise((resolve) => {
@@ -17,29 +17,33 @@ export function GlobalRegistryView() {
         }
       } catch (e) {}
 
-      // 2. Leer del Worker en la nube (KV persistido)
+      // 2. Lectura del Worker en Cloudflare (/api/v1/runs)
       try {
         const res = await fetch("https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs?user=alfonsosb1@gmail.com");
         if (res.ok) {
           const cloudData = await res.json();
-          const list = Array.isArray(cloudData) ? cloudData : (cloudData.runs || []);
+          // Desempaqueta { total, runs: [...] } o array plano [...]
+          const list = Array.isArray(cloudData) ? cloudData : (cloudData.runs || cloudData.events || []);
           combined.push(...list);
         }
       } catch (e) {}
 
-      // 3. Normalizar, desduplicar por ID y ordenar por fecha más reciente
+      // 3. Normalizar propiedades y desduplicar por evidenceId
       if (combined.length > 0) {
         const uniqueMap = new Map();
         combined.forEach(item => {
           const id = item.evidenceId || item.id || `EV-${Math.random()}`;
           if (!uniqueMap.has(id)) {
+            const isRejected = item.verdict === "RECHAZADO" || item.action === "REDACTED (RAM)";
+            const eventDesc = item.event || (item.violationDetails ? `${item.violationDetails.norma}: ${item.violationDetails.reason}` : (item.scenario || item.promptSummary || "Auditoría L7"));
+            
             uniqueMap.set(id, {
               id: id,
-              timestamp: item.isoTimestamp || item.timestamp || new Date().toISOString(),
+              timestamp: item.timestamp || item.isoTimestamp || new Date().toISOString(),
               user: item.user || item.auditor || "alfonsosb1@gmail.com",
-              event: item.event || item.scenario || item.promptSummary || "Exfiltración PII: DNI/NIE",
-              action: item.action || (item.verdict === "RECHAZADO" ? "REDACTED (RAM)" : "LOGGED"),
-              status: item.status || "Ed25519 VERIFIED",
+              event: eventDesc,
+              action: isRejected ? "REDACTED (RAM)" : "LOGGED (ISO 42001)",
+              status: isRejected ? "RECHAZADO" : "CONFORME",
               signature: (item.hash || item.signature || "e3b0c44298fc1c14").slice(0, 24) + "..."
             });
           }
@@ -74,14 +78,14 @@ export function GlobalRegistryView() {
                 <td className="py-2 px-3 text-cyan-400">
                   {log.id}<br/>
                   <span className="text-slate-500 text-[10px]">
-                    {log.timestamp.includes('T') ? log.timestamp.split('T')[1].slice(0, 8) : log.timestamp}
+                    {log.timestamp.includes("T") ? log.timestamp.split("T")[1].slice(0, 8) : log.timestamp}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-slate-300">{log.user}</td>
                 <td className="py-2 px-3 text-slate-300">{log.event}</td>
                 <td className="py-2 px-3">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    log.action.includes("REDACTED") ? "bg-amber-900/50 text-amber-300 border border-amber-700" : "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
+                    log.status === "RECHAZADO" ? "bg-amber-900/50 text-amber-300 border border-amber-700" : "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
                   }`}>
                     {log.action}
                   </span>
