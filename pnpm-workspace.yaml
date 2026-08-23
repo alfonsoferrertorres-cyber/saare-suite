@@ -1,0 +1,4 @@
+﻿packages:
+  - 'saare-suite'
+  - 'saare-console'
+  - 'control-plane'

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 290px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #090d16;
+      color: #ffffff;
+      padding: 16px;
+      margin: 0;
+      box-sizing: border-box;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .header-badge {
+      background: #d97706;
+      color: #000;
+      font-weight: 900;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    h3 {
+      margin: 0;
+      color: #38bdf8;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      font-weight: 800;
+    }
+    .status {
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 14px;
+      transition: all 0.25s ease;
+      letter-spacing: 0.3px;
+    }
+    .status.connected {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid #10b981;
+    }
+    .status.disconnected {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid #ef4444;
+    }
+    .status.checking {
+      background-color: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 11.5px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      color: #94a3b8;
+    }
+    .row:last-child {
+      margin-bottom: 0;
+    }
+    .row strong {
+      color: #e2e8f0;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .footer {
+      font-size: 10.5px;
+      color: #64748b;
+      line-height: 1.4;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-badge">S</div>
+    <h3>S.A.A.R.E. L7 Agent</h3>
+  </div>
+
+  <div id="status-indicator" class="status checking">⏳ SINCRONIZANDO CON VAULT...</div>
+
+  <div class="card">
+    <div class="row">
+      <span>Organización:</span>
+      <strong id="tenant-name">Cargando...</strong>
+    </div>
+    <div class="row">
+      <span>Identidad:</span>
+      <strong id="user-account" style="color: #38bdf8;">Cargando...</strong>
+    </div>
+    <div class="row">
+      <span>Motor RAM:</span>
+      <strong style="color: #34d399;">Stateless L7 Activo</strong>
+    </div>
+  </div>
+
+  <div class="footer">
+    Blindaje perimetral activo sobre Gemini, ChatGPT, Claude y DeepSeek.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

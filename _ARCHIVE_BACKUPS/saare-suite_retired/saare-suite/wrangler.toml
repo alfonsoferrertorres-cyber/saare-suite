@@ -1,7 +1,0 @@
-﻿name = "saare-suite"
-pages_build_output_dir = "dist"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "saare-db"
-database_id = "85108385-a75a-4764-a9e8-973bfb83d899"
