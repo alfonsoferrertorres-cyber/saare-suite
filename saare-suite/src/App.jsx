@@ -28,7 +28,7 @@ export default function App() {
   const [copiedSig, setCopiedSig] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
-  const [seats, setSeats] = useState(25);
+  const [seats, setSeats] = useState(1);
   const [isAnnual, setIsAnnual] = useState(true);
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -948,9 +948,17 @@ exit /b 0`;
               <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ color: '#cbd5e1', fontSize: '14px', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>
-                    Asientos a Contratar: <span style={{ color: '#38bdf8', fontSize: '20px' }}>{seats} asientos</span>
+                    Asientos a Contratar: <span style={{ color: '#38bdf8', fontSize: '20px' }}>{seats} {seats === 1 ? 'asiento' : 'asientos'}</span>
                   </label>
-                  <input type="range" min="5" max="250" step="5" value={seats} onChange={(e) => setSeats(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="250" 
+                    step="1" 
+                    value={seats} 
+                    onChange={(e) => setSeats(Number(e.target.value))} 
+                    style={{ width: '100%', cursor: 'pointer' }} 
+                  />
                 </div>
 
                 <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
@@ -961,7 +969,7 @@ exit /b 0`;
                 </div>
 
                 <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>
-                  EXPEDIR {seats} TOKENS ↗
+                  EXPEDIR {seats} {seats === 1 ? 'TOKEN' : 'TOKENS'} ↗
                 </button>
               </div>
             </div>
