@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.A.A.R.E. v4.2 - Enterprise Launcher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-obsidian: #030712;
+            --bg-card: #0b0f19;
+            --bg-panel: #090d16;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            
+            --glow-devops: #fbbf24;
+            --glow-banca: #10b981;
+            --glow-grc: #06b6d4;
+            --glow-ciber: #a855f7;
+            --glow-defensa: #94a3b8;
+            --glow-educacion: #6366f1;
+            --glow-identidad: #14b8a6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-obsidian);
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        /* Sidebar Launcher */
+        .sidebar {
+            width: 300px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-glass);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        .brand-logo {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #ffffff;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-logo span {
+            color: var(--glow-grc);
+            font-size: 0.85rem;
+            font-family: 'Fira Code', monospace;
+            background: rgba(6, 182, 212, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .nav-menu { display: flex; flex-direction: column; gap: 0.4rem; }
+
+        .nav-item {
+            padding: 0.85rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: rgba(15, 23, 42, 0.8);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+        .nav-item[data-filter="devops"] .dot { color: var(--glow-devops); background: var(--glow-devops); }
+        .nav-item[data-filter="banca"] .dot { color: var(--glow-banca); background: var(--glow-banca); }
+        .nav-item[data-filter="grc"] .dot { color: var(--glow-grc); background: var(--glow-grc); }
+        .nav-item[data-filter="ciber"] .dot { color: var(--glow-ciber); background: var(--glow-ciber); }
+        .nav-item[data-filter="defensa"] .dot { color: var(--glow-defensa); background: var(--glow-defensa); }
+        .nav-item[data-filter="educacion"] .dot { color: var(--glow-educacion); background: var(--glow-educacion); }
+        .nav-item[data-filter="identidad"] .dot { color: var(--glow-identidad); background: var(--glow-identidad); }
+        .nav-item[data-filter="all"] .dot { color: #ffffff; background: #ffffff; }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .header-section {
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 1.5rem;
+        }
+
+        .header-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 1px;
+        }
+
+        .header-subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-top: 0.4rem;
+        }
+
+        .btn-discovery {
+            background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+            color: #020617;
+            padding: 0.85rem 1.8rem;
+            font-weight: 700;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+        }
+
+        .btn-discovery:hover {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Grid System */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Industrial Cyber Card */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 210px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.5rem;
+        }
+
+        /* Circuit Pattern Background Effect */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(circle at 90% 10%, rgba(255,255,255,0.03) 0%, transparent 40%),
+                linear-gradient(135deg, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            background-color: #0f172a;
+        }
+
+        /* Category Color Dynamic Border Glows */
+        .card[data-category="devops"]:hover { border-color: var(--glow-devops); box-shadow: 0 8px 25px -6px rgba(251, 191, 36, 0.25); }
+        .card[data-category="banca"]:hover { border-color: var(--glow-banca); box-shadow: 0 8px 25px -6px rgba(16, 185, 129, 0.25); }
+        .card[data-category="grc"]:hover { border-color: var(--glow-grc); box-shadow: 0 8px 25px -6px rgba(6, 182, 212, 0.25); }
+        .card[data-category="ciber"]:hover { border-color: var(--glow-ciber); box-shadow: 0 8px 25px -6px rgba(168, 85, 247, 0.25); }
+        .card[data-category="defensa"]:hover { border-color: var(--glow-defensa); box-shadow: 0 8px 25px -6px rgba(148, 163, 184, 0.25); }
+        .card[data-category="educacion"]:hover { border-color: var(--glow-educacion); box-shadow: 0 8px 25px -6px rgba(99, 102, 241, 0.25); }
+        .card[data-category="identidad"]:hover { border-color: var(--glow-identidad); box-shadow: 0 8px 25px -6px rgba(20, 184, 166, 0.25); }
+
+        .card-header-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .card-tag {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .card[data-category="devops"] .card-tag { color: var(--glow-devops); border-color: rgba(251, 191, 36, 0.3); }
+        .card[data-category="banca"] .card-tag { color: var(--glow-banca); border-color: rgba(16, 185, 129, 0.3); }
+        .card[data-category="grc"] .card-tag { color: var(--glow-grc); border-color: rgba(6, 182, 212, 0.3); }
+        .card[data-category="ciber"] .card-tag { color: var(--glow-ciber); border-color: rgba(168, 85, 247, 0.3); }
+        .card[data-category="defensa"] .card-tag { color: var(--glow-defensa); border-color: rgba(148, 163, 184, 0.3); }
+        .card[data-category="educacion"] .card-tag { color: var(--glow-educacion); border-color: rgba(99, 102, 241, 0.3); }
+        .card[data-category="identidad"] .card-tag { color: var(--glow-identidad); border-color: rgba(20, 184, 166, 0.3); }
+
+        .card-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #ffffff;
+            z-index: 2;
+            letter-spacing: 0.5px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2;
+            font-size: 0.72rem;
+            color: #64748b;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-logo">S.A.A.R.E.<span>v4.2</span></div>
+        <nav class="nav-menu">
+            <div class="nav-item active" data-filter="all"><div class="dot"></div> Módulo Central</div>
+            <div class="nav-item" data-filter="devops"><div class="dot"></div> DevOps & FinOps</div>
+            <div class="nav-item" data-filter="banca"><div class="dot"></div> Banca & FinTech</div>
+            <div class="nav-item" data-filter="grc"><div class="dot"></div> GRC, Legal & Salud</div>
+            <div class="nav-item" data-filter="ciber"><div class="dot"></div> Ciberseguridad</div>
+            <div class="nav-item" data-filter="defensa"><div class="dot"></div> Defensa & IoT</div>
+            <div class="nav-item" data-filter="educacion"><div class="dot"></div> Educación & STEM</div>
+            <div class="nav-item" data-filter="identidad"><div class="dot"></div> Identidad & IP</div>
+        </nav>
+    </aside>
+
+    <!-- MAIN LAUNCHER AREA -->
+    <main class="main-content">
+        <div class="header-section">
+            <div>
+                <h1 class="header-title">Despliegue de Infraestructura</h1>
+                <p class="header-subtitle">Seleccione la topología de red y los escudos modulares a inicializar.</p>
+            </div>
+            <button class="btn-discovery" id="btn-open-discovery">REQUEST ARCHITECTURE SPECIFICATION</button>
+        </div>
+
+        <div class="grid-container" id="module-grid"></div>
+    </main>
+
+    <script src="/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modules = [
+                { title: 'Optimizador API', cat: 'devops', meta: 'DVO-01' },
+                { title: 'Freno de Emergencia', cat: 'devops', meta: 'DVO-02' },
+                { title: 'Erradicador RAG', cat: 'devops', meta: 'DVO-03' },
+                { title: 'Selector Inteligente', cat: 'devops', meta: 'DVO-04' },
+                { title: 'Escudo Bancario', cat: 'banca', meta: 'BNC-01' },
+                { title: 'Conmutador Multi-LLM', cat: 'banca', meta: 'BNC-02' },
+                { title: 'Blindaje Clínico', cat: 'grc', meta: 'GRC-01' },
+                { title: 'Auditor EU AI Act', cat: 'grc', meta: 'GRC-02' },
+                { title: 'Extractor ISO 42001', cat: 'grc', meta: 'GRC-03' },
+                { title: 'Defensa Anti-Jailbreak', cat: 'ciber', meta: 'CYB-01' },
+                { title: 'Notario para Tribunales', cat: 'ciber', meta: 'CYB-02' },
+                { title: 'Sellador de Brechas SOC', cat: 'ciber', meta: 'CYB-03' },
+                { title: 'Búnker Air-Gapped', cat: 'defensa', meta: 'DEF-01' },
+                { title: 'Gobernanza Edge/IoT', cat: 'defensa', meta: 'DEF-02' },
+                { title: 'Tutor COPPA', cat: 'educacion', meta: 'EDU-01' },
+                { title: 'Validador STEM', cat: 'educacion', meta: 'EDU-02' },
+                { title: 'KYC Antifraude', cat: 'identidad', meta: 'ID-01' },
+                { title: 'Certificación C2PA', cat: 'identidad', meta: 'ID-02' },
+                { title: 'Radar Anti-Clonación', cat: 'identidad', meta: 'ID-03' },
+                { title: 'Trazabilidad de Derechos', cat: 'identidad', meta: 'ID-04' },
+                { title: 'Escudo Opt-Out Scraping', cat: 'identidad', meta: 'ID-05' }
+            ];
+
+            const grid = document.getElementById('module-grid');
+
+            modules.forEach(mod => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.setAttribute('data-category', mod.cat);
+                card.innerHTML = `
+                    <div class="card-header-meta">
+                        <span class="card-tag">${mod.meta}</span>
+                        <div class="status-indicator">
+                            <div class="status-dot"></div>
+                        </div>
+                    </div>
+                    <h3 class="card-title">${mod.title}</h3>
+                    <div class="card-footer">
+                        <span>READY_TO_DEPLOY</span>
+                        <span>v4.2</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    const filter = item.getAttribute('data-filter');
+                    const cards = document.querySelectorAll('.card');
+                    cards.forEach(card => {
+                        if (filter === 'all' || card.getAttribute('data-category') === filter) {
+                            card.classList.remove('hidden');
+                        } else {
+                            card.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

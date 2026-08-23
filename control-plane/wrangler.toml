@@ -1,0 +1,10 @@
+name = "saare-api"
+main = "server.js"
+compatibility_date = "2026-08-11"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[kv_namespaces]]
+binding = "SAARE_VAULT_KV"
+id = "13d8703a3b374170a24d4c994e5779fa"

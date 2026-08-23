@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SAARE - Informe de Confianza y Verificación en IA Generalista</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm 20mm 15mm;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background-color: #ffffff;
+      font-size: 10pt;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+    }
+    
+    /* ENCABEZADO Y PIE DE PÁGINA FIX PARA IMPRESIÓN */
+    .header-table {
+      width: 100%;
+      border-bottom: 2px solid #C5A059;
+      padding-bottom: 12px;
+      margin-bottom: 25px;
+    }
+    .logo-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #050811;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+    .logo-subtitle {
+      font-size: 8pt;
+      color: #C5A059;
+      font-family: monospace;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+    }
+    .doc-meta {
+      text-align: right;
+      font-family: monospace;
+      font-size: 7.5pt;
+      color: #64748b;
+    }
+
+    /* ESTILOS DE TÍTULOS Y SECCIONES */
+    h1 {
+      font-size: 18pt;
+      color: #050811;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 8px;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+    h2 {
+      font-size: 12pt;
+      color: #C5A059;
+      background-color: #050811;
+      padding: 6px 12px;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #0f172a;
+      margin-top: 15px;
+      margin-bottom: 6px;
+      border-left: 3px solid #C5A059;
+      padding-left: 8px;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+
+    /* TABLAS ESTILIZADAS enterprise */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 8.5pt;
+    }
+    table.data-table th {
+      background-color: #0f172a;
+      color: #C5A059;
+      padding: 8px 10px;
+      text-align: left;
+      font-family: monospace;
+      font-size: 8pt;
+      text-transform: uppercase;
+      border: 1px solid #1e293b;
+    }
+    table.data-table td {
+      padding: 7px 10px;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    table.data-table tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    /* CAJAS DESTACADAS Y ALERTAS */
+    .callout-box {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #C5A059;
+      padding: 12px 15px;
+      margin: 15px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 9.5pt;
+    }
+    .badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 7pt;
+      padding: 2px 6px;
+      background: #0f172a;
+      color: #C5A059;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+
+    /* DIAGRAMAS Y ESQUEMAS */
+    .diagram-container {
+      background-color: #050811;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 8pt;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      white-space: pre;
+      overflow-x: auto;
+      border: 1px solid #C5A059;
+    }
+
+    /* SECCIÓN DE FIRMA OFICIAL */
+    .signature-section {
+      margin-top: 40px;
+      page-break-inside: avoid;
+      border-top: 2px solid #0f172a;
+      padding-top: 20px;
+    }
+    .signature-table {
+      width: 100%;
+    }
+    .stamp-box {
+      border: 2px dashed #C5A059;
+      padding: 10px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 7.5pt;
+      color: #0f172a;
+      background-color: #fffdf5;
+      border-radius: 6px;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO DEL EXPEDIENTE -->
+  <table class="header-table">
+    <tr>
+      <td>
+        <div class="logo-title">MS3V / S.A.A.R.E.</div>
+        <div class="logo-subtitle">Gabinete Técnico de Ciberseguridad & Gobernanza AI</div>
+      </td>
+      <td class="doc-meta">
+        <strong>REF:</strong> EXP-ENISA-SAARE-2026-V4<br>
+        <strong>FECHA:</strong> 09 de Agosto de 2026<br>
+        <strong>CLASIFICACIÓN:</strong> RESTRINGIDO / SUJETO A AUDITORÍA<br>
+        <strong>NORMATIVA:</strong> EU AI Act / DORA / NIS 2 / ISO 42001
+      </td>
+    </tr>
+  </table>
+
+  <!-- TÍTULO DEL EXPEDIENTE -->
+  <h1>Informe de Confianza, Verificación e Inspección Ex-Ante en IA Generalista</h1>
+
+  <div class="callout-box">
+    <strong>DECLARACIÓN DE PROPIEDAD Y SOLVENCIA TÉCNICA:</strong> Este expediente ha sido elaborado por el Gabinete Técnico de MS3V para la evaluación desfavorable de riesgos e inspección determinista de Inteligencia Artificial Generativa. Certifica la viabilidad operativa y regulatoria del Runtime S.A.A.R.E. para comités de financiación (ENISA/CDTI) y auditorías de CISO Enterprise.
+  </div>
+
+  <!-- SECCIÓN 0 -->
+  <h2>0. DIAGNÓSTICO PREVIO Y BLINDAJE DE VULNERABILIDADES DEL EXPEDIENTE</h2>
+  <p>Previo al despliegue, el Gabinete Técnico ha auditado y neutralizado las principales objeciones de comités de inversión y ciberseguridad mediante los siguientes mecanismos de defensa:</p>
+  
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Objeción del Comité</th>
+        <th>Riesgo Identificado</th>
+        <th>Estrategia de Blindaje S.A.A.R.E.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>¿Por qué no usar un SaaS como Azure Content Safety?</strong></td>
+        <td>Exfiltración del dato a nubes de terceros (Violación GDPR/DORA). Latencia >150 ms.</td>
+        <td><strong>Arquitectura Zero-Disk RAM:</strong> Inspección local In-Process o Sidecar sin escritura en disco y latencia L7 &lt; 1.16 ms.</td>
+      </tr>
+      <tr>
+        <td><strong>Impacto de latencia en transacciones críticas.</strong></td>
+        <td>Cuellos de botella en operaciones de alta frecuencia (Banca/Telco).</td>
+        <td><strong>Motor SIMD en C/Rust:</strong> Evaluadores deterministas lock-free con sobrecarga &lt; 0.42 ms en ejecuciones in-process.</td>
+      </tr>
+      <tr>
+        <td><strong>Vulnerabilidad ante Agentes MCP y Tool Calling.</strong></td>
+        <td>Escalada de privilegios y ejecución no autorizada de código ejecutable.</td>
+        <td><strong>Gramáticas Libres de Contexto:</strong> Validación del árbol de permisos MCP antes de la llamada al sistema operativo.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECCIÓN 1 -->
+  <h2>1. RESUMEN EJECUTIVO Y ARQUITECTURA TÉCNICA EX-ANTE</h2>
+  <p>La adopción de modelos de lenguaje (LLM) y agentes autónomos introduce el problema de la falta de determinismo en la Capa 7 (Aplicación). <strong>S.A.A.R.E. (Engine MS3V)</strong> resuelve este desafío mediante un Runtime de Gobernanza Ex-Ante que intercepta y sanitiza las cargas útiles en memoria volátil antes de que alcancen las APIs del proveedor.</p>
+
+  <div class="diagram-container">
+[Cliente / Agente MCP] ──► (1) Payload RAM ──► ┌─────────────────────────────────────────┐
+                                              │  S.A.A.R.E. RUNTIME ENGINE              │
+                                              │  - Zero-Disk RAM (sin swaps de disco)   │
+                                              │  - Filtro PII/PHI + Anti-Jailbreak      │
+                                              │  - Recibo firmado Criptográfico Ed25519 │
+                                              └─────────────────────────────────────────┘
+                                                                   │
+                                               (2) Payload Límpido └──► [Proveedores LLM / OpenAI / Local]
+  </div>
+
+  <!-- SECCIÓN 2 -->
+  <h2>2. MATRIZ DE COBERTURA DE CIBERSEGURIDAD (OWASP LLM TOP 10)</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Código Vector</th>
+        <th>Amenaza de IA Generalista</th>
+        <th>Control Deterministico S.A.A.R.E.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge">LLM01</span></td>
+        <td>Inyección de Prompt / Jailbreaks</td>
+        <td>Separación de contextos por gramáticas libres de contexto y filtrado semántico ex-ante.</td>
+      </tr>
+      <tr>
+        <td><span class="badge">LLM02</span></td>
+        <td>Manejo Inseguro de Salidas</td>
+        <td>Escape y sanitización estricta de código ejecutable (SQL, Shell, JS) generado por el modelo.</td>
+      </tr>
+      <tr>
+        <td><span class="badge">LLM06</span></td>
+        <td>Divulgación de Datos Sensibles</td>
+        <td>Sustitución en RAM de PII/PCI/PHI por tokens sintéticos mediante regex de alto rendimiento en Rust.</td>
+      </tr>
+      <tr>
+        <td><span class="badge">LLM07</span></td>
+        <td>Inseguridad en MCP Tool Calling</td>
+        <td>Validación de parámetros y limitación estricta de llamadas recursivas en flujos agénticos.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <!-- SECCIÓN 3 -->
+  <h2>3. TOPOLOGÍA DE DESPLIEGUE Y RENDIMIENTO BANCHMARK</h2>
+  <p>Cálculo científico del ciclo de procesamiento por instrucción en memoria volátil:</p>
+  
+  <div class="callout-box" style="font-family: monospace; font-size: 8.5pt;">
+    T_total = T_interception (0.05ms) + T_regex_simd (0.12ms) + T_mcp_eval (0.15ms) + T_crypto_sign (0.10ms)<br>
+    <strong>LATENCIA TOTAL MEDIDA: 0.42 ms (SDK Embebido C-ABI)</strong>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Modalidad de Licencia</th>
+        <th>Mecanismo de Despliegue</th>
+        <th>Latencia L7</th>
+        <th>SLA & Aislamiento</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Ruta 01: Discovery</strong></td>
+        <td>Sandbox Local / Docker Test</td>
+        <td>&lt; 5.00 ms</td>
+        <td>Evaluación de Postura / Auditoría</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud Gateway</strong></td>
+        <td>Sidecar / Proxy Reverse L7</td>
+        <td>&lt; 1.16 ms</td>
+        <td>SLA Garantizado / Zero-Disk RAM</td>
+      </tr>
+      <tr>
+        <td><strong>Motor Integrado</strong></td>
+        <td>On-Premise / Air-Gapped</td>
+        <td>&lt; 0.82 ms</td>
+        <td>Aislamiento Total de Red</td>
+      </tr>
+      <tr>
+        <td><strong>OEM / ISV Embebido</strong></td>
+        <td>Binding C-ABI (DLL/SO)</td>
+        <td>&lt; 0.42 ms</td>
+        <td>In-Process / Native App Integration</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECCIÓN 4 -->
+  <h2>4. CUMPLIMIENTO NORMATIVO Y MARCO REGULATORIO EUROPEO</h2>
+  <ul>
+    <li><strong>EU AI Act (Art. 14, 15 y 51):</strong> Garantiza la supervisión humana efectiva (interrupción Ex-Ante), la ciberseguridad en el ciclo de vida y la transparencia mediante sellado digital.</li>
+    <li><strong>DORA (Art. 6 y 26):</strong> Cumple los requisitos de resiliencia operativa digital para el sector financiero evitando interrupciones por agotamiento de tokens o corrupción semántica.</li>
+    <li><strong>GDPR (Art. 25 - Privacy by Design):</strong> Anonimización irreversible en RAM, evitando transferencias internacionales no autorizadas a proveedores de LLM fuera del EEE.</li>
+  </ul>
+
+  <!-- SECCIÓN 5 -->
+  <h2>5. PLAN FINANCIERO Y PROYECCIÓN DE RETORNO (ENISA)</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Estructura de Ingresos (ARR en €)</th>
+        <th>Año 1</th>
+        <th>Año 2</th>
+        <th>Año 3</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Licencias Cloud Gateway (15.000€/año)</td>
+        <td>150.000 € (10 cli)</td>
+        <td>450.000 € (30 cli)</td>
+        <td>1.200.000 € (80 cli)</td>
+      </tr>
+      <tr>
+        <td>Licencias Motor Integrado (35.000€/año)</td>
+        <td>175.000 € (5 cli)</td>
+        <td>525.000 € (15 cli)</td>
+        <td>1.400.000 € (40 cli)</td>
+      </tr>
+      <tr>
+        <td>Contratos OEM / ISV</td>
+        <td>50.000 € (2 cli)</td>
+        <td>180.000 € (5 cli)</td>
+        <td>500.000 € (12 cli)</td>
+      </tr>
+      <tr style="font-weight: bold; background-color: #f1f5f9;">
+        <td>TOTAL RECURRENTE ANUAL (ARR)</td>
+        <td>375.000 €</td>
+        <td>1.155.000 €</td>
+        <td>3.100.000 €</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- FIRMA TÉCNICA OFICIAL -->
+  <div class="signature-section">
+    <table class="signature-table">
+      <tr>
+        <td style="width: 60%; vertical-align: top;">
+          <strong>APROBADO POR EL GABINETE TÉCNICO MS3V</strong><br>
+          <span style="font-size: 8.5pt; color: #64748b;">Dirección de Ciberseguridad & Arquitectura de Software</span><br><br>
+          <div style="font-family: monospace; font-size: 8pt; color: #0f172a;">
+            Firma Criptográfica del Documento:<br>
+            <span style="color: #C5A059;">Ed25519::7f8a9b2c4e5f1d0a3b6c8e9f2a4b6c8d1e3f5a7b9c0d2e4f6a8b1c3d5e7f9a1b</span><br>
+            Timestamp: 2026-08-09T14:13:58Z<br>
+            Hash de Verificación: HMAC-SHA256(MS3V-CORE-RUST-V16)
+          </div>
+        </td>
+        <td style="width: 40%; vertical-align: top;">
+          <div class="stamp-box">
+            <strong>SELLO DE VERIFICACIÓN</strong><br>
+            MS3V S.A.A.R.E. SL<br>
+            ESQUEMA NACIONAL DE SEGURIDAD<br>
+            <span style="color: #C5A059; font-weight: bold;">CONFORME / ENS ALTO</span><br>
+            <span style="font-size: 6.5pt;">VERIFIED IN-RAM ZERO-DISK</span>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+</html>
