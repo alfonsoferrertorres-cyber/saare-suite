@@ -1,11 +1,36 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.saare.es/api/v1";
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 
 function resolveInitialUser() {
   if (typeof window === "undefined") return null;
+
+  // 1. Revisar si viene token/usuario por Query Params desde saare-suite
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenParam = urlParams.get('token');
+  const emailParam = urlParams.get('email') || urlParams.get('user');
+  const tenantParam = urlParams.get('tenant');
+
+  if (tokenParam && emailParam) {
+    const fromUrlUser = {
+      email: emailParam,
+      tenantName: tenantParam || 'saare alfon',
+      tenantId: 'tenant_admin_01',
+      apiKey: tokenParam,
+      role: urlParams.get('role') || 'CLIENT'
+    };
+    localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
+    localStorage.setItem('saare_vault_session', JSON.stringify(fromUrlUser));
+    
+    // Limpiar query params de la barra de navegación
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return fromUrlUser;
+  }
+
+  // 2. Revisar almacenamiento local existente
   const consoleSaved = localStorage.getItem('saare_user');
-  const suiteSaved = localStorage.getItem('saare_suite_user');
+  const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
 
   if (consoleSaved) {
     try { return JSON.parse(consoleSaved); } catch {}
@@ -72,7 +97,6 @@ export default function App() {
         const dataRuns = await resRuns.json();
         const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || []);
         
-        // Ordenar eventos de más reciente a más antiguo
         runsList.sort((a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0));
         
         setEvents(runsList);
@@ -112,6 +136,7 @@ export default function App() {
         const userObj = data.user;
         localStorage.setItem('saare_user', JSON.stringify(userObj));
         localStorage.setItem('saare_suite_user', JSON.stringify(userObj));
+        localStorage.setItem('saare_vault_session', JSON.stringify(userObj));
         setSessionUser(userObj);
       } else {
         setLoginError(data.error || "Credenciales corporativas incorrectas.");
@@ -126,6 +151,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('saare_user');
     localStorage.removeItem('saare_suite_user');
+    localStorage.removeItem('saare_vault_session');
     setSessionUser(null);
     setEvents([]);
     setLastEvent(null);
@@ -191,6 +217,9 @@ export default function App() {
               {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Bóveda'}
             </button>
           </form>
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <a href={PORTAL_URL} style={{ color: '#38bdf8', fontSize: '0.8rem', textDecoration: 'none' }}>← Volver al Portal Principal (saare.es)</a>
+          </div>
         </div>
       </div>
     );
@@ -305,7 +334,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: RUNLIVE (ÚLTIMO EVENTO FORENSE EN TIEMPO REAL) */}
+        {/* TAB 2: RUNLIVE */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -342,7 +371,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: CONFIGURACIÓN DE DIRECTIVAS */}
+        {/* TAB 3: CONFIGURACIÓN */}
         {activeTab === 'CONFIG' && (
           <div>
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -449,7 +478,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL VISUALIZADOR DE JSON FORENSE */}
+        {/* MODAL JSON */}
         {selectedJson && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
             <div style={{ background: '#090d16', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
@@ -464,7 +493,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL PARA AÑADIR FILTROS */}
+        {/* MODAL AÑADIR FILTROS */}
         {showAddModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', maxWidth: '480px', width: '90%' }}>
@@ -479,7 +508,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE ADVERTENCIA AL DESACTIVAR DIRECTIVAS */}
+        {/* MODAL ADVERTENCIA */}
         {confirmModal.isOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ background: '#ffffff', borderRadius: '16px', padding: '36px', maxWidth: '480px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: '1px solid #fca5a5' }}>
