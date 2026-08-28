@@ -26,6 +26,7 @@ export default function App() {
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
   const [activeAudienceTab, setActiveAudienceTab] = useState('ciso');
+  const [activeGrantTab, setActiveGrantTab] = useState('nextgen');
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
@@ -128,7 +129,6 @@ export default function App() {
     setCurrentView('LANDING');
   };
 
-  // GENERADOR DINÁMICO DE AGENTE CON CAPA DE DIRECTIVAS EN TIEMPO REAL
   const handleDownloadSDK = async () => {
     try {
       setDownloadingZip(true);
@@ -137,7 +137,6 @@ export default function App() {
       const tTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITOR";
       const tToken = sessionUser?.token || "sk_live_auditor_managed_identity";
 
-      // 1. manifest.json
       zip.file("manifest.json", JSON.stringify({
         "manifest_version": 3,
         "name": "SAARE L7 Governance Agent",
@@ -149,7 +148,6 @@ export default function App() {
         "permissions": ["storage"]
       }, null, 2));
 
-      // 2. inject.js (Motor de inspección en RAM y puente con settings DOM)
       const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Dynamic Directives Engine v8.2.0 */
 (function() {
   const DLP = {
@@ -355,7 +353,6 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      // 3. content.js
       const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v8.2.0
 function updateDomSettings(settings) {
   if (settings) document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
@@ -437,7 +434,6 @@ window.addEventListener("message", (event) => {
 });`;
       zip.file("content.js", contentJsCode);
 
-      // 4. background.js
       const bgCode = `const WORKER_URL = "${API_BASE}";
 
 async function resolveIdentity(payloadUser) {
@@ -494,7 +490,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });`;
       zip.file("background.js", bgCode);
 
-      // 5. storage_managed.json & Bat installer
       zip.file("storage_managed.json", JSON.stringify({
         "saare_user_email": tEmail,
         "saare_tenant_domain": tTenant,
@@ -559,11 +554,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </div>
 
-          <nav style={{ display: 'flex', gap: '24px', alignItems: 'center', fontSize: '13px', fontWeight: '500' }}>
-            <a href="#architecture" style={{ color: '#8B98A7', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#E8EDF2'} onMouseLeave={e => e.target.style.color = '#8B98A7'}>Arquitectura</a>
-            <a href="#evidence" style={{ color: '#8B98A7', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#E8EDF2'} onMouseLeave={e => e.target.style.color = '#8B98A7'}>Evidencia</a>
-            <a href="#solutions" style={{ color: '#8B98A7', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#E8EDF2'} onMouseLeave={e => e.target.style.color = '#8B98A7'}>Despliegues</a>
-            <a href="#developers" style={{ color: '#8B98A7', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#E8EDF2'} onMouseLeave={e => e.target.style.color = '#8B98A7'}>Developers</a>
+          <nav style={{ display: 'flex', gap: '22px', alignItems: 'center', fontSize: '13px', fontWeight: '500' }}>
+            <a href="#architecture" style={{ color: '#8B98A7', textDecoration: 'none' }}>Arquitectura</a>
+            <a href="#subvenciones" style={{ color: '#2F81F7', textDecoration: 'none', fontWeight: '600' }}>Ayudas & Fondos</a>
+            <a href="#evidence" style={{ color: '#8B98A7', textDecoration: 'none' }}>Evidencia</a>
+            <a href="#solutions" style={{ color: '#8B98A7', textDecoration: 'none' }}>Despliegues</a>
+            <a href="#developers" style={{ color: '#8B98A7', textDecoration: 'none' }}>Developers</a>
 
             {sessionUser ? (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: '12px' }}>
@@ -638,7 +634,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         </main>
       )}
 
-      {/* VISTA 2: PANEL DE CONTROL DE AUDITOR (ESTADO AUTENTICADO) */}
+      {/* VISTA 2: PANEL DE CONTROL DE AUDITOR */}
       {currentView === 'STATUS' && sessionUser && (
         <main style={{ maxWidth: '900px', margin: '60px auto', padding: '0 20px' }}>
           <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '36px' }}>
@@ -701,7 +697,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </h1>
 
             <p style={{ fontSize: '17px', color: '#8B98A7', lineHeight: 1.6, maxWidth: '760px', margin: '0 auto 36px auto' }}>
-              Capa L7 in-process que intercepta, valida y gobierna las operaciones de inferencia antes de que alcancen al modelo. Erradica fugas de datos en memoria y genera trazabilidad probatoria para <strong>ISO/IEC 42001</strong> y el <strong>EU AI Act</strong>.
+              Capa L7 in-process que intercepta, valida y gobierna las operaciones de inferencia antes de que alcancen al modelo. Erradica fugas de datos en memoria y genera trazabilidad probatoria para <strong>ISO/IEC 42001</strong>, el <strong>EU AI Act</strong> y la <strong>justificación técnica de fondos públicos</strong>.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '50px' }}>
@@ -713,7 +709,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </button>
             </div>
 
-            {/* DIAGRAMA ESTRUCTURAL ASCII DE FLUJO */}
+            {/* DIAGRAMA ESTRUCTURAL ASCII */}
             <div id="architecture" style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', maxWidth: '640px', margin: '0 auto', textAlign: 'left', overflowX: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>TOPOLOGÍA DE EJECUCIÓN L7</span>
@@ -747,7 +743,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* TRES PILARES FUNDAMENTALES */}
+          {/* TRES PILARES */}
           <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
@@ -776,7 +772,75 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* MATRIZ DE VALOR POR AUDIENCIA */}
+          {/* MÓDULO: JUSTIFICACIÓN DE SUBVENCIONES Y AYUDAS PÚBLICAS */}
+          <section id="subvenciones" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderLeft: '4px solid #2F81F7', borderRadius: '8px', padding: '36px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// PUBLIC_FUNDS & GRANT_COMPLIANCE</span>
+                  <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0 0 0', color: '#E8EDF2' }}>
+                    Blindaje Técnico de Ayudas y Subvenciones de IA
+                  </h2>
+                </div>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997', background: 'rgba(32, 201, 151, 0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(32, 201, 151, 0.2)' }}>
+                  NO-CLAWBACK GUARANTEE ENGINE
+                </span>
+              </div>
+
+              <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 28px 0', maxWidth: '820px' }}>
+                Los programas de financiación pública exigen justificar el uso real y el cumplimiento de seguridad del dato en los proyectos subvencionados. SAARE proporciona las evidencias técnicas para superar auditorías y evitar el reintegro de fondos.
+              </p>
+
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #151B23', paddingBottom: '12px' }}>
+                <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                  🇪🇺 NextGenerationEU & PRTR
+                </button>
+                <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'kit' ? '#151B23' : 'transparent', color: activeGrantTab === 'kit' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                  💼 Kit Consulting & Asesoramiento IA
+                </button>
+                <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'cdti' ? '#151B23' : 'transparent', color: activeGrantTab === 'cdti' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                  🔬 CDTI, ENISA & Proyectos I+D+i
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
+                  <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>01 / RIESGO MITIGADO</div>
+                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Reintegro por Falta de Trazabilidad</strong>
+                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
+                    Evita devoluciones de ayudas por no poder acreditar documentalmente la actividad técnica o el ciclo de vida seguro de la IA.
+                  </p>
+                </div>
+
+                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
+                  <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>02 / ENTREGABLE AUDITABLE</div>
+                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Memoria con Firma RFC 3161</strong>
+                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
+                    Genera el extracto de evidencias SHA-256 e informes periciales listos para anexar a la cuenta justificativa del expediente.
+                  </p>
+                </div>
+
+                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
+                  <div style={{ color: '#E8EDF2', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>03 / CUMPLIMIENTO EX-ANTE</div>
+                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Alineación ISO 42001 & AI Act</strong>
+                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
+                    Acredita que la solución implementada cumple los requisitos de evaluación de riesgos del Reglamento Europeo de IA.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px dashed #151B23', paddingTop: '18px' }}>
+                <span style={{ fontSize: '12px', color: '#8B98A7', fontFamily: 'monospace' }}>
+                  ¿Gestionas expedientes de subvención para clientes? Habilita tu Asiento de Auditor.
+                </span>
+                <button onClick={() => setCurrentView('AUTH')} style={{ padding: '8px 18px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
+                  Acreditar Asiento Pericial ↗
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* AUDIENCIAS */}
           <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '32px' }}>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '16px' }}>
@@ -832,7 +896,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* EVIDENCIA FORENSE EN VIVO (DEMOSTRADOR) */}
+          {/* EVIDENCIA FORENSE EN VIVO */}
           <section id="evidence" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
               <div>
@@ -843,7 +907,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: '24px', alignItems: 'stretch' }}>
-              {/* Tarjeta de Transacción */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
                   <span style={{ color: '#8B98A7' }}>TX_RECORD</span>
@@ -867,7 +930,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* Panel de Verificación en Edge */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>
@@ -904,7 +966,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              {/* Vector 1: OEM */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -922,7 +983,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* Vector 2: ISV */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -940,7 +1000,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* Vector 3: Auditor */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #2F81F7', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(47,129,247,0.08)' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -963,7 +1022,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* DEVELOPERS / SNIPPETS DE INTEGRACIÓN */}
+          {/* DEVELOPERS / SNIPPETS */}
           <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
