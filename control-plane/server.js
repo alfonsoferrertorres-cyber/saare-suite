@@ -1,6 +1,6 @@
 /**
  * S.A.A.R.E. Control-Plane L7 Core Gateway
- * Cloudflare Worker Backend v5.5.0 (Hardened Auth, Reset Password, Verification Endpoint & KV Vault)
+ * Cloudflare Worker Backend v5.6.0 (Hardened Auth, Reset Password, Verification Endpoint, KV Vault & Real-Time Settings Engine)
  */
 
 const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
@@ -454,7 +454,28 @@ export default {
       }
 
       // -----------------------------------------------------------------------
-      // 6. STRIPE WEBHOOK
+      // 6. ESTADO DE LOS INTERRUPTORES DE LA CONSOLA (/api/v1/settings)
+      // -----------------------------------------------------------------------
+      if (path === "/api/v1/settings") {
+        const user = sanitizeEmail(url.searchParams.get("user") || "");
+        if (!user) return jsonResponse({ error: "Usuario requerido." }, 400, requestOrigin);
+
+        if (method === "GET") {
+          const raw = await kv.get(`settings:${user}`);
+          const settings = raw ? JSON.parse(raw) : { privacy: true, security: false, logs: true, finops: false };
+          return jsonResponse({ status: "SUCCESS", settings }, 200, requestOrigin);
+        }
+
+        if (method === "POST") {
+          const body = await request.json();
+          const newSettings = body.settings || { privacy: true, security: false, logs: true, finops: false };
+          await kv.put(`settings:${user}`, JSON.stringify(newSettings));
+          return jsonResponse({ status: "SUCCESS", settings: newSettings }, 200, requestOrigin);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. STRIPE WEBHOOK
       // -----------------------------------------------------------------------
       if (path === "/api/v1/stripe/webhook" && method === "POST") {
         const event = await request.json();
@@ -473,7 +494,7 @@ export default {
         return jsonResponse({ status: "IGNORED" }, 200, requestOrigin);
       }
 
-      return jsonResponse({ service: "SAARE L7 API SECURE", status: "ONLINE", version: "5.5.0" }, 200, requestOrigin);
+      return jsonResponse({ service: "SAARE L7 API SECURE", status: "ONLINE", version: "5.6.0" }, 200, requestOrigin);
 
     } catch (error) {
       return jsonResponse({ error: "Internal Server Error", details: error.message }, 500, requestOrigin);

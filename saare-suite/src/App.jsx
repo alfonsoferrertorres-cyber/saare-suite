@@ -148,6 +148,7 @@ export default function App() {
     setPassword('');
   };
 
+  // GENERADOR DINÁMICO DEL AGENTE L7 CON SINCRONIZACIÓN DE INTERRUPTORES EN TIEMPO REAL
   const handleDownloadExtension = async () => {
     try {
       setDownloadingZip(true);
@@ -157,6 +158,7 @@ export default function App() {
       const targetTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITOR";
       const targetToken = sessionUser?.token || "sk_live_auditor_managed_identity";
 
+      // 1. manifest.json
       const manifestContent = JSON.stringify({
         "manifest_version": 3,
         "name": "SAARE L7 Governance Agent (Auditor Edition)",
@@ -196,13 +198,23 @@ export default function App() {
       }, null, 2);
       zip.file("manifest.json", manifestContent);
 
-      const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.2.0 */
+      // 2. inject.js (Lectura de directivas en tiempo real desde el atributo DOM)
+      const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Dynamic Directives Engine v8.2.0 */
 (function() {
   const DLP = {
     dni: /(?:^|\\D)(\\d{7,8}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
     iban: /ES\\d{2}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{2}[\\s-]?\\d{10}|ES\\d{18,22}/i,
     card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
   };
+
+  function getSettings() {
+    try {
+      const raw = document.documentElement.getAttribute('data-saare-settings');
+      return raw ? JSON.parse(raw) : { privacy: true, security: true, logs: true };
+    } catch(e) {
+      return { privacy: true, security: true, logs: true };
+    }
+  }
 
   function computeL7Seal(str) {
     let hash = 0;
@@ -304,40 +316,51 @@ export default function App() {
   }
 
   function evaluatePayload(rawBody, url) {
+    const settings = getSettings();
+
+    // Si tanto privacidad como logs están apagados, bypass absoluto sin tocar nada
+    if (!settings.privacy && !settings.logs) return null;
+
     const str = parseBody(rawBody);
     if (!str || isIgnoredRequest(url, str)) return null;
 
     const cleanPrompt = extractCleanPrompt(str);
     if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
-    const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
-    const isIban = DLP.iban.test(cleanPrompt.replace(/[\\s-]/g, "")) || DLP.iban.test(str.replace(/[\\s-]/g, ""));
-    const isCard = DLP.card.test(cleanPrompt.replace(/[\\s-]+/g, "")) || DLP.card.test(str.replace(/[\\s-]+/g, ""));
+    // Solo evaluar DLP / Bloqueos si la directiva de Privacidad está activada en la Consola
+    if (settings.privacy) {
+      const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
+      const isIban = DLP.iban.test(cleanPrompt.replace(/[\\s-]/g, "")) || DLP.iban.test(str.replace(/[\\s-]/g, ""));
+      const isCard = DLP.card.test(cleanPrompt.replace(/[\\s-]+/g, "")) || DLP.card.test(str.replace(/[\\s-]+/g, ""));
 
-    if (isDni || isIban || isCard) {
-      let category = "PII_DNI";
-      let norma = "España - LOPDGDD & AEPD";
+      if (isDni || isIban || isCard) {
+        let category = "PII_DNI";
+        let norma = "España - LOPDGDD & AEPD";
 
-      if (isIban) {
-        category = "DATOS_BANCARIOS";
-        norma = "RGPD Art. 5, 32 / LOPDGDD";
-      } else if (isCard) {
-        category = "TARJETA_CREDITO";
-        norma = "PCI-DSS / RGPD";
+        if (isIban) {
+          category = "DATOS_BANCARIOS";
+          norma = "RGPD Art. 5, 32 / LOPDGDD";
+        } else if (isCard) {
+          category = "TARJETA_CREDITO";
+          norma = "PCI-DSS / RGPD";
+        }
+
+        const displayPrompt = sanitize(cleanPrompt);
+
+        return {
+          verdict: "RECHAZADO",
+          category,
+          norma,
+          reason: "Detección de datos regulados en memoria RAM L7",
+          cleanPrompt: displayPrompt,
+          sanitizedPrompt: displayPrompt,
+          cryptoSeal: computeL7Seal(cleanPrompt)
+        };
       }
-
-      const displayPrompt = sanitize(cleanPrompt);
-
-      return {
-        verdict: "RECHAZADO",
-        category,
-        norma,
-        reason: "Detección de datos regulados en memoria RAM L7",
-        cleanPrompt: displayPrompt,
-        sanitizedPrompt: displayPrompt,
-        cryptoSeal: computeL7Seal(cleanPrompt)
-      };
     }
+
+    // Si no hay infracción, solo registramos evidencia si "TRAZABILIDAD (logs)" está habilitado
+    if (!settings.logs) return null;
 
     return {
       verdict: "PERMITIDO",
@@ -392,7 +415,26 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE L7 AUDITOR BRIDGE v8.2.0
+      // 3. content.js (Puente de configuración DOM y puente con Background)
+      const contentJsCode = `// SAARE L7 AUDITOR BRIDGE & SETTINGS SYNC v8.2.0
+function updateDomSettings(settings) {
+  if (settings) {
+    document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
+  }
+}
+
+if (typeof chrome !== "undefined" && chrome.storage?.local) {
+  chrome.storage.local.get(["saare_settings"], (res) => {
+    updateDomSettings(res?.saare_settings || { privacy: true, security: true, logs: true });
+  });
+
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.saare_settings) {
+      updateDomSettings(changes.saare_settings.newValue);
+    }
+  });
+}
+
 const injectScript = document.createElement("script");
 injectScript.src = chrome.runtime.getURL("inject.js");
 injectScript.onload = function() { this.remove(); };
@@ -471,6 +513,7 @@ window.addEventListener("message", (event) => {
 });`;
       zip.file("content.js", contentJsCode);
 
+      // 4. background.js (Sincronización en segundo plano con el endpoint /settings)
       const bgCode = `const WORKER_URL = "${API_BASE}";
 
 async function resolveIdentity(payloadUser) {
@@ -499,6 +542,24 @@ async function resolveIdentity(payloadUser) {
   });
 }
 
+// Sincronización continua de directivas de la Consola cada 5 segundos
+async function syncDynamicSettings() {
+  const { user } = await resolveIdentity();
+  if (user) {
+    try {
+      const res = await fetch(\`\${WORKER_URL}/settings?user=\${encodeURIComponent(user)}\`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          chrome.storage.local.set({ saare_settings: data.settings });
+        }
+      }
+    } catch(e) {}
+  }
+}
+setInterval(syncDynamicSettings, 5000);
+syncDynamicSettings();
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
@@ -517,6 +578,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });`;
       zip.file("background.js", bgCode);
 
+      // 5. storage_managed.json
       const managedJson = JSON.stringify({
         "saare_user_email": targetEmail,
         "saare_tenant_domain": targetTenant,
@@ -525,6 +587,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }, null, 2);
       zip.file("storage_managed.json", managedJson);
 
+      // 6. popup.html
       const popupHtml = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -558,6 +621,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 </html>`;
       zip.file("popup.html", popupHtml);
 
+      // 7. install_silent.bat
       const customBat = `@echo off
 chcp 65001 >nul
 title S.A.A.R.E. Installer - Auditor Seat
@@ -574,6 +638,7 @@ timeout /t 3 >nul
 exit /b 0`;
       zip.file("install_silent.bat", customBat);
 
+      // Disparar descarga en navegador
       const finalBlob = await zip.generateAsync({ type: "blob" });
       const downloadLink = document.createElement("a");
       downloadLink.href = URL.createObjectURL(finalBlob);

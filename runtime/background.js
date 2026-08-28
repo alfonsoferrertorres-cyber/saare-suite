@@ -1,9 +1,12 @@
+/**
+ * S.A.A.R.E. L7 Governance Agent Background Service Worker v8.2.0
+ */
+
 const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
-// Resuelve la identidad corporativa de forma dinámica (GPO -> Storage Local -> No asignado)
+// Resuelve la identidad corporativa: Managed Storage (GPO) -> Local Storage -> Fallback
 async function resolveIdentity(payloadUser) {
   return new Promise((resolve) => {
-    // 1. Prioridad: GPO corporativa / Managed Storage
     if (chrome.storage?.managed) {
       chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
         if (managed?.saare_user_email) {
@@ -18,7 +21,6 @@ async function resolveIdentity(payloadUser) {
       fallbackLocal();
     }
 
-    // 2. Fallback: Local Storage o usuario detectado en el DOM
     function fallbackLocal() {
       chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
         const finalUser = local?.saare_user_email || payloadUser || "usuario_anonimo@tenant.es";
@@ -29,6 +31,28 @@ async function resolveIdentity(payloadUser) {
   });
 }
 
+// Sincronización periódica de directivas activas desde Cloudflare KV cada 5 segundos
+async function syncDynamicSettings() {
+  const { user } = await resolveIdentity();
+  if (user && user !== "usuario_anonimo@tenant.es") {
+    try {
+      const res = await fetch(`${WORKER_URL}/settings?user=${encodeURIComponent(user)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          chrome.storage.local.set({ saare_settings: data.settings });
+        }
+      }
+    } catch (e) {
+      // Sincronización tolerante a fallos de red
+    }
+  }
+}
+
+setInterval(syncDynamicSettings, 5000);
+syncDynamicSettings();
+
+// Recepción y enrutamiento de eventos forenses
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
@@ -38,13 +62,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tenant: tenant
       };
 
-      // Almacenamiento local en el navegador del usuario
+      // Guardar en almacenamiento local del navegador
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
       });
 
-      // Envío dinámico al Worker KV
+      // Transmisión directa hacia la Bóveda KV en Cloudflare
       fetch(`${WORKER_URL}/runs?user=${encodeURIComponent(user)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

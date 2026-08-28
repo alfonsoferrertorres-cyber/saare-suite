@@ -1,10 +1,19 @@
-/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.1.0 */
+/* S.A.A.R.E. L7 RAM Network Interceptor & Dynamic Directives Engine v8.2.0 */
 (function() {
   const DLP = {
     dni: /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i,
     iban: /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}|ES\d{18,22}/i,
     card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
   };
+
+  function getSettings() {
+    try {
+      const raw = document.documentElement.getAttribute('data-saare-settings');
+      return raw ? JSON.parse(raw) : { privacy: true, security: true, logs: true, finops: false };
+    } catch (e) {
+      return { privacy: true, security: true, logs: true, finops: false };
+    }
+  }
 
   function computeL7Seal(str) {
     let hash = 0;
@@ -51,7 +60,6 @@
     try { return JSON.stringify(body); } catch { return String(body); }
   }
 
-  // Extracción estructural posicional de alta fidelidad
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
 
@@ -87,7 +95,7 @@
             } catch {}
           }
 
-          // batchexecute [[["RPC_ID", "[[\"mensaje\", 0, ...], ...]", null, "generic"], ...]]
+          // batchexecute batch format
           if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
             for (const batch of outer) {
               if (Array.isArray(batch)) {
@@ -112,7 +120,7 @@
       return "";
     }
 
-    // 2. JSON estándar (ChatGPT, Claude, DeepSeek, Copilot)
+    // 2. JSON estándar (ChatGPT, Claude, DeepSeek, Copilot, Perplexity)
     try {
       const json = JSON.parse(rawText);
       if (json.messages && Array.isArray(json.messages)) {
@@ -145,43 +153,52 @@
   }
 
   function evaluatePayload(rawBody, url) {
+    const settings = getSettings();
+
+    // Si tanto Privacidad como Trazabilidad están deshabilitadas, se aplica bypass absoluto en RAM
+    if (!settings.privacy && !settings.logs) return null;
+
     const str = parseBody(rawBody);
     if (!str || isIgnoredRequest(url, str)) return null;
 
     const cleanPrompt = extractCleanPrompt(str);
     if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
-    // 1. Verificación DLP perimetral
-    const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
-    const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
-    const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
+    // 1. Evaluación DLP solo si la directiva de Privacidad está activa
+    if (settings.privacy) {
+      const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
+      const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
+      const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
 
-    if (isDni || isIban || isCard) {
-      let category = "PII_DNI";
-      let norma = "España - LOPDGDD & AEPD";
+      if (isDni || isIban || isCard) {
+        let category = "PII_DNI";
+        let norma = "España - LOPDGDD & AEPD";
 
-      if (isIban) {
-        category = "DATOS_BANCARIOS";
-        norma = "RGPD Art. 5, 32 / LOPDGDD";
-      } else if (isCard) {
-        category = "TARJETA_CREDITO";
-        norma = "PCI-DSS / RGPD";
+        if (isIban) {
+          category = "DATOS_BANCARIOS";
+          norma = "RGPD Art. 5, 32 / LOPDGDD";
+        } else if (isCard) {
+          category = "TARJETA_CREDITO";
+          norma = "PCI-DSS / RGPD";
+        }
+
+        const displayPrompt = sanitize(cleanPrompt);
+
+        return {
+          verdict: "RECHAZADO",
+          category,
+          norma,
+          reason: "Detección de datos regulados en memoria RAM L7",
+          cleanPrompt: displayPrompt,
+          sanitizedPrompt: displayPrompt,
+          cryptoSeal: computeL7Seal(cleanPrompt)
+        };
       }
-
-      const displayPrompt = sanitize(cleanPrompt);
-
-      return {
-        verdict: "RECHAZADO",
-        category,
-        norma,
-        reason: "Detección de datos regulados en memoria RAM L7",
-        cleanPrompt: displayPrompt,
-        sanitizedPrompt: displayPrompt,
-        cryptoSeal: computeL7Seal(cleanPrompt)
-      };
     }
 
-    // 2. Auditoría conforme limpia
+    // 2. Si no hay infracción, solo se emite el evento si la Trazabilidad (logs) está activa
+    if (!settings.logs) return null;
+
     return {
       verdict: "PERMITIDO",
       category: "AUDITORIA_CONFORME",
@@ -193,7 +210,7 @@
     };
   }
 
-  // Interceptar XHR (Gemini)
+  // Hook XHR (Gemini y llamadas AJAX tradicionales)
   const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
@@ -214,7 +231,7 @@
     return rawSend.apply(this, arguments);
   };
 
-  // Interceptar Fetch (ChatGPT, Claude, etc.)
+  // Hook Fetch (ChatGPT, Claude, DeepSeek, etc.)
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");

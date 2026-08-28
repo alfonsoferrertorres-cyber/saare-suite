@@ -1,11 +1,32 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v8.1.0
+// SAARE L7 TELEMETRY & DOM BRIDGE v8.2.0
 console.log("[SAARE L7 Engine] Interceptor Activo en Memoria");
 
+// 1. Sincronizar directivas y estado de la consola en el DOM
+function updateDomSettings(settings) {
+  if (settings) {
+    document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
+  }
+}
+
+if (typeof chrome !== "undefined" && chrome.storage?.local) {
+  chrome.storage.local.get(["saare_settings"], (res) => {
+    updateDomSettings(res?.saare_settings || { privacy: true, security: true, logs: true, finops: false });
+  });
+
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.saare_settings) {
+      updateDomSettings(changes.saare_settings.newValue);
+    }
+  });
+}
+
+// 2. Inyección del interceptor L7 en el contexto de página (Window)
 const injectScript = document.createElement("script");
 injectScript.src = chrome.runtime.getURL("inject.js");
 injectScript.onload = function() { this.remove(); };
 (document.head || document.documentElement).appendChild(injectScript);
 
+// 3. Resolución de identidad activa en clientes LLM
 function getActiveAccountFromDom() {
   const profileEl = document.querySelector('a[aria-label*="@"], button[aria-label*="@"], img[alt*="@"], div[aria-label*="@"]');
   const label = profileEl ? (profileEl.getAttribute('aria-label') || profileEl.getAttribute('alt') || '') : '';
@@ -13,8 +34,9 @@ function getActiveAccountFromDom() {
   return match ? match[0].toLowerCase().trim() : null;
 }
 
+// 4. Modal de bloqueo perimetral en memoria RAM
 function showModal(text, violationInfo) {
-  let old = document.getElementById("saare-block-modal");
+  const old = document.getElementById("saare-block-modal");
   if (old) old.remove();
 
   const banner = document.createElement("div");
@@ -38,9 +60,10 @@ function showModal(text, violationInfo) {
     </div>
   `;
   document.body.appendChild(banner);
-  setTimeout(() => { if (banner) banner.remove(); }, 6000);
+  setTimeout(() => { if (banner && banner.parentNode) banner.remove(); }, 6000);
 }
 
+// 5. Transmisión de evidencia forense a background.js
 function sendEvidenceToBackground(auditData) {
   const text = auditData.cleanPrompt || auditData.sanitizedPrompt || "";
   if (!text || text.trim() === "") return;
@@ -73,12 +96,15 @@ function sendEvidenceToBackground(auditData) {
         type: "SAARE_LOG_EVENT",
         payload: payload
       }, () => {
-        if (chrome.runtime.lastError) {}
+        if (chrome.runtime.lastError) {
+          // Fallo silencioso si el background worker está inactivo
+        }
       });
     } catch {}
   }
 }
 
+// 6. Listener de eventos del interceptor L7
 window.addEventListener("message", (event) => {
   if (event.data?.type === "SAARE_EVENT" && event.data.data) {
     sendEvidenceToBackground(event.data.data);
