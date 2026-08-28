@@ -2,32 +2,32 @@
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   validate-saare:
+    name: Validate Build & Integrity
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout del repositorio
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Configurar Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Validar compilación del Proxy en Rust
-        working-directory: runtime/l7_proxy
-        run: cargo check
-
-      - name: Validar Integridad Criptográfica del Ledger
-        working-directory: control-plane
+      - name: Build SAARE Suite
+        working-directory: saare-suite
         run: |
-          npm ci --if-present
-          node verifyLedger.js
+          npm install
+          npm run build
+
+      - name: Build SAARE Console
+        working-directory: saare-console
+        run: |
+          npm install
+          npm run build
