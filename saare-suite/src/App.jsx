@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
@@ -71,7 +71,7 @@ export default function App() {
           body: JSON.stringify({ 
             email: sessionUser.email, 
             token: sessionUser.token || "session_check", 
-            password: sessionUser.password || "",
+            password: sessionUser.password || "", 
             source: 'suite' 
           })
         });
@@ -736,7 +736,7 @@ exit /b 0`;
             </div>
             {error && <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>}
             <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px' }}>
-              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Organización' : '🔐 Iniciar Sesión')}
+              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Organización' : '🔒 Iniciar Sesión')}
             </button>
           </form>
         </div>
