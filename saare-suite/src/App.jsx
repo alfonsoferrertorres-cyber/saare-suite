@@ -26,7 +26,6 @@ export default function App() {
   const [copiedSig, setCopiedSig] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
-  const [activeDeploymentTab, setActiveDeploymentTab] = useState('oem');
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
@@ -52,7 +51,7 @@ export default function App() {
     nodejs: `import OpenAI from 'openai';\n\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Suite': 'AUDIT_REALTIME_HOOK'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar crédito: Titular con DNI 48593021X' }]\n});`,
     python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar crédito: Titular con DNI 48593021X"}]\n)`,
     curl: `curl ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Auditar DNI 48593021X"}]}'`,
-    cabi: `/* SAARE Native C-ABI In-Sensor Hook */\n#include <saare_l7.h>\n\nint main() {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    if (verdict.is_violation) {\n        saare_purge_madvise(payload_ptr, payload_len); // SYS_madvise MADV_DONTNEED\n        return -1; // Transmisión cortada en 0.017 ms\n    }\n    return 0; // Payload auditado y conforme\n}`
+    cabi: `/* SAARE Native C-ABI In-Sensor Hook (HugePages Buffer) */\n#include <saare_l7.h>\n\nint main() {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    if (verdict.is_violation) {\n        saare_purge_madvise(payload_ptr, payload_len); // SYS_madvise MADV_DONTNEED\n        return -1; // Transmisión cortada en RAM (< 0.017 ms)\n    }\n    return 0; // Tráfico conforme verificado\n}`
   };
 
   useEffect(() => {
@@ -1020,7 +1019,10 @@ exit /b 0`;
                 <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   📜 Ver Diploma Registral
                 </button>
-                <button type="button" onClick={copyDigitalSignature} style={{ background: copiedSig ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
+                <button type="button" onClick={() => window.open(signedPayload.URL_VERIFICACION_PUBLICA, '_blank')} style={{ background: '#0284c7', border: 'none', color: '#fff', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🔍 Verificar en Vivo (API Edge) ↗
+                </button>
+                <button type="button" onClick={copyDigitalSignature} style={{ background: copiedSig ? '#10b981' : '#1e293b', border: '1px solid #334155', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
                   {copiedSig ? '✔ FIRMA COPIADA' : '📋 Copiar Firma Digital'}
                 </button>
               </div>
