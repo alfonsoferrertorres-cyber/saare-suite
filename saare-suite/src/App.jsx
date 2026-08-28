@@ -2,7 +2,6 @@
 import JSZip from 'jszip';
 
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
-
 const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
 const AUDITOR_PLAN_PRICE = "149.00";
 
@@ -13,7 +12,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [mode, setMode] = useState('register');
+  const [mode, setMode] = useState('register'); // 'register' | 'login' | 'reset'
   const [currentView, setCurrentView] = useState('STATUS');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +26,7 @@ export default function App() {
   const [copiedSig, setCopiedSig] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
+  const [activeDeploymentTab, setActiveDeploymentTab] = useState('oem');
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
@@ -51,7 +51,8 @@ export default function App() {
   const codeSnippets = {
     nodejs: `import OpenAI from 'openai';\n\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Suite': 'AUDIT_REALTIME_HOOK'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar crédito: Titular con DNI 48593021X' }]\n});`,
     python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar crédito: Titular con DNI 48593021X"}]\n)`,
-    curl: `curl ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Auditar DNI 48593021X"}]}'`
+    curl: `curl ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Auditar DNI 48593021X"}]}'`,
+    cabi: `/* SAARE Native C-ABI In-Sensor Hook */\n#include <saare_l7.h>\n\nint main() {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    if (verdict.is_violation) {\n        saare_purge_madvise(payload_ptr, payload_len); // SYS_madvise MADV_DONTNEED\n        return -1; // Transmisión cortada en 0.017 ms\n    }\n    return 0; // Payload auditado y conforme\n}`
   };
 
   useEffect(() => {
@@ -160,7 +161,7 @@ export default function App() {
       const manifestContent = JSON.stringify({
         "manifest_version": 3,
         "name": "SAARE L7 Governance Agent (Auditor Edition)",
-        "version": "8.1.0",
+        "version": "8.2.0",
         "description": "Universal Compliance & Real-Time Audit Engine for GenAI",
         "background": { "service_worker": "background.js" },
         "content_scripts": [
@@ -196,7 +197,7 @@ export default function App() {
       }, null, 2);
       zip.file("manifest.json", manifestContent);
 
-      const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.1.0 */
+      const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.2.0 */
 (function() {
   const DLP = {
     dni: /(?:^|\\D)(\\d{7,8}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
@@ -392,7 +393,7 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE L7 AUDITOR BRIDGE v8.1.0
+      const contentJsCode = `// SAARE L7 AUDITOR BRIDGE v8.2.0
 const injectScript = document.createElement("script");
 injectScript.src = chrome.runtime.getURL("inject.js");
 injectScript.onload = function() { this.remove(); };
@@ -568,7 +569,7 @@ set "TARGET_DIR=%LOCALAPPDATA%\\SAARE\\extension"
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 xcopy /Y /E /I "%~dp0*" "%TARGET_DIR%\\" >nul 2>&1
 reg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1
-reg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "8.1.0" /f >nul 2>&1
+reg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "8.2.0" /f >nul 2>&1
 echo [OK] Asiento de Auditor L7 desplegado para %USER_EMAIL% (%TENANT_DOMAIN%).
 timeout /t 3 >nul
 exit /b 0`;
@@ -596,72 +597,10 @@ exit /b 0`;
     setTimeout(() => setCopiedSig(false), 2500);
   };
 
-  if (!sessionUser) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '20px' }}>
-        <div style={{ maxWidth: '440px', width: '100%', background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '48px', height: '48px', background: '#0284c7', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px', boxShadow: '0 0 20px rgba(2, 132, 199, 0.4)' }}>🛡️</div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>S.A.A.R.E. EMBUSINESS SUITE</h1>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-              {mode === 'reset' ? 'Restablecimiento de Credenciales' : 'Acceso Consultor / Auditor IA'}
-            </p>
-          </div>
-
-          {mode !== 'reset' && (
-            <div style={{ display: 'flex', background: '#030712', borderRadius: '8px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
-              <button type="button" onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#0284c7' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s ease' }}>Crear Perfil</button>
-              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#0284c7' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s ease' }}>Iniciar Sesión</button>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {mode === 'register' && (
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>NOMBRE DE EMPRESA / DESPACHO AUDITOR</label>
-                <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Consultoría Forense IA" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-            )}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>CORREO DEL AUDITOR</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: auditor@despacho.es" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '600' }}>
-                  {mode === 'reset' ? 'NUEVA CONTRASEÑA' : 'CONTRASEÑA'}
-                </label>
-                {mode === 'login' && (
-                  <button type="button" onClick={() => { setMode('reset'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                )}
-              </div>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-
-            {error && <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>}
-            {successMsg && <div style={{ padding: '10px', background: '#064e3b', border: '1px solid #10b981', borderRadius: '8px', color: '#a7f3d0', fontSize: '0.85rem', textAlign: 'center' }}>{successMsg}</div>}
-
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)' }}>
-              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Asiento de Auditor' : (mode === 'reset' ? '🔑 Restablecer Contraseña' : '🔒 Iniciar Sesión'))}
-            </button>
-
-            {mode === 'reset' && (
-              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px', textAlign: 'center' }}>
-                ← Volver a Iniciar Sesión
-              </button>
-            )}
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {showDiploma && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDiploma(false)}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
           <div style={{ maxWidth: '850px', width: '100%', background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
             <img src="/certificado_integridad.png" alt="Diploma Registral RPI" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
             <div style={{ padding: '14px 20px', background: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -673,7 +612,7 @@ exit /b 0`;
       )}
 
       {/* HEADER PRINCIPAL */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(7, 11, 20, 0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(9, 13, 22, 0.94)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #1e293b' }}>
         {isOffline && (
           <div style={{ width: '100%', background: '#ef4444', color: '#fff', textAlign: 'center', padding: '6px', fontSize: '12px', fontWeight: 'bold' }}>
             ⚠️ Sin conexión a la Bóveda KV. Reintentando...
@@ -681,279 +620,300 @@ exit /b 0`;
         )}
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', fontWeight: '900', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', boxShadow: '0 0 14px rgba(2, 132, 199, 0.5)' }}>S</div>
+            <div style={{ background: '#0284c7', color: '#fff', fontWeight: '900', width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>S</div>
             <div>
               <div style={{ color: '#fff', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                S.A.A.R.E. <span style={{ fontSize: '9px', background: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', border: '1px solid #1e293b' }}>ISV & OEM GATEWAY</span>
+                S.A.A.R.E. <span style={{ fontSize: '9px', background: '#1e293b', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', border: '1px solid #334155' }}>L7 ENGINE & GRC GATEWAY</span>
               </div>
-              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>AI REAL-TIME AUDIT & L7 GOVERNANCE NODE</div>
+              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase' }}>AI REAL-TIME GOVERNANCE · OEM, ISV & AUDITOR</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
-            <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ padding: '8px 16px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem', transition: 'all 0.2s ease' }}>
+          <div style={{ display: 'flex', gap: '18px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
+            <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ padding: '6px 14px', background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
               {currentView === 'STATUS' ? '🌐 Ver Portal General' : '📋 Ver Mi Consola'}
             </button>
-            {sessionUser && (
+            {sessionUser ? (
               <>
                 <span style={{ fontSize: '12px', color: '#94a3b8' }}>
                   <strong style={{ color: '#38bdf8' }}>{sessionUser.tenantName}</strong>
                 </span>
-                <button onClick={handleLogout} style={{ padding: '8px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
+                <button onClick={handleLogout} style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
                   Salir
                 </button>
               </>
+            ) : (
+              <button onClick={() => { setCurrentView('STATUS'); setMode('login'); }} style={{ padding: '6px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
+                Acceso Bóveda
+              </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* VISTA 1: CONSOLA DE AUDITOR */}
-      {currentView === 'STATUS' && sessionUser && (
-        <main style={{ maxWidth: '820px', margin: '60px auto', padding: '0 20px' }}>
-          <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '20px', padding: '44px', textAlign: 'center', boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.7)' }}>
-            <div style={{ width: '68px', height: '68px', background: 'rgba(2, 132, 199, 0.15)', border: '2px solid #38bdf8', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', marginBottom: '20px', boxShadow: '0 0 30px rgba(56, 189, 248, 0.2)' }}>
-              ⚖️
-            </div>
-
-            <h2 style={{ fontSize: '1.9rem', fontWeight: '900', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>
-              Consola de Auditoría y Consultoría IA
-            </h2>
-            <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '640px', margin: '0 auto 30px auto' }}>
-              Nodo de auditoría activo. Configurado para supervisar flujos delegados de empleados y certificar la trazabilidad técnica bajo norma ISO/IEC 42001 y el EU AI Act.
-            </p>
-
-            <div style={{ background: '#030712', border: '1px solid #1e293b', borderRadius: '14px', padding: '22px', maxWidth: '500px', margin: '0 auto 34px auto', textAlign: 'left' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Entorno:</span>
-                <strong style={{ color: '#f8fafc' }}>{sessionUser.tenantName}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Auditor Titular:</span>
-                <strong style={{ color: '#38bdf8' }}>{sessionUser.email}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Licencia Asignada:</span>
-                <span style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8', border: '1px solid #0284c7', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '0.75rem' }}>
-                  1 ASIENTO DE CONSULTOR / AUDITOR ACTIVO
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 30px', background: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 8px 25px rgba(2, 132, 199, 0.4)' }}>
-                🚀 Abrir Bóveda Forense
-              </a>
-              
-              <button 
-                onClick={handleDownloadExtension} 
-                disabled={downloadingZip}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 30px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer' }}
-              >
-                {downloadingZip ? '⚙️ Generando Nodo...' : '⚡ Descargar Agente de Auditoría'}
-              </button>
-            </div>
-          </div>
-        </main>
-      )}
-
-      {/* VISTA 2: LANDING ESTRUCTURADA */}
-      {(!sessionUser || currentView === 'LANDING') && (
-        <main>
-          {/* HERO SECTION */}
-          <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '70px 20px 40px 20px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '800', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', letterSpacing: '0.5px' }}>
-              🛡️ SEGURIDAD DETERMINISTA EN MEMORIA & AUDITORÍA EN CAPA 7
-            </div>
-            <h1 style={{ fontSize: '46px', fontWeight: '900', lineHeight: 1.15, margin: '0 auto 18px auto', maxWidth: '980px', letterSpacing: '-1.2px' }}>
-              Gobernanza de Modelos de IA, Filtrado en Memoria y Trazabilidad Forense
-            </h1>
-            <p style={{ color: '#94a3b8', fontSize: '16px', lineHeight: 1.6, margin: '0 auto 34px auto', maxWidth: '820px' }}>
-              Middleware determinista en tiempo de ejecución. Neutraliza fugas de PII en memoria volátil antes de la inferencia y emite sellos criptográficos inmutables SHA-256 para cumplir con ISO/IEC 42001, el EU AI Act y justificar subvenciones públicas.
-            </p>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
-              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', padding: '16px 36px', borderRadius: '10px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ⚡ PROBAR SANDBOX DE EVALUACIÓN (7 DÍAS)
-              </button>
-            </div>
-          </section>
-
-          {/* MATRIZ DE DESPLIEGUE TÉCNICO */}
-          <section id="modelos-despliegue" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <div style={{ display: 'inline-block', color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
-                ARQUITECTURA MULTI-ENTORNO
-              </div>
-              <h2 style={{ fontSize: '30px', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>Tres Modelos de Despliegue Técnico</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14.5px', margin: '8px auto 0 auto', maxWidth: '640px' }}>
-                Desde binarios compilados de bajo nivel para sensores EDR hasta licencias profesionales de consultoría externa.
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '22px' }}>
-              {/* TIPO 1: OEM BINARIO */}
-              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ background: '#030712', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>TIPO 01 · OEM SENSOR</span>
-                    <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold' }}>0.017 ms RAM</span>
-                  </div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Integración OEM / Binario Nativo</h3>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
-                    Diseñado para fabricantes de seguridad y plataformas EDR/XDR (como CrowdStrike Falcon). Se vincula como biblioteca dinámica C-ABI (<code style={{ color: '#38bdf8' }}>.so</code> / <code style={{ color: '#38bdf8' }}>.dll</code>) dentro del sensor de endpoint.
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Acoplamiento local en HugePages de 2MB
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Purga forzada <code style={{ color: '#38bdf8' }}>SYS_madvise MADV_DONTNEED</code>
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Cero llamadas a APIs externas y cero coste cloud
-                    </li>
-                  </ul>
-                </div>
+      {/* VISTA 1: ESTADO DE LA CUENTA / AUTENTICACIÓN */}
+      {currentView === 'STATUS' && (
+        sessionUser ? (
+          <main style={{ maxWidth: '800px', margin: '60px auto', padding: '0 20px' }}>
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '40px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+              <div style={{ width: '64px', height: '64px', background: '#0369a1', border: '2px solid #38bdf8', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', marginBottom: '20px' }}>
+                ⚖️
               </div>
 
-              {/* TIPO 2: ISV & WORKFLOWS */}
-              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ background: '#030712', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>TIPO 02 · ISV & NODOS</span>
-                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Workflow Ready</span>
-                  </div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Nodo Verificado & API Gateway</h3>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
-                    Integración mediante nodos en plataformas de automatización (como el catálogo oficial de <strong>n8n</strong> o LangChain) que enrutan el tráfico al gateway perimetral de SAARE.
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Integración directa en pipelines de IA corporativos
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Sanitización determinista ex-ante de prompts
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#38bdf8' }}>✔</span> Emisión continua de logs estructurados de conformidad
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* TIPO 3: CONSULTOR / AUDITOR */}
-              <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #030712 100%)', border: '1px solid #0284c7', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px' }}>TIPO 03 · CONSULTOR</span>
-                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Asiento Único</span>
-                  </div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Asiento de Consultoría & Auditoría</h3>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
-                    Licencia profesional individual para auditores, despachos periciales y CISOs. Permite conectarse en tiempo real a los flujos de inferencia de empleados bajo delegación consentida.
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#34d399' }}>✔</span> Delegación mutua mediante Handshake Token
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#34d399' }}>✔</span> Evidencias probatorias SHA-256 para justificar subvenciones
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{ color: '#34d399' }}>✔</span> Certificación técnica continua ISO/IEC 42001
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* PROTOCOLO AUDITOR <-> EMPLEADO */}
-          <section id="flujo-delegacion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #080d1a 100%)', border: '1px solid #1e293b', borderRadius: '18px', padding: '36px', borderLeft: '4px solid #38bdf8' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '900', padding: '4px 10px', borderRadius: '4px' }}>MECANISMO DELEGADO L7</span>
-                <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: 0 }}>
-                  ¿Cómo Supervisa el Asiento de Auditor a los Empleados?
-                </h2>
-              </div>
-              <p style={{ color: '#94a3b8', fontSize: '14.5px', lineHeight: '1.6', margin: '0 0 26px 0' }}>
-                El auditor no monitoriza indiscriminadamente el equipo del trabajador. La supervisión opera bajo un protocolo criptográfico de <strong>delegación explícita</strong>:
+              <h2 style={{ fontSize: '1.8rem', fontWeight: '900', margin: '0 0 12px 0' }}>
+                Consola de Auditoría y Consultoría IA
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '620px', margin: '0 auto 28px auto' }}>
+                Nodo de auditoría activo. Configurado para supervisar flujos delegados de empleados y certificar la trazabilidad técnica bajo norma ISO/IEC 42001 y EU AI Act.
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>1. Consentimiento del Empleado</div>
-                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
-                    El usuario del puesto emite un <em>Handshake Token</em> de autorización temporal que vincula su agente L7 local con el nodo del auditor.
-                  </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #374151', borderRadius: '12px', padding: '20px', maxWidth: '480px', margin: '0 auto 32px auto', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Entorno:</span>
+                  <strong style={{ color: '#f8fafc' }}>{sessionUser.tenantName}</strong>
                 </div>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>2. Intercepción en RAM L7</div>
-                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
-                    El motor intercepta las llamadas LLM en memoria volátil (0.017 ms), ofusca datos regulados (DNI/IBAN) y calcula el sello SHA-256.
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Auditor Titular:</span>
+                  <strong style={{ color: '#38bdf8' }}>{sessionUser.email}</strong>
                 </div>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>3. Dictamen Probatorio</div>
-                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
-                    La consola del auditor recibe el digest inmutable para emitir informes periciales oficiales requeridos por la normativa y los fondos públicos.
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Licencia Asignada:</span>
+                  <span style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '0.75rem' }}>
+                    1 ASIENTO DE CONSULTOR / AUDITOR ACTIVO
+                  </span>
                 </div>
               </div>
-            </div>
-          </section>
 
-          {/* SUBVENCIONES PÚBLICAS & ISO 42001 */}
-          <section id="subvenciones" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '36px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JUSTIFICACIÓN NORMATIVA Y FINANCIERA</span>
-                <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 6px 0' }}>Superación de Auditorías Técnicas de Subvenciones de IA</h2>
-                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>
-                  Los fondos públicos y programas europeos de digitalización exigen trazabilidad técnica demostrable de la seguridad del dato.
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#2563eb', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)' }}>
+                  🚀 Abrir Bóveda Forense
+                </a>
+                
+                <button 
+                  onClick={handleDownloadExtension} 
+                  disabled={downloadingZip}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(2, 132, 199, 0.4)' }}
+                >
+                  {downloadingZip ? '⚙️ Generando SDK...' : '⚡ Generar SAARE-SDK Tokenizado'}
+                </button>
+              </div>
+            </div>
+          </main>
+        ) : (
+          <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+            <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
+                <h1 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 6px 0' }}>S.A.A.R.E. EMBUSINESS SUITE</h1>
+                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+                  {mode === 'reset' ? 'Restablecimiento de Credenciales' : 'Registro Corporativo & Identidad'}
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Trazabilidad Forense Real</div>
-                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Evidencias SHA-256 inmutables por cada llamada al modelo sin almacenar datos personales en claro.</div>
+              {mode !== 'reset' && (
+                <div style={{ display: 'flex', background: '#0b0f19', borderRadius: '8px', padding: '4px', marginBottom: '20px' }}>
+                  <button type="button" onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Crear Perfil</button>
+                  <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Iniciar Sesión</button>
                 </div>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Alineación ISO/IEC 42001</div>
-                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Gestión activa de riesgos de inferencia y control determinista del ciclo de vida del dato.</div>
+              )}
+
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {mode === 'register' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>NOMBRE DE EMPRESA / ORGANIZACIÓN</label>
+                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Mi Despacho Pericial" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                )}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>CORREO CORPORATIVO</label>
+                  <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: auditor@empresa.es" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
-                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Garantía EU AI Act</div>
-                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Mitigación demostrable de inyecciones de prompts y fuga de datos en tiempo de ejecución.</div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '600' }}>
+                      {mode === 'reset' ? 'NUEVA CONTRASEÑA' : 'CONTRASEÑA'}
+                    </label>
+                    {mode === 'login' && (
+                      <button type="button" onClick={() => { setMode('reset'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    )}
+                  </div>
+                  <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+
+                {error && <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>}
+                {successMsg && <div style={{ padding: '10px', background: '#064e3b', border: '1px solid #10b981', borderRadius: '8px', color: '#a7f3d0', fontSize: '0.85rem', textAlign: 'center' }}>{successMsg}</div>}
+
+                <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px' }}>
+                  {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Auditor' : (mode === 'reset' ? '🔑 Restablecer Contraseña' : '🔒 Iniciar Sesión'))}
+                </button>
+
+                {mode === 'reset' && (
+                  <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px', textAlign: 'center' }}>
+                    ← Volver a Iniciar Sesión
+                  </button>
+                )}
+              </form>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* VISTA 2: LANDING PAGE DE ALTA DENSIDAD TÉCNICA E INFORMATIVA */}
+      {currentView === 'LANDING' && (
+        <main>
+          {/* HERO PRINCIPAL */}
+          <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '60px 20px 40px 20px', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '11.5px', fontWeight: 'bold', padding: '6px 14px', borderRadius: '20px', marginBottom: '20px' }}>
+              🛡️ AUDITORÍA CONTINUA & SEGURIDAD DETERMINISTA EN CAPA 7
+            </div>
+            <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.15, margin: '0 auto 16px auto', maxWidth: '980px', letterSpacing: '-1px' }}>
+              Gobernanza de Modelos de IA, Filtrado en Memoria y Trazabilidad Forense
+            </h1>
+            <p style={{ color: '#94a3b8', fontSize: '15.5px', lineHeight: 1.6, margin: '0 auto 30px auto', maxWidth: '840px' }}>
+              Motor de desacople determinista en tiempo de ejecución. Neutraliza fugas de PII en memoria volátil antes de la inferencia y genera evidencias criptográficas inmutables SHA-256 para el cumplimiento de <strong>ISO/IEC 42001</strong>, el <strong>EU AI Act</strong> y la <strong>justificación de subvenciones públicas</strong>.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '20px' }}>
+              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', padding: '14px 32px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 25px rgba(2, 132, 199, 0.35)', textTransform: 'uppercase' }}>
+                ⚡ PROBAR SANDBOX DE EVALUACIÓN (7 DÍAS)
+              </button>
+              <button onClick={() => { setCurrentView('STATUS'); setMode('register'); }} style={{ background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', padding: '14px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>
+                Registrar Asiento de Auditor
+              </button>
+            </div>
+          </section>
+
+          {/* ARQUITECTURA DE DESPLIEGUE (3 VECTORES) */}
+          <section id="modelos-despliegue" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ display: 'inline-block', color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
+                MATRIZ DE INTEGRACIÓN TÉCNICA
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>Tres Vectores de Despliegue en Producción</h2>
+              <p style={{ color: '#94a3b8', fontSize: '14px', margin: '8px auto 0 auto', maxWidth: '680px' }}>
+                Desde bibliotecas binarias compiladas para fabricantes de EDR hasta asientos profesionales para peritos y consultores de cumplimiento.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+              {/* Despliegue 1: OEM Binario */}
+              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '14px', padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <span style={{ background: '#1e293b', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px', border: '1px solid #334155' }}>VECTOR 01 · OEM SENSOR</span>
+                    <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold' }}>0.017 ms RAM</span>
+                  </div>
+                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: '0 0 10px 0' }}>OEM Nativo (In-Process C-ABI)</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+                    Diseñado para fabricantes de seguridad y plataformas EDR/XDR (p. ej. CrowdStrike Falcon). Enlace directo como biblioteca compartida (<code style={{ color: '#38bdf8' }}>.so</code> / <code style={{ color: '#38bdf8' }}>.dll</code>) dentro del sensor.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '12.5px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li>✔ Acoplamiento en memoria RAM mediante HugePages</li>
+                    <li>✔ Purga determinista con <code style={{ color: '#38bdf8' }}>SYS_madvise MADV_DONTNEED</code></li>
+                    <li>✔ Cero consumo de llamadas externas y latencia casi nula</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Despliegue 2: ISV & Nodos */}
+              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '14px', padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <span style={{ background: '#1e293b', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px', border: '1px solid #334155' }}>VECTOR 02 · ISV & NODOS</span>
+                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Workflow Ready</span>
+                  </div>
+                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: '0 0 10px 0' }}>Nodo Verificado & API Middleware</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+                    Integración para desarrolladores en pipelines de orquestación (p. ej. catálogo de <strong>n8n</strong>, LangChain y SDKs TypeScript/Python) redirigiendo inferencias antes del proveedor LLM.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '12.5px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li>✔ Integración como nodo en flujos automatizados de n8n</li>
+                    <li>✔ Redacción de PII al vuelo vía cabeceras HTTP</li>
+                    <li>✔ Trazabilidad y verificación ex-ante en gateway edge</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Despliegue 3: Asiento Auditor */}
+              <div style={{ background: 'linear-gradient(180deg, #0f172a 0%, #090d16 100%)', border: '1px solid #0284c7', borderRadius: '14px', padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px' }}>VECTOR 03 · CONSULTOR</span>
+                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Asiento Único</span>
+                  </div>
+                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: '0 0 10px 0' }}>Asiento de Consultoría & Auditoría</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+                    Licencia profesional individual para auditores ISO/IEC 42001, CISOs y peritos judiciales. Permite auditar en tiempo real el tráfico de empleados bajo delegación consentida.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '12.5px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li>✔ Delegación mutua con Handshake Token de consentimiento</li>
+                    <li>✔ Generación de dictámenes periciales SHA-256</li>
+                    <li>✔ Certificación de seguridad para subvenciones y ayudas públicas</li>
+                  </ul>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* COMPARATIVA TÉCNICA: PROXY CLOUD VS SAARE L7 */}
-          <section id="comparativa-tecnica" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          {/* PROTOCOLO DE DELEGACIÓN CRIPTOGRÁFICA */}
+          <section id="flujo-delegacion" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
+            <div style={{ background: 'linear-gradient(180deg, #0f172a 0%, #090d16 100%)', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', borderLeft: '4px solid #38bdf8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '900', padding: '4px 8px', borderRadius: '4px' }}>MECANISMO DELEGADO L7</span>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                  ¿Cómo Supervisa el Asiento de Auditor a los Empleados?
+                </h2>
+              </div>
+              <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+                El auditor no monitoriza indiscriminadamente la máquina. La inspección opera bajo un protocolo criptográfico de <strong>delegación explícita</strong>:
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                <div style={{ background: '#020617', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>1. Consentimiento del Empleado</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>
+                    El usuario emite un <em>Handshake Token</em> de autorización temporal que vincula su navegador con el nodo pericial del auditor.
+                  </div>
+                </div>
+                <div style={{ background: '#020617', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>2. Intercepción en RAM L7</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>
+                    El motor intercepta la llamada LLM, redacta automáticamente los datos regulados (DNI/IBAN) y calcula el sello criptográfico en 1.16 ms.
+                  </div>
+                </div>
+                <div style={{ background: '#020617', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>3. Dictamen Probatorio</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>
+                    La consola del auditor recibe el digest inmutable para emitir informes oficiales de cumplimiento sin almacenar texto plano de los empleados.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* COMPARATIVA TÉCNICA: PROXY CLOUD VS MOTOR L7 */}
+          <section id="comparativa-tecnica" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase' }}>
                 ARQUITECTURA DE DESACOPLE
               </div>
-              <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: '900', margin: '10px 0 8px 0', letterSpacing: '-0.5px' }}>
+              <h2 style={{ color: '#ffffff', fontSize: '26px', fontWeight: '900', margin: '8px 0' }}>
                 ¿Por qué un Interceptor L7 en Memoria y no un Proxy en la Nube?
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '14px', maxWidth: '680px', margin: '0 auto' }}>
+              <p style={{ color: '#94a3b8', fontSize: '13.5px', maxWidth: '680px', margin: '0 auto' }}>
                 Las soluciones basadas en túneles SaaS intermedios añaden fricción de red y riesgos de retención de datos. SAARE ejecuta el filtrado determinista en el origen.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '22px' }}>
-              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'inline-block', background: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+              <div style={{ background: '#0b1120', border: '1px solid #1e293b', borderRadius: '14px', padding: '24px' }}>
+                <div style={{ display: 'inline-block', background: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '11px', fontWeight: '800', padding: '3px 10px', borderRadius: '6px', marginBottom: '14px' }}>
                   GATEWAYS CONVENCIONALES EN CLOUD
                 </div>
-                <h3 style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '700', margin: '0 0 14px 0' }}>Sobrecarga de Red y Retención de Texto</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#94a3b8' }}>
+                <h3 style={{ color: '#f1f5f9', fontSize: '17px', fontWeight: '700', margin: '0 0 12px 0' }}>Sobrecarga de Red y Retención de Texto</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px', color: '#94a3b8' }}>
                   <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✕</span>
                     <span><strong>Latencia acumulada (150–400 ms):</strong> Redirección de paquetes a centros de datos externos.</span>
@@ -969,12 +929,12 @@ exit /b 0`;
                 </ul>
               </div>
 
-              <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #030712 100%)', border: '1px solid #0284c7', borderRadius: '16px', padding: '28px', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
-                <div style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', marginBottom: '16px' }}>
+              <div style={{ background: 'linear-gradient(180deg, #0f172a 0%, #090d16 100%)', border: '1px solid #0284c7', borderRadius: '14px', padding: '24px', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
+                <div style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '11px', fontWeight: '800', padding: '3px 10px', borderRadius: '6px', marginBottom: '14px' }}>
                   MOTOR DETERMINISTA SAARE L7
                 </div>
-                <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '700', margin: '0 0 14px 0' }}>Intercepción Local en Memoria Volátil</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#cbd5e1' }}>
+                <h3 style={{ color: '#ffffff', fontSize: '17px', fontWeight: '700', margin: '0 0 12px 0' }}>Intercepción Local en Memoria Volátil</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px', color: '#cbd5e1' }}>
                   <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓</span>
                     <span><strong>Latencia de 0.017 ms a 1.16 ms:</strong> Intercepción en memoria volátil en el ciclo de ejecución local.</span>
@@ -992,30 +952,37 @@ exit /b 0`;
             </div>
           </section>
 
-          {/* CONTRATACIÓN DE 1 ASIENTO DE AUDITOR */}
-          <section id="contratacion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '20px', padding: '40px', maxWidth: '640px', margin: '0 auto', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
-              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>CONTRATACIÓN PROFESIONAL</span>
-              <h2 style={{ color: '#fff', fontSize: '28px', fontWeight: '800', margin: '8px 0 12px 0', letterSpacing: '-0.5px' }}>1 Asiento de Consultoría / Auditoría IA</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14.5px', lineHeight: '1.5', margin: '0 0 26px 0' }}>
-                Acceso completo a la Bóveda Forense, motor de intercepción L7, recepción de flujos delegados de empleados y emisión de dictámenes periciales SHA-256.
-              </p>
-
-              <div style={{ background: '#030712', border: '1px solid #334155', borderRadius: '14px', padding: '24px', marginBottom: '26px' }}>
-                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>IMPORTE DE LICENCIA AUDITOR</div>
-                <div style={{ color: '#fff', fontSize: '36px', fontWeight: '900', margin: '6px 0' }}>{AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 'normal' }}>/ mes</span></div>
-                <div style={{ color: '#34d399', fontSize: '12.5px', fontWeight: 'bold' }}>✔ Incluye enganches ilimitados a perfiles empleado bajo autorización previa</div>
+          {/* JUSTIFICACIÓN DE SUBVENCIONES & CUMPLIMIENTO */}
+          <section id="subvenciones" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0b1120', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' }}>JUSTIFICACIÓN NORMATIVA Y FINANCIERA</span>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0' }}>Superación de Auditorías Técnicas de Subvenciones de IA</h2>
+                <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>
+                  Los fondos públicos y programas europeos de digitalización exigen trazabilidad técnica demostrable de la seguridad del dato.
+                </p>
               </div>
 
-              <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '800', fontSize: '15px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(2, 132, 199, 0.35)' }}>
-                CONTRATAR 1 ASIENTO DE AUDITOR ↗
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                <div style={{ background: '#020617', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '13px', marginBottom: '6px' }}>Trazabilidad Forense Real</div>
+                  <div style={{ color: '#64748b', fontSize: '12px', lineHeight: '1.4' }}>Evidencias SHA-256 inmutables por cada llamada al modelo sin almacenar datos personales en claro.</div>
+                </div>
+                <div style={{ background: '#020617', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '13px', marginBottom: '6px' }}>Alineación ISO/IEC 42001</div>
+                  <div style={{ color: '#64748b', fontSize: '12px', lineHeight: '1.4' }}>Gestión activa de riesgos de inferencia y control determinista del ciclo de vida del dato.</div>
+                </div>
+                <div style={{ background: '#020617', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '13px', marginBottom: '6px' }}>Garantía EU AI Act</div>
+                  <div style={{ color: '#64748b', fontSize: '12px', lineHeight: '1.4' }}>Mitigación demostrable de inyecciones de prompts y fuga de datos en tiempo de ejecución.</div>
+                </div>
+              </div>
             </div>
           </section>
 
-          {/* CERTIFICACIÓN DE INTEGRIDAD */}
-          <section id="integridad" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+          {/* CERTIFICACIÓN DE INTEGRIDAD REGISTRAL SAFE CREATIVE */}
+          <section id="integridad" style={{ maxWidth: '1200px', margin: '20px auto 50px auto', padding: '0 20px' }}>
+            <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #1e293b', paddingBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase' }}>
@@ -1036,7 +1003,7 @@ exit /b 0`;
                 </h3>
               </div>
 
-              <div style={{ background: '#030712', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
+              <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '12px', color: '#94a3b8', marginBottom: '14px', fontFamily: 'monospace' }}>
                   <div>🏛️ AUTORIDAD: <strong style={{ color: '#cbd5e1' }}>Gabinete Jurídico MS3V</strong></div>
                   <div>📜 REGISTRO: <strong style={{ color: '#38bdf8' }}>Safe Creative 2607076315021</strong></div>
@@ -1050,7 +1017,7 @@ exit /b 0`;
               </div>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#0f172a', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   📜 Ver Diploma Registral
                 </button>
                 <button type="button" onClick={copyDigitalSignature} style={{ background: copiedSig ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
@@ -1060,21 +1027,43 @@ exit /b 0`;
             </div>
           </section>
 
-          {/* SNIPPETS DE INTEGRACIÓN */}
-          <section id="integracion" style={{ maxWidth: '1200px', margin: '0 auto 70px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '32px' }}>
+          {/* SNIPPETS DE INTEGRACIÓN MULTILENGUAJE */}
+          <section id="integracion" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>Integración Determinista L7 (SAARE-SDK)</h3>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>Integración Determinista (SAARE-SDK)</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setActiveCodeTab('nodejs')} style={{ background: activeCodeTab === 'nodejs' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>nodejs</button>
-                  <button onClick={() => setActiveCodeTab('python')} style={{ background: activeCodeTab === 'python' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>python</button>
-                  <button onClick={() => setActiveCodeTab('curl')} style={{ background: activeCodeTab === 'curl' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>curl</button>
+                  <button onClick={() => setActiveCodeTab('nodejs')} style={{ background: activeCodeTab === 'nodejs' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Node.js</button>
+                  <button onClick={() => setActiveCodeTab('python')} style={{ background: activeCodeTab === 'python' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Python</button>
+                  <button onClick={() => setActiveCodeTab('curl')} style={{ background: activeCodeTab === 'curl' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>cURL</button>
+                  <button onClick={() => setActiveCodeTab('cabi')} style={{ background: activeCodeTab === 'cabi' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>C-ABI (OEM)</button>
                 </div>
               </div>
 
-              <pre style={{ background: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', color: '#38bdf8', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto' }}>
+              <pre style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '16px', color: '#38bdf8', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto' }}>
                 {codeSnippets[activeCodeTab]}
               </pre>
+            </div>
+          </section>
+
+          {/* CONTRATACIÓN DEL ASIENTO DE AUDITOR */}
+          <section id="contratacion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px', maxWidth: '640px', margin: '0 auto', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
+              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>CONTRATACIÓN PROFESIONAL</span>
+              <h2 style={{ color: '#fff', fontSize: '26px', fontWeight: '800', margin: '8px 0 12px 0' }}>1 Asiento de Consultoría / Auditoría IA</h2>
+              <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.5', margin: '0 0 24px 0' }}>
+                Acceso completo a la Bóveda Forense, motor de intercepción L7, recepción de flujos delegados de empleados y generación de dictámenes periciales SHA-256.
+              </p>
+
+              <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>IMPORTE DE LICENCIA AUDITOR</div>
+                <div style={{ color: '#fff', fontSize: '32px', fontWeight: '900', margin: '6px 0' }}>{AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 'normal' }}>/ mes</span></div>
+                <div style={{ color: '#34d399', fontSize: '12px', fontWeight: 'bold' }}>✔ Incluye enganches ilimitados a perfiles empleado bajo autorización previa</div>
+              </div>
+
+              <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '15px', cursor: 'pointer', boxShadow: '0 10px 20px rgba(2, 132, 199, 0.3)' }}>
+                CONTRATAR 1 ASIENTO DE AUDITOR ↗
+              </button>
             </div>
           </section>
         </main>
