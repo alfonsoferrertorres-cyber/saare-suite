@@ -15,12 +15,13 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [mode, setMode] = useState('register');
+  const [mode, setMode] = useState('register'); // 'register' | 'login' | 'reset'
   const [currentView, setCurrentView] = useState('STATUS');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
   
@@ -101,12 +102,19 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
-    const endpoint = mode === 'login' ? `${API_BASE}/auth/login` : `${API_BASE}/auth/register`;
-    const payload = mode === 'login' 
-      ? { email, password, source: 'suite' }
-      : { email, password, tenantName: companyName, source: 'suite' };
+    let endpoint = `${API_BASE}/auth/register`;
+    let payload = { email, password, tenantName: companyName, source: 'suite' };
+
+    if (mode === 'login') {
+      endpoint = `${API_BASE}/auth/login`;
+      payload = { email, password, source: 'suite' };
+    } else if (mode === 'reset') {
+      endpoint = `${API_BASE}/auth/reset`;
+      payload = { email, password };
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -117,12 +125,18 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok && data.status === 'SUCCESS') {
-        const userData = { ...data.user };
-        delete userData.password;
-        
-        localStorage.setItem('saare_suite_user', JSON.stringify(userData));
-        localStorage.setItem('saare_user', JSON.stringify(userData));
-        setSessionUser(userData);
+        if (mode === 'reset') {
+          setSuccessMsg(data.message || "Contraseña restablecida con éxito. Inicia sesión.");
+          setMode('login');
+          setPassword('');
+        } else {
+          const userData = { ...data.user };
+          delete userData.password;
+          
+          localStorage.setItem('saare_suite_user', JSON.stringify(userData));
+          localStorage.setItem('saare_user', JSON.stringify(userData));
+          setSessionUser(userData);
+        }
       } else {
         setError(data.error || "Error al procesar la solicitud.");
       }
@@ -612,7 +626,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     <div class="header-badge">S</div>
     <h3>S.A.A.R.E. L7 Agent</h3>
   </div>
-  <div id="status-indicator" class="status checking">⏳ SINCRONIZANDO CON VAULT...</div>
+  <div id="status-indicator" class="status checking">SINCRONIZANDO CON VAULT...</div>
   <div class="card">
     <div class="row"><span>Organización:</span><strong id="tenant-name">${targetTenant}</strong></div>
     <div class="row"><span>Identidad:</span><strong id="user-account" style="color: #38bdf8;">${targetEmail}</strong></div>
@@ -631,13 +645,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const res = await fetch(\`\${API_BASE}/custom-rules\`);
     if (res.ok) {
       statusEl.className = "status connected";
-      statusEl.innerText = "🟢 CONTROL-PLANE VINCULADO";
+      statusEl.innerText = "[OK] CONTROL-PLANE VINCULADO";
     } else {
       throw new Error();
     }
   } catch {
     statusEl.className = "status disconnected";
-    statusEl.innerText = "🔴 ERROR DE ENLACE CON BÓVEDA";
+    statusEl.innerText = "[ERROR] ERROR DE ENLACE CON BÓVEDA";
   }
 });`;
       zip.file("popup.js", popupJs);
@@ -711,13 +725,17 @@ exit /b 0`;
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
             <h1 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 6px 0' }}>S.A.A.R.E. EMBUSINESS SUITE</h1>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Registro Corporativo & Identidad</p>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+              {mode === 'reset' ? 'Restablecimiento de Credenciales' : 'Registro Corporativo & Identidad'}
+            </p>
           </div>
 
-          <div style={{ display: 'flex', background: '#0b0f19', borderRadius: '8px', padding: '4px', marginBottom: '20px' }}>
-            <button type="button" onClick={() => { setMode('register'); setError(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Crear Perfil</button>
-            <button type="button" onClick={() => { setMode('login'); setError(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Iniciar Sesión</button>
-          </div>
+          {mode !== 'reset' && (
+            <div style={{ display: 'flex', background: '#0b0f19', borderRadius: '8px', padding: '4px', marginBottom: '20px' }}>
+              <button type="button" onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Crear Perfil</button>
+              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Iniciar Sesión</button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {mode === 'register' && (
@@ -731,13 +749,31 @@ exit /b 0`;
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: admin@empresa.es" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>CONTRASEÑA</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '600' }}>
+                  {mode === 'reset' ? 'NUEVA CONTRASEÑA' : 'CONTRASEÑA'}
+                </label>
+                {mode === 'login' && (
+                  <button type="button" onClick={() => { setMode('reset'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                )}
+              </div>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
             </div>
+
             {error && <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>}
+            {successMsg && <div style={{ padding: '10px', background: '#064e3b', border: '1px solid #10b981', borderRadius: '8px', color: '#a7f3d0', fontSize: '0.85rem', textAlign: 'center' }}>{successMsg}</div>}
+
             <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px' }}>
-              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Organización' : '🔒 Iniciar Sesión')}
+              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Organización' : (mode === 'reset' ? '🔑 Restablecer Contraseña' : '🔒 Iniciar Sesión'))}
             </button>
+
+            {mode === 'reset' && (
+              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px', textAlign: 'center' }}>
+                ← Volver a Iniciar Sesión
+              </button>
+            )}
           </form>
         </div>
       </div>

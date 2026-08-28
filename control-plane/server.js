@@ -1,6 +1,6 @@
 /**
  * S.A.A.R.E. Control-Plane L7 Core Gateway
- * Cloudflare Worker Backend v5.3.0 (Hardened Auth, Brute-Force Rate Limiting & Salted Hashes)
+ * Cloudflare Worker Backend v5.4.0 (Hardened Auth, Reset Password & KV Vault)
  */
 
 function isOriginAllowed(origin) {
@@ -58,7 +58,7 @@ async function computeLegacySha256(text) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 🛡️ CONTROL DE FUERZA BRUTA (Rate Limiting: Máx 5 intentos / 5 minutos por IP)
+// Control de intentos fallidos
 async function checkLoginRateLimit(kv, clientIp) {
   const key = `ratelimit:login:${clientIp}`;
   const attempts = parseInt(await kv.get(key) || "0", 10);
@@ -107,7 +107,7 @@ export default {
 
         const existing = await kv.get(`user:${cleanEmail}`);
         if (existing) {
-          return jsonResponse({ error: "El correo ya se encuentra registrado. Inicia sesión." }, 409, requestOrigin);
+          return jsonResponse({ error: "El correo ya se encuentra registrado. Inicia sesión o recupera tu contraseña." }, 409, requestOrigin);
         }
 
         const salt = generateSalt();
@@ -138,7 +138,7 @@ export default {
         }, 201, requestOrigin);
       }
 
-      // 2. ENDPOINT: INICIAR SESIÓN (Hardened & Rate-Limited)
+      // 2. ENDPOINT: INICIAR SESIÓN
       if (path === "/api/v1/auth/login" && method === "POST") {
         const isAllowed = await checkLoginRateLimit(kv, clientIp);
         if (!isAllowed) {
@@ -168,7 +168,6 @@ export default {
           const computed = await computeSaltedHash(password, userRecord.salt);
           passwordMatches = (computed === userRecord.passwordHash);
         } else {
-          // Migración transparente de hashes heredados a Salted Hashes
           const legacy = await computeLegacySha256(password);
           if (legacy === userRecord.passwordHash) {
             passwordMatches = true;
@@ -183,7 +182,6 @@ export default {
           return jsonResponse({ error: "Contraseña incorrecta." }, 401, requestOrigin);
         }
 
-        // Login correcto: resetear contador de rate limit
         await clearLoginRateLimit(kv, clientIp);
 
         const token = `saare_jwt_${crypto.randomUUID()}`;
@@ -199,7 +197,37 @@ export default {
         }, 200, requestOrigin);
       }
 
-      // 3. TELEMETRÍA Y CAPTURA L7 (/api/v1/runs)
+      // 3. ENDPOINT: RECUPERAR / RESTABLECER CONTRASEÑA
+      if (path === "/api/v1/auth/reset" && method === "POST") {
+        const body = await request.json();
+        const cleanEmail = sanitizeEmail(body.email);
+        const newPassword = body.password || "";
+
+        if (!cleanEmail || !newPassword || newPassword.length < 6) {
+          return jsonResponse({ error: "Introduce un correo válido y una nueva contraseña (mínimo 6 caracteres)." }, 400, requestOrigin);
+        }
+
+        const raw = await kv.get(`user:${cleanEmail}`);
+        if (!raw) {
+          return jsonResponse({ error: "No existe ninguna cuenta registrada con este correo." }, 404, requestOrigin);
+        }
+
+        const userRecord = JSON.parse(raw);
+        const salt = generateSalt();
+        userRecord.salt = salt;
+        userRecord.passwordHash = await computeSaltedHash(newPassword, salt);
+        userRecord.updatedAt = new Date().toISOString();
+
+        await kv.put(`user:${cleanEmail}`, JSON.stringify(userRecord));
+        await clearLoginRateLimit(kv, clientIp);
+
+        return jsonResponse({
+          status: "SUCCESS",
+          message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva clave."
+        }, 200, requestOrigin);
+      }
+
+      // 4. TELEMETRÍA Y CAPTURA L7 (/api/v1/runs)
       if (path === "/api/v1/runs") {
         if (method === "GET") {
           const user = sanitizeEmail(url.searchParams.get("user") || "");
@@ -248,7 +276,7 @@ export default {
         }
       }
 
-      // 4. DIRECTIVAS Y REGLAS DINÁMICAS (/api/v1/custom-rules)
+      // 5. DIRECTIVAS Y REGLAS DINÁMICAS (/api/v1/custom-rules)
       if (path === "/api/v1/custom-rules") {
         const user = sanitizeEmail(url.searchParams.get("user") || "");
 
@@ -267,7 +295,7 @@ export default {
         }
       }
 
-      // 5. STRIPE WEBHOOK
+      // 6. STRIPE WEBHOOK
       if (path === "/api/v1/stripe/webhook" && method === "POST") {
         const event = await request.json();
         if (event.type === "checkout.session.completed") {
@@ -285,7 +313,7 @@ export default {
         return jsonResponse({ status: "IGNORED" }, 200, requestOrigin);
       }
 
-      return jsonResponse({ service: "SAARE L7 API SECURE", status: "ONLINE", version: "5.3.0" }, 200, requestOrigin);
+      return jsonResponse({ service: "SAARE L7 API SECURE", status: "ONLINE", version: "5.4.0" }, 200, requestOrigin);
 
     } catch (error) {
       return jsonResponse({ error: "Internal Server Error", details: error.message }, 500, requestOrigin);
