@@ -3,10 +3,8 @@ import JSZip from 'jszip';
 
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
-// Variables de entorno inyectadas por Vite
 const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
-const PRICE_ANNUAL = parseFloat(import.meta.env.VITE_PRICE_ANNUAL || "4.50");
-const PRICE_MONTHLY = parseFloat(import.meta.env.VITE_PRICE_MONTHLY || "9.00");
+const AUDITOR_PLAN_PRICE = "149.00";
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState(() => {
@@ -15,7 +13,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [mode, setMode] = useState('register'); // 'register' | 'login' | 'reset'
+  const [mode, setMode] = useState('register');
   const [currentView, setCurrentView] = useState('STATUS');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,15 +27,10 @@ export default function App() {
   const [copiedSig, setCopiedSig] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
-  const [seats, setSeats] = useState(1);
-  const [isAnnual, setIsAnnual] = useState(true);
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
     : 'https://saare-console.pages.dev';
-
-  const pricePerSeat = isAnnual ? PRICE_ANNUAL : PRICE_MONTHLY;
-  const totalFactura = (seats * pricePerSeat * (isAnnual ? 12 : 1)).toFixed(2);
 
   const signedPayload = {
     "CERTIFICADO_FIRMA_DIGITAL": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
@@ -56,9 +49,9 @@ export default function App() {
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_2607076315021',\n    'X-SAARE-Suite': 'ALL_SCENARIOS_ACTIVE'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar crédito: Titular con DNI 48593021X' }]\n});`,
-    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={"X-SAARE-License": "sk_saare_live_2607076315021"}\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar crédito: Titular con DNI 48593021X"}]\n)`,
-    curl: `curl ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_2607076315021" \\\n  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Auditar DNI 48593021X"}]}'`
+    nodejs: `import OpenAI from 'openai';\n\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Suite': 'AUDIT_REALTIME_HOOK'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar crédito: Titular con DNI 48593021X' }]\n});`,
+    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar crédito: Titular con DNI 48593021X"}]\n)`,
+    curl: `curl ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Auditar DNI 48593021X"}]}'`
   };
 
   useEffect(() => {
@@ -106,7 +99,7 @@ export default function App() {
     setLoading(true);
 
     let endpoint = `${API_BASE}/auth/register`;
-    let payload = { email, password, tenantName: companyName, source: 'suite' };
+    let payload = { email, password, tenantName: companyName, source: 'suite', role: 'AUDITOR' };
 
     if (mode === 'login') {
       endpoint = `${API_BASE}/auth/login`;
@@ -155,25 +148,21 @@ export default function App() {
     setPassword('');
   };
 
-  // GENERADOR DINÁMICO DEL PAQUETE SAARE-SDK / AGENTE L7 v8.1.0
   const handleDownloadExtension = async () => {
     try {
       setDownloadingZip(true);
       const zip = new JSZip();
 
-      const targetEmail = (sessionUser?.email || "admin@empresa.es").toLowerCase().trim();
-      const targetTenant = sessionUser?.tenantName || "ORGANIZACION";
-      const targetToken = sessionUser?.token || "sk_live_managed_identity";
+      const targetEmail = (sessionUser?.email || "auditor@empresa.es").toLowerCase().trim();
+      const targetTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITOR";
+      const targetToken = sessionUser?.token || "sk_live_auditor_managed_identity";
 
-      // 1. manifest.json
       const manifestContent = JSON.stringify({
         "manifest_version": 3,
-        "name": "SAARE L7 Governance Agent",
+        "name": "SAARE L7 Governance Agent (Auditor Edition)",
         "version": "8.1.0",
-        "description": "Universal Compliance & Dynamic Rules Engine for GenAI",
-        "background": {
-          "service_worker": "background.js"
-        },
+        "description": "Universal Compliance & Real-Time Audit Engine for GenAI",
+        "background": { "service_worker": "background.js" },
         "content_scripts": [
           {
             "matches": [
@@ -207,7 +196,6 @@ export default function App() {
       }, null, 2);
       zip.file("manifest.json", manifestContent);
 
-      // 2. inject.js (v8.1.0 - Extracción Posicional inner[0][0])
       const injectContent = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.1.0 */
 (function() {
   const DLP = {
@@ -232,10 +220,8 @@ export default function App() {
         return true;
       }
     }
-    if (bodyStr) {
-      if (bodyStr.startsWith("trace=Error:") || bodyStr.includes("at Object.") || bodyStr.includes("at https://")) {
-        return true;
-      }
+    if (bodyStr && (bodyStr.startsWith("trace=Error:") || bodyStr.includes("at Object.") || bodyStr.includes("at https://"))) {
+      return true;
     }
     return false;
   }
@@ -255,67 +241,38 @@ export default function App() {
     if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
       try { return new TextDecoder("utf-8").decode(body); } catch { return ""; }
     }
-    if (typeof body === "string") {
-      return body;
-    }
+    if (typeof body === "string") return body;
     try { return JSON.stringify(body); } catch { return String(body); }
   }
 
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
-
     if (rawText.includes("f.req")) {
       let fReqValue = "";
       try {
         const params = new URLSearchParams(rawText);
         fReqValue = params.get("f.req") || "";
       } catch {}
-
       if (!fReqValue) {
         const match = rawText.match(/(?:^|&)f\\.req=([^&]+)/);
         if (match) {
           try { fReqValue = decodeURIComponent(match[1].replace(/\\+/g, " ")); } catch { fReqValue = match[1]; }
         }
       }
-
       if (fReqValue) {
         try {
           const outer = JSON.parse(fReqValue);
           if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
-            try {
-              const inner = JSON.parse(outer[1]);
-              if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
-                const prompt = inner[0][0];
-                if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
-                  return prompt.trim();
-                }
-              }
-            } catch {}
-          }
-          if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
-            for (const batch of outer) {
-              if (Array.isArray(batch)) {
-                for (const call of batch) {
-                  if (Array.isArray(call) && call.length >= 2 && typeof call[1] === "string") {
-                    try {
-                      const inner = JSON.parse(call[1]);
-                      if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
-                        const prompt = inner[0][0];
-                        if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
-                          return prompt.trim();
-                        }
-                      }
-                    } catch {}
-                  }
-                }
-              }
+            const inner = JSON.parse(outer[1]);
+            if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
+              const prompt = inner[0][0];
+              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) return prompt.trim();
             }
           }
         } catch {}
       }
       return "";
     }
-
     try {
       const json = JSON.parse(rawText);
       if (json.messages && Array.isArray(json.messages)) {
@@ -326,7 +283,6 @@ export default function App() {
       if (json.prompt) return json.prompt;
       if (json.input) return json.input;
     } catch {}
-
     return "";
   }
 
@@ -436,10 +392,7 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      // 3. content.js
-      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v8.1.0
-console.log("[SAARE L7 Engine] Interceptor Activo en Memoria");
-
+      const contentJsCode = `// SAARE L7 AUDITOR BRIDGE v8.1.0
 const injectScript = document.createElement("script");
 injectScript.src = chrome.runtime.getURL("inject.js");
 injectScript.onload = function() { this.remove(); };
@@ -465,7 +418,7 @@ function showModal(text, violationInfo) {
 
   banner.innerHTML = \`
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <span style="font-weight:900; font-size:0.85rem; color:#ef4444;">🛡️ S.A.A.R.E. RUNTIME INTERCEPTOR (L7)</span>
+      <span style="font-weight:900; font-size:0.85rem; color:#ef4444;">🛡️ S.A.A.R.E. AUDIT GATEWAY (L7)</span>
       <span style="background:#dc2626; color:#fff; font-size:0.7rem; font-weight:900; padding:3px 8px; border-radius:4px;">BLOQUEADO</span>
     </div>
     <p style="font-size:0.82rem; margin:0 0 8px 0; color:#cbd5e1; line-height:1.4;">
@@ -502,18 +455,11 @@ function sendEvidenceToBackground(auditData) {
     }
   };
 
-  if (auditData.verdict === "RECHAZADO") {
-    showModal(text, auditData);
-  }
+  if (auditData.verdict === "RECHAZADO") showModal(text, auditData);
 
   if (typeof chrome !== "undefined" && chrome.runtime?.id) {
     try {
-      chrome.runtime.sendMessage({
-        type: "SAARE_LOG_EVENT",
-        payload: payload
-      }, () => {
-        if (chrome.runtime.lastError) {}
-      });
+      chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload }, () => {});
     } catch {}
   }
 }
@@ -525,7 +471,6 @@ window.addEventListener("message", (event) => {
 });`;
       zip.file("content.js", contentJsCode);
 
-      // 4. background.js
       const bgCode = `const WORKER_URL = "${API_BASE}";
 
 async function resolveIdentity(payloadUser) {
@@ -535,7 +480,7 @@ async function resolveIdentity(payloadUser) {
         if (managed?.saare_user_email) {
           return resolve({
             user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "EMPRESA"
+            tenant: managed.saare_tenant_domain || "ORGANIZACION_AUDITOR"
           });
         }
         fallbackLocal();
@@ -557,17 +502,7 @@ async function resolveIdentity(payloadUser) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
-      const enrichedPayload = {
-        ...message.payload,
-        user: user,
-        tenant: tenant
-      };
-
-      chrome.storage.local.get({ saare_logs: [] }, (result) => {
-        const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-        chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
-      });
-
+      const enrichedPayload = { ...message.payload, user: user, tenant: tenant };
       fetch(\`\${WORKER_URL}/runs?user=\${encodeURIComponent(user)}\`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -577,43 +512,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(data => sendResponse({ ok: true, data }))
       .catch(err => sendResponse({ ok: false, error: err.message }));
     });
-
-    return true;
-  }
-
-  if (message?.type === "SAARE_GET_RULES") {
-    fetch(\`\${WORKER_URL}/custom-rules\`)
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, data: [] }));
-
     return true;
   }
 });`;
       zip.file("background.js", bgCode);
 
-      // 5. storage_managed.json (Personalizado con sesión activa)
       const managedJson = JSON.stringify({
         "saare_user_email": targetEmail,
         "saare_tenant_domain": targetTenant,
-        "saare_token": targetToken
+        "saare_token": targetToken,
+        "saare_role": "AUDITOR"
       }, null, 2);
       zip.file("storage_managed.json", managedJson);
 
-      // 6. popup.html & popup.js
       const popupHtml = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <style>
-    body { width: 290px; font-family: system-ui, sans-serif; background-color: #090d16; color: #ffffff; padding: 16px; margin: 0; box-sizing: border-box; }
+    body { width: 300px; font-family: system-ui, sans-serif; background-color: #090d16; color: #ffffff; padding: 16px; margin: 0; box-sizing: border-box; }
     .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .header-badge { background: #d97706; color: #000; font-weight: 900; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .header-badge { background: #0284c7; color: #fff; font-weight: 900; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
     h3 { margin: 0; color: #38bdf8; font-size: 14px; font-weight: 800; }
-    .status { padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 800; text-align: center; margin-bottom: 14px; }
-    .status.connected { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid #10b981; }
-    .status.disconnected { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; }
-    .status.checking { background-color: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .status { padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 800; text-align: center; margin-bottom: 14px; background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid #10b981; }
     .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 11.5px; }
     .row { display: flex; justify-content: space-between; margin-bottom: 6px; color: #94a3b8; }
     .row:last-child { margin-bottom: 0; }
@@ -623,81 +544,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 </head>
 <body>
   <div class="header">
-    <div class="header-badge">S</div>
-    <h3>S.A.A.R.E. L7 Agent</h3>
+    <div class="header-badge">A</div>
+    <h3>S.A.A.R.E. Auditor Engine</h3>
   </div>
-  <div id="status-indicator" class="status checking">SINCRONIZANDO CON VAULT...</div>
+  <div class="status">[OK] NODO AUDITOR VINCULADO</div>
   <div class="card">
-    <div class="row"><span>Organización:</span><strong id="tenant-name">${targetTenant}</strong></div>
-    <div class="row"><span>Identidad:</span><strong id="user-account" style="color: #38bdf8;">${targetEmail}</strong></div>
-    <div class="row"><span>Motor RAM:</span><strong style="color: #34d399;">Stateless L7 Activo</strong></div>
+    <div class="row"><span>Entorno:</span><strong>${targetTenant}</strong></div>
+    <div class="row"><span>Auditor:</span><strong style="color: #38bdf8;">${targetEmail}</strong></div>
+    <div class="row"><span>Modo:</span><strong style="color: #34d399;">Hook Delegado L7</strong></div>
   </div>
-  <div class="footer">Blindaje perimetral activo sobre Gemini, ChatGPT, Claude y DeepSeek.</div>
-  <script src="popup.js"></script>
+  <div class="footer">Sellado de evidencias criptográficas ISO/IEC 42001 activo.</div>
 </body>
 </html>`;
       zip.file("popup.html", popupHtml);
 
-      const popupJs = `const API_BASE = "${API_BASE}";
-document.addEventListener("DOMContentLoaded", async () => {
-  const statusEl = document.getElementById("status-indicator");
-  try {
-    const res = await fetch(\`\${API_BASE}/custom-rules\`);
-    if (res.ok) {
-      statusEl.className = "status connected";
-      statusEl.innerText = "[OK] CONTROL-PLANE VINCULADO";
-    } else {
-      throw new Error();
-    }
-  } catch {
-    statusEl.className = "status disconnected";
-    statusEl.innerText = "[ERROR] ERROR DE ENLACE CON BÓVEDA";
-  }
-});`;
-      zip.file("popup.js", popupJs);
-
-      // 7. install_silent.bat (Inyección directa de credenciales y v8.1.0)
       const customBat = `@echo off
 chcp 65001 >nul
-title S.A.A.R.E. Silent Enterprise Installer L7
-
-echo ===================================================
-echo  Instalando S.A.A.R.E. L7 Gateway para ${targetEmail}...
-echo ===================================================
-
+title S.A.A.R.E. Installer - Auditor Seat
 set "EXTENSION_ID=saaregovernanceid"
 set "TENANT_DOMAIN=${targetTenant}"
 set "USER_EMAIL=${targetEmail}"
-
 set "TARGET_DIR=%LOCALAPPDATA%\\SAARE\\extension"
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 xcopy /Y /E /I "%~dp0*" "%TARGET_DIR%\\" >nul 2>&1
-
 reg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1
 reg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "8.1.0" /f >nul 2>&1
-reg add "HKCU\\Software\\Microsoft\\Edge\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1
-reg add "HKCU\\Software\\Microsoft\\Edge\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "8.1.0" /f >nul 2>&1
-
-reg add "HKCU\\Software\\Policies\\Google\\Chrome\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_tenant_domain" /t REG_SZ /d "%TENANT_DOMAIN%" /f >nul 2>&1
-reg add "HKCU\\Software\\Policies\\Google\\Chrome\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_user_email" /t REG_SZ /d "%USER_EMAIL%" /f >nul 2>&1
-reg add "HKLM\\Software\\Policies\\Google\\Chrome\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_tenant_domain" /t REG_SZ /d "%TENANT_DOMAIN%" /f >nul 2>&1
-reg add "HKLM\\Software\\Policies\\Google\\Chrome\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_user_email" /t REG_SZ /d "%USER_EMAIL%" /f >nul 2>&1
-
-reg add "HKCU\\Software\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_tenant_domain" /t REG_SZ /d "%TENANT_DOMAIN%" /f >nul 2>&1
-reg add "HKCU\\Software\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_user_email" /t REG_SZ /d "%USER_EMAIL%" /f >nul 2>&1
-reg add "HKLM\\Software\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_tenant_domain" /t REG_SZ /d "%TENANT_DOMAIN%" /f >nul 2>&1
-reg add "HKLM\\Software\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\%EXTENSION_ID%\\policy" /v "saare_user_email" /t REG_SZ /d "%USER_EMAIL%" /f >nul 2>&1
-
-echo [OK] Agente L7 desplegado para %USER_EMAIL% (%TENANT_DOMAIN%).
+echo [OK] Asiento de Auditor L7 desplegado para %USER_EMAIL% (%TENANT_DOMAIN%).
 timeout /t 3 >nul
 exit /b 0`;
       zip.file("install_silent.bat", customBat);
 
-      // Disparar descarga en navegador
       const finalBlob = await zip.generateAsync({ type: "blob" });
       const downloadLink = document.createElement("a");
       downloadLink.href = URL.createObjectURL(finalBlob);
-      downloadLink.download = `saare-sdk-${targetTenant.toLowerCase().replace(/\s+/g, '_')}.zip`;
+      downloadLink.download = `saare-auditor-sdk-${targetTenant.toLowerCase().replace(/\s+/g, '_')}.zip`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -716,37 +596,35 @@ exit /b 0`;
     setTimeout(() => setCopiedSig(false), 2500);
   };
 
-  const isScenarioActive = sessionUser?.status === 'ACTIVE';
-
   if (!sessionUser) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0f1d', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '20px' }}>
-        <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+      <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '20px' }}>
+        <div style={{ maxWidth: '440px', width: '100%', background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 6px 0' }}>S.A.A.R.E. EMBUSINESS SUITE</h1>
+            <div style={{ width: '48px', height: '48px', background: '#0284c7', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px', boxShadow: '0 0 20px rgba(2, 132, 199, 0.4)' }}>🛡️</div>
+            <h1 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>S.A.A.R.E. EMBUSINESS SUITE</h1>
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-              {mode === 'reset' ? 'Restablecimiento de Credenciales' : 'Registro Corporativo & Identidad'}
+              {mode === 'reset' ? 'Restablecimiento de Credenciales' : 'Acceso Consultor / Auditor IA'}
             </p>
           </div>
 
           {mode !== 'reset' && (
-            <div style={{ display: 'flex', background: '#0b0f19', borderRadius: '8px', padding: '4px', marginBottom: '20px' }}>
-              <button type="button" onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Crear Perfil</button>
-              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#2563eb' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>Iniciar Sesión</button>
+            <div style={{ display: 'flex', background: '#030712', borderRadius: '8px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
+              <button type="button" onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'register' ? '#0284c7' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s ease' }}>Crear Perfil</button>
+              <button type="button" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: mode === 'login' ? '#0284c7' : 'transparent', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s ease' }}>Iniciar Sesión</button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {mode === 'register' && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>NOMBRE DE EMPRESA / ORGANIZACIÓN</label>
-                <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: saare test" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>NOMBRE DE EMPRESA / DESPACHO AUDITOR</label>
+                <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Consultoría Forense IA" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             )}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>CORREO CORPORATIVO</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: admin@empresa.es" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: '600' }}>CORREO DEL AUDITOR</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: auditor@despacho.es" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -759,14 +637,14 @@ exit /b 0`;
                   </button>
                 )}
               </div>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" style={{ width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
             </div>
 
             {error && <div style={{ padding: '10px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>}
             {successMsg && <div style={{ padding: '10px', background: '#064e3b', border: '1px solid #10b981', borderRadius: '8px', color: '#a7f3d0', fontSize: '0.85rem', textAlign: 'center' }}>{successMsg}</div>}
 
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px' }}>
-              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Organización' : (mode === 'reset' ? '🔑 Restablecer Contraseña' : '🔒 Iniciar Sesión'))}
+            <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)' }}>
+              {loading ? 'Procesando...' : (mode === 'register' ? '🚀 Registrar Asiento de Auditor' : (mode === 'reset' ? '🔑 Restablecer Contraseña' : '🔒 Iniciar Sesión'))}
             </button>
 
             {mode === 'reset' && (
@@ -781,13 +659,13 @@ exit /b 0`;
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {showDiploma && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDiploma(false)}>
           <div style={{ maxWidth: '850px', width: '100%', background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
             <img src="/certificado_integridad.png" alt="Diploma Registral RPI" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
             <div style={{ padding: '14px 20px', background: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>Acreditación RPI-2026-SAARE-0914X · Similitud Delta=0.0024%</span>
+              <span style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>Acreditación Safe Creative Nº 2607076315021 · Validez Probatoria Plena</span>
               <button onClick={() => setShowDiploma(false)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cerrar</button>
             </div>
           </div>
@@ -795,7 +673,7 @@ exit /b 0`;
       )}
 
       {/* HEADER PRINCIPAL */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(9, 13, 22, 0.94)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #1e293b' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(7, 11, 20, 0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b' }}>
         {isOffline && (
           <div style={{ width: '100%', background: '#ef4444', color: '#fff', textAlign: 'center', padding: '6px', fontSize: '12px', fontWeight: 'bold' }}>
             ⚠️ Sin conexión a la Bóveda KV. Reintentando...
@@ -803,100 +681,341 @@ exit /b 0`;
         )}
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: '#d97706', color: '#000', fontWeight: '900', width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>S</div>
+            <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', fontWeight: '900', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', boxShadow: '0 0 14px rgba(2, 132, 199, 0.5)' }}>S</div>
             <div>
               <div style={{ color: '#fff', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                S.A.A.R.E. <span style={{ fontSize: '9px', background: '#1e293b', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', border: '1px solid #334155' }}>ISV ENTERPRISE</span>
+                S.A.A.R.E. <span style={{ fontSize: '9px', background: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', border: '1px solid #1e293b' }}>ISV & OEM GATEWAY</span>
               </div>
-              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase' }}>AI GOVERNANCE & L7 SECURITY GATEWAY</div>
+              <div style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>AI REAL-TIME AUDIT & L7 GOVERNANCE NODE</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '18px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
-            <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ padding: '6px 14px', background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
-              {currentView === 'STATUS' ? '🌐 Ver Landing Comercial' : '📋 Ver Estado de Cuenta'}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
+            <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ padding: '8px 16px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem', transition: 'all 0.2s ease' }}>
+              {currentView === 'STATUS' ? '🌐 Ver Portal General' : '📋 Ver Mi Consola'}
             </button>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-              <strong style={{ color: '#38bdf8' }}>{sessionUser.tenantName}</strong>
-            </span>
-            <button onClick={handleLogout} style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
-              Salir
-            </button>
+            {sessionUser && (
+              <>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  <strong style={{ color: '#38bdf8' }}>{sessionUser.tenantName}</strong>
+                </span>
+                <button onClick={handleLogout} style={{ padding: '8px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
+                  Salir
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
-      {currentView === 'STATUS' && (
-        <main style={{ maxWidth: '800px', margin: '60px auto', padding: '0 20px' }}>
-          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '40px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-            <div style={{ width: '64px', height: '64px', background: '#064e3b', border: '2px solid #059669', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', marginBottom: '20px' }}>
-              ✅
+      {/* VISTA 1: CONSOLA DE AUDITOR */}
+      {currentView === 'STATUS' && sessionUser && (
+        <main style={{ maxWidth: '820px', margin: '60px auto', padding: '0 20px' }}>
+          <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '20px', padding: '44px', textAlign: 'center', boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.7)' }}>
+            <div style={{ width: '68px', height: '68px', background: 'rgba(2, 132, 199, 0.15)', border: '2px solid #38bdf8', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', marginBottom: '20px', boxShadow: '0 0 30px rgba(56, 189, 248, 0.2)' }}>
+              ⚖️
             </div>
 
-            <h2 style={{ fontSize: '1.8rem', fontWeight: '900', margin: '0 0 12px 0' }}>
-              Perfil Corporativo Validado
+            <h2 style={{ fontSize: '1.9rem', fontWeight: '900', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>
+              Consola de Auditoría y Consultoría IA
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '620px', margin: '0 auto 28px auto' }}>
-              Tu identidad y credenciales han sido sincronizadas en Vault KV. Accede a la Bóveda Forense o genera el SDK de inyección L7.
+            <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '640px', margin: '0 auto 30px auto' }}>
+              Nodo de auditoría activo. Configurado para supervisar flujos delegados de empleados y certificar la trazabilidad técnica bajo norma ISO/IEC 42001 y el EU AI Act.
             </p>
 
-            <div style={{ background: '#0b0f19', border: '1px solid #374151', borderRadius: '12px', padding: '20px', maxWidth: '480px', margin: '0 auto 32px auto', textAlign: 'left' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Organización:</span>
+            <div style={{ background: '#030712', border: '1px solid #1e293b', borderRadius: '14px', padding: '22px', maxWidth: '500px', margin: '0 auto 34px auto', textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem' }}>
+                <span style={{ color: '#94a3b8' }}>Entorno:</span>
                 <strong style={{ color: '#f8fafc' }}>{sessionUser.tenantName}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Cuenta CISO / Admin:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem' }}>
+                <span style={{ color: '#94a3b8' }}>Auditor Titular:</span>
                 <strong style={{ color: '#38bdf8' }}>{sessionUser.email}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                <span style={{ color: '#94a3b8' }}>Estado de Cuenta:</span>
-                <span style={{ background: isScenarioActive ? '#dcfce7' : '#fef3c7', color: isScenarioActive ? '#15803d' : '#92400e', border: `1px solid ${isScenarioActive ? '#86efac' : '#fde68a'}`, padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '0.75rem' }}>
-                  {isScenarioActive ? 'ESCENARIO ACTIVADO' : 'PENDIENTE ACTIVAR'}
+                <span style={{ color: '#94a3b8' }}>Licencia Asignada:</span>
+                <span style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8', border: '1px solid #0284c7', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '0.75rem' }}>
+                  1 ASIENTO DE CONSULTOR / AUDITOR ACTIVO
                 </span>
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#2563eb', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)' }}>
-                🚀 Abrir SAARE Console
+              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 30px', background: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 8px 25px rgba(2, 132, 199, 0.4)' }}>
+                🚀 Abrir Bóveda Forense
               </a>
               
-              {/* BOTÓN GENERADOR DINÁMICO DE AGENTE */}
               <button 
                 onClick={handleDownloadExtension} 
                 disabled={downloadingZip}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 30px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer' }}
               >
-                {downloadingZip ? '⚙️ Compilando Agente...' : '⚡ Generar SAARE-SDK Tokenizado'}
+                {downloadingZip ? '⚙️ Generando Nodo...' : '⚡ Descargar Agente de Auditoría'}
               </button>
             </div>
           </div>
         </main>
       )}
 
-      {currentView === 'LANDING' && (
+      {/* VISTA 2: LANDING ESTRUCTURADA */}
+      {(!sessionUser || currentView === 'LANDING') && (
         <main>
-          <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '60px 20px 40px 20px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '11.5px', fontWeight: 'bold', padding: '6px 14px', borderRadius: '20px', marginBottom: '20px' }}>
-              🛡️ SOBERANÍA DIGITAL E INFERENCIA CONFIABLE
+          {/* HERO SECTION */}
+          <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '70px 20px 40px 20px', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '800', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', letterSpacing: '0.5px' }}>
+              🛡️ SEGURIDAD DETERMINISTA EN MEMORIA & AUDITORÍA EN CAPA 7
             </div>
-            <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.15, margin: '0 auto 16px auto', maxWidth: '900px', letterSpacing: '-1px' }}>
-              Gobernanza Técnica e Inmutabilidad Forense L7
+            <h1 style={{ fontSize: '46px', fontWeight: '900', lineHeight: 1.15, margin: '0 auto 18px auto', maxWidth: '980px', letterSpacing: '-1.2px' }}>
+              Gobernanza de Modelos de IA, Filtrado en Memoria y Trazabilidad Forense
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: '15px', lineHeight: 1.6, margin: '0 auto 28px auto', maxWidth: '780px' }}>
-              Middleware perimetral para el blindaje de modelos de lenguaje en RAM, erradicación de fugas PII y trazabilidad criptográfica probatoria SHA-256 e ISO 42001.
+            <p style={{ color: '#94a3b8', fontSize: '16px', lineHeight: 1.6, margin: '0 auto 34px auto', maxWidth: '820px' }}>
+              Middleware determinista en tiempo de ejecución. Neutraliza fugas de PII en memoria volátil antes de la inferencia y emite sellos criptográficos inmutables SHA-256 para cumplir con ISO/IEC 42001, el EU AI Act y justificar subvenciones públicas.
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '30px' }}>
-              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff', border: 'none', padding: '14px 32px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 25px rgba(239, 68, 68, 0.35)', textTransform: 'uppercase' }}>
-                ⚡ PROBAR SANDBOX L7 (7 DÍAS GRATIS)
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
+              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', padding: '16px 36px', borderRadius: '10px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⚡ PROBAR SANDBOX DE EVALUACIÓN (7 DÍAS)
               </button>
             </div>
           </section>
 
-          <section id="integridad" style={{ maxWidth: '1200px', margin: '20px auto 50px auto', padding: '0 20px' }}>
-            <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+          {/* MATRIZ DE DESPLIEGUE TÉCNICO */}
+          <section id="modelos-despliegue" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+              <div style={{ display: 'inline-block', color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+                ARQUITECTURA MULTI-ENTORNO
+              </div>
+              <h2 style={{ fontSize: '30px', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>Tres Modelos de Despliegue Técnico</h2>
+              <p style={{ color: '#94a3b8', fontSize: '14.5px', margin: '8px auto 0 auto', maxWidth: '640px' }}>
+                Desde binarios compilados de bajo nivel para sensores EDR hasta licencias profesionales de consultoría externa.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '22px' }}>
+              {/* TIPO 1: OEM BINARIO */}
+              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span style={{ background: '#030712', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>TIPO 01 · OEM SENSOR</span>
+                    <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold' }}>0.017 ms RAM</span>
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Integración OEM / Binario Nativo</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
+                    Diseñado para fabricantes de seguridad y plataformas EDR/XDR (como CrowdStrike Falcon). Se vincula como biblioteca dinámica C-ABI (<code style={{ color: '#38bdf8' }}>.so</code> / <code style={{ color: '#38bdf8' }}>.dll</code>) dentro del sensor de endpoint.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Acoplamiento local en HugePages de 2MB
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Purga forzada <code style={{ color: '#38bdf8' }}>SYS_madvise MADV_DONTNEED</code>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Cero llamadas a APIs externas y cero coste cloud
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* TIPO 2: ISV & WORKFLOWS */}
+              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span style={{ background: '#030712', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>TIPO 02 · ISV & NODOS</span>
+                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Workflow Ready</span>
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Nodo Verificado & API Gateway</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
+                    Integración mediante nodos en plataformas de automatización (como el catálogo oficial de <strong>n8n</strong> o LangChain) que enrutan el tráfico al gateway perimetral de SAARE.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Integración directa en pipelines de IA corporativos
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Sanitización determinista ex-ante de prompts
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#38bdf8' }}>✔</span> Emisión continua de logs estructurados de conformidad
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* TIPO 3: CONSULTOR / AUDITOR */}
+              <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #030712 100%)', border: '1px solid #0284c7', borderRadius: '16px', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px' }}>TIPO 03 · CONSULTOR</span>
+                    <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>Asiento Único</span>
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 12px 0' }}>Asiento de Consultoría & Auditoría</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 18px 0' }}>
+                    Licencia profesional individual para auditores, despachos periciales y CISOs. Permite conectarse en tiempo real a los flujos de inferencia de empleados bajo delegación consentida.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#34d399' }}>✔</span> Delegación mutua mediante Handshake Token
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#34d399' }}>✔</span> Evidencias probatorias SHA-256 para justificar subvenciones
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ color: '#34d399' }}>✔</span> Certificación técnica continua ISO/IEC 42001
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* PROTOCOLO AUDITOR <-> EMPLEADO */}
+          <section id="flujo-delegacion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #080d1a 100%)', border: '1px solid #1e293b', borderRadius: '18px', padding: '36px', borderLeft: '4px solid #38bdf8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '900', padding: '4px 10px', borderRadius: '4px' }}>MECANISMO DELEGADO L7</span>
+                <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                  ¿Cómo Supervisa el Asiento de Auditor a los Empleados?
+                </h2>
+              </div>
+              <p style={{ color: '#94a3b8', fontSize: '14.5px', lineHeight: '1.6', margin: '0 0 26px 0' }}>
+                El auditor no monitoriza indiscriminadamente el equipo del trabajador. La supervisión opera bajo un protocolo criptográfico de <strong>delegación explícita</strong>:
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>1. Consentimiento del Empleado</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+                    El usuario del puesto emite un <em>Handshake Token</em> de autorización temporal que vincula su agente L7 local con el nodo del auditor.
+                  </div>
+                </div>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>2. Intercepción en RAM L7</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+                    El motor intercepta las llamadas LLM en memoria volátil (0.017 ms), ofusca datos regulados (DNI/IBAN) y calcula el sello SHA-256.
+                  </div>
+                </div>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>3. Dictamen Probatorio</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+                    La consola del auditor recibe el digest inmutable para emitir informes periciales oficiales requeridos por la normativa y los fondos públicos.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SUBVENCIONES PÚBLICAS & ISO 42001 */}
+          <section id="subvenciones" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '36px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JUSTIFICACIÓN NORMATIVA Y FINANCIERA</span>
+                <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 6px 0' }}>Superación de Auditorías Técnicas de Subvenciones de IA</h2>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>
+                  Los fondos públicos y programas europeos de digitalización exigen trazabilidad técnica demostrable de la seguridad del dato.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Trazabilidad Forense Real</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Evidencias SHA-256 inmutables por cada llamada al modelo sin almacenar datos personales en claro.</div>
+                </div>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#34d399', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Alineación ISO/IEC 42001</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Gestión activa de riesgos de inferencia y control determinista del ciclo de vida del dato.</div>
+                </div>
+                <div style={{ background: '#030712', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Garantía EU AI Act</div>
+                  <div style={{ color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.5' }}>Mitigación demostrable de inyecciones de prompts y fuga de datos en tiempo de ejecución.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* COMPARATIVA TÉCNICA: PROXY CLOUD VS SAARE L7 */}
+          <section id="comparativa-tecnica" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase' }}>
+                ARQUITECTURA DE DESACOPLE
+              </div>
+              <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: '900', margin: '10px 0 8px 0', letterSpacing: '-0.5px' }}>
+                ¿Por qué un Interceptor L7 en Memoria y no un Proxy en la Nube?
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '14px', maxWidth: '680px', margin: '0 auto' }}>
+                Las soluciones basadas en túneles SaaS intermedios añaden fricción de red y riesgos de retención de datos. SAARE ejecuta el filtrado determinista en el origen.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '22px' }}>
+              <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '16px', padding: '28px' }}>
+                <div style={{ display: 'inline-block', background: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', marginBottom: '16px' }}>
+                  GATEWAYS CONVENCIONALES EN CLOUD
+                </div>
+                <h3 style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '700', margin: '0 0 14px 0' }}>Sobrecarga de Red y Retención de Texto</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#94a3b8' }}>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✕</span>
+                    <span><strong>Latencia acumulada (150–400 ms):</strong> Redirección de paquetes a centros de datos externos.</span>
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✕</span>
+                    <span><strong>Riesgo de persistencia:</strong> El texto plano se transfiere y almacena en bases de datos de terceros.</span>
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✕</span>
+                    <span><strong>Falta de validez probatoria:</strong> Logs estándar fácilmente alterables sin sellado SHA-256 ni firma asimétrica.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div style={{ background: 'linear-gradient(180deg, #0d1322 0%, #030712 100%)', border: '1px solid #0284c7', borderRadius: '16px', padding: '28px', boxShadow: '0 10px 30px rgba(2, 132, 199, 0.15)' }}>
+                <div style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', marginBottom: '16px' }}>
+                  MOTOR DETERMINISTA SAARE L7
+                </div>
+                <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '700', margin: '0 0 14px 0' }}>Intercepción Local en Memoria Volátil</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#cbd5e1' }}>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓</span>
+                    <span><strong>Latencia de 0.017 ms a 1.16 ms:</strong> Intercepción en memoria volátil en el ciclo de ejecución local.</span>
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓</span>
+                    <span><strong>Residuo Cero:</strong> Purga forzada con <code style={{ color: '#38bdf8' }}>SYS_madvise MADV_DONTNEED</code> sin escrituras en disco.</span>
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓</span>
+                    <span><strong>Evidencias Inmutables:</strong> Huella criptográfica y digest firmado por cada transacción para auditorías oficiales.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* CONTRATACIÓN DE 1 ASIENTO DE AUDITOR */}
+          <section id="contratacion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '20px', padding: '40px', maxWidth: '640px', margin: '0 auto', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>CONTRATACIÓN PROFESIONAL</span>
+              <h2 style={{ color: '#fff', fontSize: '28px', fontWeight: '800', margin: '8px 0 12px 0', letterSpacing: '-0.5px' }}>1 Asiento de Consultoría / Auditoría IA</h2>
+              <p style={{ color: '#94a3b8', fontSize: '14.5px', lineHeight: '1.5', margin: '0 0 26px 0' }}>
+                Acceso completo a la Bóveda Forense, motor de intercepción L7, recepción de flujos delegados de empleados y emisión de dictámenes periciales SHA-256.
+              </p>
+
+              <div style={{ background: '#030712', border: '1px solid #334155', borderRadius: '14px', padding: '24px', marginBottom: '26px' }}>
+                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>IMPORTE DE LICENCIA AUDITOR</div>
+                <div style={{ color: '#fff', fontSize: '36px', fontWeight: '900', margin: '6px 0' }}>{AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 'normal' }}>/ mes</span></div>
+                <div style={{ color: '#34d399', fontSize: '12.5px', fontWeight: 'bold' }}>✔ Incluye enganches ilimitados a perfiles empleado bajo autorización previa</div>
+              </div>
+
+              <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '800', fontSize: '15px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(2, 132, 199, 0.35)' }}>
+                CONTRATAR 1 ASIENTO DE AUDITOR ↗
+              </button>
+            </div>
+          </section>
+
+          {/* CERTIFICACIÓN DE INTEGRIDAD */}
+          <section id="integridad" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #1e293b', paddingBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase' }}>
@@ -917,7 +1036,7 @@ exit /b 0`;
                 </h3>
               </div>
 
-              <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
+              <div style={{ background: '#030712', border: '1px solid #334155', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '12px', color: '#94a3b8', marginBottom: '14px', fontFamily: 'monospace' }}>
                   <div>🏛️ AUTORIDAD: <strong style={{ color: '#cbd5e1' }}>Gabinete Jurídico MS3V</strong></div>
                   <div>📜 REGISTRO: <strong style={{ color: '#38bdf8' }}>Safe Creative 2607076315021</strong></div>
@@ -931,7 +1050,7 @@ exit /b 0`;
               </div>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button type="button" onClick={() => setShowDiploma(true)} style={{ background: '#0f172a', border: '1px solid #475569', color: '#38bdf8', padding: '10px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   📜 Ver Diploma Registral
                 </button>
                 <button type="button" onClick={copyDigitalSignature} style={{ background: copiedSig ? '#10b981' : '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
@@ -941,90 +1060,19 @@ exit /b 0`;
             </div>
           </section>
 
-          <section id="servicios" style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold' }}>MOD-01 / MEMORY SEC</span>
-                </div>
-                <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 10px 0' }}>Privacidad en Origen</h3>
-                <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                  Tratamiento perimetral de información sensible exclusivamente en memoria volátil.
-                </p>
-              </div>
-
-              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold' }}>MOD-02 / CRYPTO VAULT</span>
-                </div>
-                <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 10px 0' }}>Inmutabilidad Forense</h3>
-                <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                  Sellado matemático mediante hashes SHA-256 y firmas asimétricas Ed25519 con plena validez judicial.
-                </p>
-              </div>
-
-              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#fbbf24', fontSize: '11px', fontWeight: 'bold' }}>MOD-03 / GRC COMPLIANCE</span>
-                </div>
-                <h3 style={{ color: '#fff', fontSize: '18px', margin: '0 0 10px 0' }}>Certificación Continua</h3>
-                <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                  Cumplimiento técnico estricto del Reglamento UE 2024/1689 (AI Act) y DORA.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section style={{ maxWidth: '1200px', margin: '0 auto 50px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>GOBERNANZA COMPLETA • TODOS LOS ESCENARIOS INCLUIDOS</span>
-                <h2 style={{ color: '#fff', fontSize: '26px', fontWeight: '800', margin: '6px 0' }}>Calculadora y Despliegue de Asientos</h2>
-                <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Ajuste el número exacto de empleados con la ruleta.</p>
-              </div>
-
-              <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ color: '#cbd5e1', fontSize: '14px', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>
-                    Asientos a Contratar: <span style={{ color: '#38bdf8', fontSize: '20px' }}>{seats} {seats === 1 ? 'asiento' : 'asientos'}</span>
-                  </label>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="250" 
-                    step="1" 
-                    value={seats} 
-                    onChange={(e) => setSeats(Number(e.target.value))} 
-                    style={{ width: '100%', cursor: 'pointer' }} 
-                  />
-                </div>
-
-                <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '10px', padding: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '11px' }}>TOTAL A FACTURAR</div>
-                    <div style={{ color: '#fff', fontSize: '22px', fontWeight: 'bold' }}>{totalFactura} €</div>
-                  </div>
-                </div>
-
-                <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>
-                  EXPEDIR {seats} {seats === 1 ? 'TOKEN' : 'TOKENS'} ↗
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section id="integracion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px' }}>
+          {/* SNIPPETS DE INTEGRACIÓN */}
+          <section id="integracion" style={{ maxWidth: '1200px', margin: '0 auto 70px auto', padding: '0 20px' }}>
+            <div style={{ background: '#0d1322', border: '1px solid #1e293b', borderRadius: '18px', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>Integración Determinista L7 (SAARE-SDK)</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setActiveCodeTab('nodejs')} style={{ background: activeCodeTab === 'nodejs' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>nodejs</button>
-                  <button onClick={() => setActiveCodeTab('python')} style={{ background: activeCodeTab === 'python' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>python</button>
-                  <button onClick={() => setActiveCodeTab('curl')} style={{ background: activeCodeTab === 'curl' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>curl</button>
+                  <button onClick={() => setActiveCodeTab('nodejs')} style={{ background: activeCodeTab === 'nodejs' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>nodejs</button>
+                  <button onClick={() => setActiveCodeTab('python')} style={{ background: activeCodeTab === 'python' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>python</button>
+                  <button onClick={() => setActiveCodeTab('curl')} style={{ background: activeCodeTab === 'curl' ? '#0284c7' : '#030712', border: '1px solid #334155', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>curl</button>
                 </div>
               </div>
 
-              <pre style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '16px', color: '#38bdf8', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto' }}>
+              <pre style={{ background: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', color: '#38bdf8', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto' }}>
                 {codeSnippets[activeCodeTab]}
               </pre>
             </div>
