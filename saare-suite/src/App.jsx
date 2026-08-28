@@ -132,7 +132,6 @@ export default function App() {
         } else {
           const userData = { ...data.user };
           delete userData.password;
-          
           localStorage.setItem('saare_suite_user', JSON.stringify(userData));
           localStorage.setItem('saare_user', JSON.stringify(userData));
           setSessionUser(userData);
@@ -837,7 +836,7 @@ exit /b 0`;
               Perfil Corporativo Validado
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '620px', margin: '0 auto 28px auto' }}>
-              Tu identidad y credenciales han sido sincronizadas en Vault KV. Descarga el interceptor L7 o accede a la Bóveda Forense en la nube.
+              Tu identidad y credenciales han sido sincronizadas en Vault KV. Descarga el interceptor L7 directo o accede a la Bóveda Forense.
             </p>
 
             <div style={{ background: '#0b0f19', border: '1px solid #374151', borderRadius: '12px', padding: '20px', maxWidth: '480px', margin: '0 auto 32px auto', textAlign: 'left' }}>
@@ -857,16 +856,27 @@ exit /b 0`;
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', background: '#2563eb', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '1rem', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#2563eb', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)' }}>
                 🚀 Abrir SAARE Console
               </a>
+              
+              {/* BOTÓN DESCARGA DIRECTA DE EXTENSIÓN DESDE /public */}
+              <a 
+                href="/saare-runtime-v8.2.zip" 
+                download="saare-runtime-v8.2.zip" 
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#059669', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)' }}
+              >
+                📦 Descargar Extensión L7 (.zip)
+              </a>
+
+              {/* BOTÓN GENERADOR DINÁMICO DE AGENTE */}
               <button 
                 onClick={handleDownloadExtension} 
                 disabled={downloadingZip}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '1rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(2, 132, 199, 0.4)' }}
               >
-                {downloadingZip ? '⚙️ Compilando Agente L7...' : '🔌 Descargar Interceptor L7 (.zip)'}
+                {downloadingZip ? '⚙️ Compilando Agente...' : '⚡ Generar SAARE-SDK Tokenizado'}
               </button>
             </div>
           </div>
@@ -890,6 +900,15 @@ exit /b 0`;
               <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff', border: 'none', padding: '14px 32px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 25px rgba(239, 68, 68, 0.35)', textTransform: 'uppercase' }}>
                 ⚡ PROBAR SANDBOX L7 (7 DÍAS GRATIS)
               </button>
+              
+              {/* DESCARGA DIRECTA DE LA EXTENSIÓN EN LANDING */}
+              <a 
+                href="/saare-runtime-v8.2.zip" 
+                download="saare-runtime-v8.2.zip" 
+                style={{ background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', padding: '14px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              >
+                🔌 Descargar Runtime L7
+              </a>
             </div>
           </section>
 
@@ -1014,7 +1033,7 @@ exit /b 0`;
           <section id="integracion" style={{ maxWidth: '1200px', margin: '0 auto 60px auto', padding: '0 20px' }}>
             <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>Integración Determinista L7</h3>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>Integración Determinista L7 (SAARE-SDK)</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => setActiveCodeTab('nodejs')} style={{ background: activeCodeTab === 'nodejs' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>nodejs</button>
                   <button onClick={() => setActiveCodeTab('python')} style={{ background: activeCodeTab === 'python' ? '#0284c7' : '#1e293b', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>python</button>
