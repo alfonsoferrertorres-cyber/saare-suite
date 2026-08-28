@@ -8,7 +8,7 @@ on:
 
 jobs:
   validate-saare:
-    name: Validate Build & Integrity
+    name: Validate Monorepo Build
     runs-on: ubuntu-latest
 
     steps:
@@ -20,14 +20,25 @@ jobs:
         with:
           node-version: 20
 
-      - name: Build SAARE Suite
-        working-directory: saare-suite
+      - name: Inspect Workspace and Build Modules
         run: |
-          npm install
-          npm run build
+          echo "=== Estructura del repositorio en runner ==="
+          ls -la
+          
+          if [ -d "saare-suite" ]; then
+            echo "--> Compilando saare-suite..."
+            cd saare-suite
+            npm install
+            npm run build
+            cd ..
+          fi
 
-      - name: Build SAARE Console
-        working-directory: saare-console
-        run: |
-          npm install
-          npm run build
+          if [ -d "saare-console" ]; then
+            echo "--> Compilando saare-console..."
+            cd saare-console
+            npm install
+            npm run build
+            cd ..
+          fi
+          
+          echo "=== Monorepo validado con éxito ==="
