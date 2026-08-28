@@ -132,6 +132,7 @@ export default function App() {
         } else {
           const userData = { ...data.user };
           delete userData.password;
+          
           localStorage.setItem('saare_suite_user', JSON.stringify(userData));
           localStorage.setItem('saare_user', JSON.stringify(userData));
           setSessionUser(userData);
@@ -154,7 +155,7 @@ export default function App() {
     setPassword('');
   };
 
-  // GENERADOR AUTÓNOMO DEL PAQUETE DEL AGENTE L7 v8.1.0
+  // GENERADOR DINÁMICO DEL PAQUETE SAARE-SDK / AGENTE L7 v8.1.0
   const handleDownloadExtension = async () => {
     try {
       setDownloadingZip(true);
@@ -696,14 +697,14 @@ exit /b 0`;
       const finalBlob = await zip.generateAsync({ type: "blob" });
       const downloadLink = document.createElement("a");
       downloadLink.href = URL.createObjectURL(finalBlob);
-      downloadLink.download = `saare-agent-${targetTenant.toLowerCase().replace(/\s+/g, '_')}.zip`;
+      downloadLink.download = `saare-sdk-${targetTenant.toLowerCase().replace(/\s+/g, '_')}.zip`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
       URL.revokeObjectURL(downloadLink.href);
     } catch (err) {
-      console.error("Error al generar el ZIP dinámico:", err);
-      alert("Error al compilar el agente. Comprueba tu conexión con el Control-Plane.");
+      console.error("Error al generar el SDK dinámico:", err);
+      alert("Error al compilar el SDK. Comprueba tu conexión con el Control-Plane.");
     } finally {
       setDownloadingZip(false);
     }
@@ -836,7 +837,7 @@ exit /b 0`;
               Perfil Corporativo Validado
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', maxWidth: '620px', margin: '0 auto 28px auto' }}>
-              Tu identidad y credenciales han sido sincronizadas en Vault KV. Descarga el interceptor L7 directo o accede a la Bóveda Forense.
+              Tu identidad y credenciales han sido sincronizadas en Vault KV. Accede a la Bóveda Forense o genera el SDK de inyección L7.
             </p>
 
             <div style={{ background: '#0b0f19', border: '1px solid #374151', borderRadius: '12px', padding: '20px', maxWidth: '480px', margin: '0 auto 32px auto', textAlign: 'left' }}>
@@ -856,25 +857,16 @@ exit /b 0`;
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#2563eb', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)' }}>
                 🚀 Abrir SAARE Console
               </a>
               
-              {/* BOTÓN DESCARGA DIRECTA DE EXTENSIÓN DESDE /public */}
-              <a 
-                href="/saare-runtime-v8.2.zip" 
-                download="saare-runtime-v8.2.zip" 
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#059669', color: '#fff', textDecoration: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)' }}
-              >
-                📦 Descargar Extensión L7 (.zip)
-              </a>
-
               {/* BOTÓN GENERADOR DINÁMICO DE AGENTE */}
               <button 
                 onClick={handleDownloadExtension} 
                 disabled={downloadingZip}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(2, 132, 199, 0.4)' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: downloadingZip ? 'wait' : 'pointer', boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)' }}
               >
                 {downloadingZip ? '⚙️ Compilando Agente...' : '⚡ Generar SAARE-SDK Tokenizado'}
               </button>
@@ -900,15 +892,6 @@ exit /b 0`;
               <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff', border: 'none', padding: '14px 32px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 8px 25px rgba(239, 68, 68, 0.35)', textTransform: 'uppercase' }}>
                 ⚡ PROBAR SANDBOX L7 (7 DÍAS GRATIS)
               </button>
-              
-              {/* DESCARGA DIRECTA DE LA EXTENSIÓN EN LANDING */}
-              <a 
-                href="/saare-runtime-v8.2.zip" 
-                download="saare-runtime-v8.2.zip" 
-                style={{ background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', padding: '14px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-              >
-                🔌 Descargar Runtime L7
-              </a>
             </div>
           </section>
 
