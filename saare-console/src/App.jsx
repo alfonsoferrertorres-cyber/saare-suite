@@ -2,6 +2,7 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
+const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
 
 function resolveInitialUser() {
   if (typeof window === "undefined") return null;
@@ -17,9 +18,11 @@ function resolveInitialUser() {
       tenantName: tenantParam || 'Gabinete Jurídico y Pericial MS3V',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
-      role: urlParams.get('role') || 'AUDITOR PERICIAL'
+      role: urlParams.get('role') || 'AUDITOR PERICIAL',
+      licenseType: 'TIER_ENTERPRISE_AUDITOR'
     };
     localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
+    localStorage.setItem('saare_suite_user', JSON.stringify(fromUrlUser));
     localStorage.setItem('saare_vault_session', JSON.stringify(fromUrlUser));
     window.history.replaceState({}, document.title, window.location.pathname);
     return fromUrlUser;
@@ -42,7 +45,8 @@ function resolveInitialUser() {
     email: "auditor@ms3v.es",
     tenantName: "Gabinete Jurídico y Pericial MS3V",
     role: "AUDITOR PERICIAL",
-    apiKey: "sk_saare_live_master_kv_session"
+    apiKey: "sk_saare_live_master_kv_session",
+    licenseType: "ASIENTO_AUDITOR_ACTIVO"
   };
 }
 
@@ -78,6 +82,7 @@ export default function App() {
       llmEffect: "Redacta o aborta en memoria volátil en 1.16 ms antes de que los datos sensibles alcancen al proveedor LLM.",
       norma: "ISO/IEC 27037 Fases 1 & 2 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA Capa 7",
       icon: "🛡️",
+      monetization: "Licencia OEM / Seat ARR",
       options: [
         { key: "dlp_dni_nie", label: "Detección estricta DNI / NIE", default: true },
         { key: "dlp_iban_cards", label: "Aislamiento IBAN & PAN Tarjetas (PCI-DSS)", default: true },
@@ -88,11 +93,12 @@ export default function App() {
     auditoria_dictamen_normativo: {
       name: "02. LA EVIDENCIA: BÓVEDA PERICIAL & DICTAMEN GRC (ROL DES)",
       category: "ROL DES / ASIENTO AUDITOR",
-      badgeColor: "#dc2626",
+      badgeColor: "#9333ea",
       desc: "Extracción y custodia de pruebas periciales para consultoras y peritos judiciales (DES - ISO 27037). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo cualificados RFC 3161 eIDAS.",
       llmEffect: "Emite el certificado de evidencia con validez probatoria plena ante comités de auditoría, la AESIA o tribunales.",
       norma: "ISO/IEC 27037 Fases 3 & 4 · UNE-ISO/IEC 42001:2023 · EU AI Act Art. 12 · RFC 3161",
       icon: "⚖️",
+      monetization: "Asiento Auditor (149 €/mes)",
       options: [
         { key: "rfc3161_qualified_tsa", label: "Sello de Tiempo Cualificado eIDAS / RFC 3161", default: true },
         { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
@@ -108,6 +114,7 @@ export default function App() {
       llmEffect: "Inserta la firma 🧠 L7 CEREBRO WITNESS al final de la inferencia y mide el ahorro de pipeline en cada ejecución.",
       norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · ISO 27001 Control A.8.7",
       icon: "⚡",
+      monetization: "Edge Pay-as-you-go",
       options: [
         { key: "lexical_enforce_active", label: "Comando Léxico [SAARE_ACTIVE_SHIELD: ENFORCE]", default: true },
         { key: "brain_witness_injection", label: "Inyección de Testigo 🧠 L7 CEREBRO en el LLM", default: true },
@@ -118,11 +125,12 @@ export default function App() {
     deepfake_fake_disprover: {
       name: "04. EL DETECTOR: INTEGRIDAD FORENSE & FAKE DISPROVER",
       category: "DETECCIÓN DE FALSEDAD & RUNLIVE",
-      badgeColor: "#9333ea",
+      badgeColor: "#ea580c",
       desc: "Inspección causal estricta (Corpus Grounding / No-Unsupported-Claims) frente a alucinaciones, contratos con cláusulas inventadas (LegalTech), falsificación de atestados de siniestros (Insurtech) o deepfakes documentales.",
       llmEffect: "Fuerza estado RECHAZADO determinista si la inferencia genera aserciones no sustentadas en la evidencia base.",
       norma: "ISO/IEC 42001 Control B.6.3 · Ley 50/1980 Contrato de Seguro · Cadena Custodia Digital",
       icon: "🔍",
+      monetization: "Tier SaaS / Fee Dossier",
       options: [
         { key: "strict_corpus_grounding", label: "Grounding Estricto en Corpus Litigioso", default: true },
         { key: "reject_unsupported_claims", label: "Rechazo Inmediato de Unsupported Claims", default: true },
@@ -133,11 +141,12 @@ export default function App() {
     subvenciones_requisitos_infranqueables: {
       name: "05. EL JUSTIFICADOR: FONDOS PÚBLICOS & SUBVENCIONES",
       category: "FONDOS & SUBVENCIONES",
-      badgeColor: "#059669",
+      badgeColor: "#ca8a04",
       desc: "Control perimetral infranqueable de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas para la IGAE y OLAF (NextGenEU, PRTR, Kit Digital, CDTI, 2 CFR 200).",
       llmEffect: "Bloquea facturas o partidas presupuestarias duplicadas garantizando el principio de no solapamiento.",
       norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · 2 CFR 200 (USA) · Horizon Europe",
       icon: "🏛️",
+      monetization: "Pack PRTR / Justificación",
       options: [
         { key: "enforce_no_double_funding", label: "Bloqueo Anti-Doble Financiación (Hash Facturas)", default: true },
         { key: "enforce_dnsh_principle", label: "Acreditación Principio No Perjuicio Significativo (DNSH)", default: true },
@@ -187,12 +196,10 @@ export default function App() {
   const [newRule, setNewRule] = useState({ label: '', pattern: '' });
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // CONTEO SEGURO Y EXACTO DE LAS 5 BÓVEDAS
   const totalDirectivesCount = Object.keys(masterScenariosConfig).length;
   const activeDirectivesCount = Object.keys(masterScenariosConfig).filter(k => directives[k] === true).length;
   const disabledDirectivesCount = Math.max(0, totalDirectivesCount - activeDirectivesCount);
 
-  // PERSISTENCIA EN BÓVEDA KV
   const persistSettingsToKV = async (newDirectivesState, newSubOptions = vaultSubOptions) => {
     if (!sessionUser?.email) return;
     setSyncingKv(true);
@@ -210,7 +217,6 @@ export default function App() {
     }
   };
 
-  // CONSULTA DE TELEMETRÍA Y SINCRONIZACIÓN EN VIVO
   const fetchTelemetryAndVerifyKV = async () => {
     if (!sessionUser?.email) return;
 
@@ -418,19 +424,24 @@ export default function App() {
         {/* PANEL INFORMATIVO DEL TENANT + MONITOR EN VIVO DE BÓVEDA KV */}
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 28px', border: '1px solid #cbd5e1', marginBottom: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
             <div>
-              <h2 style={{ margin: '0 0 6px 0', fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
-                PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
+                  PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+                </h2>
+                <span style={{ background: '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
+                  POLÍTICA → CONTROL → EVIDENCIA
+                </span>
+              </div>
               <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
                 ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | BÓVEDAS L7: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} DESHABILITADAS</strong>
               </div>
             </div>
 
-            {/* ESTADO EN VIVO DE BÓVEDA KV */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+            {/* ESTADO EN VIVO DE BÓVEDA KV Y ENLACES DE CONTRATACIÓN */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#16a34a' : '#dc2626' }}></span>
                 <span style={{ color: '#64748b' }}>KV VAULT:</span>
                 <strong style={{ color: kvStatus.online ? '#15803d' : '#dc2626' }}>
@@ -439,12 +450,16 @@ export default function App() {
                 <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '6px 14px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#16a34a' : '#ef4444' }}></span>
                 {connected ? 'L7 HOOK ACTIVO' : 'DESCONECTADO'}
               </div>
 
-              <button onClick={handleLogout} style={{ padding: '8px 16px', background: '#fee2e2', border: '1px solid #ef4444', color: '#dc2626', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              <a href={PORTAL_URL} style={{ padding: '8px 12px', background: '#e0f2fe', border: '1px solid #0284c7', color: '#0369a1', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', textDecoration: 'none' }}>
+                PORTAL ISV ↗
+              </a>
+
+              <button onClick={handleLogout} style={{ padding: '8px 14px', background: '#fee2e2', border: '1px solid #ef4444', color: '#dc2626', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
                 SALIR
               </button>
             </div>
@@ -515,7 +530,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* SELECTOR DE PESTAÑAS */}
+        {/* SELECTOR DE PESTAÑAS PRINCIPALES */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#ffffff', color: activeTab === 'GLOBAL' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             REGISTRO GLOBAL ({filteredEvents.length})
@@ -529,7 +544,7 @@ export default function App() {
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS FORENSES                            */}
+        {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS FORENSES                             */}
         {/* ========================================================================= */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
@@ -612,7 +627,7 @@ export default function App() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: S.A.A.R.E. RUNLIVE (TELEMETRÍA EN VIVO, VELOCÍMETRO & TESTIGO 🧠) */}
+        {/* TAB 2: S.A.A.R.E. RUNLIVE                                                 */}
         {/* ========================================================================= */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
@@ -630,7 +645,7 @@ export default function App() {
               </span>
             </div>
 
-            {/* VELOCÍMETRO / GAUGE VISUAL DE AHORRO Y EFICIENCIA DE PIPELINE */}
+            {/* VELOCÍMETRO / GAUGE VISUAL DE AHORRO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
                 <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Ahorro Computacional L7</span>
@@ -656,8 +671,6 @@ export default function App() {
 
             {lastEvent ? (
               <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                
-                {/* MATRIZ DE CABECERA DE LA EVIDENCIA */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px', fontSize: '0.85rem' }}>
                   <div>ID EVIDENCIA: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.runId || lastEvent.evidenceId}</strong></div>
                   <div>BÓVEDA ACTIVA: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.scenario_id || 'cumplimiento_corporativo_integral'}</strong></div>
@@ -667,7 +680,6 @@ export default function App() {
                   <div>SELLO CRIPTOGRÁFICO: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.cryptoSeal || 'L7-SEAL:ED25519'}</strong></div>
                 </div>
 
-                {/* BANNER DE CARGA EN MEMORIA VOLÁTIL */}
                 <div style={{ background: '#ffffff', padding: '18px', borderLeft: `5px solid ${lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a'}`, borderRadius: '4px', marginBottom: '18px', fontSize: '0.95rem' }}>
                   <div style={{ fontSize: '0.75rem', color: lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>
                     CARGA RECEPTADA EN MEMORIA VOLÁTIL (RAM BUFFER L7):
@@ -675,7 +687,6 @@ export default function App() {
                   "{lastEvent.promptInput || lastEvent.promptSummary || lastEvent.payload || 'Sin contenido'}"
                 </div>
 
-                {/* BLOQUE DE MUESTREO ANTI-DEEPFAKE & CORPUS GROUNDING */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '16px', marginBottom: '18px', fontSize: '0.82rem' }}>
                   <div style={{ color: '#0284c7', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>
                     Muestreo de Integridad Fáctica & Protocolo Fake Disprover:
@@ -688,7 +699,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* VISOR JSON DEL PROOF BUNDLE */}
                 <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem', overflowX: 'auto' }}>
                   {JSON.stringify(lastEvent, null, 2)}
                 </div>
@@ -704,11 +714,10 @@ export default function App() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS Y SUB-OPCIONES                     */}
+        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS Y MONETIZACIÓN ISV                  */}
         {/* ========================================================================= */}
         {activeTab === 'CONFIG' && (
           <div>
-            {/* CONFIGURADOR DE SINTAXIS PERSONALIZADA */}
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
@@ -743,7 +752,7 @@ export default function App() {
               )}
             </div>
 
-            {/* GRID DE LAS 5 BÓVEDAS MAESTRAS CON SUB-OPCIONES Y BOTONES INDEPENDIENTES */}
+            {/* GRID DE LAS 5 BÓVEDAS MAESTRAS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
               {Object.entries(masterScenariosConfig).map(([key, scn]) => {
                 const isEnabled = directives[key] === true;
@@ -762,7 +771,6 @@ export default function App() {
                     }}
                   >
                     <div>
-                      {/* CABECERA DE LA TARJETA */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
                           {scn.category}
@@ -772,7 +780,6 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* TÍTULO Y DESCRIPCIÓN */}
                       <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                         {scn.icon} {scn.name}
                       </h4>
@@ -788,7 +795,6 @@ export default function App() {
                         <strong>Efecto en LLM:</strong> {scn.llmEffect}
                       </div>
 
-                      {/* SUB-OPCIONES CONFIGURABLES POR BÓVEDA */}
                       <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '14px', marginBottom: '20px' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>
                           Opciones y Controles Específicos:
@@ -813,7 +819,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* BOTÓN DE ACTIVACIÓN / DESACTIVACIÓN */}
                     <button
                       onClick={() => handleToggleDirective(key)}
                       disabled={syncingKv}

@@ -1,10 +1,11 @@
 /**
- * S.A.A.R.E. L7 Governance Agent Background Service Worker v8.2.0
+ * S.A.A.R.E. L7 Governance Agent Background Service Worker v10.0
+ * ISO/IEC 27037:2012 (DEFR / DES) · UNE-ISO/IEC 42001:2023 · Cloudflare KV Live Sync
  */
 
 const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
-// Resuelve la identidad corporativa: Managed Storage (GPO) -> Local Storage -> Fallback
+// 1. Resuelve la identidad corporativa: Managed Storage (GPO) -> Local Storage -> Payload -> Fallback
 async function resolveIdentity(payloadUser) {
   return new Promise((resolve) => {
     if (chrome.storage?.managed) {
@@ -12,7 +13,7 @@ async function resolveIdentity(payloadUser) {
         if (managed?.saare_user_email) {
           return resolve({
             user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "EMPRESA"
+            tenant: managed.saare_tenant_domain || "Gabinete Jurídico y Pericial MS3V"
           });
         }
         fallbackLocal();
@@ -23,15 +24,15 @@ async function resolveIdentity(payloadUser) {
 
     function fallbackLocal() {
       chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = local?.saare_user_email || payloadUser || "usuario_anonimo@tenant.es";
-        const finalTenant = local?.saare_tenant_domain || "ORGANIZACION";
+        const finalUser = local?.saare_user_email || payloadUser || "auditor@ms3v.es";
+        const finalTenant = local?.saare_tenant_domain || "Gabinete Jurídico y Pericial MS3V";
         resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
       });
     }
   });
 }
 
-// Sincronización periódica de directivas activas desde Cloudflare KV cada 5 segundos
+// 2. Sincronización periódica de directivas y sub-opciones desde Cloudflare KV
 async function syncDynamicSettings() {
   const { user } = await resolveIdentity();
   if (user && user !== "usuario_anonimo@tenant.es") {
@@ -40,29 +41,50 @@ async function syncDynamicSettings() {
       if (res.ok) {
         const data = await res.json();
         if (data.settings) {
-          chrome.storage.local.set({ saare_settings: data.settings });
+          await chrome.storage.local.set({
+            saare_settings: {
+              ...data.settings,
+              subOptions: data.subOptions || {}
+            }
+          });
         }
       }
     } catch (e) {
-      // Sincronización tolerante a fallos de red
+      // Tolerante a micro-cortes de red
     }
   }
 }
 
-setInterval(syncDynamicSettings, 5000);
-syncDynamicSettings();
+// 3. Ciclo de vida en Manifest V3 (Alarmas persistentes en lugar de setInterval)
+chrome.runtime.onInstalled.addListener(() => {
+  syncDynamicSettings();
+  chrome.alarms.create("saare_sync_alarm", { periodInMinutes: 1 });
+});
 
-// Recepción y enrutamiento de eventos forenses
+chrome.runtime.onStartup.addListener(() => {
+  syncDynamicSettings();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "saare_sync_alarm") {
+    syncDynamicSettings();
+  }
+});
+
+// 4. Recepción y enrutamiento de telemetría forense
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
       const enrichedPayload = {
         ...message.payload,
         user: user,
-        tenant: tenant
+        tenant: tenant,
+        scenario_id: message.payload?.scenario_id || "cumplimiento_corporativo_integral",
+        forensic_role: message.payload?.forensic_role || "DEFR (Digital Evidence First Responder)",
+        timestamp: message.payload?.timestamp || new Date().toISOString()
       };
 
-      // Guardar en almacenamiento local del navegador
+      // Buffer local en el navegador
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
@@ -79,14 +101,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(err => sendResponse({ ok: false, error: err.message }));
     });
 
-    return true;
+    return true; // Mantiene abierto el canal para respuesta asíncrona
   }
 
   if (message?.type === "SAARE_GET_RULES") {
-    fetch(`${WORKER_URL}/custom-rules`)
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, data: [] }));
+    resolveIdentity().then(({ user }) => {
+      fetch(`${WORKER_URL}/custom-rules?user=${encodeURIComponent(user)}`)
+        .then(res => res.json())
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(() => sendResponse({ ok: false, data: [] }));
+    });
 
     return true;
   }

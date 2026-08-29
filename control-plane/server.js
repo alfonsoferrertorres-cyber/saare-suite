@@ -237,7 +237,7 @@ export default {
         return jsonResponse({ status: "SUCCESS", scenario: scn }, 200, requestOrigin);
       }
 
-      // 2. INTERCEPTOR L7 DETERMINISTA (CON BYPASS KV, COMANDO LÉXICO Y TESTIGO DEL CEREBRO EN LLM)
+      // 2. INTERCEPTOR L7 DETERMINISTA
       if (path === "/api/v1/intercept" && method === "POST") {
         try {
           const scenarioId = request.headers.get("X-SAARE-Scenario-ID") || "cumplimiento_corporativo_integral";
@@ -250,14 +250,16 @@ export default {
 
           const kv = env.SAARE_VAULT_KV;
           let isEnabled = true;
+          let subOptions = {};
 
-          // Lectura en vivo del Kill-Switch en la Bóveda KV
           if (kv && userEmail) {
             const userSettingsRaw = await kv.get(`settings:${userEmail}`);
             if (userSettingsRaw) {
-              const userSettings = JSON.parse(userSettingsRaw);
+              const parsedSettings = JSON.parse(userSettingsRaw);
+              const settingsMap = parsedSettings.settings || parsedSettings;
+              subOptions = parsedSettings.subOptions || {};
               const configKey = scn.id.replace(/-/g, '_');
-              if (userSettings[configKey] === false) {
+              if (settingsMap[configKey] === false) {
                 isEnabled = false;
               }
             }
@@ -267,7 +269,7 @@ export default {
           const seal = `L7-SEAL:${sealId}`;
           const timestamp = new Date().toISOString();
 
-          // A. MODO BYPASS SI LA DIRECTIVA FUE DESACTIVADA EN CONSOLA GRC
+          // A. MODO BYPASS
           if (!isEnabled) {
             return jsonResponse({
               status: "SUCCESS",
@@ -287,47 +289,42 @@ export default {
             }, 200, requestOrigin);
           }
 
-          // B. MOTOR DE INSPECCIÓN EN MEMORIA RAM SEGÚN LA BÓVEDA ACTIVA
+          // B. MOTOR DE INSPECCIÓN EN MEMORIA RAM
           let isBreached = false;
           let reason = "Inferencia conforme dentro del perímetro determinista.";
           let forensicAction = "RAM_VOLATILE_CLEAN";
 
           if (scn.id === "subvenciones_requisitos_infranqueables") {
-            // Bóveda 5: El Justificador - Anti-Doble Financiación (Facturas/Gastos/DNSH)
             const invoiceMatches = bodyStr.match(/(?:FAC|INV|EXP)-[A-Z0-9-]{6,16}/gi) || [];
-            if (invoiceMatches.length > 0) {
+            if (invoiceMatches.length > 0 && subOptions.enforce_no_double_funding !== false) {
               isBreached = true;
               reason = `Bloqueo Subvenciones: Detección de gasto/factura [${invoiceMatches[0]}] con potencial solapamiento o principio DNSH no acreditado.`;
               forensicAction = "INVOICE_DUPLICATION_LOCK";
             }
           } else if (scn.id === "deepfake_fake_disprover") {
-            // Bóveda 4: El Detector - Detección de Falsedad, Unsupported Claims y Deepfake Documental
             if (bodyStr.toLowerCase().includes("inventar") || bodyStr.toLowerCase().includes("sin evidencia") || bodyStr.toLowerCase().includes("ignora el contrato") || bodyStr.toLowerCase().includes("deepfake")) {
               isBreached = true;
               reason = `Bloqueo Fake Disprover: Detección de Unsupported Claims o alteración documental no fundamentada en el corpus aportado.`;
               forensicAction = "UNSUPPORTED_CLAIMS_PURGED";
             }
           } else if (scn.id === "razonamiento_activo_l7") {
-            // Bóveda 3: El Guardián - Mitigación de Jailbreaks, Modo DAN y Evasiones Léxicas
             const hasJailbreak = /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security)/i.test(bodyStr);
-            if (hasJailbreak) {
+            if (hasJailbreak && subOptions.anti_dan_jailbreak !== false) {
               isBreached = true;
               reason = `Bloqueo Razonamiento Activo: Intento de evasión perimetral, modo DAN o alteración de directivas del sistema detectado.`;
               forensicAction = "ACTIVE_DEFENSE_SOCKET_CUT";
             }
           } else if (scn.id === "auditoria_dictamen_normativo") {
-            // Bóveda 2: La Evidencia (Rol DES) - Integridad de Cadena de Custodia
             if (bodyStr.toLowerCase().includes("falsificar") || bodyStr.toLowerCase().includes("alterar log")) {
               isBreached = true;
               reason = `Bloqueo Pericial DES: Intento de adulteración de la cadena de custodia o del registro fiduciario.`;
               forensicAction = "CHAIN_OF_CUSTODY_LOCK";
             }
           } else {
-            // Bóveda 1: El Escudo (Rol DEFR) - DNI, NIE, IBAN, Tarjetas, Datos Médicos (RGPD Art. 9)
-            const hasDni = /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i.test(bodyStr);
-            const hasIban = /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}/i.test(bodyStr.replace(/[\s-]/g, ""));
-            const hasCard = /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/.test(bodyStr.replace(/[\s-]/g, ""));
-            const hasHealth = /(?:diagn[oó]stico|cardiopat[ií]a|receta|historia cl[ií]nica|paciente)\b/i.test(bodyStr);
+            const hasDni = subOptions.dlp_dni_nie !== false && /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i.test(bodyStr);
+            const hasIban = subOptions.dlp_iban_cards !== false && /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}/i.test(bodyStr.replace(/[\s-]/g, ""));
+            const hasCard = subOptions.dlp_iban_cards !== false && /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/.test(bodyStr.replace(/[\s-]/g, ""));
+            const hasHealth = subOptions.dlp_health_art9 !== false && /(?:diagn[oó]stico|cardiopat[ií]a|receta|historia cl[ií]nica|paciente)\b/i.test(bodyStr);
 
             isBreached = hasDni || hasIban || hasCard || hasHealth;
             if (isBreached) {
@@ -338,7 +335,38 @@ export default {
 
           const verdict = isBreached ? "RECHAZADO" : "PERMITIDO";
 
-          // C. INYECCIÓN DEL TESTIGO L7 CEREBRO EN LA RESPUESTA DEL LLM
+          // Auto-registro asíncrono en telemetría KV si está disponible
+          if (kv && userEmail) {
+            const rawInput = body.messages ? JSON.stringify(body.messages) : bodyStr;
+            const shaHash = await computeLegacySha256(`${userEmail}|${rawInput}|${timestamp}`);
+            const runId = `EV-${shaHash.substring(0, 10).toUpperCase()}`;
+
+            const autoEvidence = {
+              runId,
+              evidenceId: runId,
+              timestamp,
+              user: userEmail,
+              tenant: "Gabinete Jurídico y Pericial MS3V",
+              scenario_id: scn.id,
+              promptInput: rawInput.substring(0, 5000),
+              verdict,
+              violationDetails: { norma: scn.norma || "ISO 27037 / RGPD", reason },
+              sha256: shaHash,
+              signature: `SHA256:${shaHash}`,
+              forensic_role: scn.forensic_role || "DEFR / DES Lifecycle",
+              verifiedL7: true
+            };
+
+            ctx.waitUntil((async () => {
+              const kvKey = `runs:${userEmail}`;
+              const raw = await kv.get(kvKey);
+              let current = raw ? JSON.parse(raw) : [];
+              current.unshift(autoEvidence);
+              await kv.put(kvKey, JSON.stringify(current.slice(0, 150)));
+            })());
+          }
+
+          // C. INYECCIÓN DEL TESTIGO L7 CEREBRO EN EL PROMPT DE RESPUESTA
           const llmWitnessBadge = `\n\n---\n🛡️ **Testigo de Integridad S.A.A.R.E. L7**\n- Dictamen: **${verdict}**\n- Bóveda: **${scn.title}**\n- Testigo Pericial: \`🧠 L7 CEREBRO WITNESS: ${seal}\`\n- Comando Léxico: \`${activeShieldHeader || "[SAARE_ACTIVE_SHIELD: ENFORCE]"}\`\n- Latencia RAM: **${scn.latency} (Zero-Disk Writes SYS_madvise)**\n---`;
 
           return jsonResponse({
@@ -408,6 +436,7 @@ export default {
           token,
           status: "ACTIVE",
           role,
+          licenseType: "ASIENTO_AUDITOR_ACTIVO",
           createdAt: new Date().toISOString()
         };
 
@@ -421,12 +450,13 @@ export default {
             tenantName: newRecord.tenantName,
             token: newRecord.token,
             role: newRecord.role,
+            licenseType: newRecord.licenseType,
             status: newRecord.status
           }
         }, 201, requestOrigin);
       }
 
-      // 4. LOGIN CON AUTO-SEEDER Y BYPASS INTELIGENTE DE RATE LIMIT
+      // 4. LOGIN CON AUTO-SEEDER
       if (path === "/api/v1/auth/login" && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const cleanEmail = sanitizeEmail(body.email || "");
@@ -437,7 +467,6 @@ export default {
           return jsonResponse({ error: "Correo requerido." }, 400, requestOrigin);
         }
 
-        // Auto-Seeder: Garantiza cuenta maestra siempre activa en la Bóveda KV
         let raw = await kv.get(`user:${cleanEmail}`);
         if (!raw && (cleanEmail === "auditor@ms3v.es" || cleanEmail === "alfonsoferrertorres@gmail.com")) {
           const defaultSalt = generateSalt();
@@ -450,6 +479,7 @@ export default {
             token: `sk_saare_live_master_${crypto.randomUUID().replace(/-/g, '')}`,
             status: "ACTIVE",
             role: "AUDITOR PERICIAL",
+            licenseType: "TIER_ENTERPRISE_AUDITOR",
             createdAt: new Date().toISOString()
           };
           await kv.put(`user:${cleanEmail}`, JSON.stringify(masterRecord));
@@ -507,6 +537,7 @@ export default {
             tenantName: userRecord.tenantName || "Gabinete Jurídico y Pericial MS3V",
             token: sessionToken,
             role: userRecord.role || "AUDITOR PERICIAL",
+            licenseType: userRecord.licenseType || "ASIENTO_AUDITOR_ACTIVO",
             status: userRecord.status || "ACTIVE"
           }
         }, 200, requestOrigin);
@@ -542,7 +573,7 @@ export default {
         }, 200, requestOrigin);
       }
 
-      // 6. RUNS / TELEMETRÍA FORENSE RUNLIVE
+      // 6. RUNS / TELEMETRÍA FORENSE
       if (path === "/api/v1/runs") {
         if (method === "GET") {
           const user = sanitizeEmail(url.searchParams.get("user") || "");
@@ -617,7 +648,7 @@ export default {
         }
       }
 
-      // 8. CONFIGURACIÓN Y SETTINGS (LAS 5 BÓVEDAS MAESTRAS)
+      // 8. CONFIGURACIÓN COMPLETA (BÓVEDAS + SUB-OPCIONES)
       if (path === "/api/v1/settings") {
         const user = sanitizeEmail(url.searchParams.get("user") || "");
         if (!user) return jsonResponse({ error: "Usuario requerido." }, 400, requestOrigin);
@@ -631,19 +662,52 @@ export default {
             deepfake_fake_disprover: true,
             subvenciones_requisitos_infranqueables: true
           };
-          const settings = raw ? { ...defaultSettings, ...JSON.parse(raw) } : defaultSettings;
-          return jsonResponse({ status: "SUCCESS", settings }, 200, requestOrigin);
+          const defaultSubOptions = {
+            dlp_dni_nie: true,
+            dlp_iban_cards: true,
+            dlp_health_art9: true,
+            purge_sys_madvise: true,
+            rfc3161_qualified_tsa: true,
+            ed25519_signatures: true,
+            merkle_root_anchoring: true,
+            safe_creative_anchor: true,
+            lexical_enforce_active: true,
+            brain_witness_injection: true,
+            anti_dan_jailbreak: true,
+            pipeline_savings_meter: true,
+            strict_corpus_grounding: true,
+            reject_unsupported_claims: true,
+            deepfake_sampling_stream: true,
+            anti_tamper_evidence: true,
+            enforce_no_double_funding: true,
+            enforce_dnsh_principle: true,
+            prtr_nextgen_dossier: true,
+            daci_conflict_prevention: true
+          };
+
+          if (!raw) {
+            return jsonResponse({ status: "SUCCESS", settings: defaultSettings, subOptions: defaultSubOptions }, 200, requestOrigin);
+          }
+
+          const parsed = JSON.parse(raw);
+          const settings = parsed.settings ? { ...defaultSettings, ...parsed.settings } : { ...defaultSettings, ...parsed };
+          const subOptions = parsed.subOptions ? { ...defaultSubOptions, ...parsed.subOptions } : defaultSubOptions;
+
+          return jsonResponse({ status: "SUCCESS", settings, subOptions }, 200, requestOrigin);
         }
 
         if (method === "POST") {
           const body = await request.json();
           const newSettings = body.settings || {};
-          await kv.put(`settings:${user}`, JSON.stringify(newSettings));
-          return jsonResponse({ status: "SUCCESS", settings: newSettings }, 200, requestOrigin);
+          const newSubOptions = body.subOptions || {};
+          const bundleToStore = { settings: newSettings, subOptions: newSubOptions };
+
+          await kv.put(`settings:${user}`, JSON.stringify(bundleToStore));
+          return jsonResponse({ status: "SUCCESS", ...bundleToStore }, 200, requestOrigin);
         }
       }
 
-      // 9. STRIPE WEBHOOK
+      // 9. STRIPE WEBHOOK & APROVISIONAMIENTO
       if (path === "/api/v1/stripe/webhook" && method === "POST") {
         const event = await request.json();
         if (event.type === "checkout.session.completed") {
@@ -654,6 +718,8 @@ export default {
             const raw = await kv.get(`user:${customerEmail}`);
             let record = raw ? JSON.parse(raw) : { email: customerEmail, tenantName: "Empresa Suscrita" };
             record.status = "ACTIVE";
+            record.role = "AUDITOR PERICIAL";
+            record.licenseType = "TIER_ENTERPRISE_AUDITOR";
             await kv.put(`user:${customerEmail}`, JSON.stringify(record));
           }
           return jsonResponse({ status: "PROVISIONED" }, 200, requestOrigin);

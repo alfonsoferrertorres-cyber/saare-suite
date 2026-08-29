@@ -21,6 +21,15 @@ export default function App() {
   const [detectorResult, setDetectorResult] = useState('WARNING');
   const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
 
+  // Estado del modal de contratación directa
+  const [checkoutModal, setCheckoutModal] = useState({
+    isOpen: false,
+    scenarioTitle: '',
+    pricingModel: '',
+    priceText: '',
+    ctaType: 'stripe' // 'stripe' | 'enterprise'
+  });
+
   // Estado dinámico del Velocímetro de Ahorro L7 y Testigo del Cerebro (Escenario 3)
   const [pipelineSavings, setPipelineSavings] = useState({
     tokensSaved: 1420,
@@ -74,6 +83,16 @@ export default function App() {
     } else {
       setDetectorResult('SUCCESS');
     }
+  };
+
+  const openHireModal = (title, model, price, type = 'enterprise') => {
+    setCheckoutModal({
+      isOpen: true,
+      scenarioTitle: title,
+      pricingModel: model,
+      priceText: price,
+      ctaType: type
+    });
   };
 
   // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023
@@ -145,7 +164,8 @@ export default function App() {
       badge: "REVENUE SHARING / ADD-ON",
       color: "#06B6D4",
       icon: "🌐",
-      deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL."
+      deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL.",
+      pricing: "70/30 Rev-Share o 5 € - 15 €/usuario/mes"
     },
     {
       code: "EMBEDDED",
@@ -154,7 +174,8 @@ export default function App() {
       badge: "LICENCIA OEM / ARR SEAT",
       color: "#20C997",
       icon: "⚡",
-      deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook."
+      deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook.",
+      pricing: "Royalty 1,50 € - 4 €/seat/año + Licencia OEM"
     },
     {
       code: "GSI",
@@ -163,7 +184,8 @@ export default function App() {
       badge: "CANAL ISV & ASIENTO AUDITOR",
       color: "#c084fc",
       icon: "⚖️",
-      deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519."
+      deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519.",
+      pricing: "149 €/mes por Asiento Auditor + 25-35% Margen Canal"
     },
     {
       code: "GATEWAY",
@@ -172,7 +194,8 @@ export default function App() {
       badge: "PAY-AS-YOU-GO VOLUMEN",
       color: "#2F81F7",
       icon: "📦",
-      deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate."
+      deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate.",
+      pricing: "0,20 € / 10.000 peticiones inspeccionadas"
     },
     {
       code: "VERTICAL",
@@ -181,7 +204,8 @@ export default function App() {
       badge: "TIER COMPLIANCE MODE (MRR)",
       color: "#EAB308",
       icon: "🔒",
-      deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK."
+      deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK.",
+      pricing: "+15% a +30% MRR en plan Enterprise o Fee por Dossier"
     }
   ];
 
@@ -231,7 +255,6 @@ export default function App() {
       const zip = new JSZip();
       const tEmail = (sessionUser?.email || "auditor@empresa.es").toLowerCase().trim();
       const tTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITOR";
-      const tToken = sessionUser?.token || "sk_live_auditor_managed_identity";
 
       zip.file("manifest.json", JSON.stringify({
         "manifest_version": 3,
@@ -295,6 +318,43 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#05070c', color: '#f1f5f9', fontFamily: '"Inter", system-ui, -apple-system, sans-serif' }}>
       
+      {/* MODAL CHECKOUT / CONTRATACIÓN */}
+      {checkoutModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setCheckoutModal({ ...checkoutModal, isOpen: false })}>
+          <div style={{ maxWidth: '520px', width: '100%', background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '28px', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#38bdf8' }}>// CONTRATACIÓN B2B & LICENCIAMIENTO</span>
+              <button onClick={() => setCheckoutModal({ ...checkoutModal, isOpen: false })} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0' }}>{checkoutModal.scenarioTitle}</h3>
+            <div style={{ display: 'inline-block', background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8', border: '1px solid #0284c7', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', marginBottom: '16px' }}>
+              {checkoutModal.pricingModel}
+            </div>
+
+            <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '14px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Esquema de precios:</div>
+              <div style={{ fontSize: '16px', color: '#34d399', fontWeight: 'bold', marginTop: '4px' }}>{checkoutModal.priceText}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {checkoutModal.ctaType === 'stripe' ? (
+                <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', textAlign: 'center', borderRadius: '6px', fontWeight: '700', textDecoration: 'none', fontSize: '13px', display: 'block', boxSizing: 'border-box' }}>
+                  Contratar Asiento Auditor Online (149 €/mes) ↗
+                </a>
+              ) : (
+                <a href="mailto:alianzas@ms3v.es?subject=Solicitud%20de%20Integracion%20OEM%20/%20ISV%20SAARE" style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', textAlign: 'center', borderRadius: '6px', fontWeight: '700', textDecoration: 'none', fontSize: '13px', display: 'block', boxSizing: 'border-box' }}>
+                  Solicitar Acuerdo OEM / Canal ISV ↗
+                </a>
+              )}
+              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                Probar en Consola GRC (Sandbox)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DEL DIPLOMA REGISTRAL */}
       {showDiploma && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }} onClick={() => setShowDiploma(false)}>
@@ -325,7 +385,7 @@ export default function App() {
               ⚡ Escenarios SAARE
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('architecture'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
-              Arquitectura
+              Arquitectura & B2B
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('risk_roi'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Riesgo & ROI
@@ -334,7 +394,7 @@ export default function App() {
               Proof Bundle
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('compliance'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'compliance' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'compliance' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
-              Compliance
+              Compliance & Subvenciones
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('developers'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'developers' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'developers' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Integración SDK
@@ -412,13 +472,13 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL: ESCENARIOS SAARE */}
+      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON CONTRATACIÓN INTEGRADA */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
           {activeNavTab === 'scenarios_saare' && (
             <div>
-              {/* CABECERA DE POSICIONAMIENTO ESTRATÉGICO: POLÍTICA -> CONTROL -> EVIDENCIA */}
+              {/* CABECERA DE POSICIONAMIENTO */}
               <section style={{ textAlign: 'center', marginBottom: '40px', paddingTop: '10px' }}>
                 <div style={{ display: 'inline-block', backgroundColor: 'rgba(2, 132, 199, 0.1)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '9999px', padding: '6px 18px', marginBottom: '16px' }}>
                   <span style={{ color: '#38bdf8', fontSize: '12.5px', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
@@ -460,7 +520,7 @@ export default function App() {
                 </div>
               </section>
 
-              {/* CONTENEDOR DE LAS 5 SOLUCIONES COMERCIALES */}
+              {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS CON CONTRATACIÓN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
                 {/* 01. EL ESCUDO */}
@@ -494,22 +554,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → 🤖 → 📄 ⚠️
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>[S]</span> → 🔒 → 🤖 ✔
-                      </div>
-                    </div>
-                    <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '9px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
-                      Probar escenario →
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Modelo de Contratación</div>
+                    <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold' }}>IPaaS / Agente EDR In-Process</div>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>Royalty: <strong style={{ color: '#fff' }}>1,50 € - 4 €/seat/año</strong> o Rev-Share</div>
+                    <button onClick={() => openHireModal('01. Módulo El Escudo (L7 RAM)', 'Licencia OEM / Seat ARR', '1,50 € a 4,00 € por puesto/año (Licencia OEM Corporativa)', 'enterprise')} style={{ width: '100%', padding: '9px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+                      Contratar Módulo OEM ↗
+                    </button>
+                    <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '7px', backgroundColor: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontWeight: '600', fontSize: '11.5px', cursor: 'pointer' }}>
+                      Probar en Sandbox
                     </button>
                   </div>
                 </div>
@@ -545,22 +598,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → 🤖 → ❓
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#c084fc', fontWeight: 'bold' }}>[S]</span> → 📄 ✔ → 👥 ✔
-                      </div>
-                    </div>
-                    <button onClick={copyBundleJson} style={{ width: '100%', padding: '9px', backgroundColor: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
-                      {copiedBundle ? '✔ Bundle Copiado' : 'Abrir evidencia real →'}
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Modelo de Contratación</div>
+                    <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: 'bold' }}>Asiento Auditor / GSI Channel</div>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>Tarifa: <strong style={{ color: '#34d399' }}>149,00 € / mes</strong> por perito</div>
+                    <button onClick={() => openHireModal('02. Módulo La Evidencia (Auditor GRC)', 'Asiento de Consultor / Auditor Certificado', '149,00 € / mes (Facturación Stripe con acceso total a Consola GRC)', 'stripe')} style={{ width: '100%', padding: '9px', backgroundColor: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+                      Contratar Asiento (149€) ↗
+                    </button>
+                    <button onClick={copyBundleJson} style={{ width: '100%', padding: '7px', backgroundColor: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '6px', fontWeight: '600', fontSize: '11.5px', cursor: 'pointer' }}>
+                      {copiedBundle ? '✔ Bundle Copiado' : 'Copiar Proof Bundle'}
                     </button>
                   </div>
                 </div>
@@ -605,22 +651,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → 🤖 → 🔓 <span style={{ color: '#ef4444', fontSize: '10px' }}>Vulnerabilidad lógica</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S] Modo Seguridad</span> → 🧠 L7
-                      </div>
-                    </div>
-                    <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '9px', backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
-                      Probar Modo Seguridad →
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Modelo de Contratación</div>
+                    <div style={{ fontSize: '11px', color: '#34d399', fontWeight: 'bold' }}>Edge Gateway / CDN PoP</div>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>Consumo: <strong style={{ color: '#fff' }}>0,20 € / 10k req</strong></div>
+                    <button onClick={() => openHireModal('03. Módulo Razonamiento Activo L7', 'Pay-as-you-go Edge API', '0,20 € por cada 10.000 solicitudes inspeccionadas en Edge PoPs', 'enterprise')} style={{ width: '100%', padding: '9px', backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+                      Activar API Gateway ↗
+                    </button>
+                    <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '7px', backgroundColor: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontWeight: '600', fontSize: '11.5px', cursor: 'pointer' }}>
+                      Simular Inyección DAN
                     </button>
                   </div>
                 </div>
@@ -656,20 +695,16 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <input type="text" value={detectorInput} onChange={(e) => setDetectorInput(e.target.value)} placeholder="Introduce una afirmación de la IA" style={{ width: '100%', padding: '8px', background: '#090d16', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '11px', boxSizing: 'border-box' }} />
-                    <button onClick={handleCheckDetector} style={{ width: '100%', padding: '9px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
-                      Comprobar evidencia →
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Modelo de Contratación</div>
+                    <div style={{ fontSize: '11px', color: '#fb923c', fontWeight: 'bold' }}>SaaS Vertical / Dossier Fee</div>
+                    <input type="text" value={detectorInput} onChange={(e) => setDetectorInput(e.target.value)} placeholder="Introduce una afirmación de la IA" style={{ width: '100%', padding: '6px 8px', background: '#090d16', border: '1px solid #334155', borderRadius: '4px', color: '#fff', fontSize: '11px', boxSizing: 'border-box' }} />
+                    <button onClick={handleCheckDetector} style={{ width: '100%', padding: '7px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '11.5px', cursor: 'pointer' }}>
+                      Comprobar evidencia
                     </button>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>Resultado:</span>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'SUCCESS' ? '#15803d' : '#1e293b', color: '#fff', fontSize: '11px' }}>✔ Conforme</span>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'WARNING' ? '#d97706' : '#1e293b', color: '#fff', fontSize: '11px' }}>⚠️ Duda</span>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'REJECTED' ? '#dc2626' : '#1e293b', color: '#fff', fontSize: '11px' }}>✕ Bloqueo</span>
-                      </div>
-                    </div>
+                    <button onClick={() => openHireModal('04. Módulo El Detector (Fact-Checking)', 'Tier Compliance Mode / Fee por Dossier', '+20% en plan SaaS o Microtarifa por expediente auditado', 'enterprise')} style={{ width: '100%', padding: '8px', backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '4px', fontWeight: 'bold', fontSize: '11.5px', cursor: 'pointer' }}>
+                      Integrar en SaaS Vertical ↗
+                    </button>
                   </div>
                 </div>
 
@@ -704,18 +739,18 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Marco de referencia:</div>
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Modelo de Contratación</div>
+                    <div style={{ fontSize: '11px', color: '#facc15', fontWeight: 'bold' }}>Canal Subvenciones & PRTR</div>
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {['PRTR', 'NextGenEU', 'CDTI', 'ENISA', '2 CFR 200'].map((tag) => (
-                        <button key={tag} onClick={() => setActiveGrantTag(tag)} style={{ fontSize: '9.5px', padding: '3px 6px', borderRadius: '4px', border: '1px solid #334155', background: activeGrantTag === tag ? '#eab308' : '#090d16', color: activeGrantTag === tag ? '#000' : '#cbd5e1', cursor: 'pointer', fontWeight: 'bold' }}>
+                      {['PRTR', 'NextGenEU', 'CDTI', 'ENISA'].map((tag) => (
+                        <button key={tag} onClick={() => setActiveGrantTag(tag)} style={{ fontSize: '9px', padding: '2px 5px', borderRadius: '3px', border: '1px solid #334155', background: activeGrantTag === tag ? '#eab308' : '#090d16', color: activeGrantTag === tag ? '#000' : '#cbd5e1', cursor: 'pointer', fontWeight: 'bold' }}>
                           {tag}
                         </button>
                       ))}
                     </div>
-                    <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '9px', backgroundColor: '#ca8a04', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center', marginTop: '4px' }}>
-                      Ver caso de ejemplo →
+                    <button onClick={() => openHireModal('05. Módulo El Justificador (PRTR/NextGenEU)', 'Licencia Proyecto Subvención', '149,00 €/mes Asiento Auditor o Pack Proyecto Fondos Europeos', 'stripe')} style={{ width: '100%', padding: '9px', backgroundColor: '#ca8a04', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center', marginTop: '4px' }}>
+                      Contratar Módulo Justificador ↗
                     </button>
                   </div>
                 </div>
@@ -784,12 +819,19 @@ export default function App() {
                 {deploymentModes.map((dep) => (
                   <div key={dep.code} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
-                      <h4 style={{ color: '#fff', margin: '6px 0 8px 0', fontSize: '15px' }}>{dep.title}</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
+                      </div>
+                      <h4 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '15px' }}>{dep.title}</h4>
                       <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '0 0 10px 0', lineHeight: 1.45 }}>{dep.desc}</p>
                     </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '8px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
-                      {dep.deployInfo}
+                    <div>
+                      <div style={{ background: '#090d16', padding: '6px 10px', borderRadius: '4px', border: '1px solid #1e293b', color: '#34d399', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>
+                        💰 {dep.pricing}
+                      </div>
+                      <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '8px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
+                        {dep.deployInfo}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -857,10 +899,35 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB COMPLIANCE */}
+          {/* TAB COMPLIANCE CON SELECTOR DE PESTAÑAS INTEGRADO */}
           {activeNavTab === 'compliance' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '20px' }}>Marcos Normativos & Autoridades de Control</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0' }}>Marcos Normativos & Fondos Públicos</h2>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Evidencia fiduciaria para convocatorias y requerimientos de auditoría.</p>
+                </div>
+                
+                {/* SELECTOR DE PESTAÑAS CORRECTAMENTE ENLAZADO */}
+                <div style={{ display: 'flex', gap: '6px', background: '#05070c', padding: '4px', borderRadius: '8px', border: '1px solid #334155' }}>
+                  <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'nextgen' ? '#0284c7' : 'transparent', color: activeGrantTab === 'nextgen' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    NextGenEU / PRTR
+                  </button>
+                  <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'kit' ? '#0284c7' : 'transparent', color: activeGrantTab === 'kit' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    Kit Consulting (Red.es)
+                  </button>
+                  <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'cdti' ? '#0284c7' : 'transparent', color: activeGrantTab === 'cdti' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    CDTI / ENISA
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>{currentGrant.tag}</span>
+                <h3 style={{ fontSize: '18px', color: '#fff', margin: '4px 0 8px 0' }}>{currentGrant.title}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>{currentGrant.summary}</p>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
                 {currentGrant.items.map((item, idx) => (
                   <div key={idx} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>

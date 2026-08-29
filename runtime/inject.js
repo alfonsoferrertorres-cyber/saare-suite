@@ -1,5 +1,8 @@
 /* S.A.A.R.E. L7 RAM Network Interceptor & ISO 27037 DEFR Forensic Agent v10.0 */
 (function() {
+  const API_INGEST_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs";
+  const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
   const DLP = {
     dni: /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i,
     iban: /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}|ES\d{18,22}/i,
@@ -10,29 +13,41 @@
     unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i
   };
 
-  const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
   function getSettings() {
     try {
       const raw = document.documentElement.getAttribute('data-saare-settings');
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
-          cumplimiento_corporativo_integral: parsed.cumplimiento_corporativo_integral !== false && parsed.privacy !== false,
-          auditoria_dictamen_normativo: parsed.auditoria_dictamen_normativo !== false && parsed.logs !== false,
-          razonamiento_activo_l7: parsed.razonamiento_activo_l7 !== false && parsed.security !== false,
+          cumplimiento_corporativo_integral: parsed.cumplimiento_corporativo_integral !== false,
+          auditoria_dictamen_normativo: parsed.auditoria_dictamen_normativo !== false,
+          razonamiento_activo_l7: parsed.razonamiento_activo_l7 !== false,
           deepfake_fake_disprover: parsed.deepfake_fake_disprover !== false,
-          subvenciones_requisitos_infranqueables: parsed.subvenciones_requisitos_infranqueables !== false
+          subvenciones_requisitos_infranqueables: parsed.subvenciones_requisitos_infranqueables !== false,
+          subOptions: parsed.subOptions || {}
         };
       }
     } catch (e) {}
+
     return {
       cumplimiento_corporativo_integral: true,
       auditoria_dictamen_normativo: true,
       razonamiento_activo_l7: true,
       deepfake_fake_disprover: true,
-      subvenciones_requisitos_infranqueables: true
+      subvenciones_requisitos_infranqueables: true,
+      subOptions: {}
     };
+  }
+
+  function getActiveUser() {
+    try {
+      const suiteUser = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_user');
+      if (suiteUser) {
+        const parsed = JSON.parse(suiteUser);
+        return parsed.email || "auditor@ms3v.es";
+      }
+    } catch (e) {}
+    return "auditor@ms3v.es";
   }
 
   function computeL7Seal(str) {
@@ -172,6 +187,33 @@
       });
   }
 
+  function emitTelemetryToKV(eventData) {
+    try {
+      const activeUser = getActiveUser();
+      const payload = {
+        user: activeUser,
+        scenario_id: eventData.scenario_id,
+        promptInput: eventData.cleanPrompt,
+        verdict: eventData.verdict,
+        violationDetails: { norma: eventData.norma, reason: eventData.reason },
+        forensic_role: eventData.forensic_role,
+        timestamp: new Date().toISOString()
+      };
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(`${API_INGEST_URL}?user=${encodeURIComponent(activeUser)}`, blob);
+      } else {
+        fetch(`${API_INGEST_URL}?user=${encodeURIComponent(activeUser)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
     const str = parseBody(rawBody);
@@ -181,13 +223,10 @@
     if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
     const seal = computeL7Seal(cleanPrompt);
+    const subOpts = settings.subOptions;
 
-    // =========================================================================
-    // INSPECCIÓN POR BÓVEDAS L7 (DEFR / DES FORENSIC LIFECYCLE)
-    // =========================================================================
-
-    // BÓVEDA 5: EL JUSTIFICADOR (Anti-Doble Financiación & Subvenciones)
-    if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt)) {
+    // BÓVEDA 5: EL JUSTIFICADOR (Subvenciones & Fondos Públicos)
+    if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
       const match = cleanPrompt.match(DLP.invoices)[0];
       return {
         verdict: "RECHAZADO",
@@ -204,7 +243,7 @@
       };
     }
 
-    // BÓVEDA 4: EL DETECTOR (Fake Disprover / Unsupported Claims)
+    // BÓVEDA 4: EL DETECTOR (Fake Disprover & Unsupported Claims)
     if (settings.deepfake_fake_disprover && DLP.unsupported.test(cleanPrompt)) {
       return {
         verdict: "RECHAZADO",
@@ -222,7 +261,7 @@
     }
 
     // BÓVEDA 3: EL GUARDIÁN (Razonamiento Activo & Jailbreak Guard)
-    if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt)) {
+    if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
       return {
         verdict: "RECHAZADO",
         scenario_id: "razonamiento_activo_l7",
@@ -238,12 +277,12 @@
       };
     }
 
-    // BÓVEDA 1: EL ESCUDO (DEFR - DNI, NIE, IBAN, Tarjetas, Datos Médicos Salud Art. 9)
+    // BÓVEDA 1: EL ESCUDO (DEFR - Privacidad, DNI, IBAN, Salud Art. 9)
     if (settings.cumplimiento_corporativo_integral) {
-      const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
-      const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
-      const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
-      const isHealth = DLP.health.test(cleanPrompt) || DLP.health.test(str);
+      const isDni = subOpts.dlp_dni_nie !== false && (DLP.dni.test(cleanPrompt) || DLP.dni.test(str));
+      const isIban = subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
+      const isCard = subOpts.dlp_iban_cards !== false && (DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, "")));
+      const isHealth = subOpts.dlp_health_art9 !== false && (DLP.health.test(cleanPrompt) || DLP.health.test(str));
 
       if (isDni || isIban || isCard || isHealth) {
         let category = "PII_DNI_NIE";
@@ -278,7 +317,7 @@
       }
     }
 
-    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO CON TESTIGO 🧠 Y AHORRO
+    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
@@ -298,7 +337,7 @@
     };
   }
 
-  // Hook XHR (Gemini batchexecute y llamadas AJAX)
+  // Hook XHR
   const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
@@ -309,25 +348,25 @@
   XMLHttpRequest.prototype.send = function(body) {
     const check = evaluatePayload(body, this._saare_url);
     if (check) {
+      window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+      emitTelemetryToKV(check);
       if (check.verdict === "RECHAZADO") {
-        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
         throw new Error(`[S.A.A.R.E. L7] Transmisión bloqueada en RAM por [${check.scenario_id}].`);
-      } else if (check.verdict === "PERMITIDO") {
-        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
       }
     }
     return rawSend.apply(this, arguments);
   };
 
-  // Hook Fetch (ChatGPT, Claude, DeepSeek, Perplexity)
+  // Hook Fetch
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");
     if (config && config.body) {
       const check = evaluatePayload(config.body, url);
       if (check) {
+        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+        emitTelemetryToKV(check);
         if (check.verdict === "RECHAZADO") {
-          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
           return new Response(JSON.stringify({
             error: "S.A.A.R.E. L7 Intercept: Bloqueo Ex-Ante en RAM",
             scenario: check.scenario_id,
@@ -337,8 +376,6 @@
             status: 400,
             headers: { "Content-Type": "application/json" }
           });
-        } else if (check.verdict === "PERMITIDO") {
-          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
         }
       }
     }
