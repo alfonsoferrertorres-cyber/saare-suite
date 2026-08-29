@@ -12,8 +12,8 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [mode, setMode] = useState('register'); // 'register' | 'login' | 'reset'
-  const [currentView, setCurrentView] = useState('LANDING'); // 'LANDING' | 'STATUS' | 'AUTH'
+  const [mode, setMode] = useState('register');
+  const [currentView, setCurrentView] = useState('LANDING');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -27,7 +27,7 @@ export default function App() {
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
   const [activeAudienceTab, setActiveAudienceTab] = useState('ciso');
   const [activeGrantTab, setActiveGrantTab] = useState('nextgen');
-  const [activeProofTab, setActiveProofTab] = useState('bundle'); // 'bundle' | 'causality' | 'rejection' | 'merkle'
+  const [activeProofTab, setActiveProofTab] = useState('bundle');
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
@@ -37,74 +37,92 @@ export default function App() {
   const MERKLE_ROOT = "8f3b29d10e54a67b129845cfa8901234ef567890abcdef1234567890abcdef12";
   const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
-  // SAARE CANONICAL PROOF BUNDLE v8.4.0 (10 CAPAS DETERMINISTAS)
+  // SAARE CANONICAL PROOF BUNDLE v9.0.0 (SEPARACIÓN DE PROOFS, CLAIMS Y MEASUREMENTS)
   const proofBundle = {
-    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V8.4",
+    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V9.0",
     "EVENT_IDENTIFIER": {
-      "EVENT_ID": "EV-2026-0828-7F82A1",
+      "EVENT_ID": "EV-2026-0829-7F82A1",
       "PARENT_HASH": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "CONTEXT_ID": "MS3V-RECON-VALID-2026-ALF-0521",
-      "ROOT_NODE_ID": "2607076315021"
+      "ROOT_NODE_ID": "2607076315021",
+      "ENVIRONMENT": "PRODUCTION"
     },
-    "MULTIDIMENSIONAL_VERSIONING": {
-      "SCHEMA_VERSION": "8.4.0",
-      "PERIMETER_ENGINE_VERSION": "ms3v-l7-v8.4",
-      "POLICY_VERSION": "POL-GDPR-EUAI-2026.2",
-      "RUNTIME_ENVIRONMENT": "Cloudflare Edge V8 Isolate + Linux C-ABI HugePages",
-      "CRYPTO_SUITE_VERSION": "Ed25519-SHA256-RFC3161"
+    
+    "TRUST_BOUNDARY": {
+      "TRUSTED_COMPONENTS": ["SAARE_L7_ENGINE", "MS3V_KEY_VAULT"],
+      "UNTRUSTED_COMPONENTS": ["LLM_PROVIDER", "USER_INPUT"],
+      "ATTESTED_COMPONENTS": ["HOST_RUNTIME_MEMORY"],
+      "BOUNDARY_POLICY_HASH": "9f83c6051888b2565dd21d227f6f17e0ef73e72ebbf0a59966c825a07c3992b9"
     },
-    "VALIDITY_VS_TRUTH_DISTINCTION": {
-      "FACTUAL_STATUS": "EMPIRICALLY_GROUNDED",
+
+    "PROOFS": {
+      "CHAIN_INTEGRITY": {
+        "PROOF_TYPE": "CRYPTOGRAPHICALLY_VERIFIED",
+        "EVENT_HASH": CANONICAL_HASH,
+        "PARENT_HASH": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "MERKLE_ROOT": MERKLE_ROOT,
+        "SEQUENCE_NUMBER": 42081,
+        "CHAIN_STATUS": "CONTINUOUS"
+      },
+      "NO_UNSUPPORTED_CLAIM": {
+        "PROOF_TYPE": "FORMALLY_VERIFIED",
+        "CLAIMS_EVALUATED": 1,
+        "INSPECTION_MATRIX": [
+          {
+            "CLAIM_ID": "CLM-001",
+            "EVIDENCE_HASH": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+            "RULE_HASH": "9f83c6051888b2565dd21d227f6f17e0ef73e72ebbf0a59966c825a07c3992b9",
+            "STATUS": "SUPPORTED"
+          }
+        ]
+      },
+      "REJECTION": {
+        "PROOF_TYPE": "CRYPTOGRAPHICALLY_VERIFIED",
+        "UNSUPPORTED_CLAIMS": 0,
+        "REJECTED_CLAIMS": 0,
+        "INDETERMINATE_CLAIMS": 0,
+        "REJECTION_POLICY_HASH": "d2a5f1e8...[POLICY_DIGEST]"
+      }
+    },
+
+    "ATTESTATIONS": {
+      "RUNTIME": {
+        "PROOF_TYPE": "ATTESTED",
+        "INDEPENDENT_ATTESTOR": "SAARE_IN_PROCESS_MEMORY_MONITOR",
+        "MEMORY_STATE": "SYS_madvise (MADV_DONTNEED) EXECUTED",
+        "ZERO_DISK_WRITES_VERIFIED": true
+      },
+      "MODEL": {
+        "PROOF_TYPE": "ASSERTED",
+        "PROVIDER": "OPENAI",
+        "MODEL_ID": "gpt-4o",
+        "MODEL_VERSION": "2024-05-13",
+        "INFERENCE_CONFIG_HASH": "e5b3...[CONFIG_DIGEST]",
+        "SYSTEM_PROMPT_HASH": "8b2a...[PROMPT_DIGEST]"
+      }
+    },
+
+    "MEASUREMENTS": {
+      "DETERMINISTIC_LATENCY": {
+        "PROOF_TYPE": "MEASURED",
+        "P50_LATENCY_MS": 0.017,
+        "P99_LATENCY_MS": 1.160,
+        "MEASUREMENT_WINDOW": "100000_INVOCATIONS"
+      }
+    },
+
+    "VERIFICATION_RESULT": {
+      "FACTUAL_STATUS": "NOT_DETERMINABLE_BY_BOUNDARY",
       "PERIMETER_STATUS": "PERIMETER_VALID",
-      "JUSTIFICATION": "Afirmación acotada estrictamente a premisas del corpus auditado sin interpolación estocástica"
+      "JUSTIFICATION": "La validación certifica la adherencia a la política y la causalidad de la evidencia, no la verdad universal de la inferencia del modelo."
     },
-    "PROOF_OF_NO_UNSUPPORTED_CLAIM": {
-      "CLAIMS_EVALUATED": 1,
-      "CLAIMS_SUPPORTED": 1,
-      "CLAIMS_REJECTED": 0,
-      "CLAIMS_INDETERMINATE": 0,
-      "INSPECTION_MATRIX": [
-        {
-          "CLAIM_ID": "CLM-001",
-          "EVIDENCE_HASH": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
-          "RULE_HASH": "9f83c6051888b2565dd21d227f6f17e0ef73e72ebbf0a59966c825a07c3992b9",
-          "STATUS": "SUPPORTED"
-        }
-      ]
-    },
-    "RUNTIME_ATTESTATION": {
-      "INDEPENDENT_ATTESTOR": "SAARE_IN_PROCESS_MEMORY_MONITOR",
-      "MEMORY_STATE": "SYS_madvise (MADV_DONTNEED) EXECUTED",
-      "ZERO_DISK_WRITES_VERIFIED": true,
-      "DETERMINISTIC_LATENCY": "1.16 ms",
-      "P50_LATENCY": "0.017 ms",
-      "P99_LATENCY": "1.160 ms"
-    },
-    "CAUSALITY_CHAIN": {
-      "INPUT_COMMITMENT": "d41d8cd98f00b204e9800998ecf8427e",
-      "EVIDENCE_COMMITMENT": "4a5e1e4baab89f3a32518a88c31bc87f",
-      "DECISION_COMMITMENT": "a89bc213ef5678901234567890abcdef",
-      "ACTION_TAKEN": "REDACT_IN_RAM_AND_FORWARD",
-      "OUTPUT_COMMITMENT": CANONICAL_HASH
-    },
-    "TRANSPARENCY_MERKLE_TREE": {
-      "MERKLE_ROOT": MERKLE_ROOT,
-      "LEAF_INDEX": 42081,
-      "INCLUSION_PROOF_PATH": [
-        "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
-        "fc4ced8e39097da471d87e387f6ab4ab194488390772ba6e5a605f6396e95267"
-      ]
-    },
-    "CRYPTOGRAPHIC_KILLSWITCH_REGISTRY": {
+
+    "CRYPTOGRAPHIC_KILLSWITCH": {
       "CERTIFICATE_STATUS": "ACTIVE",
-      "REVOCATION_ENDPOINT": `${API_BASE}/revocation-status/ed25519-ms3v-root-2026`,
-      "SUPERSEDED_BY": null
+      "REVOCATION_ENDPOINT": `${API_BASE}/revocation-status/ed25519-ms3v-root-2026`
     },
-    "REPRODUCIBILITY_GUARANTEE": {
-      "CONDITIONS": "SAME_INPUT + SAME_MODEL + SAME_POLICY + SAME_EVIDENCE = SAME_DECISION",
-      "MATHEMATICAL_VARIANCE": "0.0000000000 (T=0.0)"
-    },
-    "SIGNATURES_AND_PROOF": {
+
+    "SIGNATURES": {
       "PRIMARY_SIGNATURE": {
         "ALGORITHM": "Ed25519",
         "KEY_ID": "ed25519-ms3v-root-2026",
@@ -114,8 +132,7 @@ export default function App() {
         "STANDARD": "RFC 3161",
         "ALGORITHM": "sha256WithRSAEncryption",
         "TSA_RECORD": "QUALIFIED_TRUST_ANCHOR_EIDAS"
-      },
-      "PUBLIC_VERIFICATION_URL": VERIFY_URL
+      }
     }
   };
 
@@ -198,9 +215,9 @@ export default function App() {
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_CAUSALITY_CHAIN'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
-    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_CAUSALITY_CHAIN"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
-    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_CAUSALITY_CHAIN" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
+    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
+    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
     cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
   };
 
@@ -285,16 +302,16 @@ export default function App() {
 
       zip.file("manifest.json", JSON.stringify({
         "manifest_version": 3,
-        "name": "SAARE L7 Governance Agent (Proof Bundle Edition)",
-        "version": "8.4.0",
-        "description": "Universal Compliance, Proof of No Unsupported Claim & In-Memory Directives Engine for GenAI",
+        "name": "SAARE L7 Governance Agent (V9 Proof Bundle Edition)",
+        "version": "9.0.0",
+        "description": "Ex-Ante Perimeter, Rejection Proofs & Runtime Attestation Engine",
         "background": { "service_worker": "background.js" },
         "content_scripts": [{ "matches": ["https://*/*"], "js": ["content.js"], "run_at": "document_start" }],
         "web_accessible_resources": [{ "resources": ["inject.js"], "matches": ["https://*/*"] }],
         "permissions": ["storage"]
       }, null, 2));
 
-      const injectContent = `/* S.A.A.R.E. L7 In-Memory Interceptor & Proof Engine v8.4.0 */
+      const injectContent = `/* S.A.A.R.E. L7 In-Memory Interceptor & V9 Proof Engine */
 (function() {
   const DLP = {
     dni: /(?:^|\\D)(\\d{7,8}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
@@ -387,7 +404,7 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE L7 TELEMETRY & PROOF BUNDLE BRIDGE v8.4.0
+      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v9.0.0
 function updateDomSettings(settings) {
   if (settings) document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
 }
@@ -468,12 +485,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   };
 
-  const copyHashToClipboard = () => {
-    navigator.clipboard.writeText(CANONICAL_HASH);
-    setCopiedHash(true);
-    setTimeout(() => setCopiedHash(false), 2000);
-  };
-
   const copyBundleJson = () => {
     navigator.clipboard.writeText(JSON.stringify(proofBundle, null, 2));
     setCopiedBundle(true);
@@ -511,12 +522,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           </div>
 
           <nav style={{ display: 'flex', gap: '22px', alignItems: 'center', fontSize: '13px', fontWeight: '500' }}>
+            <a href="#problem" style={{ color: '#8B98A7', textDecoration: 'none' }}>El Problema</a>
+            <a href="#markets" style={{ color: '#8B98A7', textDecoration: 'none' }}>Mercados</a>
             <a href="#architecture" style={{ color: '#8B98A7', textDecoration: 'none' }}>Arquitectura</a>
             <a href="#proof-bundle" style={{ color: '#20C997', textDecoration: 'none', fontWeight: '600' }}>Proof Bundle</a>
             <a href="#subvenciones" style={{ color: '#2F81F7', textDecoration: 'none', fontWeight: '600' }}>Ayudas & Fondos</a>
-            <a href="#evidence" style={{ color: '#8B98A7', textDecoration: 'none' }}>Evidencia</a>
             <a href="#solutions" style={{ color: '#8B98A7', textDecoration: 'none' }}>Despliegues</a>
-            <a href="#developers" style={{ color: '#8B98A7', textDecoration: 'none' }}>Developers</a>
 
             {sessionUser ? (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: '12px' }}>
@@ -620,7 +631,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px dashed #151B23', marginBottom: '10px' }}>
                 <span style={{ color: '#8B98A7' }}>PROOF_BUNDLE_GENERATOR</span>
-                <strong style={{ color: '#20C997' }}>ED25519 + MERKLE TREE READY</strong>
+                <strong style={{ color: '#20C997' }}>V9 ATTESTATION READY</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#8B98A7' }}>ESTADO_MOTOR_L7</span>
@@ -646,7 +657,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           {/* HERO SECTION */}
           <section style={{ maxWidth: '1100px', margin: '70px auto 50px auto', padding: '0 24px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 14px', backgroundColor: 'rgba(47, 129, 247, 0.1)', border: '1px solid rgba(47, 129, 247, 0.3)', borderRadius: '20px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', marginBottom: '24px' }}>
-              ARQUITECTURA DE AUDITORÍA NATIVA & PERÍMETRO EX-ANTE L7
+              ARQUITECTURA DE ATENCIÓN DETERMINISTA EN TIEMPO DE EJECUCIÓN
             </div>
 
             <h1 style={{ fontSize: '48px', fontWeight: '800', lineHeight: 1.15, letterSpacing: '-1.5px', margin: '0 0 20px 0', color: '#E8EDF2' }}>
@@ -654,7 +665,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </h1>
 
             <p style={{ fontSize: '16.5px', color: '#8B98A7', lineHeight: 1.6, maxWidth: '820px', margin: '0 auto 36px auto' }}>
-              SAARE traslada el control del modelo hacia el entorno de ejecución (Runtime). No intenta demostrar que la IA es infalible de forma abstracta, sino que confina formalmente la inferencia: cualquier afirmación carente de evidencia es derivada de forma determinista a <code>REJECTED</code> o <code>INDETERMINATE</code> mediante atestación matemática en memoria RAM.
+              Protege la IA antes de que el riesgo llegue al modelo. SAARE intercepta, valida y gobierna el flujo de inferencia en Capa 7. Las afirmaciones que no cumplen las condiciones de evidencia y política no atraviesan el perímetro. Cada evento genera evidencia criptográfica verificable para seguridad, compliance y auditoría.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '40px' }}>
@@ -667,12 +678,83 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* DIAGRAMA ESTRUCTURAL ASCII DE PRUEBA DE RECHAZO */}
+          {/* NUEVO MÓDULO: ¿QUÉ PROBLEMA RESUELVE? (5 TARJETAS) */}
+          <section id="problem" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0' }}>¿Qué problema resuelve SAARE?</h2>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔐</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Data Leakage</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Evita que información regulada atraviese el perímetro de IA hacia el proveedor del modelo.</p>
+              </div>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>🧠</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Unsupported Claims</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Impide que afirmaciones sin evidencia suficiente adquieran estado válido durante la inferencia.</p>
+              </div>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>🕵️</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Auditability</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Cada evento queda asociado a un paquete de evidencia criptográfica independientemente verificable.</p>
+              </div>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚖️</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Governance</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Aplica políticas de seguridad, riesgo y cumplimiento antes y durante la ejecución, no a posteriori.</p>
+              </div>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔗</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Provenance</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Mantiene la cadena causal inmutable entre entrada, evidencia, decisión y acción ejecutada.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* NUEVO MÓDULO: MERCADOS (CASOS DE USO) */}
+          <section id="markets" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0' }}>¿Dónde quieres integrar SAARE?</h2>
+              <p style={{ color: '#8B98A7', fontSize: '15px' }}>Arquitectura de referencia para 5 mercados críticos.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>01 / AI WORKFLOWS</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>LangChain & n8n</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Garantiza que los flujos automatizados empresariales no procesen ni emitan datos fuera de las políticas definidas en el perímetro.</p>
+              </div>
+              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>02 / CYBERSECURITY</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>EDR & XDR Providers</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Integración nativa C-ABI para inspección in-process de buffers de red, ofreciendo DLP para IA directamente en el endpoint.</p>
+              </div>
+              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ color: '#FF4D5A', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>03 / GSIs & CONSULTING</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Auditoría & Compliance</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Generación de Proof Bundles para justificar cumplimiento de ISO/IEC 42001, EU AI Act y auditorías técnicas de subvenciones.</p>
+              </div>
+              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ color: '#E8EDF2', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>04 / CLOUD & GATEWAYS</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>API Management</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Middleware para interceptar y limpiar tráfico hacia proveedores LLM (OpenAI, Anthropic) antes de que abandone la red segura.</p>
+              </div>
+              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
+                <div style={{ color: '#E8EDF2', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>05 / REGULATED SOFTWARE</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0' }}>Salud, Banca y Legal</h3>
+                <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>Desacople total de datos sensibles. Atestación del runtime de que no existen escrituras en disco (Residuo Cero) para entornos LOPDGDD estrictos.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* DIAGRAMA ESTRUCTURAL ASCII DE PRUEBA DE RECHAZO Y ESTADOS */}
           <section id="architecture" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', maxWidth: '720px', margin: '0 auto', textAlign: 'left', overflowX: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>FLUJO DE CAUSALIDAD & PRUEBA DE RECHAZO</span>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>LATENCIA DETERMINISTA: 1.16 ms</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>ARQUITECTURA DE REFERENCIA EX-ANTE</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>P99 OBSERVADO: 1.16 ms</span>
               </div>
               <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '12px', lineHeight: 1.45, color: '#8B98A7' }}>
 {`    ┌──────────────────────────────────────────────┐
@@ -702,18 +784,119 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  ║  SIGNED PROOF BUNDLE -> MERKLE TRANSPARENCY LOG ║
  ╚═════════════════════════════════════════════════╝`}
               </pre>
+              <div style={{ marginTop: '16px', fontSize: '11px', color: '#64748B', textAlign: 'center', fontFamily: 'monospace' }}>
+                Resultados de latencia correspondientes al entorno y metodología de benchmark especificados.
+              </div>
+            </div>
+            
+            {/* EL MENSAJE MÁS IMPORTANTE */}
+            <div style={{ textAlign: 'center', marginTop: '40px' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#E8EDF2', marginBottom: '16px' }}>SAARE no es otro guardrail. Es una capa de control y evidencia alrededor de la ejecución.</h3>
+              <p style={{ color: '#8B98A7', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto' }}>
+                Guardrails controlan comportamientos. DLP controla datos. API Gateways controlan tráfico. SIEM registra eventos. <strong>SAARE conecta estas funciones con un perímetro L7 y una evidencia verificable de la decisión.</strong>
+              </p>
             </div>
           </section>
 
-          {/* NUEVO MÓDULO: SAARE PROOF BUNDLE INTERACTIVO */}
+          {/* MÓDULO DE TABLA COMPARATIVA */}
+          <section style={{ maxWidth: '900px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#E8EDF2', marginBottom: '24px', textAlign: 'center' }}>SAARE frente al stack tradicional</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #151B23', color: '#8B98A7' }}>
+                    <th style={{ padding: '12px' }}>Capacidad</th>
+                    <th style={{ padding: '12px' }}>DLP</th>
+                    <th style={{ padding: '12px' }}>API Gateway</th>
+                    <th style={{ padding: '12px' }}>SIEM</th>
+                    <th style={{ padding: '12px' }}>LLM Guardrails</th>
+                    <th style={{ padding: '12px', color: '#2F81F7' }}>SAARE</th>
+                  </tr>
+                </thead>
+                <tbody style={{ color: '#E8EDF2' }}>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>PII detection</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Pre-inference enforcement</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Runtime evidence</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Cryptographic proof</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Causal chain</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Merkle transparency</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #151B23' }}>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Model-independent</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#20C997' }}>✓</td>
+                    <td style={{ padding: '12px', color: '#EAB308' }}>parcial</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '12px', fontWeight: '600' }}>Reject unsupported claim</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#8B98A7' }}>—</td>
+                    <td style={{ padding: '12px', color: '#EAB308' }}>parcial</td>
+                    <td style={{ padding: '12px', color: '#2F81F7', fontWeight: 'bold' }}>✓</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* MÓDULO SAARE PROOF BUNDLE INTERACTIVO */}
           <section id="proof-bundle" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0' }}>No tienes que creer a SAARE. Puedes verificarlo.</h2>
+              <p style={{ color: '#8B98A7', fontSize: '15px' }}>Demostración en vivo de la Arquitectura de Atestación V9.</p>
+            </div>
+
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderTop: '3px solid #20C997', borderRadius: '8px', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
                 <div>
                   <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#20C997' }}>// SAARE_PROOF_BUNDLE_INSPECTOR</span>
-                  <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '4px 0 0 0', color: '#E8EDF2' }}>
                     Paquete Verificable de Integridad & Atestación
-                  </h2>
+                  </h3>
                 </div>
                 <button onClick={copyBundleJson} style={{ background: copiedBundle ? '#20C997' : '#151B23', border: '1px solid #30363D', color: '#fff', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
                   {copiedBundle ? '✔ Bundle Copiado' : '📋 Copiar Proof Bundle JSON'}
@@ -723,16 +906,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               {/* TABS DEL PROOF BUNDLE */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #151B23', paddingBottom: '12px', flexWrap: 'wrap' }}>
                 <button onClick={() => setActiveProofTab('bundle')} style={{ padding: '6px 12px', border: '1px solid', borderColor: activeProofTab === 'bundle' ? '#20C997' : '#151B23', borderRadius: '4px', background: activeProofTab === 'bundle' ? '#151B23' : 'transparent', color: activeProofTab === 'bundle' ? '#20C997' : '#8B98A7', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
-                  📦 Proof Bundle Completo
+                  📦 Visión General
                 </button>
                 <button onClick={() => setActiveProofTab('causality')} style={{ padding: '6px 12px', border: '1px solid', borderColor: activeProofTab === 'causality' ? '#20C997' : '#151B23', borderRadius: '4px', background: activeProofTab === 'causality' ? '#151B23' : 'transparent', color: activeProofTab === 'causality' ? '#20C997' : '#8B98A7', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
-                  🔗 Cadena de Causalidad
+                  🔗 Cadena Causal
                 </button>
                 <button onClick={() => setActiveProofTab('rejection')} style={{ padding: '6px 12px', border: '1px solid', borderColor: activeProofTab === 'rejection' ? '#20C997' : '#151B23', borderRadius: '4px', background: activeProofTab === 'rejection' ? '#151B23' : 'transparent', color: activeProofTab === 'rejection' ? '#20C997' : '#8B98A7', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
-                  🛡️ No Unsupported Claim
+                  🛡️ Unsupported Claim
                 </button>
                 <button onClick={() => setActiveProofTab('merkle')} style={{ padding: '6px 12px', border: '1px solid', borderColor: activeProofTab === 'merkle' ? '#20C997' : '#151B23', borderRadius: '4px', background: activeProofTab === 'merkle' ? '#151B23' : 'transparent', color: activeProofTab === 'merkle' ? '#20C997' : '#8B98A7', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
-                  🌳 Merkle Transparency Log
+                  🌳 Merkle Log
                 </button>
               </div>
 
@@ -740,22 +923,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               {activeProofTab === 'bundle' && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: '20px', alignItems: 'start' }}>
                   <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '18px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px' }}>
-                    <div style={{ color: '#20C997', fontWeight: 'bold', marginBottom: '12px' }}>AUDIT VERIFICATION STEPS:</div>
+                    <div style={{ color: '#20C997', fontWeight: 'bold', marginBottom: '12px' }}>VERIFICACIÓN DE ATTESTACIÓN:</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#8B98A7' }}>
-                      <div><span style={{ color: '#20C997' }}>✓</span> IDENTITY_VERIFIED (MS3V)</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> TIMESTAMP_VERIFIED (RFC 3161)</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> SIGNATURE_VERIFIED (Ed25519)</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> POLICY_VERIFIED (POL-2026.2)</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> EVIDENCE_COMMITMENT_VERIFIED</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> CAUSALITY_CHAIN_INTEGRITY</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> MERKLE_INCLUSION_VERIFIED</div>
-                      <div><span style={{ color: '#20C997' }}>✓</span> KILLSWITCH_STATUS: ACTIVE</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> IDENTITY (MS3V)</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> TIMESTAMP (RFC 3161)</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> SIGNATURE (Ed25519)</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> POLICY (POL-2026.2)</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> EVIDENCE_COMMITMENT</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> CAUSALITY_CHAIN</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> MERKLE_INCLUSION</div>
+                      <div><span style={{ color: '#20C997' }}>✓</span> REVOCATION: ACTIVE</div>
                       <div style={{ borderTop: '1px dashed #151B23', paddingTop: '8px', color: '#E8EDF2', fontWeight: 'bold' }}>
                         FINAL PERIMETER: <span style={{ color: '#20C997' }}>VALID</span>
                       </div>
                     </div>
                   </div>
-                  <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #151B23', borderRadius: '6px', padding: '16px', color: '#E8EDF2', fontSize: '11.5px', fontFamily: 'monospace', overflowX: 'auto', maxHeight: '280px' }}>
+                  <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #151B23', borderRadius: '6px', padding: '16px', color: '#E8EDF2', fontSize: '11.5px', fontFamily: 'monospace', overflowX: 'auto', maxHeight: '350px' }}>
                     {JSON.stringify(proofBundle, null, 2)}
                   </pre>
                 </div>
@@ -766,16 +949,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   <div style={{ color: '#2F81F7', fontWeight: 'bold', marginBottom: '14px' }}>GRAFO DE CAUSALIDAD CRIPTOGRÁFICA (PARENT_HASH BINDING):</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px' }}>
-                      <span style={{ color: '#8B98A7' }}>[1] INPUT_COMMITMENT:</span> <span style={{ color: '#E8EDF2' }}>{proofBundle.CAUSALITY_CHAIN.INPUT_COMMITMENT}</span>
+                      <span style={{ color: '#8B98A7' }}>[1] INPUT_COMMITMENT:</span> <span style={{ color: '#E8EDF2' }}>{proofBundle.PROOFS.CHAIN_INTEGRITY.PARENT_HASH}</span>
                     </div>
                     <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px' }}>
-                      <span style={{ color: '#8B98A7' }}>[2] EVIDENCE_BINDING:</span> <span style={{ color: '#20C997' }}>{proofBundle.CAUSALITY_CHAIN.EVIDENCE_COMMITMENT} (Parent Hash: {proofBundle.EVENT_IDENTIFIER.PARENT_HASH.substring(0, 16)}...)</span>
+                      <span style={{ color: '#8B98A7' }}>[2] EVIDENCE_BINDING:</span> <span style={{ color: '#20C997' }}>{proofBundle.PROOFS.NO_UNSUPPORTED_CLAIM.INSPECTION_MATRIX[0].EVIDENCE_HASH}</span>
                     </div>
                     <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px' }}>
-                      <span style={{ color: '#8B98A7' }}>[3] RUNTIME_ACTION:</span> <span style={{ color: '#2F81F7' }}>{proofBundle.CAUSALITY_CHAIN.ACTION_TAKEN}</span>
+                      <span style={{ color: '#8B98A7' }}>[3] RUNTIME_ACTION:</span> <span style={{ color: '#2F81F7' }}>{proofBundle.ATTESTATIONS.RUNTIME.MEMORY_STATE}</span>
                     </div>
                     <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px' }}>
-                      <span style={{ color: '#8B98A7' }}>[4] OUTPUT_ROOT_DIGEST:</span> <span style={{ color: '#E8EDF2' }}>{proofBundle.CAUSALITY_CHAIN.OUTPUT_COMMITMENT}</span>
+                      <span style={{ color: '#8B98A7' }}>[4] OUTPUT_ROOT_DIGEST:</span> <span style={{ color: '#E8EDF2' }}>{proofBundle.PROOFS.CHAIN_INTEGRITY.EVENT_HASH}</span>
                     </div>
                   </div>
                 </div>
@@ -788,7 +971,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     Cada aserción generada debe tener un hash de evidencia vinculante preexistente. Si no existe anclaje probatorio, el sistema no emite la afirmación como verdadera, sino que activa la prueba de rechazo o indeterminación.
                   </p>
                   <div style={{ fontFamily: 'monospace', fontSize: '12px', backgroundColor: '#0D1117', padding: '12px', borderRadius: '4px', border: '1px solid #151B23' }}>
-                    {JSON.stringify(proofBundle.PROOF_OF_NO_UNSUPPORTED_CLAIM, null, 2)}
+                    {JSON.stringify(proofBundle.PROOFS.NO_UNSUPPORTED_CLAIM, null, 2)}
                   </div>
                 </div>
               )}
@@ -800,42 +983,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     Permite a auditores externos verificar la inclusión matemática de un evento individual dentro de millones de transacciones sin revelar el texto plano del usuario.
                   </p>
                   <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px', marginBottom: '8px' }}>
-                    <span style={{ color: '#8B98A7' }}>MERKLE_ROOT:</span> <span style={{ color: '#20C997' }}>{proofBundle.TRANSPARENCY_MERKLE_TREE.MERKLE_ROOT}</span>
+                    <span style={{ color: '#8B98A7' }}>MERKLE_ROOT:</span> <span style={{ color: '#20C997' }}>{proofBundle.PROOFS.CHAIN_INTEGRITY.MERKLE_ROOT}</span>
                   </div>
                   <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px' }}>
-                    <span style={{ color: '#8B98A7' }}>INCLUSION_PROOF_BRANCHES:</span> {proofBundle.TRANSPARENCY_MERKLE_TREE.INCLUSION_PROOF_PATH.length} hashes de verificación
+                    <span style={{ color: '#8B98A7' }}>SEQUENCE_NUMBER:</span> {proofBundle.PROOFS.CHAIN_INTEGRITY.SEQUENCE_NUMBER}
                   </div>
                 </div>
               )}
-            </div>
-          </section>
-
-          {/* TRES PILARES TÉCNICOS */}
-          <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
-                <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>01 / PERÍMETRO EX-ANTE</div>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Prueba de Rechazo Firmada</h3>
-                <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Acredita formalmente tanto la admisión como el bloqueo determinista en RAM. Cada rechazo emite un digest pericial con valor probatorio pleno.
-                </p>
-              </div>
-
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
-                <div style={{ color: '#FF4D5A', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>02 / RESIDUO CERO</div>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Atestación del Runtime</h3>
-                <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Independencia total del modelo. El entorno de ejecución atestigua la purga de buffers con <code style={{ color: '#E8EDF2' }}>SYS_madvise</code> sin escrituras en disco.
-                </p>
-              </div>
-
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
-                <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>03 / FORENSIC DIGEST</div>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Kill Switch & Causalidad</h3>
-                <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Capacidad de invalidación y revocación criptográfica por versión, garantizando auditorías reproducibles conforme a ISO/IEC 42001.
-                </p>
-              </div>
             </div>
           </section>
 
@@ -846,16 +1000,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <div>
                   <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// {currentGrant.tag}</span>
                   <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0 0 0', color: '#E8EDF2' }}>
-                    {currentGrant.title}
+                    Evidence-ready for regulated AI projects
                   </h2>
                 </div>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997', background: 'rgba(32, 201, 151, 0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(32, 201, 151, 0.2)' }}>
-                  NO-CLAWBACK ENGINE
-                </span>
               </div>
 
               <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', maxWidth: '850px' }}>
-                {currentGrant.summary}
+                SAARE genera evidencia técnica reutilizable para documentación de gobernanza, auditoría, seguridad y trazabilidad de proyectos de IA. Mapea controles técnicos y evidencias de ejecución a los requisitos aplicables de tu proyecto para cumplir con exigencias de fondos y convocatorias públicas.
               </p>
 
               {/* TABS DE SUBVENCIONES CONMUTABLES */}
@@ -895,68 +1046,95 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* AUDIENCIAS */}
-          <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '32px' }}>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '16px' }}>
-                <button onClick={() => setActiveAudienceTab('ciso')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeAudienceTab === 'ciso' ? '#151B23' : 'transparent', color: activeAudienceTab === 'ciso' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
-                  🛡️ CISO & Seguridad
-                </button>
-                <button onClick={() => setActiveAudienceTab('cto')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeAudienceTab === 'cto' ? '#151B23' : 'transparent', color: activeAudienceTab === 'cto' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
-                  ⚙️ CTO & Developers
-                </button>
-                <button onClick={() => setActiveAudienceTab('auditor')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeAudienceTab === 'auditor' ? '#151B23' : 'transparent', color: activeAudienceTab === 'auditor' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
-                  ⚖️ Auditores & Compliance
-                </button>
+          {/* VECTORES DE DESPLIEGUE - RENOMBRADOS Y CON ADVERTENCIA DE SDK */}
+          <section id="solutions" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// DEPLOYMENT_MODELS</span>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>Deploy SAARE your way</h2>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>EMBEDDED</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>C-ABI / .so / .dll</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    Para fabricantes de seguridad y agentes EDR/XDR. Ejecución nativa in-process en memoria volátil.
+                  </p>
+                </div>
               </div>
 
-              {activeAudienceTab === 'ciso' && (
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px', color: '#E8EDF2' }}>Neutralización de Fugas PII en Origen</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                    Protege modelos comerciales (Gemini, ChatGPT, Claude) frente a filtraciones de DNI, cuentas bancarias IBAN o secretos industriales directamente en el endpoint del empleado.
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>GATEWAY</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>HTTP / API / Edge</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    Para plataformas y workflows (LangChain, n8n). Middleware perimetral de filtrado determinista.
                   </p>
-                  <ul style={{ color: '#E8EDF2', fontSize: '13px', lineHeight: 1.8, margin: 0, paddingLeft: '20px' }}>
-                    <li>Bloqueo ex-ante sin almacenamiento de texto claro en bases de datos externas.</li>
-                    <li>Eliminación del vector de riesgo generado por proxies man-in-the-middle en cloud.</li>
-                  </ul>
                 </div>
-              )}
+              </div>
+              
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>PRIVATE</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Enterprise / Regulated</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    Para banca, salud, legal y Administración. Despliegue on-premise con independencia del proveedor LLM.
+                  </p>
+                </div>
+              </div>
 
-              {activeAudienceTab === 'cto' && (
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #2F81F7', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(47,129,247,0.08)' }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px', color: '#E8EDF2' }}>Integración de Baja Fricción y Latencia 1.16 ms</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                    Despliegue flexible mediante enlaces C-ABI in-process, nodos para flujos n8n/LangChain o agente para endpoints.
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7', backgroundColor: 'rgba(47,129,247,0.1)', padding: '2px 6px', borderRadius: '4px' }}>AUDITOR</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Proof & Compliance</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    Para peritos, CISOs y consultoras. Handshake consentido y generación de dictámenes periciales.
                   </p>
-                  <ul style={{ color: '#E8EDF2', fontSize: '13px', lineHeight: 1.8, margin: 0, paddingLeft: '20px' }}>
-                    <li>Cero dependencia de servidores intermedios de alta latencia.</li>
-                    <li>SDK nativo para Node.js, Python y C-ABI (C/C++, Rust, Go).</li>
-                  </ul>
                 </div>
-              )}
-
-              {activeAudienceTab === 'auditor' && (
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px', color: '#E8EDF2' }}>Certificación Técnica y Trazabilidad ISO 42001</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                    Generación continua de dictámenes y evidencias probatorias SHA-256 exigidas en memorias técnicas de subvenciones europeas.
-                  </p>
-                  <ul style={{ color: '#E8EDF2', fontSize: '13px', lineHeight: 1.8, margin: 0, paddingLeft: '20px' }}>
-                    <li>Delegación consentida auditor-empleado mediante Handshake Token.</li>
-                    <li>Verificación de hashes en el Edge con validez probatoria RFC 3161.</li>
-                  </ul>
-                </div>
-              )}
+              </div>
             </div>
           </section>
 
-          {/* EVIDENCIA FORENSE EN VIVO */}
+          {/* DEVELOPERS / SNIPPETS Y ADVERTENCIA */}
+          <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '700', color: '#E8EDF2' }}>Integración de Código (SAARE-SDK)</h3>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#8B98A7', maxWidth: '600px', lineHeight: 1.5 }}>
+                    <strong>Aviso de despliegue:</strong> Los snippets muestran la conexión en modo <em>Gateway</em>. En producción, <code>baseURL</code> debe apuntar a tu instancia Edge o contenedor local privado para garantizar que el dato no abandona tu red segura antes de ser redactado.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
+                    <button key={tab} onClick={() => setActiveCodeTab(tab)} style={{ background: activeCodeTab === tab ? '#151B23' : 'transparent', border: '1px solid', borderColor: activeCodeTab === tab ? '#30363D' : '#151B23', color: activeCodeTab === tab ? '#2F81F7' : '#8B98A7', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace', cursor: 'pointer', fontWeight: '600' }}>
+                      {tab.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
+                {codeSnippets[activeCodeTab].replace("'sk_saare_live_AUDITOR_TOKEN'", "process.env.SAARE_LICENSE").replace('"sk_saare_live_AUDITOR_TOKEN"', 'os.environ.get("SAARE_LICENSE")')}
+              </pre>
+            </div>
+          </section>
+          
+          {/* EVIDENCIA FORENSE EN VIVO (AL FINAL) */}
           <section id="evidence" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
               <div>
-                <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// FORENSIC_PROOF</span>
-                <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>Trazabilidad Demostrable en Vivo</h2>
+                <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// FORENSIC_EVIDENCE_NODE</span>
+                <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>Verificación en Vivo (L7 Edge)</h2>
               </div>
               <span style={{ color: '#8B98A7', fontSize: '12px', fontFamily: 'monospace' }}>ROOT FIDUCIARIA: SAFE CREATIVE Nº 2607076315021</span>
             </div>
@@ -967,7 +1145,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   <span style={{ color: '#8B98A7' }}>TX_RECORD</span>
                   <span style={{ color: '#E8EDF2' }}>SAARE-7F82A1</span>
                 </div>
-                <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>TIMESTAMP:</span> 2026-08-28 14:42:07 UTC</div>
+                <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>TIMESTAMP:</span> 2026-08-29 14:42:07 UTC</div>
                 <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>POLICY_RULE:</span> PII-001 (GDPR_STRICT)</div>
                 <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>DETECTION:</span> <span style={{ color: '#FF4D5A' }}>IBAN_REGULATED_MATCH</span></div>
                 <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>ACTION:</span> <span style={{ color: '#2F81F7' }}>REDACT_IN_MEMORY</span></div>
@@ -978,7 +1156,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px dashed #151B23' }}>
-                  <span style={{ color: '#20C997', fontWeight: 'bold' }}>✓ L7_STATELESS_VERIFIED</span>
+                  <span style={{ color: '#20C997', fontWeight: 'bold' }}>✓ L7_CONFINEMENT_VALID (RFC 3161)</span>
                   <button onClick={copyHashToClipboard} style={{ background: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
                     {copiedHash ? 'Copiado' : 'Copiar Hash'}
                   </button>
@@ -991,7 +1169,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     Validación Pública Descentralizada
                   </h3>
                   <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                    Cualquier auditor externo puede verificar el digest criptográfico contra el endpoint Edge sin exponer la carga útil de la empresa.
+                    Cualquier auditor externo puede verificar el Proof Bundle criptográfico contra el endpoint Edge sin exponer la carga útil ni comprometer la privacidad.
                   </p>
                   <div style={{ backgroundColor: '#070A0F', border: '1px solid #21262D', padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7', wordBreak: 'break-all', marginBottom: '16px' }}>
                     GET {VERIFY_URL}
@@ -1005,95 +1183,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   <button onClick={() => setShowDiploma(true)} style={{ padding: '12px 18px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                     Diploma RPI
                   </button>
-                  <button onClick={copyBundleJson} style={{ padding: '12px 18px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#20C997', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                    {copiedBundle ? '✔ Bundle Copiado' : 'Copiar Proof Bundle'}
-                  </button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* VECTORES DE DESPLIEGUE */}
-          <section id="solutions" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// DEPLOYMENT_MODELS</span>
-              <h2 style={{ fontSize: '26px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>Tres Vectores de Integración en Producción</h2>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>OEM EMBEDDED</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>0.017 ms RAM</span>
-                  </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Binario Nativo C-ABI</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                    Biblioteca dinámica (<code style={{ color: '#E8EDF2' }}>.so/.dll</code>) in-process para fabricantes de seguridad y agentes EDR/XDR.
-                  </p>
-                  <ul style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.6, paddingLeft: '18px', margin: 0 }}>
-                    <li>Ejecución en HugePages de memoria volátil.</li>
-                    <li>Cero coste de llamadas cloud externas.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>ISV WORKFLOW</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7' }}>HTTP Gateway</span>
-                  </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Nodo & API Middleware</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                    Módulos nativos para pipelines automatizados en n8n, LangChain o arquitecturas serverless.
-                  </p>
-                  <ul style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.6, paddingLeft: '18px', margin: 0 }}>
-                    <li>Filtrado determinista de prompts antes del LLM.</li>
-                    <li>Conectores estándar Node.js y Python.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #2F81F7', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(47,129,247,0.08)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7', backgroundColor: 'rgba(47,129,247,0.1)', padding: '2px 6px', borderRadius: '4px' }}>PROFESIONAL</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>Asiento Único</span>
-                  </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Asiento de Consultor / Auditor</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                    Supervisión delegada de empleados con Handshake consentido para despachos periciales y CISOs.
-                  </p>
-                  <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: '800', color: '#E8EDF2', margin: '14px 0' }}>
-                    {AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '12px', color: '#8B98A7', fontWeight: 'normal' }}>/ mes</span>
-                  </div>
-                </div>
-
-                <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '10px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
-                  Contratar Asiento Auditor ↗
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* DEVELOPERS / SNIPPETS */}
-          <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#E8EDF2' }}>Integración de Código (SAARE-SDK)</h3>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
-                    <button key={tab} onClick={() => setActiveCodeTab(tab)} style={{ background: activeCodeTab === tab ? '#151B23' : 'transparent', border: '1px solid', borderColor: activeCodeTab === tab ? '#30363D' : '#151B23', color: activeCodeTab === tab ? '#2F81F7' : '#8B98A7', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace', cursor: 'pointer', fontWeight: '600' }}>
-                      {tab.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
-                {codeSnippets[activeCodeTab]}
-              </pre>
             </div>
           </section>
 
