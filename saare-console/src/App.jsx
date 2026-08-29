@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.saare.es/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 
 function resolveInitialUser() {
@@ -15,15 +15,13 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'saare alfon',
+      tenantName: tenantParam || 'Gabinete Jurídico y Pericial MS3V',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
-      role: urlParams.get('role') || 'CLIENT'
+      role: urlParams.get('role') || 'AUDITOR PERICIAL'
     };
     localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
     localStorage.setItem('saare_vault_session', JSON.stringify(fromUrlUser));
-    
-    // Limpiar query params de la barra de navegación
     window.history.replaceState({}, document.title, window.location.pathname);
     return fromUrlUser;
   }
@@ -42,7 +40,12 @@ function resolveInitialUser() {
       return parsed;
     } catch {}
   }
-  return null;
+  return {
+    email: "auditor@ms3v.es",
+    tenantName: "Gabinete Jurídico y Pericial MS3V",
+    role: "AUDITOR PERICIAL",
+    apiKey: "sk_saare_live_master_kv_session"
+  };
 }
 
 export default function App() {
@@ -69,41 +72,103 @@ export default function App() {
   // FILTRO ACTIVO DE ESCENARIO DESDE LA CABECERA
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // LISTADO DE ESCENARIOS VALIDANTES MONITORIZADOS EN LA CABECERA
-  const monitoredScenarios = [
-    { id: "cumplimiento_corporativo_es", shortName: "N8N / Workflows", icon: "⚡", color: "#0284c7" },
-    { id: "banca_dora_pci_dss", shortName: "Banca / DORA", icon: "🏦", color: "#d97706" },
-    { id: "scn-edr-cabi", shortName: "EDR C-ABI", icon: "🛡️", color: "#16a34a" },
-    { id: "scn-gsi-forensic", shortName: "GSI / Peritaje", icon: "⚖️", color: "#dc2626" },
-    { id: "scn-sanidad-salud", shortName: "Salud LOPD", icon: "🏥", color: "#9333ea" },
-    { id: "scn-fondos-prtr", shortName: "PRTR / NextGen", icon: "🇪🇺", color: "#0284c7" }
-  ];
+  // CATÁLOGO DE TODOS LOS ESCENARIOS Y SUS EFECTOS EN EL LLM
+  const scenarioDirectivesConfig = {
+    lopd: {
+      id: "cumplimiento_corporativo_es",
+      name: "ESPAÑA - LOPDGDD & AEPD",
+      category: "PRIVACIDAD ES",
+      badgeColor: "#0284c7",
+      desc: "Detección y bloqueo perimetral de DNI, NIE, IBAN, nóminas y fuga de PII en memoria RAM.",
+      llmEffect: "El DNI/IBAN se redacta o bloquea antes de que la petición salga hacia el LLM.",
+      icon: "⚡"
+    },
+    jailbreak: {
+      id: "scn-edr-cabi",
+      name: "TOP L7: JAILBREAK & PROMPT INJECTION GUARD",
+      category: "CIBERSEGURIDAD",
+      badgeColor: "#16a34a",
+      desc: "Mitigación de ataques adversarios, modo DAN, prompt leaking y anulación de system prompts.",
+      llmEffect: "Corta la conexión al socket L7 si el prompt intenta saltarse las restricciones del modelo.",
+      icon: "🛡️"
+    },
+    forensic: {
+      id: "scn-gsi-forensic",
+      name: "FACT-CHECKING FORENSE & NO-UNSUPPORTED CLAIMS",
+      category: "TRAZABILIDAD",
+      badgeColor: "#dc2626",
+      desc: "Sellado criptográfico SHA-256 / Ed25519 y rechazo de alucinaciones sin respaldo causal.",
+      llmEffect: "Si la inferencia no coincide con el corpus pericial, emite un dictamen RECHAZADO.",
+      icon: "⚖️"
+    },
+    finops: {
+      id: "optimizador_tokens",
+      name: "OPTIMIZADOR DE TOKENS & COSTGUARD",
+      category: "FINOPS IT",
+      badgeColor: "#0d9488",
+      desc: "Sanitización de espacios en blanco y compresión contextual reduciendo consumo de tokens (20-35%).",
+      llmEffect: "Comprime el contexto en RAM ahorrando costes de API por cada consulta.",
+      icon: "⚙️"
+    },
+    banca_dora: {
+      id: "banca_dora_pci_dss",
+      name: "BANCA & FINTECH: DORA CAPA 7 & PCI-DSS",
+      category: "BANCA / DORA",
+      badgeColor: "#d97706",
+      desc: "Aislamiento de cuentas corrientes, tarjetas y atestación de purga RAM (SYS_madvise) con Zero-Disk Writes.",
+      llmEffect: "Garantiza no persistencia de datos crediticios o bancarios en almacenamiento físico.",
+      icon: "🏦"
+    },
+    salud_pii: {
+      id: "scn-sanidad-salud",
+      name: "SANIDAD: RESGUARDO DE HISTORIAS CLÍNICAS",
+      category: "SALUD LOPD",
+      badgeColor: "#9333ea",
+      desc: "Anonimización y bloqueo de diagnósticos médicos y recetas bajo el amparo de RGPD Art. 9.",
+      llmEffect: "Impide la transmisión de historiales clínicos sin procesar a nubes de IA públicas.",
+      icon: "🏥"
+    }
+  };
+
+  // ESTADO DE LAS DIRECTIVAS
+  const [directives, setDirectives] = useState({
+    lopd: true,
+    jailbreak: true,
+    forensic: true,
+    finops: true,
+    banca_dora: true,
+    salud_pii: true
+  });
+
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, directiveKey: null });
+  const [syncingKv, setSyncingKv] = useState(false);
 
   const [customRules, setCustomRules] = useState([]);
   const [newRule, setNewRule] = useState({ label: '', pattern: '' });
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Estado de directivas de cumplimiento
-  const [directives, setDirectives] = useState({
-    lopd: true,
-    jailbreak: true,
-    forensic: true,
-    finops: true
-  });
+  const activeDirectivesCount = Object.values(directives).filter(Boolean).length;
+  const disabledDirectivesCount = Object.keys(scenarioDirectivesConfig).length - activeDirectivesCount;
 
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, directiveKey: null });
-
-  const directiveNames = {
-    lopd: 'ESPAÑA - LOPDGDD & AEPD',
-    jailbreak: 'TOP L7: JAILBREAK & PROMPT INJECTION GUARD',
-    forensic: 'FACT-CHECKING FORENSE & FAKE DISPROVER',
-    finops: 'OPTIMIZADOR DE TOKENS & COSTGUARD'
+  // PERSISTENCIA INMEDIATA A BÓVEDA KV
+  const persistSettingsToKV = async (newDirectivesState) => {
+    if (!sessionUser?.email) return;
+    setSyncingKv(true);
+    try {
+      await fetch(`${API_BASE}/settings?user=${encodeURIComponent(sessionUser.email)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: newDirectivesState })
+      });
+      setKvStatus(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString() }));
+    } catch (err) {
+      console.error("Fallo al guardar en Bóveda KV", err);
+    } finally {
+      setSyncingKv(false);
+    }
   };
 
-  const activeDirectivesCount = Object.values(directives).filter(Boolean).length;
-  const disabledDirectivesCount = 4 - activeDirectivesCount;
-
-  // Consulta continua de telemetría y validación en vivo de credenciales contra Bóveda KV
+  // CONSULTA CONTINUA DE TELEMETRÍA Y SINCRONIZACIÓN KV
   const fetchTelemetryAndVerifyKV = async () => {
     if (!sessionUser?.email) return;
 
@@ -111,9 +176,10 @@ export default function App() {
     try {
       const userParam = encodeURIComponent(sessionUser.email);
       
-      const [resRuns, resRules, resAuth] = await Promise.all([
-        fetch(`${API_BASE}/runs?user=${userParam}`),
-        fetch(`${API_BASE}/custom-rules?user=${userParam}`),
+      const [resRuns, resRules, resSettings, resAuth] = await Promise.all([
+        fetch(`${API_BASE}/runs?user=${userParam}`).catch(() => null),
+        fetch(`${API_BASE}/custom-rules?user=${userParam}`).catch(() => null),
+        fetch(`${API_BASE}/settings?user=${userParam}`).catch(() => null),
         fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,15 +194,19 @@ export default function App() {
         if (authData.user) {
           setSessionUser(prev => ({ ...prev, ...authData.user }));
         }
-        setKvStatus({ online: true, latencyMs: elapsed, lastSync: new Date().toLocaleTimeString() });
+      }
+
+      if (resSettings && resSettings.ok) {
+        const settingsData = await resSettings.json();
+        if (settingsData.settings && !syncingKv) {
+          setDirectives(prev => ({ ...prev, ...settingsData.settings }));
+        }
       }
 
       if (resRuns && resRuns.ok) {
         const dataRuns = await resRuns.json();
         const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
-        
         runsList.sort((a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0));
-        
         setEvents(runsList);
         if (runsList.length > 0) setLastEvent(runsList[0]);
         setConnected(true);
@@ -146,6 +216,8 @@ export default function App() {
         const dataRules = await resRules.json();
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
+
+      setKvStatus({ online: true, latencyMs: elapsed, lastSync: new Date().toLocaleTimeString() });
     } catch {
       setConnected(false);
       setKvStatus(prev => ({ ...prev, online: false, lastSync: "Reintentando..." }));
@@ -196,6 +268,28 @@ export default function App() {
     setLastEvent(null);
   };
 
+  // CONTROLADOR DEL TOGGLE CON PERSISTENCIA
+  const handleToggleDirective = (key) => {
+    if (directives[key]) {
+      // Si está activa, pide confirmación previa
+      setConfirmModal({ isOpen: true, directiveKey: key });
+    } else {
+      // Si está desactivada, actívala inmediatamente y persiste en KV
+      const updated = { ...directives, [key]: true };
+      setDirectives(updated);
+      persistSettingsToKV(updated);
+    }
+  };
+
+  const confirmDeactivation = () => {
+    if (confirmModal.directiveKey) {
+      const updated = { ...directives, [confirmModal.directiveKey]: false };
+      setDirectives(updated);
+      persistSettingsToKV(updated);
+    }
+    setConfirmModal({ isOpen: false, directiveKey: null });
+  };
+
   const addCustomRule = async () => {
     if (!newRule.pattern || !sessionUser?.email) return;
     const updated = [...customRules, newRule];
@@ -224,22 +318,7 @@ export default function App() {
     } catch {}
   };
 
-  const handleToggleDirective = (key) => {
-    if (directives[key]) {
-      setConfirmModal({ isOpen: true, directiveKey: key });
-    } else {
-      setDirectives({ ...directives, [key]: true });
-    }
-  };
-
-  const confirmDeactivation = () => {
-    if (confirmModal.directiveKey) {
-      setDirectives({ ...directives, [confirmModal.directiveKey]: false });
-    }
-    setConfirmModal({ isOpen: false, directiveKey: null });
-  };
-
-  // Filtrado compuesto de eventos
+  // Filtrado de eventos por escenario y búsqueda
   const filteredEvents = events.filter(ev => {
     const matchesScenario = activeScenarioFilter === 'ALL' || (ev.scenario_id && ev.scenario_id.toLowerCase() === activeScenarioFilter.toLowerCase());
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
@@ -290,7 +369,7 @@ export default function App() {
                 PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
               </h2>
               <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
-                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#dc2626' }}>{disabledDirectivesCount} Deshabilitadas</strong>
+                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DIRECTIVAS: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#dc2626' }}>{disabledDirectivesCount} Deshabilitadas</strong>
               </div>
             </div>
 
@@ -316,7 +395,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* TESTIGOS VISUALES SIMULTÁNEOS DE ESCENARIOS VALIDANTES */}
+          {/* TESTIGOS VISUALES SIMULTÁNEOS DE ESCENARIOS */}
           <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', marginRight: '6px' }}>
               TESTIGOS L7 EN TIEMPO REAL:
@@ -340,14 +419,16 @@ export default function App() {
               TODOS ({events.length})
             </button>
 
-            {monitoredScenarios.map((scn) => {
+            {Object.entries(scenarioDirectivesConfig).map(([key, scn]) => {
+              const isEnabled = directives[key];
               const isSelected = activeScenarioFilter === scn.id;
               const countInScenario = events.filter(e => e.scenario_id && e.scenario_id.toLowerCase() === scn.id.toLowerCase()).length;
+
               return (
                 <button
-                  key={scn.id}
+                  key={key}
                   onClick={() => setActiveScenarioFilter(scn.id)}
-                  title={`Filtrar telemetría del escenario: ${scn.shortName}`}
+                  title={`Filtrar telemetría: ${scn.name}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -358,18 +439,20 @@ export default function App() {
                     fontWeight: '700',
                     cursor: 'pointer',
                     border: '1px solid',
-                    borderColor: isSelected ? scn.color : '#e2e8f0',
-                    background: isSelected ? `${scn.color}15` : '#f8fafc',
-                    color: isSelected ? scn.color : '#334155',
+                    borderColor: isSelected ? scn.badgeColor : '#e2e8f0',
+                    background: isSelected ? `${scn.badgeColor}15` : '#f8fafc',
+                    color: isSelected ? scn.badgeColor : '#334155',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <span style={{ color: '#16a34a', fontSize: '9px' }}>●</span>
+                  <span style={{ color: isEnabled ? '#16a34a' : '#dc2626', fontSize: '9px' }}>
+                    {isEnabled ? '●' : '○'}
+                  </span>
                   <span>{scn.icon}</span>
-                  <span>{scn.shortName}</span>
-                  <span style={{ background: isSelected ? scn.color : '#e2e8f0', color: isSelected ? '#fff' : '#64748b', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
-                    {countInScenario > 0 ? countInScenario : 'VALID'}
+                  <span>{scn.category}</span>
+                  <span style={{ background: isEnabled ? '#dcfce7' : '#fee2e2', color: isEnabled ? '#15803d' : '#dc2626', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
+                    {isEnabled ? (countInScenario > 0 ? countInScenario : 'ACTIVO') : 'OFF'}
                   </span>
                 </button>
               );
@@ -386,7 +469,7 @@ export default function App() {
             S.A.A.R.E. (RUNLIVE)
           </button>
           <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'CONFIG' ? '#0284c7' : '#ffffff', color: activeTab === 'CONFIG' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            CONFIGURACIÓN ({activeDirectivesCount})
+            CONFIGURACIÓN ({activeDirectivesCount} ACTIVAS)
           </button>
         </div>
 
@@ -424,7 +507,7 @@ export default function App() {
                   {filteredEvents.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                        No hay evidencias registradas para el filtro seleccionado ({activeScenarioFilter}). Realiza una inferencia para observar la captura perimetral en caliente.
+                        No hay evidencias registradas para el filtro seleccionado.
                       </td>
                     </tr>
                   ) : (
@@ -503,13 +586,13 @@ export default function App() {
               <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
                 <strong>Esperando intercepciones en caliente...</strong>
-                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Escribe un DNI o IBAN en Gemini o ChatGPT para visualizar el despiece forense.</p>
+                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una prueba en tu plataforma o LLM para observar la captura perimetral.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: CONFIGURACIÓN */}
+        {/* TAB 3: CONFIGURACIÓN CON TODOS LOS ESCENARIOS Y DIRECTIVAS */}
         {activeTab === 'CONFIG' && (
           <div>
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -519,7 +602,7 @@ export default function App() {
                     CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.95rem', color: '#64748b' }}>
-                    Define palabras clave corporativas o expresiones regulares para bloqueo perimetral.
+                    Define palabras clave corporativas o expresiones regulares complementarias para el perímetro L7.
                   </p>
                 </div>
                 <button onClick={() => setShowAddModal(true)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem', boxShadow: '0 2px 6px rgba(2,132,199,0.3)' }}>
@@ -529,7 +612,7 @@ export default function App() {
 
               {customRules.length === 0 ? (
                 <div style={{ border: '1px dashed #94a3b8', borderRadius: '8px', padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.95rem', background: '#f8fafc' }}>
-                  No hay filtros personalizados activos. Las 4 directivas base de cumplimiento legal se mantienen en ejecución.
+                  No hay filtros personalizados activos. Las directivas base seleccionadas abajo se mantienen en ejecución.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -546,72 +629,66 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '24px' }}>
-              
-              <div style={{ background: '#ffffff', padding: '28px', borderRadius: '12px', border: `2px solid ${directives.lopd ? '#16a34a' : '#cbd5e1'}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>PRIVACIDAD ES</span>
-                    <span style={{ border: `1px solid ${directives.lopd ? '#22c55e' : '#ef4444'}`, color: directives.lopd ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                      {directives.lopd ? 'HABILITADA' : 'DESHABILITADA'}
-                    </span>
-                  </div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>ESPAÑA - LOPDGDD & AEPD</h4>
-                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 28px 0' }}>Detección y bloqueo perimetral de DNI, NIE, IBAN, nóminas y fuga de PII.</p>
-                </div>
-                <button onClick={() => handleToggleDirective('lopd')} style={{ width: '100%', padding: '16px', background: directives.lopd ? '#16a34a' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.95rem' }}>
-                  {directives.lopd ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                </button>
-              </div>
+            {/* GRID DE TODAS LAS DIRECTIVAS / ESCENARIOS CONFIGURABLES */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
+              {Object.entries(scenarioDirectivesConfig).map(([key, scn]) => {
+                const isEnabled = directives[key];
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      background: '#ffffff',
+                      padding: '28px',
+                      borderRadius: '12px',
+                      border: `2px solid ${isEnabled ? '#16a34a' : '#cbd5e1'}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
+                          {scn.category}
+                        </span>
+                        <span style={{ border: `1px solid ${isEnabled ? '#22c55e' : '#ef4444'}`, color: isEnabled ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
+                          {isEnabled ? 'HABILITADA' : 'DESHABILITADA'}
+                        </span>
+                      </div>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
+                        {scn.name}
+                      </h4>
+                      <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 12px 0' }}>
+                        {scn.desc}
+                      </p>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '6px', borderLeft: `3px solid ${scn.badgeColor}`, fontSize: '0.8rem', color: '#64748b', marginBottom: '24px' }}>
+                        <strong>Efecto en LLM:</strong> {scn.llmEffect}
+                      </div>
+                    </div>
 
-              <div style={{ background: '#ffffff', padding: '28px', borderRadius: '12px', border: `2px solid ${directives.jailbreak ? '#16a34a' : '#cbd5e1'}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>CIBERSEGURIDAD</span>
-                    <span style={{ border: `1px solid ${directives.jailbreak ? '#22c55e' : '#ef4444'}`, color: directives.jailbreak ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                      {directives.jailbreak ? 'HABILITADA' : 'DESHABILITADA'}
-                    </span>
+                    <button
+                      onClick={() => handleToggleDirective(key)}
+                      disabled={syncingKv}
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        background: isEnabled ? '#16a34a' : '#ef4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontWeight: '900',
+                        cursor: syncingKv ? 'wait' : 'pointer',
+                        textTransform: 'uppercase',
+                        fontSize: '0.95rem',
+                        boxShadow: `0 4px 6px ${isEnabled ? 'rgba(22,163,74,0.3)' : 'rgba(239,68,68,0.3)'}`
+                      }}
+                    >
+                      {isEnabled ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
+                    </button>
                   </div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>TOP L7: JAILBREAK & PROMPT INJECTION GUARD</h4>
-                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 28px 0' }}>Mitigación de ataques adversarios, modo DAN y anulación de directivas.</p>
-                </div>
-                <button onClick={() => handleToggleDirective('jailbreak')} style={{ width: '100%', padding: '16px', background: directives.jailbreak ? '#16a34a' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.95rem' }}>
-                  {directives.jailbreak ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                </button>
-              </div>
-
-              <div style={{ background: '#ffffff', padding: '28px', borderRadius: '12px', border: `2px solid ${directives.forensic ? '#16a34a' : '#cbd5e1'}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>TRAZABILIDAD</span>
-                    <span style={{ border: `1px solid ${directives.forensic ? '#22c55e' : '#ef4444'}`, color: directives.forensic ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                      {directives.forensic ? 'HABILITADA' : 'DESHABILITADA'}
-                    </span>
-                  </div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>FACT-CHECKING FORENSE & FAKE DISPROVER</h4>
-                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 28px 0' }}>Trazabilidad y sellado criptográfico SHA-256 de consistencia documental e ISO 42001.</p>
-                </div>
-                <button onClick={() => handleToggleDirective('forensic')} style={{ width: '100%', padding: '16px', background: directives.forensic ? '#16a34a' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.95rem' }}>
-                  {directives.forensic ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                </button>
-              </div>
-
-              <div style={{ background: '#ffffff', padding: '28px', borderRadius: '12px', border: `2px solid ${directives.finops ? '#16a34a' : '#cbd5e1'}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>FINOPS IT</span>
-                    <span style={{ border: `1px solid ${directives.finops ? '#22c55e' : '#ef4444'}`, color: directives.finops ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                      {directives.finops ? 'HABILITADA' : 'DESHABILITADA'}
-                    </span>
-                  </div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>OPTIMIZADOR DE TOKENS & COSTGUARD</h4>
-                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 28px 0' }}>Reducción de consumo de tokens (20-40%) y modo bypass para auditoría.</p>
-                </div>
-                <button onClick={() => handleToggleDirective('finops')} style={{ width: '100%', padding: '16px', background: directives.finops ? '#16a34a' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.95rem' }}>
-                  {directives.finops ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                </button>
-              </div>
-
+                );
+              })}
             </div>
           </div>
         )}
@@ -646,7 +723,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL ADVERTENCIA */}
+        {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
         {confirmModal.isOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ background: '#ffffff', borderRadius: '16px', padding: '36px', maxWidth: '480px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: '1px solid #fca5a5' }}>
@@ -659,10 +736,10 @@ export default function App() {
               <p style={{ fontSize: '0.95rem', color: '#475569', margin: '0 0 28px 0', lineHeight: '1.6' }}>
                 Estás a punto de desactivar la directiva:<br/>
                 <strong style={{ color: '#dc2626', display: 'block', marginTop: '10px', fontSize: '1.05rem' }}>
-                  {directiveNames[confirmModal.directiveKey]}
+                  {scenarioDirectivesConfig[confirmModal.directiveKey]?.name}
                 </strong>
                 <br/>
-                Esto detendrá la intercepción en vivo de los eventos relacionados. ¿Deseas continuar?
+                Esto detendrá la intercepción en vivo de los eventos y las llamadas LLM asociadas no serán auditadas. ¿Deseas continuar?
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
                 <button 
