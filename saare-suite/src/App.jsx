@@ -16,7 +16,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('LANDING');
   const [activeNavTab, setActiveNavTab] = useState('scenarios_saare');
 
-  // Estados interactivos para Escenarios SAARE y Detección
+  // Estados interactivos para las 5 Bóvedas Maestras
   const [detectorInput, setDetectorInput] = useState('El balance contable auditado muestra un beneficio neto no contrastado de 450.000 € imputado al expediente.');
   const [detectorResult, setDetectorResult] = useState('WARNING');
   const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
@@ -415,14 +415,14 @@ export default function App() {
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
           {/* ========================================================================= */}
-          {/* TAB 1: ESCENARIOS SAARE (LAS 5 BÓVEDAS MAESTRAS EN PRODUCCIÓN)            */}
+          {/* TAB 1: ESCENARIOS SAARE (CON LAS IMÁGENES INTEGRADAS: 1.jfif a 5.jfif)     */}
           {/* ========================================================================= */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
-              {/* TÍTULO PRINCIPAL EXACTO */}
+              {/* TÍTULO PRINCIPAL */}
               <section style={{ textAlign: 'center', marginBottom: '48px', paddingTop: '10px' }}>
                 <h1 style={{ fontSize: '46px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
-                  Escenarios SAARE
+                  Cinco formas de proteger tu IA
                 </h1>
                 <p style={{ fontSize: '18px', color: '#94a3b8', margin: '0 0 4px 0', fontWeight: '400' }}>
                   No importa dónde uses inteligencia artificial.
@@ -435,14 +435,23 @@ export default function App() {
               {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                {/* 01. EL ESCUDO */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '28px', display: 'grid', gridTemplateColumns: '180px 1fr 280px', gap: '28px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '-10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>01</div>
-                    <div style={{ fontSize: '10px', background: '#0f172a', padding: '4px 8px', borderRadius: '4px', border: '1px solid #334155', color: '#94a3b8' }}>DNI 12345678Z</div>
-                    <div style={{ fontSize: '10px', background: '#0f172a', padding: '4px 8px', borderRadius: '4px', border: '1px solid #334155', color: '#94a3b8' }}>CONTRATO</div>
-                    <div style={{ fontSize: '10px', background: '#0f172a', padding: '4px 8px', borderRadius: '4px', border: '1px solid #334155', color: '#94a3b8' }}>HISTORIA MÉDICA</div>
-                    <div style={{ textAlign: 'center', marginTop: '4px', fontSize: '24px' }}>🛡️ <strong style={{ fontSize: '14px', color: '#38bdf8' }}>S</strong></div>
+                {/* ========================================================================= */}
+                {/* 01. EL ESCUDO (IMAGEN: /1.jfif)                                          */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
+                  
+                  {/* IMAGEN REAL 1.jfif CON BADGE 01 */}
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>01</div>
+                    <img 
+                      src="/1.jfif" 
+                      alt="01. El Escudo - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -481,13 +490,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 02. LA EVIDENCIA */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '28px', display: 'grid', gridTemplateColumns: '180px 1fr 280px', gap: '28px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', textAlign: 'center', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '-10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>02</div>
-                    <div style={{ fontSize: '32px', marginBottom: '6px' }}>🗄️</div>
-                    <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '800', textTransform: 'uppercase' }}>EVIDENCIA</div>
-                    <div style={{ fontSize: '10px', background: '#9333ea25', border: '1px solid #9333ea', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', marginTop: '4px' }}>VERIFICADO</div>
+                {/* ========================================================================= */}
+                {/* 02. LA EVIDENCIA (IMAGEN: /2.jfif)                                       */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
+                  
+                  {/* IMAGEN REAL 2.jfif CON BADGE 02 */}
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>02</div>
+                    <img 
+                      src="/2.jfif" 
+                      alt="02. La Evidencia - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -526,14 +545,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 03. EL GUARDIÁN */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '28px', display: 'grid', gridTemplateColumns: '180px 1fr 280px', gap: '28px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '14px', position: 'relative', fontSize: '9.5px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '-10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>03</div>
-                    <div style={{ color: '#f87171' }}>Ignora instrucciones ✕</div>
-                    <div style={{ color: '#f87171' }}>Actúa como DAN ✕</div>
-                    <div style={{ textAlign: 'center', fontSize: '20px' }}>🏰 <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S]</span></div>
-                    <div style={{ color: '#34d399', textAlign: 'center', fontWeight: 'bold' }}>Responde según reglas ✔</div>
+                {/* ========================================================================= */}
+                {/* 03. EL GUARDIÁN (IMAGEN: /3.jfif)                                        */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
+                  
+                  {/* IMAGEN REAL 3.jfif CON BADGE 03 */}
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
+                    <img 
+                      src="/3.jfif" 
+                      alt="03. El Guardián - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -572,14 +600,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 04. EL DETECTOR */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '28px', display: 'grid', gridTemplateColumns: '180px 1fr 280px', gap: '28px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '14px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '10px' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '-10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>04</div>
-                    <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px' }}>✔ Documento real</div>
-                    <div style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '4px' }}>⚠️ Afirmación sin evidencia</div>
-                    <div style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>✕ Documento alterado</div>
-                    <div style={{ textAlign: 'center', fontSize: '24px', marginTop: '4px' }}>🔍</div>
+                {/* ========================================================================= */}
+                {/* 04. EL DETECTOR (IMAGEN: /4.jfif)                                        */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
+                  
+                  {/* IMAGEN REAL 4.jfif CON BADGE 04 */}
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>04</div>
+                    <img 
+                      src="/4.jfif" 
+                      alt="04. El Detector - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -615,14 +652,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 05. EL JUSTIFICADOR */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '28px', display: 'grid', gridTemplateColumns: '180px 1fr 280px', gap: '28px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', position: 'relative', textAlign: 'center', fontSize: '10px' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '-10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>05</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', color: '#fbbf24', fontSize: '16px', marginBottom: '6px' }}>
-                      💰 → 📁 → 🧾 → ✔
-                    </div>
-                    <div style={{ color: '#94a3b8', fontSize: '9px' }}>Fondos → Proyecto → Gasto → Justificación</div>
+                {/* ========================================================================= */}
+                {/* 05. EL JUSTIFICADOR (IMAGEN: /5.jfif)                                    */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
+                  
+                  {/* IMAGEN REAL 5.jfif CON BADGE 05 */}
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>05</div>
+                    <img 
+                      src="/5.jfif" 
+                      alt="05. El Justificador - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
                   </div>
 
                   <div>
