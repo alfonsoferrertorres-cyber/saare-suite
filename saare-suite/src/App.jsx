@@ -14,7 +14,7 @@ export default function App() {
 
   const [mode, setMode] = useState('register');
   const [currentView, setCurrentView] = useState('LANDING');
-  const [activeNavTab, setActiveNavTab] = useState('scenarios'); // Inicia por defecto en Escenarios o Plataforma
+  const [activeNavTab, setActiveNavTab] = useState('scenarios');
   const [scenarioFilter, setScenarioFilter] = useState('ALL');
   const [selectedScenario, setSelectedScenario] = useState(null);
 
@@ -52,108 +52,142 @@ export default function App() {
     setTimeout(() => setCopiedBundle(false), 2000);
   };
 
-  // CATÁLOGO DE ESCENARIOS DE TRACCIÓN COMERCIAL (GRID 4x2 TIPO CATÁLOGO)
+  // CATÁLOGO COMPLETO DE LOS 10 ESCENARIOS OPERATIVOS Y COMERCIALES
   const scenariosCatalog = [
     {
-      id: "scn-n8n",
-      category: "AI Workflows",
+      id: "cumplimiento_corporativo_es",
+      category: "Workflows",
       title: "n8n & LangChain: Flujo Seguro Ex-Ante",
-      description: "Intercepta llamadas a LLMs en flujos automatizados de agentes y bots, neutralizando DNIs y cuentas bancarias antes de salir a la nube.",
+      description: "Protección integral L7 con bloqueo determinista de PII, secretos y Prompt Injection en flujos corporativos y pipelines automatizados.",
       tag: "GATEWAY / SDK",
       latency: "1.16 ms",
       verified: "0.00% Fuga PII",
       gradient: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
       badgeColor: "#2F81F7",
-      icon: "⚡"
+      icon: "⚡",
+      compliance_text: "DORA Art. 9 & 10 · PCI-DSS Req 6.4 · RGPD Art. 5 y 32"
     },
     {
-      id: "scn-edr",
-      category: "Ciberseguridad",
-      title: "Sensor Hook C-ABI In-Process (EDR)",
-      description: "Biblioteca nativa compilada (.so/.dll) para fabricantes de antivirus y XDR. Purga atómica de memoria volátil mediante SYS_madvise.",
-      tag: "OEM BINARIO",
-      latency: "0.017 ms",
-      verified: "Residuo Cero RAM",
-      gradient: "linear-gradient(135deg, #065f46 0%, #0f172a 100%)",
-      badgeColor: "#20C997",
-      icon: "🛡️"
-    },
-    {
-      id: "scn-gsi",
-      category: "Auditoría & GRC",
-      title: "Big Four: Bóveda de Evidencia Pericial",
-      description: "Generación automatizada de Proof Bundles sellados con Ed25519 y RFC 3161 para auditorías de IA y justificación de expedientes.",
-      tag: "ASIENTO AUDITOR",
-      latency: "RFC 3161",
-      verified: "Validez Pericial Plena",
-      gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
-      badgeColor: "#FF4D5A",
-      icon: "⚖️"
-    },
-    {
-      id: "scn-bank",
-      category: "Fintech & Banca",
-      title: "Nodo Privado On-Premise Air-Gapped",
-      description: "Despliegue privado en VPC sin salida a internet. Atesta que ninguna inferencia de evaluación crediticia almacena secretos bancarios en disco.",
+      id: "banca_dora_pci_dss",
+      category: "Fintech",
+      title: "Banca & DORA / PCI-DSS Strict",
+      description: "Aislamiento estricto de cuentas corrientes, números de tarjeta (PAN/CVV) y atestación de purga RAM (SYS_madvise) con Zero-Disk Writes.",
       tag: "VPC PRIVADA",
       latency: "0.017 ms",
       verified: "DORA Capa 7 Ready",
       gradient: "linear-gradient(135deg, #713f12 0%, #0f172a 100%)",
       badgeColor: "#EAB308",
-      icon: "🏦"
+      icon: "🏦",
+      compliance_text: "DORA Art. 9(4) & 11 · PCI-DSS v4 Req 3.4 · ISO 27001 A.8.12"
     },
     {
-      id: "scn-health",
-      category: "Sanidad & Salud",
+      id: "scn-edr-cabi",
+      category: "Ciberseguridad",
+      title: "Sensor Hook C-ABI In-Process (EDR)",
+      description: "Biblioteca nativa compilada (.so/.dll) para agentes de endpoint y XDR. Purga atómica de memoria volátil ante ataques adversarios y modo DAN.",
+      tag: "OEM BINARIO",
+      latency: "0.017 ms",
+      verified: "Residuo Cero RAM",
+      gradient: "linear-gradient(135deg, #065f46 0%, #0f172a 100%)",
+      badgeColor: "#20C997",
+      icon: "🛡️",
+      compliance_text: "EU AI Act Art. 15 · ISO 27001 A.8.7 (Anti-Malware / Injection)"
+    },
+    {
+      id: "scn-gsi-forensic",
+      category: "Auditoría",
+      title: "Big Four: Bóveda de Evidencia Pericial",
+      description: "Generación automatizada de Proof Bundles sellados con Ed25519 y RFC 3161 para auditorías de IA, ISO 42001 y dictámenes periciales judiciales.",
+      tag: "ASIENTO AUDITOR",
+      latency: "RFC 3161",
+      verified: "Validez Pericial Plena",
+      gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
+      badgeColor: "#FF4D5A",
+      icon: "⚖️",
+      compliance_text: "UNE-EN ISO/IEC 42001 Control B.6 · EU AI Act Art. 12"
+    },
+    {
+      id: "scn-sanidad-salud",
+      category: "Sanidad",
       title: "Resguardo de Historias Clínicas (PII)",
-      description: "Protección estricta de historiales médicos ante herramientas diagnósticas de IA generativa con sustitución de identificadores en tránsito.",
+      description: "Protección estricta de historiales médicos ante herramientas de IA diagnóstica con sustitución y redacción de patologías y recetas (RGPD Art. 9).",
       tag: "ENCLAVE LOPDGDD",
       latency: "1.16 ms",
       verified: "RGPD Art. 5 y 32",
       gradient: "linear-gradient(135deg, #4c1d95 0%, #0f172a 100%)",
       badgeColor: "#A855F7",
-      icon: "🏥"
+      icon: "🏥",
+      compliance_text: "RGPD Art. 9 (Categorías Especiales) · LOPDGDD Ley 3/2018"
     },
     {
-      id: "scn-edge",
-      category: "Cloud & Gateways",
-      title: "Proxy Inverso Global en Cloudflare Edge",
-      description: "Middleware perimetral distribuido en más de 300 ubicaciones que estampa firmas de integridad en los encabezados HTTP de cada inferencia.",
-      tag: "EDGE WORKER",
-      latency: "Global Edge",
-      verified: "Merkle Anchor",
-      gradient: "linear-gradient(135deg, #164e63 0%, #0f172a 100%)",
-      badgeColor: "#06B6D4",
-      icon: "🌐"
+      id: "scn-global-subsidies-hub",
+      category: "Subvenciones",
+      title: "Hub Universal de Subvenciones & Fondos",
+      description: "Auditoría multi-país de elegibilidad, bloqueo de facturas duplicadas (Anti-Double Funding) y certificación del principio DNSH (NextGenEU, SBIR, Horizon).",
+      tag: "GLOBAL GRANTS",
+      latency: "1.16 ms",
+      verified: "Anti-Double Funding",
+      gradient: "linear-gradient(135deg, #047857 0%, #0f172a 100%)",
+      badgeColor: "#10B981",
+      icon: "🌐",
+      compliance_text: "Ley 38/2003 General de Subvenciones · 2 CFR 200 · Horizon Europe"
     },
     {
-      id: "scn-nextgen",
-      category: "Fondos Europeos",
+      id: "scn-fondos-prtr",
+      category: "Subvenciones",
       title: "Trazabilidad Inmutable NextGen & PRTR",
-      summary: "Memoria técnica estructurada con enlaces de verificación Edge pública comprobables por inspectores de fondos comunitarios e IGAE.",
+      description: "Memoria técnica estructurada con enlaces de verificación Edge pública comprobables por inspectores de fondos comunitarios e IGAE.",
       tag: "DOSSIER PRTR",
       latency: "RFC 3161",
       verified: "No-Clawback Log",
       gradient: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
       badgeColor: "#38BDF8",
-      icon: "🇪🇺"
+      icon: "🇪🇺",
+      compliance_text: "Orden HFP/1030/2021 (PRTR) · Directiva Antifraude OLAF"
     },
     {
-      id: "scn-kit",
-      category: "Red.es / Kit Consulting",
+      id: "scn-edge-gateway",
+      category: "Cloud",
+      title: "Proxy Inverso Global en Cloudflare Edge",
+      description: "Middleware perimetral distribuido en más de 300 ubicaciones mundiales que estampa firmas criptográficas L7-SEAL en cada inferencia.",
+      tag: "EDGE WORKER",
+      latency: "Global Edge",
+      verified: "Merkle Anchor",
+      gradient: "linear-gradient(135deg, #164e63 0%, #0f172a 100%)",
+      badgeColor: "#06B6D4",
+      icon: "🌐",
+      compliance_text: "ISO 27001 A.8.20 & A.8.26 · DORA Art. 9 (WAF L7)"
+    },
+    {
+      id: "scn-kit-consulting",
+      category: "Auditoría",
       title: "Diagnóstico de Fugas y Handshake Token",
-      description: "Supervisión delegada de empleados con consentimiento en memoria RAM para justificar los bonos de asesoramiento en PYMEs.",
+      description: "Supervisión delegada de empleados con consentimiento en memoria RAM para justificar los bonos de asesoramiento digital en PYMEs (Red.es).",
       tag: "KIT CONSULTING",
       latency: "1.16 ms",
       verified: "Acreditado Red.es",
       gradient: "linear-gradient(135deg, #3f3f46 0%, #0f172a 100%)",
       badgeColor: "#F43F5E",
-      icon: "💼"
+      icon: "💼",
+      compliance_text: "Bases Reguladoras Red.es · Justificación Kit Digital"
+    },
+    {
+      id: "scn-legal-grounding",
+      category: "LegalTech",
+      title: "LegalTech: Grounding Estricto en Contratos",
+      description: "Revisión documental contractual con rechazo determinista (Unsupported Claims) ante alucinaciones no fundamentadas en el corpus aportado.",
+      tag: "CONTRATOS & DERECHO",
+      latency: "1.16 ms",
+      verified: "Zero Hallucination",
+      gradient: "linear-gradient(135deg, #4338ca 0%, #0f172a 100%)",
+      badgeColor: "#6366F1",
+      icon: "📜",
+      compliance_text: "ISO/IEC 42001 Control B.6.3 · EU AI Act Art. 10"
     }
   ];
 
   const proofBundle = {
-    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V9.0",
+    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V9.2",
     "EVENT_IDENTIFIER": {
       "EVENT_ID": "EV-2026-0829-7F82A1",
       "PARENT_HASH": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -277,9 +311,9 @@ export default function App() {
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista SAARE\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
-    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
-    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista SAARE\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_es',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
+    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "cumplimiento_corporativo_es",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
+    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: scn-global-subsidies-hub" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Verificar factura INV-2026-EU-089 para subvencion NextGenEU"}]\n  }'`,
     cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
   };
 
@@ -365,7 +399,7 @@ export default function App() {
       zip.file("manifest.json", JSON.stringify({
         "manifest_version": 3,
         "name": "SAARE L7 Governance Agent",
-        "version": "9.0.0",
+        "version": "9.2.0",
         "description": "Ex-Ante Perimeter, Rejection Proofs & Runtime Attestation Engine",
         "background": { "service_worker": "background.js" },
         "content_scripts": [{ "matches": ["https://*/*"], "js": ["content.js"], "run_at": "document_start" }],
@@ -373,7 +407,7 @@ export default function App() {
         "permissions": ["storage"]
       }, null, 2));
 
-      const injectContent = `/* S.A.A.R.E. L7 In-Memory Interceptor & V9 Proof Engine */
+      const injectContent = `/* S.A.A.R.E. L7 In-Memory Interceptor & V9.2 Proof Engine */
 (function() {
   const DLP = {
     dni: /(?:^|\\D)(\\d{7,8}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
@@ -466,7 +500,7 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v9.0.0
+      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v9.2.0
 function updateDomSettings(settings) {
   if (settings) document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
 }
@@ -526,7 +560,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });`;
       zip.file("background.js", bgCode);
 
-      const customBat = `@echo off\nchcp 65001 >nul\ntitle S.A.A.R.E. Installer\nset "EXTENSION_ID=saaregovernanceid"\nset "TARGET_DIR=%LOCALAPPDATA%\\SAARE\\extension"\nif not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"\nxcopy /Y /E /I "%~dp0*" "%TARGET_DIR%\\" >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "9.0.0" /f >nul 2>&1\necho [OK] Agente L7 desplegado para ${tEmail} (${tTenant}).\ntimeout /t 3 >nul\nexit /b 0`;
+      const customBat = `@echo off\nchcp 65001 >nul\ntitle S.A.A.R.E. Installer\nset "EXTENSION_ID=saaregovernanceid"\nset "TARGET_DIR=%LOCALAPPDATA%\\SAARE\\extension"\nif not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"\nxcopy /Y /E /I "%~dp0*" "%TARGET_DIR%\\" >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "9.2.0" /f >nul 2>&1\necho [OK] Agente L7 desplegado para ${tEmail} (${tTenant}).\ntimeout /t 3 >nul\nexit /b 0`;
       zip.file("install_silent.bat", customBat);
 
       zip.file("storage_managed.json", JSON.stringify({
@@ -595,7 +629,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               Plataforma
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'scenarios' ? '#2F81F7' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'scenarios' ? 'rgba(47, 129, 247, 0.1)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'scenarios' ? '#2F81F7' : '#E8EDF2', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
-              ⚡ Escenarios
+              ⚡ Escenarios ({scenariosCatalog.length})
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('risk_roi'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#151B23' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#2F81F7' : '#8B98A7', cursor: 'pointer', borderRadius: '4px' }}>
               Riesgo & ROI
@@ -718,7 +752,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px dashed #151B23', marginBottom: '10px' }}>
                 <span style={{ color: '#8B98A7' }}>PROOF_BUNDLE_GENERATOR</span>
-                <strong style={{ color: '#20C997' }}>V9 ATTESTATION READY</strong>
+                <strong style={{ color: '#20C997' }}>V9.2 ATTESTATION READY</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#8B98A7' }}>ESTADO_MOTOR_L7</span>
@@ -738,29 +772,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         </main>
       )}
 
-      {/* VISTA 3: LANDING PAGE ENTERPRISE B2B MODULAR POR PESTAÑAS */}
+      {/* VISTA 3: LANDING PAGE MODULAR POR PESTAÑAS */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1180px', margin: '30px auto 80px auto', padding: '0 24px' }}>
 
-          {/* ========================================================================= */}
-          {/* NUEVA PESTAÑA: ESCENARIOS (CATÁLOGO TIPO CROTORRENTS / GRID DE TARJETAS) */}
-          {/* ========================================================================= */}
+          {/* TAB 1: CATÁLOGO DE ESCENARIOS */}
           {activeNavTab === 'scenarios' && (
             <div>
-              {/* CABECERA DE LA SECCIÓN DE ESCENARIOS */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>
                     // OPERATIONAL SCENARIOS & PLAYBOOKS
                   </div>
                   <h1 style={{ fontSize: '32px', fontWeight: '800', margin: 0, color: '#E8EDF2', letterSpacing: '-0.5px' }}>
-                    Catálogo de Escenarios & Despliegues
+                    Catálogo de Escenarios & Despliegues L7
                   </h1>
                 </div>
 
-                {/* FILTROS / CATEGORÍAS */}
+                {/* FILTROS POR CATEGORÍA */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {['ALL', 'Workflows', 'Ciberseguridad', 'Auditoría', 'Fintech', 'Sanidad'].map((cat) => (
+                  {['ALL', 'Workflows', 'Ciberseguridad', 'Auditoría', 'Fintech', 'Sanidad', 'Subvenciones', 'Cloud', 'LegalTech'].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setScenarioFilter(cat)}
@@ -782,7 +813,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* GRID VISUAL DE TARJETAS (ESTILO CROTORRENTS EN MODO DEEP TECH) */}
+              {/* GRID VISUAL DE TARJETAS */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginBottom: '40px' }}>
                 {filteredScenarios.map((scn) => (
                   <div
@@ -797,6 +828,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       transition: 'all 0.2s ease-in-out',
                       display: 'flex',
                       flexDirection: 'column',
+                      justifyContent: 'space-between',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
                     }}
                     onMouseOver={(e) => {
@@ -810,7 +842,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
                     }}
                   >
-                    {/* BANNER / PREVIEW DE LA TARJETA */}
                     <div
                       style={{
                         height: '140px',
@@ -837,7 +868,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       </div>
                     </div>
 
-                    {/* CUERPO DE LA TARJETA */}
                     <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                       <div>
                         <h3 style={{ fontSize: '15.5px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0', lineHeight: 1.35 }}>
@@ -848,7 +878,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         </p>
                       </div>
 
-                      {/* PIE DE LA TARJETA (MÉTRICAS / STATUS) */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #151B23', fontSize: '11.5px', fontFamily: 'monospace' }}>
                         <span style={{ color: '#20C997' }}>⚡ {scn.latency}</span>
                         <span style={{ color: '#8B98A7' }}>{scn.verified}</span>
@@ -870,7 +899,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       <button onClick={() => setSelectedScenario(null)} style={{ background: 'none', border: 'none', color: '#8B98A7', fontSize: '18px', cursor: 'pointer' }}>✕</button>
                     </div>
 
-                    <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+                    <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.6, marginBottom: '20px' }}>
                       {selectedScenario.description || selectedScenario.summary}
                     </p>
 
@@ -883,9 +912,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         <span style={{ color: '#8B98A7' }}>CERTIFICACIÓN_L7:</span>
                         <span style={{ color: '#E8EDF2' }}>{selectedScenario.verified}</span>
                       </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ color: '#8B98A7' }}>NORMATIVA_APLICABLE:</span>
+                        <span style={{ color: '#2F81F7' }}>{selectedScenario.compliance_text || "ISO/IEC 42001 & RGPD"}</span>
+                      </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#8B98A7' }}>INTEGRACIÓN_RECOMENDADA:</span>
-                        <span style={{ color: '#2F81F7' }}>{selectedScenario.category}</span>
+                        <span style={{ color: '#8B98A7' }}>PERÍMETRO_DETERMINISTA:</span>
+                        <span style={{ color: '#20C997' }}>SYS_madvise (Zero-Disk)</span>
                       </div>
                     </div>
 
@@ -903,12 +936,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 1: PLATAFORMA & OVERVIEW (HOME PRINCIPAL) */}
-          {/* ========================================================================= */}
+          {/* TAB 2: PLATAFORMA & OVERVIEW */}
           {activeNavTab === 'overview' && (
             <div>
-              {/* HERO */}
               <section style={{ textAlign: 'center', margin: '40px 0 60px 0' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 14px', backgroundColor: 'rgba(47, 129, 247, 0.1)', border: '1px solid rgba(47, 129, 247, 0.3)', borderRadius: '20px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', marginBottom: '24px', letterSpacing: '0.5px' }}>
                   SAARE — AI SECURITY & EVIDENCE LAYER
@@ -932,7 +962,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </section>
 
-              {/* QUÉ ES SAARE PARA TU EMPRESA */}
               <section style={{ marginBottom: '60px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#E8EDF2', marginBottom: '24px', textAlign: 'center' }}>¿Qué es SAARE para tu empresa?</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
@@ -959,7 +988,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </section>
 
-              {/* ANTES Y DESPUÉS */}
               <section style={{ marginBottom: '60px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '40px', borderRadius: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '60px', flexWrap: 'wrap' }}>
@@ -1000,9 +1028,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 2: EL RIESGO & ANÁLISIS DE ROI */}
-          {/* ========================================================================= */}
+          {/* TAB 3: RIESGO & ROI */}
           {activeNavTab === 'risk_roi' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1037,7 +1063,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* ROI SECTION */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '36px', borderRadius: '8px' }}>
                 <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#E8EDF2', marginBottom: '8px', textAlign: 'center' }}>¿Cuánto cuesta no controlar tu IA?</h3>
                 <p style={{ color: '#8B98A7', fontSize: '15px', textAlign: 'center', marginBottom: '32px' }}>Impacto directo en costes, tiempo y riesgo operativo.</p>
@@ -1064,9 +1089,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 3: CASOS DE NEGOCIO & MERCADOS */}
-          {/* ========================================================================= */}
+          {/* TAB 4: MERCADOS */}
           {activeNavTab === 'markets' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1075,8 +1098,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-                
-                {/* 1. AI WORKFLOWS */}
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>01 — AI PLATFORMS & WORKFLOWS</div>
                   <h3 style={{ fontSize: '19px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>Protege tus automatizaciones antes de que lleguen al LLM.</h3>
@@ -1084,18 +1105,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     <p style={{ marginBottom: '8px' }}><strong>Problema:</strong> Tus clientes pueden enviar PII y datos regulados a modelos externos a través de tus flujos.</p>
                     <p style={{ margin: 0 }}><strong>SAARE:</strong> Añade una capa de control L7 sin construir tu propio motor de seguridad desde cero.</p>
                   </div>
-                  <div style={{ borderTop: '1px solid #151B23', paddingTop: '16px', fontSize: '13px', color: '#8B98A7', marginBottom: '20px' }}>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Integración:</strong> API / Gateway / SDK</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Time-to-value:</strong> 1–3 meses</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Comprador:</strong> CTO / CPO / Head of AI</div>
-                    <div><strong style={{ color: '#E8EDF2' }}>Modelo:</strong> OEM / Consumo / Revenue Share</div>
-                  </div>
                   <button onClick={() => { setMode('register'); setCurrentView('AUTH'); }} style={{ width: '100%', padding: '10px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                     Integrar SAARE ↗
                   </button>
                 </div>
 
-                {/* 2. CYBERSECURITY */}
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>02 — CYBERSECURITY PROVIDERS</div>
                   <h3 style={{ fontSize: '19px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>DLP nativo para IA en el Endpoint.</h3>
@@ -1103,18 +1117,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     <p style={{ marginBottom: '8px' }}><strong>Problema:</strong> Las empresas pierden el control sobre qué copian sus empleados en ChatGPT o Gemini.</p>
                     <p style={{ margin: 0 }}><strong>SAARE:</strong> Librería C-ABI in-process que purga datos sensibles directamente en la memoria del agente EDR del usuario.</p>
                   </div>
-                  <div style={{ borderTop: '1px solid #151B23', paddingTop: '16px', fontSize: '13px', color: '#8B98A7', marginBottom: '20px' }}>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Integración:</strong> C-ABI (.so / .dll) Embedded</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Time-to-value:</strong> 6–12 meses</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Comprador:</strong> CISO / VP Engineering</div>
-                    <div><strong style={{ color: '#E8EDF2' }}>Modelo:</strong> OEM Licensing</div>
-                  </div>
                   <a href="mailto:partners@ms3v.es?subject=OEM%20Licensing" style={{ textAlign: 'center', display: 'block', padding: '10px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', textDecoration: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>
                     Hablar con Partnerships ↗
                   </a>
                 </div>
 
-                {/* 3. GSIs / CONSULTORAS */}
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ color: '#FF4D5A', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>03 — GSIs & CONSULTORAS</div>
                   <h3 style={{ fontSize: '19px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>Obtén evidencia verificable de cumplimiento.</h3>
@@ -1122,23 +1129,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     <p style={{ marginBottom: '8px' }}><strong>Problema:</strong> Auditar proyectos de IA regulada para clientes es manual, abstracto y carece de pruebas técnicas sólidas.</p>
                     <p style={{ margin: 0 }}><strong>SAARE:</strong> Genera paquetes de evidencia (Proof Bundles) listos para justificar cumplimiento, ISO 42001 e inversiones públicas.</p>
                   </div>
-                  <div style={{ borderTop: '1px solid #151B23', paddingTop: '16px', fontSize: '13px', color: '#8B98A7', marginBottom: '20px' }}>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Integración:</strong> Enterprise / Auditor Seat</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Time-to-value:</strong> Inmediato (SaaS)</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Comprador:</strong> Compliance Officer / Perito</div>
-                    <div><strong style={{ color: '#E8EDF2' }}>Modelo:</strong> Suscripción {AUDITOR_PLAN_PRICE} €/mes</div>
-                  </div>
                   <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '10px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                    Contratar Asiento Auditor ↗
+                    Contratar Asiento Auditor ({AUDITOR_PLAN_PRICE} €/mes) ↗
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 4: ARQUITECTURA TÉCNICA & STACK COMPARATIVO */}
-          {/* ========================================================================= */}
+          {/* TAB 5: ARQUITECTURA */}
           {activeNavTab === 'architecture' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1146,7 +1145,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <p style={{ color: '#8B98A7', fontSize: '16px' }}>La tecnología determinista que respalda el perímetro empresarial.</p>
               </div>
 
-              {/* DIAGRAMA ASCII */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', maxWidth: '720px', margin: '0 auto 40px auto', overflowX: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>FLUJO LÓGICO DE INTERCEPCIÓN EN L7</span>
@@ -1167,8 +1165,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  ║  [4] RUNTIME SEAL    (Ed25519 + RFC 3161)       ║
  ╚═════════════════════╤═══════════════════════════╝
                        │
-       ┌───────────────┼───────────────┐
-       ▼               ▼               ▼
+        ┌───────────────┼───────────────┐
+        ▼               ▼               ▼
  ╔═══════════╗   ╔═══════════╗   ╔═══════════════╗
  ║  `}<span style={{ color: '#20C997' }}>ACCEPT</span>{`   ║   ║  `}<span style={{ color: '#FF4D5A' }}>REJECT</span>{`   ║   ║ `}<span style={{ color: '#2F81F7' }}>INDETERMINATE</span>{` ║
  ║  (Valid)  ║   ║ (Purged)  ║   ║  (Fallback)   ║
@@ -1182,7 +1180,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </pre>
               </div>
 
-              {/* TRES PILARES */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
                   <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11px', marginBottom: '8px' }}>01 / EX-ANTE L7</div>
@@ -1203,9 +1200,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 5: PROOF BUNDLE */}
-          {/* ========================================================================= */}
+          {/* TAB 6: PROOF BUNDLE */}
           {activeNavTab === 'proof' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1213,11 +1208,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <p style={{ color: '#8B98A7', fontSize: '16px' }}>La prueba estructurada e independiente de cada inferencia.</p>
               </div>
 
-              {/* INSPECTOR INTERACTIVO DE PROOF BUNDLE */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderTop: '3px solid #20C997', borderRadius: '8px', padding: '32px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
                   <div>
-                    <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#20C997' }}>// SAARE_PROOF_BUNDLE_V9</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#20C997' }}>// SAARE_PROOF_BUNDLE_V9.2</span>
                     <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '4px 0 0 0', color: '#E8EDF2' }}>
                       Proof Bundle — La prueba estructurada de la ejecución
                     </h3>
@@ -1323,9 +1317,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 6: COMPLIANCE */}
-          {/* ========================================================================= */}
+          {/* TAB 7: COMPLIANCE */}
           {activeNavTab === 'compliance' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1365,9 +1357,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* PESTAÑA 7: DEVELOPERS & INTEGRACIÓN SDK */}
-          {/* ========================================================================= */}
+          {/* TAB 8: DEVELOPERS & INTEGRACIÓN SDK */}
           {activeNavTab === 'developers' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -1375,7 +1365,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <p style={{ color: '#8B98A7', fontSize: '16px' }}>Integra la capa de seguridad L7 sin sustituir tu infraestructura actual.</p>
               </div>
 
-              {/* MODELOS DE DESPLIEGUE */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '40px' }}>
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>EMBEDDED</span>
@@ -1399,7 +1388,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
               </div>
 
-              {/* SNIPPETS */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
@@ -1418,13 +1406,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </div>
 
                 <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
-                  {codeSnippets[activeCodeTab].replace("'sk_saare_live_AUDITOR_TOKEN'", "process.env.SAARE_LICENSE").replace('"sk_saare_live_AUDITOR_TOKEN"', 'os.environ.get("SAARE_LICENSE")')}
+                  {codeSnippets[activeCodeTab]}
                 </pre>
               </div>
             </div>
           )}
 
-          {/* CINTILLO FINAL CTA (VISIBLE AL FINAL DE CUALQUIER PESTAÑA) */}
+          {/* CINTILLO FINAL CTA */}
           <section style={{ margin: '80px auto 0 auto', textAlign: 'center' }}>
             <div style={{ backgroundColor: '#151B23', border: '1px solid #30363D', borderRadius: '8px', padding: '48px 24px' }}>
               <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 12px 0' }}>Construye una IA que puedas controlar.</h2>
