@@ -53,7 +53,7 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('GLOBAL');
+  const [activeTab, setActiveTab] = useState('CONFIG');
   const [events, setEvents] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -68,112 +68,62 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO CANÓNICO DE LOS 10 ESCENARIOS
-  const scenarioDirectivesConfig = {
-    cumplimiento_corporativo_es: {
-      name: "ESPAÑA: LOPDGDD & AEPD STRICT",
-      category: "PRIVACIDAD ES",
+  // CATÁLOGO OFICIAL DE LAS 5 BÓVEDAS MAESTRAS
+  const masterScenariosConfig = {
+    cumplimiento_corporativo_integral: {
+      name: "01. ESCUDO CORPORATIVO DE CUMPLIMIENTO & PII INTEGRAL",
+      category: "EMPLEADOS & ENTIDADES",
       badgeColor: "#0284c7",
-      desc: "Detección y bloqueo perimetral en RAM de DNI, NIE, IBAN, nóminas y fuga de PII.",
+      desc: "Bloqueo perimetral en RAM de DNI, NIE, IBAN, nóminas, tarjetas y datos médicos sensibles (RGPD Art. 9) para empresas, banca, hospitales y sector público.",
       llmEffect: "Redacta o aborta en memoria volátil antes de que los datos regulados salgan a la nube.",
-      norma: "RGPD Art. 5 y 32 · LOPDGDD",
-      icon: "⚡"
-    },
-    banca_dora_pci_dss: {
-      name: "BANCA & FINTECH: DORA CAPA 7 & PCI-DSS",
-      category: "BANCA / DORA",
-      badgeColor: "#d97706",
-      desc: "Aislamiento de cuentas corrientes, tarjetas y atestación SYS_madvise Zero-Disk.",
-      llmEffect: "Atesta la purga atómica de memoria sin persistencia en almacenamiento físico.",
-      norma: "DORA Art. 9 y 10 · PCI-DSS v4 Req 6.4",
-      icon: "🏦"
-    },
-    scn_edr_cabi: {
-      name: "SENSOR HOOK C-ABI: JAILBREAK & PROMPT INJECTION",
-      category: "CIBERSEGURIDAD",
-      badgeColor: "#16a34a",
-      desc: "Mitigación ex-ante de ataques adversarios, modo DAN, prompt leaking y evasiones.",
-      llmEffect: "Corta la conexión al socket L7 en 0.017 ms ante payloads maliciosos.",
-      norma: "EU AI Act Art. 15 · ISO 27001 A.8.7",
+      norma: "RGPD Art. 5, 9 y 32 · LOPDGDD 3/2018 · DORA Capa 7 · PCI-DSS v4",
       icon: "🛡️"
     },
-    scn_gsi_forensic: {
-      name: "BIG FOUR: BÓVEDA PERICIAL & NO-UNSUPPORTED CLAIMS",
-      category: "AUDITORÍA & GRC",
+    auditoria_dictamen_normativo: {
+      name: "02. BÓVEDA PERICIAL DE AUDITORÍA & DICTAMEN NORMATIVO",
+      category: "ASIENTO AUDITOR GRC",
       badgeColor: "#dc2626",
-      desc: "Sellado Ed25519 + RFC 3161 y rechazo de alucinaciones sin fundamento causal.",
-      llmEffect: "Emite un Proof Bundle firmado con validez jurídica y probatoria plena.",
-      norma: "UNE-EN ISO/IEC 42001 · RFC 3161",
+      desc: "Generación de Proof Bundles sellados con firma Ed25519 y estampación temporal cualificada RFC 3161 con plena validez judicial.",
+      llmEffect: "Emite el certificado de custodia para justificación pericial e ISO 42001.",
+      norma: "UNE-EN ISO/IEC 42001 · EU AI Act Art. 12 · RFC 3161 eIDAS",
       icon: "⚖️"
     },
-    scn_sanidad_salud: {
-      name: "SANIDAD: RESGUARDO DE HISTORIAS CLÍNICAS",
-      category: "SALUD LOPD",
+    razonamiento_activo_l7: {
+      name: "03. RAZONAMIENTO ACTIVO L7 & INYECCIÓN DE TESTIGO EN LLM",
+      category: "BLINDAJE ACTIVO",
+      badgeColor: "#16a34a",
+      desc: "Mitigación ex-ante de Jailbreaks y modo DAN con inyección automática del Testigo de Seguridad criptográfico en la respuesta final de la IA.",
+      llmEffect: "Inserta la firma criptográfica L7-SEAL al final del texto generado por la IA.",
+      norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · ISO 27001 A.8.7",
+      icon: "⚡"
+    },
+    deepfake_fake_disprover: {
+      name: "04. INTEGRIDAD FORENSE, DEEPFAKE & FAKE DISPROVER",
+      category: "DETECCIÓN DE FALSEDAD",
       badgeColor: "#9333ea",
-      desc: "Anonimización y bloqueo perimetral de diagnósticos médicos y prescripciones.",
-      llmEffect: "Enmascara patologías e identificadores de pacientes antes del envío al LLM.",
-      norma: "RGPD Art. 9 (Categorías Especiales)",
-      icon: "🏥"
+      desc: "Inspección causal y rechazo estricto (Unsupported Claims) ante alucinaciones documentales, partes de siniestros fraudulentos o cláusulas inventadas.",
+      llmEffect: "Fuerza estado RECHAZADO si el LLM genera datos sin evidencia en el corpus aportado.",
+      norma: "ISO 42001 Control B.6 · Ley 50/1980 Contrato de Seguro",
+      icon: "🔍"
     },
-    scn_fondos_prtr: {
-      name: "TRAZABILIDAD INMUTABLE NEXTGEN & PRTR",
-      category: "FONDOS PRTR",
-      badgeColor: "#38bdf8",
-      desc: "Memoria técnica estructurada con enlaces de verificación Edge pública para IGAE.",
-      llmEffect: "Estampa evidencias no manipulables para justificación de subvenciones públicas.",
-      norma: "Orden HFP/1030/2021 · NextGenEU",
-      icon: "🇪🇺"
-    },
-    scn_edge_gateway: {
-      name: "PROXY INVERSO GLOBAL EN CLOUDFLARE EDGE",
-      category: "EDGE GATEWAY",
-      badgeColor: "#06b6d4",
-      desc: "Middleware perimetral en más de 300 ubicaciones con inyección de cabecera L7-SEAL.",
-      llmEffect: "Valida la integridad de cabeceras HTTP y tokens antes de enrutar la inferencia.",
-      norma: "WAF Layer 7 Enterprise",
-      icon: "🌐"
-    },
-    scn_kit_consulting: {
-      name: "RED.ES: DIAGNÓSTICO KIT CONSULTING & HANDSHAKE",
-      category: "KIT CONSULTING",
-      badgeColor: "#f43f5e",
-      desc: "Supervisión delegada de empleados con consentimiento volátil en RAM para PYMEs.",
-      llmEffect: "Acredita el asesoramiento digital sin almacenar secretos corporativos.",
-      norma: "Bases Reguladoras Red.es",
-      icon: "💼"
-    },
-    scn_legal_grounding: {
-      name: "LEGALTECH: GROUNDING ESTRICTO EN CONTRATOS",
-      category: "LEGALTECH",
-      badgeColor: "#6366f1",
-      desc: "Validación documental que rechaza cláusulas no sustentadas en el expediente aportado.",
-      llmEffect: "Fuerza veredicto RECHAZADO si el LLM genera cláusulas inexistentes.",
-      norma: "ISO 42001 Control B.6 (Corpus Grounding)",
-      icon: "📜"
-    },
-    scn_insurtech_claims: {
-      name: "INSURTECH: DETECCIÓN DE FRAUDE EN SINIESTROS",
-      category: "INSURTECH",
-      badgeColor: "#14b8a6",
-      desc: "Cadena causal inmutable para peritajes de partes de accidentes y fotografías periciales.",
-      llmEffect: "Verifica firmas de autenticidad SHA-256 en la documentación aportada.",
-      norma: "Cadena de Custodia Forense Digital",
-      icon: "🚗"
+    subvenciones_requisitos_infranqueables: {
+      name: "05. REQUISITOS INFRANQUEABLES DE SUBVENCIONES & JUSTIFICACIÓN",
+      category: "FONDOS & SUBVENCIONES",
+      badgeColor: "#059669",
+      desc: "Control infranqueable de no-doble financiación (hash de facturas/gastos), principio ambiental DNSH y justificación de fondos públicos.",
+      llmEffect: "Bloquea facturas duplicadas en convocatorias NextGenEU, Kit Digital o 2 CFR 200.",
+      norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · 2 CFR 200 (USA) · Horizon Europe",
+      icon: "🏛️"
     }
   };
 
-  // ESTADO DE LAS 10 DIRECTIVAS
+  // ESTADO DE LAS 5 BÓVEDAS
   const [directives, setDirectives] = useState({
-    cumplimiento_corporativo_es: true,
-    banca_dora_pci_dss: true,
-    scn_edr_cabi: true,
-    scn_gsi_forensic: true,
-    scn_sanidad_salud: true,
-    scn_fondos_prtr: true,
-    scn_edge_gateway: true,
-    scn_kit_consulting: true,
-    scn_legal_grounding: true,
-    scn_insurtech_claims: true
+    cumplimiento_corporativo_integral: true,
+    auditoria_dictamen_normativo: true,
+    razonamiento_activo_l7: true,
+    deepfake_fake_disprover: true,
+    subvenciones_requisitos_infranqueables: true
   });
 
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, directiveKey: null });
@@ -183,9 +133,9 @@ export default function App() {
   const [newRule, setNewRule] = useState({ label: '', pattern: '' });
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // CONTEO SEGURO Y EXACTO DE DIRECTIVAS
-  const totalDirectivesCount = Object.keys(scenarioDirectivesConfig).length;
-  const activeDirectivesCount = Object.keys(scenarioDirectivesConfig).filter(k => directives[k] === true).length;
+  // CONTEO SEGURO Y EXACTO DE LAS 5 BÓVEDAS
+  const totalDirectivesCount = Object.keys(masterScenariosConfig).length;
+  const activeDirectivesCount = Object.keys(masterScenariosConfig).filter(k => directives[k] === true).length;
   const disabledDirectivesCount = Math.max(0, totalDirectivesCount - activeDirectivesCount);
 
   // PERSISTENCIA EN BÓVEDA KV
@@ -239,7 +189,7 @@ export default function App() {
         if (settingsData.settings && !syncingKv) {
           setDirectives(prev => {
             const merged = { ...prev };
-            Object.keys(scenarioDirectivesConfig).forEach(k => {
+            Object.keys(masterScenariosConfig).forEach(k => {
               if (settingsData.settings[k] !== undefined) {
                 merged[k] = settingsData.settings[k];
               }
@@ -272,7 +222,7 @@ export default function App() {
 
   useEffect(() => {
     fetchTelemetryAndVerifyKV();
-    const interval = setInterval(fetchTelemetryAndVerifyKV, 4000);
+    const interval = setInterval(fetchTelemetryAndVerifyKV, 3500);
     return () => clearInterval(interval);
   }, [sessionUser?.email]);
 
@@ -411,7 +361,7 @@ export default function App() {
                 PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
               </h2>
               <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
-                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DIRECTIVAS: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} DESHABILITADAS</strong>
+                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | BÓVEDAS L7: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} DESHABILITADAS</strong>
               </div>
             </div>
 
@@ -437,10 +387,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* TESTIGOS VISUALES SIMULTÁNEOS DE ESCENARIOS */}
+          {/* TESTIGOS VISUALES DE LAS 5 BÓVEDAS MAESTRAS */}
           <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', marginRight: '6px' }}>
-              TESTIGOS L7 EN TIEMPO REAL:
+              TESTIGOS L7 (5 BÓVEDAS):
             </span>
 
             <button
@@ -458,10 +408,10 @@ export default function App() {
                 whiteSpace: 'nowrap'
               }}
             >
-              TODOS ({events.length})
+              TODAS ({events.length})
             </button>
 
-            {Object.entries(scenarioDirectivesConfig).map(([key, scn]) => {
+            {Object.entries(masterScenariosConfig).map(([key, scn]) => {
               const isEnabled = directives[key];
               const isSelected = activeScenarioFilter === key;
               const countInScenario = events.filter(e => e.scenario_id && e.scenario_id.toLowerCase().includes(key.toLowerCase())).length;
@@ -520,7 +470,7 @@ export default function App() {
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA</h3>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS EN LAS 5 BÓVEDAS</h3>
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
                   Filtro activo: <strong>{activeScenarioFilter}</strong> | Registros: <strong>{filteredEvents.length}</strong>
                 </span>
@@ -538,8 +488,8 @@ export default function App() {
                 <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   <tr>
                     <th style={{ padding: '14px 20px' }}>TIMESTAMP</th>
-                    <th style={{ padding: '14px 20px' }}>ID EVIDENCIA / ESCENARIO</th>
-                    <th style={{ padding: '14px 20px' }}>CATEGORÍA / NORMA</th>
+                    <th style={{ padding: '14px 20px' }}>ID EVIDENCIA / BÓVEDA</th>
+                    <th style={{ padding: '14px 20px' }}>CATEGORÍA / MARCO</th>
                     <th style={{ padding: '14px 20px' }}>PROMPT INTERCEPTADO</th>
                     <th style={{ padding: '14px 20px' }}>DICTAMEN</th>
                     <th style={{ padding: '14px 20px', textAlign: 'center' }}>AUDITORÍA</th>
@@ -549,18 +499,18 @@ export default function App() {
                   {filteredEvents.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                        No hay evidencias registradas para el filtro seleccionado.
+                        No hay evidencias registradas para el filtro seleccionado ({activeScenarioFilter}).
                       </td>
                     </tr>
                   ) : (
                     filteredEvents.map((ev, i) => {
                       const id = ev.runId || ev.evidenceId || `EV-L7-${i + 1}`;
                       const timestamp = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'En vivo';
-                      const category = ev.violationDetails?.category || ev.category || 'PII_DETECTED';
-                      const norma = ev.violationDetails?.norma || ev.norma || 'LOPDGDD / AI Act';
+                      const category = ev.violationDetails?.category || ev.category || 'CUMPLIMIENTO_INTEGRAL';
+                      const norma = ev.violationDetails?.norma || ev.norma || 'LOPDGDD / RGPD / AI Act';
                       const promptText = ev.promptInput || ev.promptSummary || ev.payload || "Sin contenido";
                       const verdict = ev.verdict || 'RECHAZADO';
-                      const scenarioTag = ev.scenario_id || 'cumplimiento_corporativo_es';
+                      const scenarioTag = ev.scenario_id || 'cumplimiento_corporativo_integral';
 
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#fafafa' }}>
@@ -596,7 +546,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: RUNLIVE (EVIDENCIA ENRIQUECIDA) */}
+        {/* TAB 2: RUNLIVE (EVIDENCIA ENRIQUECIDA Y TESTIGO LLM) */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -611,7 +561,7 @@ export default function App() {
                 {/* MATRIZ DE CABECERA DE LA EVIDENCIA */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px', fontSize: '0.85rem' }}>
                   <div>ID EVIDENCIA: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.runId || lastEvent.evidenceId}</strong></div>
-                  <div>ESCENARIO ACTIVO: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.scenario_id || 'cumplimiento_corporativo_es'}</strong></div>
+                  <div>BÓVEDA ACTIVA: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.scenario_id || 'cumplimiento_corporativo_integral'}</strong></div>
                   <div>USUARIO AUDITADO: <strong>{lastEvent.user || sessionUser.email}</strong></div>
                   <div>TIMESTAMP: <strong>{new Date(lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
                   <div>DICTAMEN L7: <strong style={{ color: lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a' }}>{lastEvent.verdict || 'PERMITIDO'}</strong></div>
@@ -626,16 +576,16 @@ export default function App() {
                   "{lastEvent.promptInput || lastEvent.promptSummary || lastEvent.payload || 'Sin contenido'}"
                 </div>
 
-                {/* REGLAS Y ATESTACIONES ACTIVADAS PARA ESTE EVENTO */}
+                {/* REGLAS Y ATESTACIONES ACTIVADAS */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '14px', marginBottom: '18px', fontSize: '0.82rem' }}>
                   <div style={{ color: '#0284c7', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>
-                    Atestación Forense del Escenario:
+                    Atestación Forense de la Bóveda L7:
                   </div>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#475569' }}>
                     <span>• Latencia RAM: <strong style={{ color: '#16a34a' }}>1.16 ms</strong></span>
                     <span>• Zero-Disk Writes: <strong style={{ color: '#16a34a' }}>VERIFICADO (SYS_madvise)</strong></span>
                     <span>• Sello RFC 3161: <strong style={{ color: '#0284c7' }}>QUALIFIED TRUST ANCHOR</strong></span>
-                    <span>• Estado Perimetral: <strong style={{ color: '#16a34a' }}>PERIMETER_VALID</strong></span>
+                    <span>• Testigo Inyectable: <strong style={{ color: '#16a34a' }}>ACTIVO EN LLM</strong></span>
                   </div>
                 </div>
 
@@ -648,13 +598,13 @@ export default function App() {
               <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
                 <strong>Esperando intercepciones en caliente...</strong>
-                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una prueba en tu plataforma o LLM para observar el despiece perimetral por escenario.</p>
+                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una prueba en tu plataforma o LLM para observar el despiece perimetral de la Bóveda.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: CONFIGURACIÓN COMPLETA DE LOS 10 ESCENARIOS */}
+        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS GLOBALES */}
         {activeTab === 'CONFIG' && (
           <div>
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -674,7 +624,7 @@ export default function App() {
 
               {customRules.length === 0 ? (
                 <div style={{ border: '1px dashed #94a3b8', borderRadius: '8px', padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.95rem', background: '#f8fafc' }}>
-                  No hay filtros personalizados activos. Los 10 escenarios base seleccionados abajo se mantienen en ejecución.
+                  No hay filtros personalizados activos. Las 5 Bóvedas Maestras seleccionadas abajo se mantienen en ejecución determinista.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -691,9 +641,9 @@ export default function App() {
               )}
             </div>
 
-            {/* GRID DE LOS 10 ESCENARIOS CON SUS 10 BOTONES DE ACCIÓN */}
+            {/* GRID DE LAS 5 BÓVEDAS MAESTRAS CON SUS 5 BOTONES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
-              {Object.entries(scenarioDirectivesConfig).map(([key, scn]) => {
+              {Object.entries(masterScenariosConfig).map(([key, scn]) => {
                 const isEnabled = directives[key] === true;
                 return (
                   <div
@@ -725,14 +675,13 @@ export default function App() {
                         {scn.desc}
                       </p>
                       <div style={{ fontSize: '0.78rem', color: '#0284c7', fontFamily: 'monospace', fontWeight: 'bold', marginBottom: '12px' }}>
-                        Norma: {scn.norma}
+                        Normativa: {scn.norma}
                       </div>
                       <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '6px', borderLeft: `3px solid ${scn.badgeColor}`, fontSize: '0.8rem', color: '#64748b', marginBottom: '24px' }}>
                         <strong>Efecto en LLM:</strong> {scn.llmEffect}
                       </div>
                     </div>
 
-                    {/* BOTÓN INDEPENDIENTE POR ESCENARIO */}
                     <button
                       onClick={() => handleToggleDirective(key)}
                       disabled={syncingKv}
@@ -802,7 +751,7 @@ export default function App() {
               <p style={{ fontSize: '0.95rem', color: '#475569', margin: '0 0 28px 0', lineHeight: '1.6' }}>
                 Estás a punto de desactivar la directiva:<br/>
                 <strong style={{ color: '#dc2626', display: 'block', marginTop: '10px', fontSize: '1.05rem' }}>
-                  {scenarioDirectivesConfig[confirmModal.directiveKey]?.name}
+                  {masterScenariosConfig[confirmModal.directiveKey]?.name}
                 </strong>
                 <br/>
                 Esto detendrá la intercepción en vivo de los eventos y las llamadas LLM asociadas no serán auditadas bajo este marco. ¿Deseas continuar?
