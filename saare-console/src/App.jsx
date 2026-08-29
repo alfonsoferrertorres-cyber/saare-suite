@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
@@ -271,10 +271,8 @@ export default function App() {
   // CONTROLADOR DEL TOGGLE CON PERSISTENCIA
   const handleToggleDirective = (key) => {
     if (directives[key]) {
-      // Si está activa, pide confirmación previa
       setConfirmModal({ isOpen: true, directiveKey: key });
     } else {
-      // Si está desactivada, actívala inmediatamente y persiste en KV
       const updated = { ...directives, [key]: true };
       setDirectives(updated);
       persistSettingsToKV(updated);
@@ -318,7 +316,6 @@ export default function App() {
     } catch {}
   };
 
-  // Filtrado de eventos por escenario y búsqueda
   const filteredEvents = events.filter(ev => {
     const matchesScenario = activeScenarioFilter === 'ALL' || (ev.scenario_id && ev.scenario_id.toLowerCase() === activeScenarioFilter.toLowerCase());
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
