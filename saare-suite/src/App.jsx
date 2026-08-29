@@ -12,10 +12,12 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [mode, setMode] = useState('register'); // 'register' | 'login' | 'reset'
-  const [currentView, setCurrentView] = useState('LANDING'); // 'LANDING' | 'STATUS' | 'AUTH'
-  const [activeNavTab, setActiveNavTab] = useState('overview'); // 'overview' | 'risk_roi' | 'markets' | 'architecture' | 'proof' | 'compliance' | 'developers'
-  
+  const [mode, setMode] = useState('register');
+  const [currentView, setCurrentView] = useState('LANDING');
+  const [activeNavTab, setActiveNavTab] = useState('scenarios'); // Inicia por defecto en Escenarios o Plataforma
+  const [scenarioFilter, setScenarioFilter] = useState('ALL');
+  const [selectedScenario, setSelectedScenario] = useState(null);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -50,7 +52,106 @@ export default function App() {
     setTimeout(() => setCopiedBundle(false), 2000);
   };
 
-  // SAARE CANONICAL PROOF BUNDLE v9.0.0 COMPLETO
+  // CATÁLOGO DE ESCENARIOS DE TRACCIÓN COMERCIAL (GRID 4x2 TIPO CATÁLOGO)
+  const scenariosCatalog = [
+    {
+      id: "scn-n8n",
+      category: "AI Workflows",
+      title: "n8n & LangChain: Flujo Seguro Ex-Ante",
+      description: "Intercepta llamadas a LLMs en flujos automatizados de agentes y bots, neutralizando DNIs y cuentas bancarias antes de salir a la nube.",
+      tag: "GATEWAY / SDK",
+      latency: "1.16 ms",
+      verified: "0.00% Fuga PII",
+      gradient: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
+      badgeColor: "#2F81F7",
+      icon: "⚡"
+    },
+    {
+      id: "scn-edr",
+      category: "Ciberseguridad",
+      title: "Sensor Hook C-ABI In-Process (EDR)",
+      description: "Biblioteca nativa compilada (.so/.dll) para fabricantes de antivirus y XDR. Purga atómica de memoria volátil mediante SYS_madvise.",
+      tag: "OEM BINARIO",
+      latency: "0.017 ms",
+      verified: "Residuo Cero RAM",
+      gradient: "linear-gradient(135deg, #065f46 0%, #0f172a 100%)",
+      badgeColor: "#20C997",
+      icon: "🛡️"
+    },
+    {
+      id: "scn-gsi",
+      category: "Auditoría & GRC",
+      title: "Big Four: Bóveda de Evidencia Pericial",
+      description: "Generación automatizada de Proof Bundles sellados con Ed25519 y RFC 3161 para auditorías de IA y justificación de expedientes.",
+      tag: "ASIENTO AUDITOR",
+      latency: "RFC 3161",
+      verified: "Validez Pericial Plena",
+      gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
+      badgeColor: "#FF4D5A",
+      icon: "⚖️"
+    },
+    {
+      id: "scn-bank",
+      category: "Fintech & Banca",
+      title: "Nodo Privado On-Premise Air-Gapped",
+      description: "Despliegue privado en VPC sin salida a internet. Atesta que ninguna inferencia de evaluación crediticia almacena secretos bancarios en disco.",
+      tag: "VPC PRIVADA",
+      latency: "0.017 ms",
+      verified: "DORA Capa 7 Ready",
+      gradient: "linear-gradient(135deg, #713f12 0%, #0f172a 100%)",
+      badgeColor: "#EAB308",
+      icon: "🏦"
+    },
+    {
+      id: "scn-health",
+      category: "Sanidad & Salud",
+      title: "Resguardo de Historias Clínicas (PII)",
+      description: "Protección estricta de historiales médicos ante herramientas diagnósticas de IA generativa con sustitución de identificadores en tránsito.",
+      tag: "ENCLAVE LOPDGDD",
+      latency: "1.16 ms",
+      verified: "RGPD Art. 5 y 32",
+      gradient: "linear-gradient(135deg, #4c1d95 0%, #0f172a 100%)",
+      badgeColor: "#A855F7",
+      icon: "🏥"
+    },
+    {
+      id: "scn-edge",
+      category: "Cloud & Gateways",
+      title: "Proxy Inverso Global en Cloudflare Edge",
+      description: "Middleware perimetral distribuido en más de 300 ubicaciones que estampa firmas de integridad en los encabezados HTTP de cada inferencia.",
+      tag: "EDGE WORKER",
+      latency: "Global Edge",
+      verified: "Merkle Anchor",
+      gradient: "linear-gradient(135deg, #164e63 0%, #0f172a 100%)",
+      badgeColor: "#06B6D4",
+      icon: "🌐"
+    },
+    {
+      id: "scn-nextgen",
+      category: "Fondos Europeos",
+      title: "Trazabilidad Inmutable NextGen & PRTR",
+      summary: "Memoria técnica estructurada con enlaces de verificación Edge pública comprobables por inspectores de fondos comunitarios e IGAE.",
+      tag: "DOSSIER PRTR",
+      latency: "RFC 3161",
+      verified: "No-Clawback Log",
+      gradient: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+      badgeColor: "#38BDF8",
+      icon: "🇪🇺"
+    },
+    {
+      id: "scn-kit",
+      category: "Red.es / Kit Consulting",
+      title: "Diagnóstico de Fugas y Handshake Token",
+      description: "Supervisión delegada de empleados con consentimiento en memoria RAM para justificar los bonos de asesoramiento en PYMEs.",
+      tag: "KIT CONSULTING",
+      latency: "1.16 ms",
+      verified: "Acreditado Red.es",
+      gradient: "linear-gradient(135deg, #3f3f46 0%, #0f172a 100%)",
+      badgeColor: "#F43F5E",
+      icon: "💼"
+    }
+  ];
+
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V9.0",
     "EVENT_IDENTIFIER": {
@@ -179,7 +280,7 @@ export default function App() {
     nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista SAARE\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
     python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
   };
 
   useEffect(() => {
@@ -449,7 +550,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   };
 
-  const currentGrant = grantsData[activeGrantTab];
+  const filteredScenarios = scenarioFilter === 'ALL'
+    ? scenariosCatalog
+    : scenariosCatalog.filter(s => s.category.toLowerCase().includes(scenarioFilter.toLowerCase()));
+
+  const currentGrant = grantsData[activeGrantTab] || grantsData['nextgen'];
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#070A0F', color: '#E8EDF2', fontFamily: '"Inter", "Geist", "IBM Plex Sans", -apple-system, sans-serif' }}>
@@ -467,7 +572,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         </div>
       )}
 
-      {/* HEADER B2B ENTERPRISE - PESTAÑAS ACTIVAS */}
+      {/* HEADER B2B ENTERPRISE CON PESTAÑAS ACTIVAS */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(7, 10, 15, 0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #151B23' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
@@ -484,10 +589,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </div>
 
-          {/* MENÚ DE PESTAÑAS (TABS DE NAVEGACIÓN MODULARES) */}
-          <nav style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '13px', fontWeight: '600', flexWrap: 'wrap' }}>
+          {/* MENÚ DE PESTAÑAS PRINCIPALES */}
+          <nav style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', fontWeight: '600', flexWrap: 'wrap' }}>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('overview'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'overview' ? '#151B23' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'overview' ? '#2F81F7' : '#8B98A7', cursor: 'pointer', borderRadius: '4px' }}>
               Plataforma
+            </button>
+            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'scenarios' ? '#2F81F7' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'scenarios' ? 'rgba(47, 129, 247, 0.1)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'scenarios' ? '#2F81F7' : '#E8EDF2', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
+              ⚡ Escenarios
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('risk_roi'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#151B23' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#2F81F7' : '#8B98A7', cursor: 'pointer', borderRadius: '4px' }}>
               Riesgo & ROI
@@ -632,7 +740,168 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       {/* VISTA 3: LANDING PAGE ENTERPRISE B2B MODULAR POR PESTAÑAS */}
       {currentView === 'LANDING' && (
-        <main style={{ maxWidth: '1100px', margin: '40px auto 80px auto', padding: '0 24px' }}>
+        <main style={{ maxWidth: '1180px', margin: '30px auto 80px auto', padding: '0 24px' }}>
+
+          {/* ========================================================================= */}
+          {/* NUEVA PESTAÑA: ESCENARIOS (CATÁLOGO TIPO CROTORRENTS / GRID DE TARJETAS) */}
+          {/* ========================================================================= */}
+          {activeNavTab === 'scenarios' && (
+            <div>
+              {/* CABECERA DE LA SECCIÓN DE ESCENARIOS */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>
+                    // OPERATIONAL SCENARIOS & PLAYBOOKS
+                  </div>
+                  <h1 style={{ fontSize: '32px', fontWeight: '800', margin: 0, color: '#E8EDF2', letterSpacing: '-0.5px' }}>
+                    Catálogo de Escenarios & Despliegues
+                  </h1>
+                </div>
+
+                {/* FILTROS / CATEGORÍAS */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {['ALL', 'Workflows', 'Ciberseguridad', 'Auditoría', 'Fintech', 'Sanidad'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setScenarioFilter(cat)}
+                      style={{
+                        padding: '6px 14px',
+                        border: '1px solid',
+                        borderColor: scenarioFilter === cat ? '#2F81F7' : '#151B23',
+                        background: scenarioFilter === cat ? '#151B23' : '#0D1117',
+                        color: scenarioFilter === cat ? '#2F81F7' : '#8B98A7',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* GRID VISUAL DE TARJETAS (ESTILO CROTORRENTS EN MODO DEEP TECH) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+                {filteredScenarios.map((scn) => (
+                  <div
+                    key={scn.id}
+                    onClick={() => setSelectedScenario(scn)}
+                    style={{
+                      backgroundColor: '#0D1117',
+                      border: '1px solid #151B23',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease-in-out',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-6px)';
+                      e.currentTarget.style.borderColor = '#2F81F7';
+                      e.currentTarget.style.boxShadow = '0 12px 28px rgba(0,0,0,0.8)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = '#151B23';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+                    }}
+                  >
+                    {/* BANNER / PREVIEW DE LA TARJETA */}
+                    <div
+                      style={{
+                        height: '140px',
+                        background: scn.gradient,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        padding: '16px',
+                        position: 'relative',
+                        borderBottom: '1px solid #151B23'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10.5px', fontFamily: 'monospace', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.6)', color: scn.badgeColor, border: `1px solid ${scn.badgeColor}40` }}>
+                          {scn.tag}
+                        </span>
+                        <span style={{ fontSize: '20px' }}>{scn.icon}</span>
+                      </div>
+
+                      <div>
+                        <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {scn.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* CUERPO DE LA TARJETA */}
+                    <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h3 style={{ fontSize: '15.5px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 8px 0', lineHeight: 1.35 }}>
+                          {scn.title}
+                        </h3>
+                        <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {scn.description || scn.summary}
+                        </p>
+                      </div>
+
+                      {/* PIE DE LA TARJETA (MÉTRICAS / STATUS) */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #151B23', fontSize: '11.5px', fontFamily: 'monospace' }}>
+                        <span style={{ color: '#20C997' }}>⚡ {scn.latency}</span>
+                        <span style={{ color: '#8B98A7' }}>{scn.verified}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* MODAL DETALLE DE ESCENARIO SELECCIONADO */}
+              {selectedScenario && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setSelectedScenario(null)}>
+                  <div style={{ maxWidth: '640px', width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <div>
+                        <span style={{ color: selectedScenario.badgeColor, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold' }}>// {selectedScenario.tag}</span>
+                        <h2 style={{ fontSize: '22px', fontWeight: '800', margin: '4px 0 0 0', color: '#E8EDF2' }}>{selectedScenario.title}</h2>
+                      </div>
+                      <button onClick={() => setSelectedScenario(null)} style={{ background: 'none', border: 'none', color: '#8B98A7', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+                    </div>
+
+                    <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+                      {selectedScenario.description || selectedScenario.summary}
+                    </p>
+
+                    <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '16px', borderRadius: '6px', marginBottom: '24px', fontFamily: 'monospace', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ color: '#8B98A7' }}>LATENCIA_EN_MEMORIA:</span>
+                        <span style={{ color: '#20C997' }}>{selectedScenario.latency}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ color: '#8B98A7' }}>CERTIFICACIÓN_L7:</span>
+                        <span style={{ color: '#E8EDF2' }}>{selectedScenario.verified}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#8B98A7' }}>INTEGRACIÓN_RECOMENDADA:</span>
+                        <span style={{ color: '#2F81F7' }}>{selectedScenario.category}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button onClick={() => { setSelectedScenario(null); setActiveNavTab('developers'); }} style={{ flex: 1, padding: '12px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                        Ver SDK & Conexión ↗
+                      </button>
+                      <button onClick={() => setSelectedScenario(null)} style={{ padding: '12px 20px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* PESTAÑA 1: PLATAFORMA & OVERVIEW (HOME PRINCIPAL) */}
@@ -657,8 +926,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '14px 28px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(47,129,247,0.3)' }}>
                     Probar Sandbox ↗
                   </button>
-                  <button onClick={() => setActiveNavTab('markets')} style={{ padding: '14px 24px', backgroundColor: '#151B23', color: '#E8EDF2', border: '1px solid #30363D', borderRadius: '4px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
-                    Ver Casos de Negocio
+                  <button onClick={() => setActiveNavTab('scenarios')} style={{ padding: '14px 24px', backgroundColor: '#151B23', color: '#E8EDF2', border: '1px solid #30363D', borderRadius: '4px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+                    Explorar Escenarios ↓
                   </button>
                 </div>
               </section>
@@ -726,25 +995,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'center', marginTop: '20px', color: '#8B98A7', fontSize: '15px', fontWeight: '500' }}>
-                    De una IA que responde a una IA gobernada por políticas y evidencia.
-                  </div>
-                </div>
-              </section>
-
-              {/* TRES BENEFICIOS */}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-                <div style={{ borderLeft: '4px solid #FF4D5A', paddingLeft: '20px', backgroundColor: '#0D1117', padding: '24px', borderRadius: '0 8px 8px 0' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 10px 0' }}>PROTEGER</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>Evita que información sensible (PII, financiera, secretos) llegue donde no debe, bloqueando el riesgo antes de que alcance al modelo.</p>
-                </div>
-                <div style={{ borderLeft: '4px solid #2F81F7', paddingLeft: '20px', backgroundColor: '#0D1117', padding: '24px', borderRadius: '0 8px 8px 0' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 10px 0' }}>CONTROLAR</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>Impide que respuestas no verificadas se conviertan automáticamente en decisiones dentro de tus aplicaciones y automatizaciones.</p>
-                </div>
-                <div style={{ borderLeft: '4px solid #20C997', paddingLeft: '20px', backgroundColor: '#0D1117', padding: '24px', borderRadius: '0 8px 8px 0' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 10px 0' }}>DEMOSTRAR</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>Genera evidencia criptográfica estructurada y verificable de cada evento para facilitar auditorías, compliance y resolución de incidentes.</p>
                 </div>
               </section>
             </div>
@@ -788,7 +1038,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
 
               {/* ROI SECTION */}
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '36px', borderRadius: '8px', marginBottom: '60px' }}>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '36px', borderRadius: '8px' }}>
                 <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#E8EDF2', marginBottom: '8px', textAlign: 'center' }}>¿Cuánto cuesta no controlar tu IA?</h3>
                 <p style={{ color: '#8B98A7', fontSize: '15px', textAlign: 'center', marginBottom: '32px' }}>Impacto directo en costes, tiempo y riesgo operativo.</p>
                 
@@ -811,21 +1061,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   </div>
                 </div>
               </div>
-
-              {/* ANTI-PERSONA */}
-              <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', textAlign: 'center' }}>
-                <h3 style={{ color: '#E8EDF2', fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Lo que SAARE NO es</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px', color: '#8B98A7', fontSize: '14px' }}>
-                  <span>❌ No sustituye a tu LLM</span>
-                  <span>❌ No es un chatbot</span>
-                  <span>❌ No es un SIEM</span>
-                  <span>❌ No es un DLP tradicional</span>
-                  <span>❌ No es un API Gateway convencional</span>
-                </div>
-                <p style={{ color: '#2F81F7', fontSize: '14.5px', fontWeight: '600', marginTop: '20px', marginBottom: 0 }}>
-                  Es la capa de control y evidencia que se sitúa alrededor de la ejecución de IA.
-                </p>
-              </div>
             </div>
           )}
 
@@ -836,10 +1071,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 12px 0' }}>Puertas de Venta Empresarial</h2>
-                <p style={{ color: '#8B98A7', fontSize: '16px' }}>Descubre cómo SAARE genera valor directo en los 5 modelos de adopción corporativos.</p>
+                <p style={{ color: '#8B98A7', fontSize: '16px' }}>Descubre cómo SAARE genera valor directo en los modelos de adopción corporativos.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '60px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 
                 {/* 1. AI WORKFLOWS */}
                 <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
@@ -897,87 +1132,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     Contratar Asiento Auditor ↗
                   </button>
                 </div>
-
-                {/* 4. CLOUD & GATEWAYS */}
-                <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ color: '#EAB308', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>04 — CLOUD & API GATEWAYS</div>
-                  <h3 style={{ fontSize: '19px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>AI Security Layer en el Edge.</h3>
-                  <div style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', flex: 1 }}>
-                    <p style={{ marginBottom: '8px' }}><strong>Problema:</strong> Los proxies API tradicionales no entienden la semántica de las llamadas LLM.</p>
-                    <p style={{ margin: 0 }}><strong>SAARE:</strong> Middleware determinista para interceptar peticiones de inferencia antes de que abandonen la infraestructura corporativa.</p>
-                  </div>
-                  <div style={{ borderTop: '1px solid #151B23', paddingTop: '16px', fontSize: '13px', color: '#8B98A7', marginBottom: '20px' }}>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Integración:</strong> Edge / HTTP Plugin</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Time-to-value:</strong> 2–4 meses</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Comprador:</strong> Infrastructure Architect</div>
-                    <div><strong style={{ color: '#E8EDF2' }}>Modelo:</strong> Revenue Share / Tráfico</div>
-                  </div>
-                  <button onClick={() => setActiveNavTab('developers')} style={{ width: '100%', padding: '10px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                    Ver SDK Gateway ↓
-                  </button>
-                </div>
-
-                {/* 5. SAAS REGULADO */}
-                <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ color: '#E8EDF2', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>05 — REGULATED SAAS</div>
-                  <h3 style={{ fontSize: '19px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>IA Privada en Salud, Banca y Legal.</h3>
-                  <div style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', flex: 1 }}>
-                    <p style={{ marginBottom: '8px' }}><strong>Problema:</strong> Exigencias estrictas de no persistencia y secreto profesional que bloquean el uso de nubes públicas.</p>
-                    <p style={{ margin: 0 }}><strong>SAARE:</strong> Despliegue en contenedor On-Premise dentro de la VPC con garantía de Residuo Cero.</p>
-                  </div>
-                  <div style={{ borderTop: '1px solid #151B23', paddingTop: '16px', fontSize: '13px', color: '#8B98A7', marginBottom: '20px' }}>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Integración:</strong> On-Premise / Private VPC</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Time-to-value:</strong> 1–2 meses</div>
-                    <div style={{ marginBottom: '6px' }}><strong style={{ color: '#E8EDF2' }}>Comprador:</strong> CISO / Security Officer</div>
-                    <div><strong style={{ color: '#E8EDF2' }}>Modelo:</strong> Licencia Anual Enterprise</div>
-                  </div>
-                  <a href="mailto:peritajes@ms3v.es?subject=Consulta%20Despliegue%20Privado%20SAARE" style={{ textAlign: 'center', display: 'block', padding: '10px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', textDecoration: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>
-                    Solicitar Evaluación ↗
-                  </a>
-                </div>
-              </div>
-
-              {/* MATRIZ DE DECISIÓN RESUMIDA */}
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '24px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#E8EDF2', marginBottom: '16px' }}>Matriz de Adopción Rápida</h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #30363D', color: '#8B98A7' }}>
-                        <th style={{ padding: '12px' }}>Perfil</th>
-                        <th style={{ padding: '12px' }}>Objetivo</th>
-                        <th style={{ padding: '12px' }}>Solución SAARE</th>
-                        <th style={{ padding: '12px' }}>Tiempo</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ color: '#E8EDF2' }}>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>Plataforma IA</td>
-                        <td style={{ padding: '12px', color: '#8B98A7' }}>Proteger flujos de usuarios</td>
-                        <td style={{ padding: '12px', color: '#2F81F7' }}>Gateway / SDK</td>
-                        <td style={{ padding: '12px', color: '#20C997' }}>1–3 meses</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>Cybersecurity</td>
-                        <td style={{ padding: '12px', color: '#8B98A7' }}>IA segura en endpoint</td>
-                        <td style={{ padding: '12px', color: '#2F81F7' }}>C-ABI Embedded</td>
-                        <td style={{ padding: '12px', color: '#20C997' }}>6–12 meses</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>Consultora GRC</td>
-                        <td style={{ padding: '12px', color: '#8B98A7' }}>Evidencia para clientes</td>
-                        <td style={{ padding: '12px', color: '#2F81F7' }}>Consola & Proof Bundles</td>
-                        <td style={{ padding: '12px', color: '#20C997' }}>Inmediato</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>SaaS Regulado</td>
-                        <td style={{ padding: '12px', color: '#8B98A7' }}>IA privada y aislada</td>
-                        <td style={{ padding: '12px', color: '#2F81F7' }}>On-Premise Private</td>
-                        <td style={{ padding: '12px', color: '#20C997' }}>1–2 meses</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </div>
           )}
@@ -1026,48 +1180,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  ║  SIGNED PROOF BUNDLE -> MERKLE TRANSPARENCY LOG ║
  ╚═════════════════════════════════════════════════╝`}
                 </pre>
-                <div style={{ marginTop: '16px', fontSize: '11px', color: '#64748B', textAlign: 'center', fontFamily: 'monospace' }}>
-                  Resultados correspondientes al entorno de benchmark en memoria volátil. Cero escrituras en disco.
-                </div>
-              </div>
-
-              {/* COMPARATIVA CON EL STACK TRADICIONAL */}
-              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', marginBottom: '40px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#E8EDF2', marginBottom: '8px', textAlign: 'center' }}>Dónde encaja SAARE en tu Stack de Seguridad</h3>
-                <p style={{ color: '#8B98A7', fontSize: '14px', textAlign: 'center', marginBottom: '24px' }}>SAARE no sustituye necesariamente tus herramientas actuales. Las conecta alrededor del flujo de IA.</p>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #30363D', color: '#8B98A7' }}>
-                        <th style={{ padding: '14px', fontWeight: '600' }}>Capa</th>
-                        <th style={{ padding: '14px', fontWeight: '500' }}>Función Tradicional</th>
-                        <th style={{ padding: '14px', color: '#2F81F7', fontWeight: '700' }}>Aporte de SAARE</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ color: '#E8EDF2' }}>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '14px', fontWeight: '500' }}>DLP</td>
-                        <td style={{ padding: '14px', color: '#8B98A7' }}>Protección de datos y secretos</td>
-                        <td style={{ padding: '14px', color: '#20C997' }}>Detección in-process sin llamar a servidores externos</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '14px', fontWeight: '500' }}>API Gateway</td>
-                        <td style={{ padding: '14px', color: '#8B98A7' }}>Control del tráfico y enrutamiento</td>
-                        <td style={{ padding: '14px', color: '#20C997' }}>Filtro ex-ante en L7 antes de que el prompt llegue al LLM</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #151B23' }}>
-                        <td style={{ padding: '14px', fontWeight: '500' }}>LLM Guardrails</td>
-                        <td style={{ padding: '14px', color: '#8B98A7' }}>Control del comportamiento del modelo</td>
-                        <td style={{ padding: '14px', color: '#20C997' }}>Rechazo explícito de afirmaciones sin evidencia previa</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '14px', fontWeight: '500' }}>SIEM</td>
-                        <td style={{ padding: '14px', color: '#8B98A7' }}>Observabilidad y logs</td>
-                        <td style={{ padding: '14px', color: '#20C997' }}>Generación de Proof Bundles criptográficos (No repudio)</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
               </div>
 
               {/* TRES PILARES */}
@@ -1092,62 +1204,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           )}
 
           {/* ========================================================================= */}
-          {/* PESTAÑA 5: PROOF BUNDLE & VERIFICACIÓN EN VIVO */}
+          {/* PESTAÑA 5: PROOF BUNDLE */}
           {/* ========================================================================= */}
-          {activeProofTab !== 'none' && activeNavTab === 'proof' && (
+          {activeNavTab === 'proof' && (
             <div>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 12px 0' }}>Evidence You Can Verify</h2>
-                <p style={{ color: '#8B98A7', fontSize: '16px' }}>No tienes que confiar en SAARE. Comprueba cómo se verifica una ejecución real.</p>
-              </div>
-
-              {/* VERIFICADOR EDGE EN VIVO */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: '24px', alignItems: 'stretch', marginBottom: '40px' }}>
-                <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
-                    <span style={{ color: '#8B98A7' }}>TX_RECORD</span>
-                    <span style={{ color: '#E8EDF2' }}>SAARE-7F82A1</span>
-                  </div>
-                  <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>TIMESTAMP:</span> 2026-08-29 14:42:07 UTC</div>
-                  <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>POLICY_RULE:</span> PII-001 (GDPR_STRICT)</div>
-                  <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>DETECTION:</span> <span style={{ color: '#FF4D5A' }}>IBAN_REGULATED_MATCH</span></div>
-                  <div style={{ marginBottom: '10px' }}><span style={{ color: '#8B98A7' }}>ACTION:</span> <span style={{ color: '#2F81F7' }}>REDACT_IN_MEMORY</span></div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <span style={{ color: '#8B98A7' }}>CANONICAL_SHA256:</span>
-                    <div style={{ color: '#E8EDF2', wordBreak: 'break-all', backgroundColor: '#070A0F', padding: '8px', borderRadius: '4px', marginTop: '4px' }}>
-                      {CANONICAL_HASH}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px dashed #151B23' }}>
-                    <span style={{ color: '#20C997', fontWeight: 'bold' }}>✓ L7_CONFINEMENT_VALID</span>
-                    <button onClick={copyHashToClipboard} style={{ background: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                      {copiedHash ? 'Copiado' : 'Copiar Hash'}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>
-                      Validación Pública Descentralizada
-                    </h3>
-                    <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                      Cualquier auditor externo puede verificar el Proof Bundle criptográfico contra el endpoint Edge independiente sin exponer la carga útil corporativa.
-                    </p>
-                    <div style={{ backgroundColor: '#070A0F', border: '1px solid #21262D', padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7', wordBreak: 'break-all', marginBottom: '16px' }}>
-                      GET {VERIFY_URL}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#2F81F7', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '700' }}>
-                      🔍 Ejecutar Verificador Edge ↗
-                    </a>
-                    <button onClick={() => setShowDiploma(true)} style={{ padding: '12px 18px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                      Ver Acreditación RPI
-                    </button>
-                  </div>
-                </div>
+                <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 12px 0' }}>Proof Bundle & Evidence</h2>
+                <p style={{ color: '#8B98A7', fontSize: '16px' }}>La prueba estructurada e independiente de cada inferencia.</p>
               </div>
 
               {/* INSPECTOR INTERACTIVO DE PROOF BUNDLE */}
@@ -1239,21 +1302,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 {activeProofTab === 'rejection' && (
                   <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
                     <div style={{ color: '#E8EDF2', fontWeight: 'bold', fontSize: '14px', marginBottom: '6px' }}>Principio de No Afirmación Sin Evidencia</div>
-                    <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      Cada aserción generada debe tener un hash de evidencia vinculante preexistente. Si no existe anclaje probatorio, el sistema no emite la afirmación como verdadera, sino que activa la prueba de rechazo o indeterminación.
+                    <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+                      Cada aserción generada debe tener un hash de evidencia vinculante preexistente. Si no existe anclaje probatorio, el sistema activa determinísticamente un estado de <code>REJECTED</code> o <code>INDETERMINATE</code>.
                     </p>
-                    <div style={{ fontFamily: 'monospace', fontSize: '12px', backgroundColor: '#0D1117', padding: '12px', borderRadius: '4px', border: '1px solid #151B23' }}>
-                      {JSON.stringify(proofBundle.PROOFS.NO_UNSUPPORTED_CLAIM, null, 2)}
-                    </div>
                   </div>
                 )}
 
                 {activeProofTab === 'merkle' && (
                   <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px' }}>
                     <div style={{ color: '#20C997', fontWeight: 'bold', marginBottom: '10px' }}>LOG DE TRANSPARENCIA & RAÍZ MERKLE:</div>
-                    <p style={{ color: '#8B98A7', fontSize: '12.5px', fontFamily: 'sans-serif', margin: '0 0 14px 0' }}>
-                      Permite a auditores externos verificar la inclusión matemática de un evento individual dentro de millones de transacciones sin revelar el texto plano del usuario.
-                    </p>
                     <div style={{ padding: '10px', backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '4px', marginBottom: '8px' }}>
                       <span style={{ color: '#8B98A7' }}>MERKLE_ROOT:</span> <span style={{ color: '#20C997' }}>{proofBundle.PROOFS.CHAIN_INTEGRITY.MERKLE_ROOT}</span>
                     </div>
@@ -1267,7 +1324,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           )}
 
           {/* ========================================================================= */}
-          {/* PESTAÑA 6: COMPLIANCE & FONDOS PÚBLICOS */}
+          {/* PESTAÑA 6: COMPLIANCE */}
           {/* ========================================================================= */}
           {activeNavTab === 'compliance' && (
             <div>
@@ -1309,7 +1366,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           )}
 
           {/* ========================================================================= */}
-          {/* PESTAÑA 7: DEVELOPERS & INTEGRACIÓN */}
+          {/* PESTAÑA 7: DEVELOPERS & INTEGRACIÓN SDK */}
           {/* ========================================================================= */}
           {activeNavTab === 'developers' && (
             <div>
@@ -1367,7 +1424,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           )}
 
-          {/* CINTILLO FINAL CTA (VISIBLE EN TODAS LAS PESTAÑAS) */}
+          {/* CINTILLO FINAL CTA (VISIBLE AL FINAL DE CUALQUIER PESTAÑA) */}
           <section style={{ margin: '80px auto 0 auto', textAlign: 'center' }}>
             <div style={{ backgroundColor: '#151B23', border: '1px solid #30363D', borderRadius: '8px', padding: '48px 24px' }}>
               <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 12px 0' }}>Construye una IA que puedas controlar.</h2>
