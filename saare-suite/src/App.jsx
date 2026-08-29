@@ -51,11 +51,89 @@ export default function App() {
     "URL_VERIFICACION_PUBLICA": VERIFY_URL
   };
 
+  const grantsData = {
+    nextgen: {
+      tag: "FONDO DE RECUPERACIÓN (PRTR) / PLAN ESPAÑA DIGITAL",
+      title: "Auditorías de NextGenerationEU & Fondos Europeos",
+      summary: "Las convocatorias NextGen conllevan inspecciones técnicas ex-post por parte de la IGAE y la Comisión Europea. Exigen trazabilidad inmutable del ciclo de vida del dato y justificación fehaciente de que los fondos financiaron una solución conforme a los principios DNSH y de seguridad digital.",
+      items: [
+        {
+          badge: "01 / RIESGO FINANCIERO",
+          color: "#FF4D5A",
+          title: "Reintegro Total por Falta de Trazabilidad",
+          desc: "Devolución forzosa del 100% de la ayuda con intereses si el beneficiario no acredita el registro inmutable de las operaciones de inferencia."
+        },
+        {
+          badge: "02 / BLINDAJE SAARE",
+          color: "#20C997",
+          title: "Evidencia Criptográfica RFC 3161",
+          desc: "Sellado SHA-256 determinista en RAM de cada llamada al modelo sin almacenar datos personales en claro ni exponer secretos corporativos."
+        },
+        {
+          badge: "03 / ENTREGABLE AUDITABLE",
+          color: "#2F81F7",
+          title: "Dossier de Cumplimiento ISO/IEC 42001",
+          desc: "Memoria técnica estructurada con enlaces de verificación Edge pública comprobables por inspectores de fondos comunitarios."
+        }
+      ]
+    },
+    kit: {
+      tag: "PROGRAMA ASESORAMIENTO IA & KIT CONSULTING (RED.ES)",
+      title: "Justificación de Planes de Asesoramiento e Implantación IA",
+      summary: "Para justificar los bonos de asesoramiento y adopción de IA en PYMEs, los Asesores Digitales deben presentar memorias técnicas que demuestren un análisis de riesgos real, gobernanza perimetral y un plan de cumplimiento normativo operativo.",
+      items: [
+        {
+          badge: "01 / RIESGO FINANCIERO",
+          color: "#FF4D5A",
+          title: "Subsanación o Rechazo de la Memoria Técnica",
+          desc: "Pérdida de la subvención por presentar diagnósticos genéricos o teóricos que no demuestran la supervisión real de las herramientas de IA."
+        },
+        {
+          badge: "02 / BLINDAJE SAARE",
+          color: "#20C997",
+          title: "Auditoría Delegada con Handshake Token",
+          desc: "El asesor o consultor audita el tráfico de los empleados bajo delegación consentida en memoria RAM sin vulnerar el secreto empresarial."
+        },
+        {
+          badge: "03 / ENTREGABLE AUDITABLE",
+          color: "#2F81F7",
+          title: "Diagnóstico de Fuga de PII & Políticas L7",
+          desc: "Informe pericial descargable con la matriz de directivas activas (DNI, IBAN, DLP) exigidas por el Kit Consulting de IA."
+        }
+      ]
+    },
+    cdti: {
+      tag: "PROYECTOS I+D+i, NEOTEC & PRÉSTAMOS ENISA",
+      title: "Hitos Técnicos y Seguridad Crítica en Proyectos CDTI",
+      summary: "Los proyectos de I+D+i intensivos en IA requieren demostrar una arquitectura tecnológica innovadora y robusta, con métricas de latencia validadas, protección de propiedad industrial y cumplimiento preventivo del Reglamento Europeo de IA (EU AI Act).",
+      items: [
+        {
+          badge: "01 / RIESGO FINANCIERO",
+          color: "#FF4D5A",
+          title: "Incumplimiento de Hitos Tecnológicos",
+          desc: "Penalizaciones en tramos no reembolsables de créditos CDTI/ENISA si la arquitectura de software no supera los tests de seguridad y latencia."
+        },
+        {
+          badge: "02 / BLINDAJE SAARE",
+          color: "#20C997",
+          title: "Hook Nativo In-Process (Latencia 1.16 ms)",
+          desc: "Integración determinista mediante C-ABI (HugePages / MADV_DONTNEED) que acredita una arquitectura propia de Residuo Cero en RAM."
+        },
+        {
+          badge: "03 / ENTREGABLE AUDITABLE",
+          color: "#2F81F7",
+          title: "Certificado Registral Safe Creative",
+          desc: "Acreditación de autoría técnica y propiedad del nodo (Safe Creative Nº 2607076315021) aportable al informe de seguimiento anual."
+        }
+      ]
+    }
+  };
+
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
     python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.is_violation) {\n        // Purga atómica en RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico validado y conforme para inferencia\n}`
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (OEM Sensor Engine) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.is_violation) {\n        // Purga atómica en RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico validado y conforme para inferencia\n}`
   };
 
   useEffect(() => {
@@ -526,6 +604,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     setTimeout(() => setCopiedSig(false), 2000);
   };
 
+  const currentGrant = grantsData[activeGrantTab];
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#070A0F', color: '#E8EDF2', fontFamily: '"Inter", "Geist", "IBM Plex Sans", -apple-system, sans-serif' }}>
       
@@ -550,7 +630,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               S
             </div>
             <div style={{ fontWeight: '700', fontSize: '15px', letterSpacing: '-0.3px', color: '#E8EDF2' }}>
-              SAARE <span style={{ color: '#8B98A7', fontWeight: '400', fontSize: '13px', marginLeft: '6px' }}>// Runtime Governance L7</span>
+              SAARE <span style={{ color: '#8B98A7', fontWeight: '400', fontSize: '13px', marginLeft: '6px' }}>// Runtime Governance L7 (ms3v)</span>
             </div>
           </div>
 
@@ -600,7 +680,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               {mode === 'register' && (
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', color: '#8B98A7', marginBottom: '6px', fontFamily: 'monospace' }}>ORGANIZACIÓN / TENANT</label>
-                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Gabinete Pericial Alpha" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#070A0F', border: '1px solid #21262D', color: '#E8EDF2', borderRadius: '4px', boxSizing: 'border-box', fontSize: '13px' }} />
+                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Gabinete Jurídico y Pericial MS3V" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#070A0F', border: '1px solid #21262D', color: '#E8EDF2', borderRadius: '4px', boxSizing: 'border-box', fontSize: '13px' }} />
                 </div>
               )}
               <div>
@@ -687,20 +767,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       {currentView === 'LANDING' && (
         <main>
           {/* HERO SECTION */}
-          <section style={{ maxWidth: '1100px', margin: '70px auto 60px auto', padding: '0 24px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', backgroundColor: 'rgba(47, 129, 247, 0.1)', border: '1px solid rgba(47, 129, 247, 0.3)', borderRadius: '20px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', marginBottom: '24px' }}>
-              INFRAESTRUCTURA DE GOBERNANZA EN TIEMPO DE EJECUCIÓN
+          <section style={{ maxWidth: '1100px', margin: '70px auto 50px auto', padding: '0 24px', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 14px', backgroundColor: 'rgba(47, 129, 247, 0.1)', border: '1px solid rgba(47, 129, 247, 0.3)', borderRadius: '20px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', marginBottom: '24px' }}>
+              MOTOR LÓGICO PERIMETRAL PARA IA // PROTOCOLO S.A.A.R.E. MS3V
             </div>
 
-            <h1 style={{ fontSize: '54px', fontWeight: '800', lineHeight: 1.12, letterSpacing: '-1.8px', margin: '0 0 20px 0', color: '#E8EDF2' }}>
-              Control determinista del <span style={{ color: '#2F81F7' }}>runtime de IA.</span>
+            <h1 style={{ fontSize: '48px', fontWeight: '800', lineHeight: 1.15, letterSpacing: '-1.5px', margin: '0 0 20px 0', color: '#E8EDF2' }}>
+              Confinamiento lógico determinista y <span style={{ color: '#2F81F7' }}>auditoría ex-ante en Capa 7.</span>
             </h1>
 
-            <p style={{ fontSize: '17px', color: '#8B98A7', lineHeight: 1.6, maxWidth: '760px', margin: '0 auto 36px auto' }}>
-              Capa L7 in-process que intercepta, valida y gobierna las operaciones de inferencia antes de que alcancen al modelo. Erradica fugas de datos en memoria y genera trazabilidad probatoria para <strong>ISO/IEC 42001</strong>, el <strong>EU AI Act</strong> y la <strong>justificación técnica de fondos públicos</strong>.
+            <p style={{ fontSize: '16.5px', color: '#8B98A7', lineHeight: 1.6, maxWidth: '820px', margin: '0 auto 36px auto' }}>
+              El protocolo SAARE (System for Audit, Analysis, and Rigorous Evaluation) en su versión ms3v transforma la inferencia estocástica en una herramienta de precisión forense 100% auditable. Restringe el espacio operativo exclusivamente a corpus certificados mediante firmas SHA-256 a temperatura cero (T = 0) y latencia ultra-baja en RAM (0.017 ms – 1.16 ms).
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '50px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '40px' }}>
               <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '12px 28px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '13.5px', cursor: 'pointer' }}>
                 Probar Sandbox de Evaluación ↗
               </button>
@@ -708,57 +788,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 Aprovisionar Asiento Auditor
               </button>
             </div>
+          </section>
 
-            {/* DIAGRAMA ESTRUCTURAL ASCII */}
-            <div id="architecture" style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', maxWidth: '640px', margin: '0 auto', textAlign: 'left', overflowX: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+          {/* DIAGRAMA ESTRUCTURAL ASCII */}
+          <section id="architecture" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px', maxWidth: '680px', margin: '0 auto', textAlign: 'left', overflowX: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #151B23', paddingBottom: '8px' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>TOPOLOGÍA DE EJECUCIÓN L7</span>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>LATENCIA: 1.16 ms</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>TOPOLOGÍA DE AISLAMIENTO EX-ANTE</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>LATENCIA DETERMINISTA: 1.16 ms</span>
               </div>
               <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '12px', lineHeight: 1.45, color: '#8B98A7' }}>
-{`   ┌────────────────────────┐
-   │ CLIENT / APP / WORKFLOW│
-   └───────────┬────────────┘
-               │ (Socket Request)
-               ▼
- ╔════════════════════════════╗
- ║      SAARE L7 ENGINE       ║
- ║                            ║
+{`    ┌─────────────────────────────────────────┐
+    │ ENTERPRISE WORKFLOWS / N8N / AI AGENTS  │
+    └────────────────────┬────────────────────┘
+                         │ (Socket Request / Raw Buffer)
+                         ▼
+ ╔═════════════════════════════════════════════╗
+ ║         SAARE L7 ENGINE (ms3v)              ║
+ ║                                             ║
  ║  `}
-<span style={{ color: '#2F81F7' }}>[1] INTERCEPT</span>{` (RAM Buffer)  ║
+<span style={{ color: '#2F81F7' }}>[1] INTERCEPT</span>{` (RAM Volátil / Zero-Disk)       ║
  ║  `}
-<span style={{ color: '#20C997' }}>[2] VALIDATE</span>{`  (DLP / PII)    ║
+<span style={{ color: '#20C997' }}>[2] CONFINEMENT</span>{` (Threshold Δ / DNI / IBAN)     ║
  ║  `}
-<span style={{ color: '#FF4D5A' }}>[3] ENFORCE</span>{`   (madvise purge)║
+<span style={{ color: '#FF4D5A' }}>[3] PURGE</span>{`       (SYS_madvise MADV_DONTNEED)   ║
  ║  `}
-<span style={{ color: '#E8EDF2' }}>[4] EVIDENCE</span>{`  (SHA-256 Digest║
- ╚═════════════╤══════════════╝
-               │ (Clean Stream)
-               ▼
-     ┌───────────────────┐
-     │   LLM PROVIDER    │
-     │(OpenAI/Claude/etc)│
-     └───────────────────┘`}
+<span style={{ color: '#E8EDF2' }}>[4] SEAL</span>{`        (SHA-256 Digest & RFC 3161)   ║
+ ╚══════════════════════╤══════════════════════╝
+                         │ (Clean Verified Ingestion)
+                         ▼
+              ┌─────────────────────┐
+              │    LLM PROVIDER     │
+              │ (OpenAI/Claude/etc) │
+              └─────────────────────┘`}
               </pre>
             </div>
           </section>
 
-          {/* TRES PILARES */}
+          {/* TRES PILARES TÉCNICOS */}
           <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
-                <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>01 / PRE-INFERENCE</div>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Control Ex-Ante</h3>
+                <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>01 / MITIGACIÓN EX-ANTE</div>
+                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Aislamiento Perimetral</h3>
                 <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Evaluación determinista de políticas en memoria volátil antes de que el payload salga del entorno corporativo.
+                  A diferencia de la observabilidad tradicional ex-post, SAARE opera síncronamente en la capa de transporte lógico, impidiendo la propagación de datos corruptos mediante una compuerta matemática perimetral.
                 </p>
               </div>
 
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '28px', borderRadius: '8px' }}>
-                <div style={{ color: '#FF4D5A', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>02 / ZERO-PERSISTENCE</div>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Protección Atómica</h3>
+                <div style={{ color: '#FF4D5A', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>02 / RESIDUO CERO</div>
+                <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Coste Cero de Tokens</h3>
                 <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Redacción y bloqueo sin túneles proxy intermedios. Los datos sensibles detectados se purgan con <code style={{ color: '#E8EDF2' }}>SYS_madvise</code>.
+                  Elimina llamadas recursivas a LLMs evaluadores externos. El proceso se ejecuta en la infraestructura local (Self-Hosted) mediante índices inmutables estructurados y purga atómica <code style={{ color: '#E8EDF2' }}>SYS_madvise</code>.
                 </p>
               </div>
 
@@ -766,7 +848,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '12px' }}>03 / FORENSIC DIGEST</div>
                 <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 10px 0', color: '#E8EDF2' }}>Evidencia Inmutable</h3>
                 <p style={{ color: '#8B98A7', fontSize: '13.5px', lineHeight: 1.55, margin: 0 }}>
-                  Registro criptográfico SHA-256 de cada decisión operativa para justificación técnica de fondos y auditorías ISO 42001.
+                  Registro criptográfico SHA-256 de cada decisión operativa para justificación técnica de fondos públicos (NextGenerationEU/PRTR) y certificación ISO/IEC 42001.
                 </p>
               </div>
             </div>
@@ -775,65 +857,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           {/* MÓDULO: JUSTIFICACIÓN DE SUBVENCIONES Y AYUDAS PÚBLICAS */}
           <section id="subvenciones" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderLeft: '4px solid #2F81F7', borderRadius: '8px', padding: '36px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
                 <div>
-                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// PUBLIC_FUNDS & GRANT_COMPLIANCE</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// {currentGrant.tag}</span>
                   <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0 0 0', color: '#E8EDF2' }}>
-                    Blindaje Técnico de Ayudas y Subvenciones de IA
+                    {currentGrant.title}
                   </h2>
                 </div>
                 <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997', background: 'rgba(32, 201, 151, 0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(32, 201, 151, 0.2)' }}>
-                  NO-CLAWBACK GUARANTEE ENGINE
+                  NO-CLAWBACK ENGINE
                 </span>
               </div>
 
-              <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 28px 0', maxWidth: '820px' }}>
-                Los programas de financiación pública exigen justificar el uso real y el cumplimiento de seguridad del dato en los proyectos subvencionados. SAARE proporciona las evidencias técnicas para superar auditorías y evitar el reintegro de fondos.
+              <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', maxWidth: '850px' }}>
+                {currentGrant.summary}
               </p>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #151B23', paddingBottom: '12px' }}>
-                <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+              {/* TABS DE SUBVENCIONES CONMUTABLES */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '12px', flexWrap: 'wrap' }}>
+                <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'nextgen' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
                   🇪🇺 NextGenerationEU & PRTR
                 </button>
-                <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'kit' ? '#151B23' : 'transparent', color: activeGrantTab === 'kit' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'kit' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'kit' ? '#151B23' : 'transparent', color: activeGrantTab === 'kit' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
                   💼 Kit Consulting & Asesoramiento IA
                 </button>
-                <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '6px 14px', border: 'none', borderRadius: '4px', background: activeGrantTab === 'cdti' ? '#151B23' : 'transparent', color: activeGrantTab === 'cdti' ? '#2F81F7' : '#8B98A7', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer' }}>
+                <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'cdti' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'cdti' ? '#151B23' : 'transparent', color: activeGrantTab === 'cdti' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
                   🔬 CDTI, ENISA & Proyectos I+D+i
                 </button>
               </div>
 
+              {/* CONTENIDO DINÁMICO SEGÚN LA TAB ACTIVA */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
-                  <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>01 / RIESGO MITIGADO</div>
-                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Reintegro por Falta de Trazabilidad</strong>
-                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
-                    Evita devoluciones de ayudas por no poder acreditar documentalmente la actividad técnica o el ciclo de vida seguro de la IA.
-                  </p>
-                </div>
-
-                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
-                  <div style={{ color: '#20C997', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>02 / ENTREGABLE AUDITABLE</div>
-                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Memoria con Firma RFC 3161</strong>
-                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
-                    Genera el extracto de evidencias SHA-256 e informes periciales listos para anexar a la cuenta justificativa del expediente.
-                  </p>
-                </div>
-
-                <div style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '20px', borderRadius: '6px' }}>
-                  <div style={{ color: '#E8EDF2', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '8px' }}>03 / CUMPLIMIENTO EX-ANTE</div>
-                  <strong style={{ color: '#E8EDF2', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Alineación ISO 42001 & AI Act</strong>
-                  <p style={{ color: '#8B98A7', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
-                    Acredita que la solución implementada cumple los requisitos de evaluación de riesgos del Reglamento Europeo de IA.
-                  </p>
-                </div>
+                {currentGrant.items.map((item, idx) => (
+                  <div key={idx} style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '22px', borderRadius: '6px' }}>
+                    <div style={{ color: item.color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>{item.badge}</div>
+                    <strong style={{ color: '#E8EDF2', fontSize: '14.5px', display: 'block', marginBottom: '8px' }}>{item.title}</strong>
+                    <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px dashed #151B23', paddingTop: '18px' }}>
-                <span style={{ fontSize: '12px', color: '#8B98A7', fontFamily: 'monospace' }}>
-                  ¿Gestionas expedientes de subvención para clientes? Habilita tu Asiento de Auditor.
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', borderTop: '1px dashed #151B23', paddingTop: '20px' }}>
+                <span style={{ fontSize: '12.5px', color: '#8B98A7', fontFamily: 'monospace' }}>
+                  ¿Gestionas justificaciones o memorias técnicas para clientes? Habilita tu Asiento de Auditor.
                 </span>
-                <button onClick={() => setCurrentView('AUTH')} style={{ padding: '8px 18px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={() => setCurrentView('AUTH')} style={{ padding: '8px 20px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   Acreditar Asiento Pericial ↗
                 </button>
               </div>
@@ -1046,8 +1116,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           <footer style={{ borderTop: '1px solid #151B23', backgroundColor: '#070A0F', padding: '36px 24px', fontSize: '12px', color: '#8B98A7' }}>
             <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
-                <strong style={{ color: '#E8EDF2' }}>S.A.A.R.E. Platform</strong> · AI Runtime Governance Infrastructure
-                <div style={{ marginTop: '4px' }}>Safe Creative ID: 2607076315021 / 2607076314949 · RFC 3161 Evidence</div>
+                <strong style={{ color: '#E8EDF2' }}>S.A.A.R.E. Platform (ms3v)</strong> · Motor Lógico Perimetral para IA
+                <div style={{ marginTop: '4px' }}>Safe Creative ID: 2607076315021 / 2607076314949 · RFC 3161 Evidence · Gabinete Jurídico y Pericial MS3V</div>
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#8B98A7', textDecoration: 'none' }}>Trust Center / Root API</a>
