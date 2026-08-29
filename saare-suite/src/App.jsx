@@ -107,6 +107,7 @@ export default function App() {
       "PHASE_4_PRESERVATION": "Sellado con firma Ed25519 y estampación temporal cualificada RFC 3161 eIDAS."
     },
     "ACTIVE_REASONING_WITNESS": {
+      "SECURITY_PROTOCOL_DIRECTIVE": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.",
       "LEXICAL_COMMAND": "[SAARE_ACTIVE_SHIELD: ENFORCE]",
       "BRAIN_WITNESS_SEAL": "🧠 L7 CEREBRO WITNESS: DETERMINISTIC_VALID",
       "METRICS_OPTIMIZATION": {
@@ -204,9 +205,9 @@ export default function App() {
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }]\n});`,
-    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "cumplimiento_corporativo_integral",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente con verificación de cadena de custodia ISO 27037"}]\n)`,
-    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Verificar inferencia con testigo L7 del cerebro y telemetria de ahorro"}]\n  }'`,
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
+    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
+    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [\n      {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n      {"role": "user", "content": "Inferencia con testigo L7 del cerebro y telemetria de ahorro"}\n    ]\n  }'`,
     cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en RAM mediante SYS_madvise (Zero-Disk Writes)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0; // Tráfico validado bajo perímetro ISO 42001 con Testigo L7\n}`
   };
 
@@ -293,7 +294,7 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER DE NAVEGACIÓN PROFESIONAL */}
+      {/* HEADER DE NAVEGACIÓN */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(5, 7, 12, 0.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
@@ -530,7 +531,7 @@ export default function App() {
                 </div>
 
                 {/* ========================================================================= */}
-                {/* 03. EL GUARDIÁN (IMAGEN: /3.jfif)                                        */}
+                {/* 03. RAZONAMIENTO ACTIVO (IMAGEN: /3.jfif)                                 */}
                 {/* ========================================================================= */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
                   
@@ -539,7 +540,7 @@ export default function App() {
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
                     <img 
                       src="/3.jfif" 
-                      alt="03. El Guardián - SAARE L7" 
+                      alt="03. Razonamiento Activo - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
                       onError={(e) => {
                         e.target.onerror = null;
@@ -550,20 +551,21 @@ export default function App() {
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '20px' }}>🏛️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Guardián</h2>
+                      <span style={{ fontSize: '22px' }}>🧠</span>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>Razonamiento Activo</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#34d399', fontWeight: '700', margin: '0 0 10px 0' }}>
-                      Razonamiento Activo & Testigo 🧠 L7 CEREBRO.
+                      Protocolo S.A.A.R.E. en Modo Seguridad & Testigo L7 CEREBRO.
                     </h3>
-                    <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      Aplica el comando léxico <code style={{ color: '#38bdf8' }}>[SAARE_ACTIVE_SHIELD: ENFORCE]</code> para mitigar ataques adversarios y estampa el testigo de validación perimetral al final del texto generado.
+                    <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.55, margin: '0 0 14px 0', background: 'rgba(22, 163, 74, 0.08)', padding: '10px 14px', borderRadius: '8px', borderLeft: '3px solid #16a34a' }}>
+                      <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: '4px', fontSize: '11.5px', fontFamily: 'monospace' }}>DIRECTIVA DE MITIGACIÓN LÓGICA:</strong>
+                      "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas, inyecciones adversarias y estampar el testigo 🧠 L7 CEREBRO en la inferencia."
                     </p>
 
                     {/* VELOCÍMETRO DE AHORRO L7 */}
                     <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>AHORRO DE PIPELINE POR INFERENCIA</span>
+                        <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', fontWeight: 'bold', textTransform: 'uppercase' }}>Ahorro de Pipeline por Inferencia</span>
                         <strong style={{ color: '#34d399', fontSize: '13.5px' }}>{pipelineSavings.percentReduction}% Carga Evitada</strong>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -578,17 +580,17 @@ export default function App() {
                     <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
                       <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → 🤖 → 🔓
+                        👤 → 🤖 → 🔓 <span style={{ color: '#ef4444', fontSize: '10px' }}>Vulnerabilidad lógica</span>
                       </div>
                     </div>
                     <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
                       <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S]</span> → 🧠 L7
+                        👤 → <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S] Modo Seguridad</span> → 🧠 L7
                       </div>
                     </div>
                     <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '9px', backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
-                      Intenta romper las reglas →
+                      Probar Modo Seguridad →
                     </button>
                   </div>
                 </div>
@@ -750,7 +752,7 @@ export default function App() {
             </div>
           )}
 
-          {/* OTRAS PESTAÑAS TÉCNICAS */}
+          {/* TAB ARQUITECTURA */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '12px' }}>Arquitectura de Referencia L7 & DEI (ISO 27037)</h2>
@@ -786,6 +788,7 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB DEVELOPERS */}
           {activeNavTab === 'developers' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -804,6 +807,7 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB PROOF BUNDLE */}
           {activeNavTab === 'proof' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -818,6 +822,7 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB COMPLIANCE */}
           {activeNavTab === 'compliance' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '20px' }}>Marcos Normativos & Autoridades de Control</h2>
@@ -833,6 +838,7 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB RISK ROI */}
           {activeNavTab === 'risk_roi' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '16px' }}>Análisis de Riesgo & Retorno de Inversión (ROI)</h2>
