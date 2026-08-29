@@ -293,7 +293,7 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER DE NAVEGACIÓN */}
+      {/* HEADER DE NAVEGACIÓN PROFESIONAL */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(5, 7, 12, 0.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
@@ -302,26 +302,13 @@ export default function App() {
             <span style={{ color: '#64748b', fontSize: '12px', borderLeft: '1px solid #334155', paddingLeft: '10px' }}>AI Security & Evidence Layer</span>
           </div>
 
-          <nav style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '13px', fontWeight: '600', flexWrap: 'wrap' }}>
+          <nav style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', fontWeight: '600', flexWrap: 'wrap' }}>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('overview'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'overview' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'overview' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Plataforma
             </button>
-
-            {/* PESTAÑA 1: ESCENARIOS SAARE */}
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios_saare'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#0284c7' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? 'rgba(2, 132, 199, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#38bdf8' : '#ffffff', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
               ⚡ Escenarios SAARE
             </button>
-
-            {/* PESTAÑA 2: GOBERNANZA EN EMPRESAS */}
-            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('governance_compliance'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'governance_compliance' ? '#9333ea' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'governance_compliance' ? 'rgba(147, 51, 234, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'governance_compliance' ? '#c084fc' : '#94a3b8', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
-              🏛️ Gobernanza en Empresas
-            </button>
-
-            {/* PESTAÑA 3: SAARE L7 CORE */}
-            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('saare_l7_core'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'saare_l7_core' ? '#16a34a' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'saare_l7_core' ? 'rgba(22, 163, 74, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'saare_l7_core' ? '#34d399' : '#94a3b8', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
-              🧠 Escenarios SAARE L7
-            </button>
-
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('architecture'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Arquitectura
             </button>
@@ -410,13 +397,10 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL: LANDING CON PESTAÑAS MODULARES */}
+      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* ========================================================================= */}
-          {/* TAB 1: ESCENARIOS SAARE (CON LAS IMÁGENES INTEGRADAS: 1.jfif a 5.jfif)     */}
-          {/* ========================================================================= */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               {/* TÍTULO PRINCIPAL */}
@@ -457,16 +441,16 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px' }}>🛡️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Escudo</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Escudo (DEFR)</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#38bdf8', fontWeight: '700', margin: '0 0 10px 0' }}>
-                      Protege la información que tus empleados llevan a la IA.
+                      Protege la información que tus empleados llevan a la IA (Rol DEFR ISO 27037).
                     </h3>
                     <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE detecta y protege la información sensible antes de que llegue al proveedor de IA.
+                      SAARE actúa como primer interviniente automatizado en memoria RAM, neutralizando la fuga de PII, secretos corporativos y datos médicos antes de salir al proveedor de IA.
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '12.5px', fontWeight: '600' }}>
-                      <span>✔</span> Información sensible controlada
+                      <span>✔</span> Información sensible controlada bajo ISO 27037 Fase 1 & 2
                     </div>
                   </div>
 
@@ -512,16 +496,16 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px' }}>⚖️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>La Evidencia</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>La Evidencia (DES)</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#c084fc', fontWeight: '700', margin: '0 0 10px 0' }}>
-                      Demuestra qué ocurrió y por qué.
+                      Demuestra qué ocurrió y por qué (Rol DES ISO 27037).
                     </h3>
                     <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE convierte cada ejecución relevante en evidencia verificable y lista para auditorías o conflictos.
+                      SAARE convierte cada ejecución relevante en evidencia verificable con sellos de tiempo cualificados RFC 3161 y anclaje registral independiente.
                     </p>
                     <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#cbd5e1' }}>
-                      <span>🔏 Firma digital</span> • <span>⏱️ Sello temporal</span> • <span>🔗 Trazabilidad</span> • <span>📦 Proof Bundle</span>
+                      <span>🔏 Ed25519</span> • <span>⏱️ RFC 3161</span> • <span>🔗 Trazabilidad</span> • <span>📦 Proof Bundle</span>
                     </div>
                   </div>
 
@@ -570,13 +554,22 @@ export default function App() {
                       <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Guardián</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#34d399', fontWeight: '700', margin: '0 0 10px 0' }}>
-                      La IA puede ser potente sin tener vía libre.
+                      Razonamiento Activo & Testigo 🧠 L7 CEREBRO.
                     </h3>
                     <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE mantiene las reglas activas durante la ejecución y evita que una instrucción no autorizada se convierta en una acción válida.
+                      Aplica el comando léxico <code style={{ color: '#38bdf8' }}>[SAARE_ACTIVE_SHIELD: ENFORCE]</code> para mitigar ataques adversarios y estampa el testigo de validación perimetral al final del texto generado.
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '12.5px', fontWeight: '600' }}>
-                      <span>✔</span> Reglas activas. Empresa protegida.
+
+                    {/* VELOCÍMETRO DE AHORRO L7 */}
+                    <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>AHORRO DE PIPELINE POR INFERENCIA</span>
+                        <strong style={{ color: '#34d399', fontSize: '13.5px' }}>{pipelineSavings.percentReduction}% Carga Evitada</strong>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ color: '#38bdf8', fontSize: '11.5px', fontFamily: 'monospace' }}>⚡ {pipelineSavings.latencyMs} ms RAM</span>
+                        <span style={{ color: '#94a3b8', fontSize: '10.5px', display: 'block' }}>{pipelineSavings.tokensSaved} tk ahorrados</span>
+                      </div>
                     </div>
                   </div>
 
@@ -591,7 +584,7 @@ export default function App() {
                     <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
                       <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S]</span> → 🔒
+                        👤 → <span style={{ color: '#34d399', fontWeight: 'bold' }}>[S]</span> → 🧠 L7
                       </div>
                     </div>
                     <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ width: '100%', padding: '9px', backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
@@ -628,7 +621,7 @@ export default function App() {
                       No conviertas una respuesta sin pruebas en un hecho.
                     </h3>
                     <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE comprueba si una afirmación puede sostenerse antes de que se convierta en una decisión.
+                      SAARE comprueba mediante *Corpus Grounding* si una afirmación puede sostenerse antes de que se convierta en una decisión operativa.
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '12.5px', fontWeight: '600' }}>
                       <span>✔</span> Decisiones más fiables. Menos riesgo.
@@ -644,9 +637,9 @@ export default function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                       <span style={{ fontSize: '11px', color: '#64748b' }}>Resultado:</span>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'SUCCESS' ? '#15803d' : '#1e293b', color: '#fff', fontSize: '11px' }}>✔</span>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'WARNING' ? '#d97706' : '#1e293b', color: '#fff', fontSize: '11px' }}>⚠️</span>
-                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'REJECTED' ? '#dc2626' : '#1e293b', color: '#fff', fontSize: '11px' }}>✕</span>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'SUCCESS' ? '#15803d' : '#1e293b', color: '#fff', fontSize: '11px' }}>✔ Conforme</span>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'WARNING' ? '#d97706' : '#1e293b', color: '#fff', fontSize: '11px' }}>⚠️ Duda</span>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', background: detectorResult === 'REJECTED' ? '#dc2626' : '#1e293b', color: '#fff', fontSize: '11px' }}>✕ Bloqueo</span>
                       </div>
                     </div>
                   </div>
@@ -680,7 +673,7 @@ export default function App() {
                       Cada euro. Cada factura. Cada decisión. Con evidencia.
                     </h3>
                     <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE crea una trazabilidad verificable durante la ejecución para facilitar la justificación posterior.
+                      SAARE crea una trazabilidad verificable durante la ejecución para facilitar la justificación posterior ante la IGAE y OLAF.
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '12.5px', fontWeight: '600' }}>
                       <span>✔</span> Justificaciones más fáciles. Cumplimiento sólido.
@@ -691,7 +684,7 @@ export default function App() {
                     <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>Marco de referencia:</div>
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {['PRTR', 'NextGenEU', 'CDTI', 'ENISA', 'Otros'].map((tag) => (
+                      {['PRTR', 'NextGenEU', 'CDTI', 'ENISA', '2 CFR 200'].map((tag) => (
                         <button key={tag} onClick={() => setActiveGrantTag(tag)} style={{ fontSize: '9.5px', padding: '3px 6px', borderRadius: '4px', border: '1px solid #334155', background: activeGrantTag === tag ? '#eab308' : '#090d16', color: activeGrantTag === tag ? '#000' : '#cbd5e1', cursor: 'pointer', fontWeight: 'bold' }}>
                           {tag}
                         </button>
@@ -754,171 +747,6 @@ export default function App() {
                 </button>
               </div>
 
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 2: GOBERNANZA & COMPLIANCE EN EMPRESAS (ROLES ISO 27037 & FONDOS)     */}
-          {/* ========================================================================= */}
-          {activeNavTab === 'governance_compliance' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <section style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#c084fc', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>
-                  // GOBERNANZA CORPORATIVA & ROLES PERICIALES ISO 27037
-                </div>
-                <h1 style={{ fontSize: '36px', fontWeight: '900', color: '#ffffff', margin: '0 0 12px 0' }}>
-                  Gobernanza & Cumplimiento en Empresas
-                </h1>
-                <p style={{ color: '#94a3b8', fontSize: '15.5px', maxWidth: '800px', margin: '0 auto' }}>
-                  Alineación formal con los estándares de evidencia digital ISO/IEC 27037, el Sistema de Gestión SGIA UNE-ISO/IEC 42001 y la justificación de fondos comunitarios.
-                </p>
-              </section>
-
-              {/* BLOQUE A: ROL DEFR (EMPLEADO AUDITADO) */}
-              <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a66', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ background: '#0284c715', color: '#38bdf8', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    ROL DEFR (DIGITAL EVIDENCE FIRST RESPONDER)
-                  </span>
-                  <span style={{ color: '#34d399', fontSize: '12px', fontWeight: 'bold' }}>ISO 27037 FASE 1 & 2</span>
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 8px 0' }}>El Empleado Auditado: Captura Segura en Memoria Volátil</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                  SAARE actúa como el primer interviniente automatizado en el puesto de trabajo o pipeline corporativo. Congela y neutraliza la memoria volátil RAM aislando DNI, nóminas, historias clínicas (RGPD Art. 9) o secretos comerciales antes de que salgan a la red.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', background: '#05070c', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b', fontSize: '12px' }}>
-                  <div>• <strong>Fase 1 (Identificación):</strong> Detección en RAM</div>
-                  <div>• <strong>Fase 2 (Recopilación):</strong> Aislamiento de carga</div>
-                  <div>• <strong>Purga Atómica:</strong> SYS_madvise Zero-Disk</div>
-                  <div>• <strong>Principio:</strong> Responsabilidad Activa (Art. 5.2)</div>
-                </div>
-              </div>
-
-              {/* BLOQUE B: ROL DES (CONSULTORA AUDITORA / PERITAJE GRC) */}
-              <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea66', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ background: '#9333ea15', color: '#c084fc', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    ROL DES (DIGITAL EVIDENCE SPECIALIST)
-                  </span>
-                  <span style={{ color: '#c084fc', fontSize: '12px', fontWeight: 'bold' }}>ISO 27037 FASE 3 & 4</span>
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 8px 0' }}>El Consultor Auditor: Custodia Pericial & Proof Bundles</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                  Entrega al especialista forense y comités de cumplimiento un paquete probatorio inmutable sellado con Hashes SHA-256 pre/post, firma digital Ed25519 y estampación temporal cualificada RFC 3161 (eIDAS) admisible en juicio.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', background: '#05070c', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b', fontSize: '12px' }}>
-                  <div>• <strong>Fase 3 (Adquisición):</strong> Copia bit a bit en RAM</div>
-                  <div>• <strong>Fase 4 (Preservación):</strong> Sello RFC 3161</div>
-                  <div>• <strong>Auditabilidad:</strong> Reproducibilidad determinista</div>
-                  <div>• <strong>Anclaje:</strong> Safe Creative Nº 2607076315021</div>
-                </div>
-              </div>
-
-              {/* BLOQUE C: EL JUSTIFICADOR DE FONDOS PÚBLICOS & SUBVENCIONES */}
-              <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30866', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ background: '#eab30815', color: '#facc15', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    SUBVENCIONES & FONDOS COMUNITARIOS
-                  </span>
-                  <span style={{ color: '#facc15', fontSize: '12px', fontWeight: 'bold' }}>NEXTGEN / PRTR / CDTI</span>
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 8px 0' }}>Trazabilidad Documental & Bloqueo Anti-Doble Financiación</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                  Genera la memoria técnica justificativa exigida por la IGAE y OLAF, auditando facturas, gastos y decisiones algorítmicas bajo el principio medioambiental DNSH y la Ley 38/2003 General de Subvenciones.
-                </p>
-                <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '10px 20px', background: '#ca8a04', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                  Ver Dossier de Justificación PRTR →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 3: ESCENARIOS SAARE L7 CORE (RAZONAMIENTO ACTIVO & DEEP-FAKE RUNLIVE) */}
-          {/* ========================================================================= */}
-          {activeNavTab === 'saare_l7_core' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <section style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>
-                  // ACTIVE REASONING & RUNTIME FORENSIC TELEMETRY
-                </div>
-                <h1 style={{ fontSize: '36px', fontWeight: '900', color: '#ffffff', margin: '0 0 12px 0' }}>
-                  Escenarios SAARE L7 Core
-                </h1>
-                <p style={{ color: '#94a3b8', fontSize: '15.5px', maxWidth: '800px', margin: '0 auto' }}>
-                  Defensa en tiempo de ejecución: Comando léxico de blindaje activo, velocímetro de ahorro de tokens y detección continua de deepfakes.
-                </p>
-              </section>
-
-              {/* BLOQUE A: RAZONAMIENTO ACTIVO, COMANDO LÉXICO & VELOCÍMETRO */}
-              <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a66', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '24px' }}>🧠</span>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>Razonamiento Activo & Testigo del Cerebro</h3>
-                  </div>
-                  <span style={{ background: '#16a34a20', color: '#34d399', border: '1px solid #16a34a', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    [SAARE_ACTIVE_SHIELD: ENFORCE]
-                  </span>
-                </div>
-
-                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: '0 0 20px 0' }}>
-                  El motor intercepta la solicitud en Capa 7, aplica el comando léxico e inyecta la firma <strong style={{ color: '#34d399' }}>🧠 L7 CEREBRO WITNESS</strong> al final de la respuesta del modelo, certificando que la ejecución fue acotada en memoria RAM sin intervención en disco.
-                </p>
-
-                {/* VELOCÍMETRO INTERACTIVO DE PIPELINE */}
-                <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', textAlign: 'center' }}>
-                  <div>
-                    <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Carga Evitada en LLM</span>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>{pipelineSavings.percentReduction}%</div>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>Optimización determinista</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Latencia en RAM</span>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8', margin: '4px 0' }}>{pipelineSavings.latencyMs} ms</div>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>P99 residuo cero</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Tokens Ahorrados</span>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#facc15', margin: '4px 0' }}>{pipelineSavings.tokensSaved} tk</div>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>Ahorro: {pipelineSavings.costSavedPerMillion} / 1M</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* BLOQUE B: DETECCIÓN DE DEEPFAKES, FRAUDE & RUNLIVE SAMPLING */}
-              <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731666', borderRadius: '16px', padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '24px' }}>🔍</span>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>Fact-Checking Forense, Deepfake & Fake Disprover</h3>
-                  </div>
-                  <span style={{ background: '#ea580c20', color: '#fb923c', border: '1px solid #ea580c', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    RUNLIVE TELEMETRY STREAM
-                  </span>
-                </div>
-
-                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: '0 0 20px 0' }}>
-                  Inspección causal frente a alucinaciones algorítmicas, falsificación de atestados de siniestros (Insurtech) o contratos con cláusulas inexistentes (LegalTech), emitiendo telemetría continua hacia la consola RunLive.
-                </p>
-
-                {/* MUESTREADOR INTERACTIVO */}
-                <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px' }}>
-                  <label style={{ color: '#94a3b8', fontSize: '12px', display: 'block', marginBottom: '8px' }}>Prueba de Aserción Fáctica en Tiempo Real:</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <input type="text" value={detectorInput} onChange={(e) => setDetectorInput(e.target.value)} style={{ flex: 1, minWidth: '260px', padding: '10px', background: '#090d16', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px' }} />
-                    <button onClick={handleCheckDetector} style={{ padding: '10px 18px', background: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
-                      Validar Causalidad →
-                    </button>
-                  </div>
-                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                    <span style={{ color: '#64748b' }}>Estado del Grafo Causal:</span>
-                    <strong style={{ color: detectorResult === 'SUCCESS' ? '#34d399' : (detectorResult === 'WARNING' ? '#facc15' : '#ef4444') }}>
-                      {detectorResult === 'SUCCESS' ? '✔ CORPUS GROUNDING VERIFICADO' : (detectorResult === 'WARNING' ? '⚠️ UNSUPPORTED CLAIM DETECTADA' : '✕ ALUCINACIÓN / FAKE BLOQUEADO')}
-                    </strong>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
