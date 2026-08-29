@@ -136,38 +136,52 @@ export default function App() {
     }
   };
 
+  // Modos de Despliegue y Arquitectura de Mercado B2B
   const deploymentModes = [
     {
-      code: "GATEWAY",
-      title: "Cloudflare Edge Gateway (300+ PoPs)",
-      desc: "Proxy inverso perimetral global que intercepta tráfico HTTP/S y sella cabeceras L7-SEAL antes de alcanzar el proveedor de IA.",
-      badge: "LATENCIA < 1.5 ms",
+      code: "IPaaS",
+      title: "01. Plataformas de Automatización & Agentes IA",
+      desc: "Integración middleware en flujos de trabajo (n8n, LangChain, Make). Intercepta variables de entrada ex-ante antes de invocar el modelo.",
+      badge: "REVENUE SHARING / ADD-ON",
       color: "#06B6D4",
-      icon: "🌐"
-    },
-    {
-      code: "SDK",
-      title: "SDK & Middleware de Aplicación",
-      desc: "Librerías para Node.js y Python integrables con OpenAI, LangChain o n8n mediante redirección de baseURL.",
-      badge: "PLUG & PLAY",
-      color: "#2F81F7",
-      icon: "📦"
+      icon: "🌐",
+      deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL."
     },
     {
       code: "EMBEDDED",
-      title: "Sensor Hook C-ABI In-Process (.so / .dll)",
-      desc: "Librería nativa de integración directa para fabricantes de antivirus y agentes EDR con purga RAM atómica mediante SYS_madvise.",
-      badge: "RESIDUO CERO RAM",
+      title: "02. Fabricantes de Ciberseguridad & EDR/XDR",
+      desc: "Sensor L7 nativo In-Process (.so / .dll) integrado en el agente de puesto de trabajo para evitar fugas de información en memoria RAM.",
+      badge: "LICENCIA OEM / ARR SEAT",
       color: "#20C997",
-      icon: "⚡"
+      icon: "⚡",
+      deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook."
     },
     {
-      code: "AIR_GAPPED",
-      title: "Enclave Soberano On-Premise / VPC",
-      desc: "Contenedor aislado en red privada sin salida a internet para banca central, defensa y sanidad de alta seguridad.",
-      badge: "ZERO-DISK WRITES",
+      code: "GSI",
+      title: "03. Grandes Consultoras & Auditoría GRC",
+      desc: "Consola multi-inquilino y generación de Proof Bundles sellados para justificación pericial, ISO 42001 e inspecciones de la AESIA.",
+      badge: "CANAL ISV & ASIENTO AUDITOR",
+      color: "#c084fc",
+      icon: "⚖️",
+      deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519."
+    },
+    {
+      code: "GATEWAY",
+      title: "04. Infraestructura Cloud & API Gateways",
+      desc: "Filtrado perimetral global en Edge PoPs como proxy inverso L7 con latencia P99 determinista < 1.16 ms y sellado de cabeceras.",
+      badge: "PAY-AS-YOU-GO VOLUMEN",
+      color: "#2F81F7",
+      icon: "📦",
+      deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate."
+    },
+    {
+      code: "VERTICAL",
+      title: "05. Software Vertical (LegalTech, Salud, FinTech)",
+      desc: "Capa de seguridad embebida en aplicaciones de gestión de contratos, expedientes médicos y contabilidad para garantizar compliance.",
+      badge: "TIER COMPLIANCE MODE (MRR)",
       color: "#EAB308",
-      icon: "🔒"
+      icon: "🔒",
+      deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK."
     }
   ];
 
@@ -300,7 +314,7 @@ export default function App() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios_saare'); }}>
             <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2px', color: '#ffffff' }}>SAARE</span>
-            <span style={{ color: '#64748b', fontSize: '12px', borderLeft: '1px solid #334155', paddingLeft: '10px' }}>AI Security & Evidence Layer</span>
+            <span style={{ color: '#64748b', fontSize: '12px', borderLeft: '1px solid #334155', paddingLeft: '10px' }}>AI Governance & Runtime Control</span>
           </div>
 
           <nav style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', fontWeight: '600', flexWrap: 'wrap' }}>
@@ -398,34 +412,59 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
+      {/* VISTA PRINCIPAL: ESCENARIOS SAARE */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
           {activeNavTab === 'scenarios_saare' && (
             <div>
-              {/* TÍTULO PRINCIPAL */}
-              <section style={{ textAlign: 'center', marginBottom: '48px', paddingTop: '10px' }}>
-                <h1 style={{ fontSize: '46px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
-                  Cinco formas de proteger tu IA
+              {/* CABECERA DE POSICIONAMIENTO ESTRATÉGICO: POLÍTICA -> CONTROL -> EVIDENCIA */}
+              <section style={{ textAlign: 'center', marginBottom: '40px', paddingTop: '10px' }}>
+                <div style={{ display: 'inline-block', backgroundColor: 'rgba(2, 132, 199, 0.1)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '9999px', padding: '6px 18px', marginBottom: '16px' }}>
+                  <span style={{ color: '#38bdf8', fontSize: '12.5px', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    Plataforma ISV de Gobernanza de IA
+                  </span>
+                </div>
+
+                <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', margin: '0 0 12px 0', letterSpacing: '-0.5px', lineHeight: 1.15 }}>
+                  SAARE la convierte en <span style={{ color: '#38bdf8' }}>controles que se ejecutan.</span>
                 </h1>
-                <p style={{ fontSize: '18px', color: '#94a3b8', margin: '0 0 4px 0', fontWeight: '400' }}>
-                  No importa dónde uses inteligencia artificial.
+                
+                <p style={{ fontSize: '17px', color: '#94a3b8', margin: '0 auto 24px auto', fontWeight: '400', maxWidth: '780px' }}>
+                  El cumplimiento normativo ya no es un documento pasivo. SAARE transforma tus políticas corporativas en salvaguardas activas en tiempo real con respaldo forense inmutable.
                 </p>
-                <p style={{ fontSize: '18px', color: '#38bdf8', margin: 0, fontWeight: '600' }}>
-                  Importa qué ocurre cuando entra en producción.
-                </p>
+
+                {/* FLUJO POLÍTICA -> CONTROL -> EVIDENCIA */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '14px', backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px 24px', flexWrap: 'wrap', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#0284c7', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>1</span>
+                    <span style={{ color: '#f1f5f9', fontWeight: '700', fontSize: '14px' }}>Política</span>
+                    <span style={{ color: '#64748b', fontSize: '11.5px' }}>(RGPD / AI Act)</span>
+                  </div>
+
+                  <span style={{ color: '#38bdf8', fontSize: '16px', fontWeight: 'bold' }}>→</span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#16a34a', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>2</span>
+                    <span style={{ color: '#34d399', fontWeight: '700', fontSize: '14px' }}>Control</span>
+                    <span style={{ color: '#64748b', fontSize: '11.5px' }}>(L7 RAM &lt;1.2ms)</span>
+                  </div>
+
+                  <span style={{ color: '#38bdf8', fontSize: '16px', fontWeight: 'bold' }}>→</span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#9333ea', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>3</span>
+                    <span style={{ color: '#c084fc', fontWeight: '700', fontSize: '14px' }}>Evidencia</span>
+                    <span style={{ color: '#64748b', fontSize: '11.5px' }}>(Proof Bundle MS3V)</span>
+                  </div>
+                </div>
               </section>
 
-              {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS */}
+              {/* CONTENEDOR DE LAS 5 SOLUCIONES COMERCIALES */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                {/* ========================================================================= */}
-                {/* 01. EL ESCUDO (IMAGEN: /1.jfif)                                          */}
-                {/* ========================================================================= */}
+                {/* 01. EL ESCUDO */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
-                  
-                  {/* IMAGEN REAL 1.jfif CON BADGE 01 */}
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>01</div>
                     <img 
@@ -475,12 +514,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 02. LA EVIDENCIA (IMAGEN: /2.jfif)                                       */}
-                {/* ========================================================================= */}
+                {/* 02. LA EVIDENCIA */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
-                  
-                  {/* IMAGEN REAL 2.jfif CON BADGE 02 */}
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>02</div>
                     <img 
@@ -530,12 +565,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 03. RAZONAMIENTO ACTIVO (IMAGEN: /3.jfif)                                 */}
-                {/* ========================================================================= */}
+                {/* 03. RAZONAMIENTO ACTIVO */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
-                  
-                  {/* IMAGEN REAL 3.jfif CON BADGE 03 */}
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
                     <img 
@@ -562,7 +593,6 @@ export default function App() {
                       "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas, inyecciones adversarias y estampar el testigo 🧠 L7 CEREBRO en la inferencia."
                     </p>
 
-                    {/* VELOCÍMETRO DE AHORRO L7 */}
                     <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', fontWeight: 'bold', textTransform: 'uppercase' }}>Ahorro de Pipeline por Inferencia</span>
@@ -595,12 +625,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 04. EL DETECTOR (IMAGEN: /4.jfif)                                        */}
-                {/* ========================================================================= */}
+                {/* 04. EL DETECTOR */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
-                  
-                  {/* IMAGEN REAL 4.jfif CON BADGE 04 */}
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>04</div>
                     <img 
@@ -647,12 +673,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 05. EL JUSTIFICADOR (IMAGEN: /5.jfif)                                    */}
-                {/* ========================================================================= */}
+                {/* 05. EL JUSTIFICADOR */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
-                  
-                  {/* IMAGEN REAL 5.jfif CON BADGE 05 */}
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>05</div>
                     <img 
@@ -708,10 +730,10 @@ export default function App() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#ffffff', margin: '0 0 4px 0' }}>
-                      Un único sistema. Cinco capas de protección.
+                      Un único sistema. Cinco módulos de gobernanza y control.
                     </h3>
                     <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-                      SAARE te ayuda a usar la IA con confianza, control y evidencia.
+                      SAARE te ayuda a desplegar IA corporativa con confianza, control perimetral y evidencia forense.
                     </p>
                   </div>
                 </div>
@@ -727,11 +749,11 @@ export default function App() {
                   </div>
                   <div style={{ textAlign: 'center', fontSize: '12px', color: '#cbd5e1' }}>
                     <div style={{ fontSize: '18px', marginBottom: '2px' }}>📋</div>
-                    Auditorías más fáciles
+                    Auditorías ágiles
                   </div>
                   <div style={{ textAlign: 'center', fontSize: '12px', color: '#cbd5e1' }}>
                     <div style={{ fontSize: '18px', marginBottom: '2px' }}>🔒</div>
-                    Decisiones más seguras
+                    Decisiones seguras
                   </div>
                 </div>
               </div>
@@ -740,8 +762,8 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '24px' }}>⚡</span>
                   <div>
-                    <strong style={{ fontSize: '14.5px', color: '#ffffff', display: 'block' }}>¿Quieres saber cómo lo hacemos?</strong>
-                    <span style={{ fontSize: '13px', color: '#64748b' }}>Explora la tecnología, la arquitectura y la seguridad detrás de SAARE.</span>
+                    <strong style={{ fontSize: '14.5px', color: '#ffffff', display: 'block' }}>¿Quieres explorar el motor tecnológico?</strong>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>Conoce la arquitectura L7, el sellado MS3V y las librerías C-ABI/Edge.</span>
                   </div>
                 </div>
                 <button onClick={() => setActiveNavTab('architecture')} style={{ padding: '10px 20px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
@@ -756,14 +778,19 @@ export default function App() {
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '12px' }}>Arquitectura de Referencia L7 & DEI (ISO 27037)</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14.5px', marginBottom: '28px' }}>Manejo pericial de evidencia digital: Auditabilidad, Repetibilidad y Justificabilidad.</p>
+              <p style={{ color: '#94a3b8', fontSize: '14.5px', marginBottom: '28px' }}>El motor tecnológico diferencial: Auditabilidad, Repetibilidad y Justificabilidad.</p>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 {deploymentModes.map((dep) => (
-                  <div key={dep.code} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                    <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '12px' }}>{dep.badge}</span>
-                    <h4 style={{ color: '#fff', margin: '6px 0' }}>{dep.title}</h4>
-                    <p style={{ color: '#64748b', fontSize: '12.5px', margin: 0 }}>{dep.desc}</p>
+                  <div key={dep.code} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
+                      <h4 style={{ color: '#fff', margin: '6px 0 8px 0', fontSize: '15px' }}>{dep.title}</h4>
+                      <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '0 0 10px 0', lineHeight: 1.45 }}>{dep.desc}</p>
+                    </div>
+                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '8px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
+                      {dep.deployInfo}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -783,7 +810,7 @@ export default function App() {
  ║  [4] PHASE 4: PRESERVATION   (RFC 3161 DES) ║
  ╚═════════════════════╤═══════════════════════╝
                        ▼
-  [SAARE_ACTIVE_SHIELD: ENFORCE] -> 🧠 TESTIGO L7 CEREBRO INYECTADO`}
+ [SAARE_ACTIVE_SHIELD: ENFORCE] -> 🧠 TESTIGO L7 CEREBRO INYECTADO`}
               </pre>
             </div>
           )}
@@ -812,9 +839,17 @@ export default function App() {
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Proof Bundle ISO 27037 / DEI</h2>
-                <button onClick={copyBundleJson} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-                  {copiedBundle ? '✔ Copiado' : 'Copiar JSON'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={copyHashToClipboard} style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                    {copiedHash ? '✔ Hash Copiado' : 'Copiar Hash'}
+                  </button>
+                  <button onClick={() => setShowDiploma(true)} style={{ background: '#1e293b', color: '#c084fc', border: '1px solid #9333ea', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                    📜 Ver Acreditación Registral
+                  </button>
+                  <button onClick={copyBundleJson} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                    {copiedBundle ? '✔ Copiado' : 'Copiar JSON'}
+                  </button>
+                </div>
               </div>
               <pre style={{ margin: 0, backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px', color: '#34d399', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto' }}>
                 {JSON.stringify(proofBundle, null, 2)}
@@ -859,13 +894,20 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB OVERVIEW */}
           {activeNavTab === 'overview' && (
-            <div style={{ textAlign: 'center', margin: '60px 0' }}>
-              <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#ffffff', marginBottom: '20px' }}>
-                Controla tu IA antes de que <span style={{ color: '#38bdf8' }}>actúe.</span>
+            <div style={{ textAlign: 'center', margin: '50px 0' }}>
+              <div style={{ display: 'inline-block', backgroundColor: 'rgba(2, 132, 199, 0.1)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '9999px', padding: '6px 18px', marginBottom: '16px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px' }}>
+                  POLÍTICA → CONTROL → EVIDENCIA
+                </span>
+              </div>
+              
+              <h1 style={{ fontSize: '46px', fontWeight: '900', color: '#ffffff', marginBottom: '18px', lineHeight: 1.2 }}>
+                SAARE la convierte en <span style={{ color: '#38bdf8' }}>controles que se ejecutan.</span>
               </h1>
-              <p style={{ fontSize: '17px', color: '#94a3b8', maxWidth: '780px', margin: '0 auto 36px auto' }}>
-                SAARE protege los datos sensibles, audita las respuestas de la IA y genera evidencia pericial verificable en tiempo real bajo ISO 42001 e ISO 27037.
+              <p style={{ fontSize: '17px', color: '#94a3b8', maxWidth: '780px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
+                Protege los datos sensibles, audita las respuestas de la IA y genera evidencia pericial verificable en tiempo real bajo ISO 42001 e ISO 27037.
               </p>
               <button onClick={() => setActiveNavTab('scenarios_saare')} style={{ padding: '14px 28px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
                 Explorar los Escenarios SAARE ↗
@@ -877,7 +919,7 @@ export default function App() {
           <footer style={{ borderTop: '1px solid #1e293b', marginTop: '60px', paddingTop: '32px', fontSize: '12px', color: '#64748b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
-                <strong style={{ color: '#fff' }}>SAARE</strong> · AI Security & Evidence Layer
+                <strong style={{ color: '#fff' }}>SAARE</strong> · AI Governance & Runtime Control
                 <div style={{ marginTop: '4px' }}>Safe Creative ID: 2607076315021 / 2607076314949 · © 2026 Gabinete Jurídico y Pericial MS3V</div>
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
