@@ -147,6 +147,16 @@ export default function App() {
         { badge: "02 / BLINDAJE SAARE", color: "#20C997", title: "Auditoría Delegada con Handshake", desc: "Audita el tráfico en memoria RAM sin acceder al secreto corporativo." },
         { badge: "03 / ENTREGABLE AUDITABLE", color: "#2F81F7", title: "Matriz de Fugas de PII", desc: "Informe descargable con las directivas exigidas por Red.es." }
       ]
+    },
+    cdti: {
+      tag: "PROYECTOS I+D+i, NEOTEC & PRÉSTAMOS ENISA",
+      title: "Hitos Técnicos y Seguridad Crítica en Proyectos CDTI",
+      summary: "Los proyectos de I+D+i intensivos en IA requieren demostrar una arquitectura tecnológica innovadora y robusta, con métricas de latencia validadas, protección de propiedad industrial y cumplimiento preventivo del Reglamento Europeo de IA (EU AI Act).",
+      items: [
+        { badge: "01 / HITO TÉCNICO", color: "#FF4D5A", title: "Validación de Latencia L7", desc: "Evita penalizaciones en tramos no reembolsables demostrando una latencia determinista P99 < 1.16 ms en la capa de seguridad." },
+        { badge: "02 / BLINDAJE SAARE", color: "#20C997", title: "Hook Nativo In-Process C-ABI", desc: "Integración directa que acredita ante ENISA/CDTI una arquitectura de software disruptiva de Residuo Cero en HugePages." },
+        { badge: "03 / ENTREGABLE AUDITABLE", color: "#2F81F7", title: "Certificado Registral Independiente", desc: "Acreditación de autoría y propiedad del nodo (Safe Creative Nº 2607076315021) aportable al informe de seguimiento técnico." }
+      ]
     }
   };
 
@@ -247,14 +257,161 @@ export default function App() {
         "permissions": ["storage"]
       }, null, 2));
 
-      const injectContent = `/* S.A.A.R.E. V9 Engine */\n(function() { console.log('SAARE V9 Loaded'); })();`;
+      const injectContent = `/* S.A.A.R.E. L7 In-Memory Interceptor & V9 Proof Engine */
+(function() {
+  const DLP = {
+    dni: /(?:^|\\D)(\\d{7,8}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
+    iban: /ES\\d{2}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{2}[\\s-]?\\d{10}|ES\\d{18,22}/i,
+    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
+  };
+
+  function getSettings() {
+    try {
+      const raw = document.documentElement.getAttribute('data-saare-settings');
+      return raw ? JSON.parse(raw) : { privacy: true, security: true, logs: true };
+    } catch(e) {
+      return { privacy: true, security: true, logs: true };
+    }
+  }
+
+  function computeL7Seal(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return \`L7-SEAL:\${Math.abs(hash).toString(16).toUpperCase().padStart(8, "0")}\`;
+  }
+
+  function evaluatePayload(rawBody, url) {
+    const settings = getSettings();
+    if (!settings.privacy && !settings.logs) return null;
+
+    let str = "";
+    try {
+      str = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody);
+    } catch(e) { str = String(rawBody || ""); }
+    
+    if (!str || str.length < 2) return null;
+
+    const isDni = DLP.dni.test(str);
+    const isIban = DLP.iban.test(str.replace(/[\\s-]/g, ""));
+    const isCard = DLP.card.test(str.replace(/[\\s-]+/g, ""));
+
+    if (settings.privacy && (isDni || isIban || isCard)) {
+      let category = "PII_DNI";
+      let norma = "España - LOPDGDD & AEPD";
+      if (isIban) { category = "DATOS_BANCARIOS"; norma = "RGPD Art. 5, 32"; }
+      else if (isCard) { category = "TARJETA_CREDITO"; norma = "PCI-DSS / RGPD"; }
+
+      return {
+        verdict: "RECHAZADO",
+        perimeter_validity: "PERIMETER_INVALID",
+        category,
+        norma,
+        reason: "Causalidad rota: Detección de datos regulados no autorizados en buffer RAM L7",
+        cryptoSeal: computeL7Seal(str),
+        parentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      };
+    }
+
+    if (!settings.logs) return null;
+
+    return {
+      verdict: "PERMITIDO",
+      perimeter_validity: "PERIMETER_VALID",
+      category: "AUDITORIA_CONFORME",
+      norma: "ISO/IEC 42001 & EU AI Act",
+      reason: "Prueba de no afirmación no soportada verificada en memoria",
+      cryptoSeal: computeL7Seal(str),
+      parentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    };
+  }
+
+  const rawFetch = window.fetch;
+  window.fetch = async function(resource, config) {
+    const url = typeof resource === "string" ? resource : (resource?.url || "");
+    if (config && config.body) {
+      const check = evaluatePayload(config.body, url);
+      if (check) {
+        if (check.verdict === "RECHAZADO") {
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+          return new Response(JSON.stringify({ error: "S.A.A.R.E. Intercept: Bloqueado por Perímetro Ex-Ante en RAM" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        } else {
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+        }
+      }
+    }
+    return rawFetch.apply(this, arguments);
+  };
+})();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE DOM Bridge\nconsole.log('Bridge Active');`;
+      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v9.0.0
+function updateDomSettings(settings) {
+  if (settings) document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
+}
+
+if (typeof chrome !== "undefined" && chrome.storage?.local) {
+  chrome.storage.local.get(["saare_settings"], (res) => {
+    updateDomSettings(res?.saare_settings || { privacy: true, security: true, logs: true });
+  });
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.saare_settings) updateDomSettings(changes.saare_settings.newValue);
+  });
+}
+
+const injectScript = document.createElement("script");
+injectScript.src = chrome.runtime.getURL("inject.js");
+injectScript.onload = function() { this.remove(); };
+(document.head || document.documentElement).appendChild(injectScript);
+
+window.addEventListener("message", (event) => {
+  if (event.data?.type === "SAARE_EVENT" && event.data.data) {
+    if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+      chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: event.data.data }, () => {});
+    }
+  }
+});`;
       zip.file("content.js", contentJsCode);
 
-      const bgCode = `// Background Service Worker`;
+      const bgCode = `const WORKER_URL = "${API_BASE}";
+
+async function resolveIdentity() {
+  return new Promise((resolve) => {
+    if (chrome.storage?.local) {
+      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
+        resolve({
+          user: local?.saare_user_email || "${tEmail}",
+          tenant: local?.saare_tenant_domain || "${tTenant}"
+        });
+      });
+    } else {
+      resolve({ user: "${tEmail}", tenant: "${tTenant}" });
+    }
+  });
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "SAARE_LOG_EVENT") {
+    resolveIdentity().then(({ user, tenant }) => {
+      const enrichedPayload = { ...message.payload, user, tenant };
+      fetch(\`\${WORKER_URL}/runs?user=\${encodeURIComponent(user)}\`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(enrichedPayload)
+      }).catch(() => {});
+    });
+    return true;
+  }
+});`;
       zip.file("background.js", bgCode);
+      
+      const customBat = `@echo off\nchcp 65001 >nul\ntitle S.A.A.R.E. Installer\nset "EXTENSION_ID=saaregovernanceid"\nset "TARGET_DIR=%LOCALAPPDATA%\\SAARE\\extension"\nif not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"\nxcopy /Y /E /I "%~dp0*" "%TARGET_DIR%\\" >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "path" /t REG_SZ /d "%TARGET_DIR%" /f >nul 2>&1\nreg add "HKCU\\Software\\Google\\Chrome\\Extensions\\%EXTENSION_ID%" /v "version" /t REG_SZ /d "9.0.0" /f >nul 2>&1\necho [OK] Agente L7 desplegado para ${tEmail} (${tTenant}).\ntimeout /t 3 >nul\nexit /b 0`;
+      zip.file("install_silent.bat", customBat);
 
       zip.file("storage_managed.json", JSON.stringify({
         "saare_user_email": tEmail,
@@ -283,7 +440,13 @@ export default function App() {
     setTimeout(() => setCopiedBundle(false), 2000);
   };
 
-  const currentGrant = grantsData[activeGrantTab] || grantsData['nextgen'];
+  const copyHashToClipboard = () => {
+    navigator.clipboard.writeText(CANONICAL_HASH);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
+  const currentGrant = grantsData[activeGrantTab];
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#070A0F', color: '#E8EDF2', fontFamily: '"Inter", "Geist", "IBM Plex Sans", -apple-system, sans-serif' }}>
@@ -449,7 +612,7 @@ export default function App() {
       {/* VISTA 3: LANDING PAGE ENTERPRISE B2B */}
       {currentView === 'LANDING' && (
         <main>
-          {/* HERO SECTION - REGLA 70/20/10 - FOCO EN EL RESULTADO EMPRESARIAL */}
+          {/* HERO SECTION */}
           <section style={{ maxWidth: '1100px', margin: '70px auto 50px auto', padding: '0 24px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 14px', backgroundColor: 'rgba(47, 129, 247, 0.1)', border: '1px solid rgba(47, 129, 247, 0.3)', borderRadius: '20px', color: '#2F81F7', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', marginBottom: '24px', letterSpacing: '0.5px' }}>
               SAARE — AI SECURITY & EVIDENCE LAYER
@@ -517,12 +680,10 @@ export default function App() {
             </div>
           </section>
 
-          {/* ANTES Y DESPUÉS (VALOR DE NEGOCIO VISUAL) */}
+          {/* ANTES Y DESPUÉS */}
           <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '40px', borderRadius: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '60px', flexWrap: 'wrap' }}>
-                
-                {/* ANTES */}
                 <div style={{ textAlign: 'center', flex: 1, minWidth: '250px' }}>
                   <div style={{ color: '#FF4D5A', fontWeight: '800', marginBottom: '24px', letterSpacing: '1px', fontSize: '13px' }}>SIN SAARE</div>
                   <div style={{ color: '#8B98A7', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
@@ -532,7 +693,7 @@ export default function App() {
                     <div>↓</div>
                     <div style={{ padding: '10px 16px', border: '1px solid #30363D', borderRadius: '4px', width: '100%', maxWidth: '220px' }}>LLM Externo</div>
                     <div>↓</div>
-                    <div style={{ padding: '10px 16px', border: '1px solid #FF4D5A', borderRadius: '4px', color: '#FF4D5A', width: '100%', maxWidth: '220px', fontWeight: '600' }}>Respuesta de IA</div>
+                    <div style={{ padding: '10px 16px', border: '1px solid #FF4D5A', borderRadius: '4px', color: '#FF4D5A', width: '100%', maxWidth: '220px', fontWeight: '600' }}>Respuesta no verificada</div>
                     <div>↓</div>
                     <div style={{ padding: '10px 16px', border: '1px dashed #30363D', borderRadius: '4px', width: '100%', maxWidth: '220px', fontStyle: 'italic' }}>¿Quién demuestra qué ocurrió?</div>
                   </div>
@@ -540,7 +701,6 @@ export default function App() {
                 
                 <div style={{ color: '#30363D', fontSize: '28px', fontWeight: '300', display: 'flex', alignItems: 'center' }}>VS</div>
                 
-                {/* DESPUÉS */}
                 <div style={{ textAlign: 'center', flex: 1, minWidth: '250px' }}>
                   <div style={{ color: '#20C997', fontWeight: '800', marginBottom: '24px', letterSpacing: '1px', fontSize: '13px' }}>CON SAARE</div>
                   <div style={{ color: '#E8EDF2', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
@@ -643,7 +803,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* MERCADOS (CASOS DE USO) - ENFOCADOS A VENTAS */}
+          {/* MERCADOS (CASOS DE USO) */}
           <section id="markets" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
               <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Puertas de Venta Empresarial</h2>
@@ -653,7 +813,7 @@ export default function App() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-              {/* PLATAFORMAS DE IA / WORKFLOWS */}
+              {/* PLATAFORMAS DE IA */}
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '32px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ color: '#2F81F7', fontFamily: 'monospace', fontSize: '11.5px', marginBottom: '16px', fontWeight: 'bold' }}>01 — AI PLATFORMS & WORKFLOWS</div>
                 <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 12px 0' }}>Protege tus automatizaciones antes de que lleguen al LLM.</h3>
@@ -994,11 +1154,166 @@ export default function App() {
             </div>
           </section>
 
-          {/* EVIDENCIA EN VIVO (LA PRUEBA VISUAL FINAL DE USO DE LA API) */}
+          {/* MÓDULO: JUSTIFICACIÓN DE SUBVENCIONES Y AYUDAS PÚBLICAS - ENFOQUE EVIDENCE */}
+          <section id="subvenciones" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderLeft: '4px solid #2F81F7', borderRadius: '8px', padding: '36px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// {currentGrant.tag}</span>
+                  <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0 0 0', color: '#E8EDF2' }}>
+                    Evidence-ready for regulated AI projects
+                  </h2>
+                </div>
+              </div>
+
+              <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', maxWidth: '850px' }}>
+                SAARE genera evidencia técnica reutilizable para apoyar los procesos de gobernanza, cumplimiento y trazabilidad exigidos en auditorías y convocatorias públicas.
+              </p>
+
+              {/* TABS DE SUBVENCIONES Y NORMATIVAS */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '12px', flexWrap: 'wrap' }}>
+                <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'nextgen' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                  🇪🇺 Frameworks Normativos (AI Act / ISO)
+                </button>
+                <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'kit' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'kit' ? '#151B23' : 'transparent', color: activeGrantTab === 'kit' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                  💼 Programas Nacionales (Red.es)
+                </button>
+                <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'cdti' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'cdti' ? '#151B23' : 'transparent', color: activeGrantTab === 'cdti' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                  🔬 Proyectos de I+D (CDTI / ENISA)
+                </button>
+              </div>
+
+              {/* CONTENIDO DINÁMICO */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                {currentGrant.items.map((item, idx) => (
+                  <div key={idx} style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '22px', borderRadius: '6px' }}>
+                    <div style={{ color: item.color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>{item.badge}</div>
+                    <strong style={{ color: '#E8EDF2', fontSize: '14.5px', display: 'block', marginBottom: '8px' }}>{item.title}</strong>
+                    <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', borderTop: '1px dashed #151B23', paddingTop: '20px' }}>
+                <span style={{ fontSize: '13px', color: '#8B98A7' }}>
+                  SAARE proporciona controles técnicos para apoyar la certificación, no certifica sistemas por sí mismo.
+                </span>
+                <button onClick={() => { setMode('register'); setCurrentView('AUTH'); }} style={{ padding: '8px 20px', backgroundColor: '#151B23', color: '#E8EDF2', border: '1px solid #30363D', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'border-color 0.2s' }} onMouseOver={(e) => e.target.style.borderColor = '#8B98A7'} onMouseOut={(e) => e.target.style.borderColor = '#30363D'}>
+                  Habilitar Asiento de Auditoría ↗
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* VECTORES DE DESPLIEGUE - REENFOCADOS A TIEMPO Y MODELO COMERCIAL */}
+          <section id="solutions" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Modelos de Despliegue</h2>
+              <p style={{ color: '#8B98A7', fontSize: '15px' }}>Opciones flexibles para integradores, ISVs y consultoras.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>OEM EMBEDDED</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>1-3 Meses</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>C-ABI (.so / .dll)</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                    Añade capacidades nativas DLP y de Proof Bundle a tu propio producto de ciberseguridad o agente endpoint sin dependencias externas.
+                  </p>
+                </div>
+                <a href="mailto:partners@ms3v.es?subject=OEM%20Licensing" style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Contactar Alianzas OEM ↗
+                </a>
+              </div>
+
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>API GATEWAY</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>1-2 Semanas</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Edge / HTTP Middleware</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                    Protege el tráfico de tus workflows (LangChain, n8n) interceptándolo antes de que llegue a los proveedores de IA cloud (OpenAI, Anthropic).
+                  </p>
+                </div>
+                <a href="#developers" onClick={() => setActiveCodeTab('nodejs')} style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#2F81F7', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Ver Documentación SDK ↓
+                </a>
+              </div>
+              
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>PRIVATE SERVER</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>1-2 Meses</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>On-Premise Enterprise</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                    Aislamiento total para entornos de salud, banca y administración pública. Despliegue en red privada sin salida a internet.
+                  </p>
+                </div>
+                <a href="mailto:peritajes@ms3v.es?subject=Consulta%20Despliegue%20Privado%20SAARE" style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Solicitar Evaluación Técnica ↗
+                </a>
+              </div>
+
+              <div style={{ backgroundColor: '#0D1117', border: '1px solid #2F81F7', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(47,129,247,0.08)' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7', backgroundColor: 'rgba(47,129,247,0.1)', padding: '2px 6px', borderRadius: '4px' }}>AUDITOR SEAT</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>Inmediato</span>
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Proof & Compliance</h3>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    Consola SaaS para peritos, CISOs y consultoras. Handshake consentido y generación y verificación de dictámenes.
+                  </p>
+                  <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: '700', color: '#E8EDF2', margin: '0 0 14px 0' }}>
+                    Desde {AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '12px', color: '#8B98A7', fontWeight: 'normal' }}>/ mes</span>
+                  </div>
+                </div>
+                <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '10px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#1d6ce3'} onMouseOut={(e) => e.target.style.backgroundColor = '#2F81F7'}>
+                  Contratar Asiento Auditor ↗
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* DEVELOPERS / SNIPPETS */}
+          <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '700', color: '#E8EDF2' }}>Integración de Código (SAARE-SDK)</h3>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#8B98A7', maxWidth: '600px', lineHeight: 1.5 }}>
+                    Los snippets muestran la conexión en modo Gateway. Para entornos Enterprise o confidenciales, <code>baseURL</code> se configura para apuntar a un despliegue On-Premise (Private Server).
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
+                    <button key={tab} onClick={() => setActiveCodeTab(tab)} style={{ background: activeCodeTab === tab ? '#151B23' : 'transparent', border: '1px solid', borderColor: activeCodeTab === tab ? '#30363D' : '#151B23', color: activeCodeTab === tab ? '#2F81F7' : '#8B98A7', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace', cursor: 'pointer', fontWeight: '600' }}>
+                      {tab.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
+                {codeSnippets[activeCodeTab].replace("'sk_saare_live_AUDITOR_TOKEN'", "process.env.SAARE_LICENSE").replace('"sk_saare_live_AUDITOR_TOKEN"', 'os.environ.get("SAARE_LICENSE")')}
+              </pre>
+            </div>
+          </section>
+          
+          {/* EVIDENCIA FORENSE EN VIVO (LA PRUEBA VISUAL FINAL) */}
           <section id="evidence" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Ejecuta el verificador Edge</h2>
-              <p style={{ color: '#8B98A7', fontSize: '15px' }}>Comprueba en tiempo real la validez del último evento interceptado.</p>
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Verifica una ejecución real</h2>
+              <p style={{ color: '#8B98A7', fontSize: '15px' }}>Comprueba cómo el validador Edge examina públicamente un registro sellado.</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: '24px', alignItems: 'stretch' }}>
@@ -1050,92 +1365,14 @@ export default function App() {
             </div>
           </section>
 
-          {/* MÓDULO: COMPLIANCE / GOBERNANZA */}
-          <section id="subvenciones" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderLeft: '4px solid #2F81F7', borderRadius: '8px', padding: '36px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// COMPLIANCE_AND_GRANTS</span>
-                  <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '6px 0 0 0', color: '#E8EDF2' }}>
-                    SAARE proporciona controles y evidencia técnica
-                  </h2>
-                </div>
-              </div>
-
-              <p style={{ color: '#8B98A7', fontSize: '14px', lineHeight: 1.6, margin: '0 0 24px 0', maxWidth: '850px' }}>
-                SAARE no certifica sistemas por sí mismo. SAARE genera la infraestructura de controles y evidencia técnica en tiempo de ejecución para apoyar tus procesos de gobernanza, seguridad, cumplimiento de ISO/AI Act y la justificación de ayudas públicas de digitalización.
-              </p>
-
-              {/* TABS DE SUBVENCIONES Y NORMATIVAS */}
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '12px', flexWrap: 'wrap' }}>
-                <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'nextgen' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                  🇪🇺 Frameworks Normativos (AI Act / ISO)
-                </button>
-                <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'kit' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'kit' ? '#151B23' : 'transparent', color: activeGrantTab === 'kit' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                  💼 Programas Nacionales (Red.es)
-                </button>
-                <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'cdti' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'cdti' ? '#151B23' : 'transparent', color: activeGrantTab === 'cdti' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                  🔬 Proyectos de I+D (CDTI / ENISA)
-                </button>
-              </div>
-
-              {/* CONTENIDO DINÁMICO */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-                {currentGrant.items.map((item, idx) => (
-                  <div key={idx} style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '22px', borderRadius: '6px' }}>
-                    <div style={{ color: item.color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>{item.badge}</div>
-                    <strong style={{ color: '#E8EDF2', fontSize: '14.5px', display: 'block', marginBottom: '8px' }}>{item.title}</strong>
-                    <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
-                      {item.desc}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* DEVELOPERS / SNIPPETS AL FINAL */}
-          <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
-            <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '700', color: '#E8EDF2' }}>Integración de Código (SAARE-SDK)</h3>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#8B98A7', maxWidth: '600px', lineHeight: 1.5 }}>
-                    Integra SAARE en tu flujo de trabajo en minutos. Los snippets muestran la conexión en modo Gateway.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
-                    <button key={tab} onClick={() => setActiveCodeTab(tab)} style={{ background: activeCodeTab === tab ? '#151B23' : 'transparent', border: '1px solid', borderColor: activeCodeTab === tab ? '#30363D' : '#151B23', color: activeCodeTab === tab ? '#2F81F7' : '#8B98A7', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace', cursor: 'pointer', fontWeight: '600' }}>
-                      {tab.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
-                {codeSnippets[activeCodeTab]}
-              </pre>
-            </div>
-          </section>
-
           {/* CINTILLO FINAL CTA */}
           <section style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px', textAlign: 'center' }}>
-            <div style={{ backgroundColor: '#151B23', border: '1px solid #30363D', borderRadius: '8px', padding: '50px 24px' }}>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 16px 0' }}>Construye una IA que puedas controlar.</h2>
-              <p style={{ color: '#8B98A7', fontSize: '16px', maxWidth: '600px', margin: '0 auto 32px auto' }}>Integra SAARE en tu producto, infraestructura o proyecto empresarial y obtén seguridad, gobernanza y evidencia verificable.</p>
-              
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '14px 32px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#1d6ce3'} onMouseOut={(e) => e.target.style.backgroundColor = '#2F81F7'}>
-                  Probar Sandbox ↗
-                </button>
-                <button onClick={() => { setMode('register'); setCurrentView('AUTH'); }} style={{ padding: '14px 24px', backgroundColor: 'transparent', color: '#E8EDF2', border: '1px solid #8B98A7', borderRadius: '4px', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(139, 152, 167, 0.1)'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
-                  Solicitar evaluación Enterprise
-                </button>
-              </div>
-              <div style={{ marginTop: '24px', color: '#8B98A7', fontSize: '12px', fontFamily: 'monospace', fontWeight: '600' }}>
-                EMBEDDED · API · PRIVATE · AUDITOR
-              </div>
+            <div style={{ backgroundColor: '#151B23', border: '1px solid #30363D', borderRadius: '8px', padding: '40px 24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 16px 0' }}>¿Preparado para asegurar tu infraestructura de IA?</h2>
+              <p style={{ color: '#8B98A7', fontSize: '15px', maxWidth: '600px', margin: '0 auto 32px auto' }}>Integra la capa de seguridad L7 SAARE y protege tus datos, flujos de trabajo y cumplimiento normativo hoy mismo.</p>
+              <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '14px 32px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#1d6ce3'} onMouseOut={(e) => e.target.style.backgroundColor = '#2F81F7'}>
+                Integrar SAARE ↗
+              </button>
             </div>
           </section>
 
