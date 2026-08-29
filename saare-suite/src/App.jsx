@@ -25,7 +25,6 @@ export default function App() {
   const [copiedBundle, setCopiedBundle] = useState(false);
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
-  const [activeAudienceTab, setActiveAudienceTab] = useState('ciso');
   const [activeGrantTab, setActiveGrantTab] = useState('nextgen');
   const [activeProofTab, setActiveProofTab] = useState('bundle');
 
@@ -37,7 +36,6 @@ export default function App() {
   const MERKLE_ROOT = "8f3b29d10e54a67b129845cfa8901234ef567890abcdef1234567890abcdef12";
   const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
-  // SAARE CANONICAL PROOF BUNDLE v9.0.0 (SEPARACIÓN DE PROOFS, CLAIMS Y MEASUREMENTS)
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V9.0",
     "EVENT_IDENTIFIER": {
@@ -47,14 +45,12 @@ export default function App() {
       "ROOT_NODE_ID": "2607076315021",
       "ENVIRONMENT": "PRODUCTION"
     },
-    
     "TRUST_BOUNDARY": {
       "TRUSTED_COMPONENTS": ["SAARE_L7_ENGINE", "MS3V_KEY_VAULT"],
       "UNTRUSTED_COMPONENTS": ["LLM_PROVIDER", "USER_INPUT"],
       "ATTESTED_COMPONENTS": ["HOST_RUNTIME_MEMORY"],
       "BOUNDARY_POLICY_HASH": "9f83c6051888b2565dd21d227f6f17e0ef73e72ebbf0a59966c825a07c3992b9"
     },
-
     "PROOFS": {
       "CHAIN_INTEGRITY": {
         "PROOF_TYPE": "CRYPTOGRAPHICALLY_VERIFIED",
@@ -81,10 +77,9 @@ export default function App() {
         "UNSUPPORTED_CLAIMS": 0,
         "REJECTED_CLAIMS": 0,
         "INDETERMINATE_CLAIMS": 0,
-        "REJECTION_POLICY_HASH": "d2a5f1e8...[POLICY_DIGEST]"
+        "REJECTION_POLICY_HASH": "d2a5f1e83a9d4a4"
       }
     },
-
     "ATTESTATIONS": {
       "RUNTIME": {
         "PROOF_TYPE": "ATTESTED",
@@ -97,11 +92,10 @@ export default function App() {
         "PROVIDER": "OPENAI",
         "MODEL_ID": "gpt-4o",
         "MODEL_VERSION": "2024-05-13",
-        "INFERENCE_CONFIG_HASH": "e5b3...[CONFIG_DIGEST]",
-        "SYSTEM_PROMPT_HASH": "8b2a...[PROMPT_DIGEST]"
+        "INFERENCE_CONFIG_HASH": "e5b3c4",
+        "SYSTEM_PROMPT_HASH": "8b2ab4"
       }
     },
-
     "MEASUREMENTS": {
       "DETERMINISTIC_LATENCY": {
         "PROOF_TYPE": "MEASURED",
@@ -110,18 +104,15 @@ export default function App() {
         "MEASUREMENT_WINDOW": "100000_INVOCATIONS"
       }
     },
-
     "VERIFICATION_RESULT": {
       "FACTUAL_STATUS": "NOT_DETERMINABLE_BY_BOUNDARY",
       "PERIMETER_STATUS": "PERIMETER_VALID",
-      "JUSTIFICATION": "La validación certifica la adherencia a la política y la causalidad de la evidencia, no la verdad universal de la inferencia del modelo."
+      "JUSTIFICATION": "La validación certifica la adherencia a la política y la causalidad de la evidencia, no la verdad universal de la inferencia."
     },
-
     "CRYPTOGRAPHIC_KILLSWITCH": {
       "CERTIFICATE_STATUS": "ACTIVE",
       "REVOCATION_ENDPOINT": `${API_BASE}/revocation-status/ed25519-ms3v-root-2026`
     },
-
     "SIGNATURES": {
       "PRIMARY_SIGNATURE": {
         "ALGORITHM": "Ed25519",
@@ -140,25 +131,25 @@ export default function App() {
     nextgen: {
       tag: "FONDO DE RECUPERACIÓN (PRTR) / PLAN ESPAÑA DIGITAL",
       title: "Auditorías de NextGenerationEU & Fondos Europeos",
-      summary: "Las convocatorias NextGen conllevan inspecciones técnicas ex-post por parte de la IGAE y la Comisión Europea. Exigen trazabilidad inmutable del ciclo de vida del dato y justificación fehaciente de que los fondos financiaron una solución conforme a los principios DNSH y de seguridad digital.",
+      summary: "SAARE genera evidencia técnica reutilizable para documentación de gobernanza, auditoría, seguridad y trazabilidad de proyectos de IA. Mapea controles técnicos y evidencias de ejecución a los requisitos aplicables de tu proyecto para cumplir con exigencias de fondos y convocatorias públicas.",
       items: [
         {
-          badge: "01 / RIESGO FINANCIERO",
+          badge: "01 / EU AI ACT",
           color: "#FF4D5A",
-          title: "Reintegro Total por Falta de Trazabilidad",
-          desc: "Devolución forzosa del 100% de la ayuda con intereses si el beneficiario no acredita el registro inmutable de las operaciones de inferencia."
+          title: "Art. 9 (Risk) & Art. 12 (Logs)",
+          desc: "Trazabilidad continua de los sistemas y controles ex-ante integrados directamente en el entorno de ejecución perimetral."
         },
         {
-          badge: "02 / BLINDAJE SAARE",
+          badge: "02 / ISO/IEC 42001",
           color: "#20C997",
-          title: "Evidencia Criptográfica RFC 3161",
-          desc: "Sellado SHA-256 determinista en RAM de cada llamada al modelo sin almacenar datos personales en claro ni exponer secretos corporativos."
+          title: "Control B.6 (Data Lifecycle)",
+          desc: "Mecanismo purificador Zero-Residue en RAM (SYS_madvise) para certificar una gestión segura del ciclo de vida del dato."
         },
         {
-          badge: "03 / ENTREGABLE AUDITABLE",
+          badge: "03 / RGPD / LOPDGDD",
           color: "#2F81F7",
-          title: "Dossier de Cumplimiento ISO/IEC 42001",
-          desc: "Memoria técnica estructurada con enlaces de verificación Edge pública comprobables por inspectores de fondos comunitarios."
+          title: "Art. 5 & 32 (Minimization)",
+          desc: "Redacción criptográfica y ocultación en tránsito para asegurar que los datos PII nunca alcanzan el proveedor de inferencia LLM."
         }
       ]
     },
@@ -168,22 +159,22 @@ export default function App() {
       summary: "Para justificar los bonos de asesoramiento y adopción de IA en PYMEs, los Asesores Digitales deben presentar memorias técnicas que demuestren un análisis de riesgos real, gobernanza perimetral y un plan de cumplimiento normativo operativo.",
       items: [
         {
-          badge: "01 / RIESGO FINANCIERO",
+          badge: "01 / EVIDENCIA OBLIGATORIA",
           color: "#FF4D5A",
-          title: "Subsanación o Rechazo de la Memoria Técnica",
-          desc: "Pérdida de la subvención por presentar diagnósticos genéricos o teóricos que no demuestran la supervisión real de las herramientas de IA."
+          title: "Generador de Memorias Técnicas",
+          desc: "Evita la pérdida de subvenciones por memorias genéricas, aportando los Proof Bundles deterministas generados en la cuenta del cliente."
         },
         {
           badge: "02 / BLINDAJE SAARE",
           color: "#20C997",
-          title: "Auditoría Delegada con Handshake Token",
-          desc: "El asesor o consultor audita el tráfico de los empleados bajo delegación consentida en memoria RAM sin vulnerar el secreto empresarial."
+          title: "Auditoría Delegada con Handshake",
+          desc: "El Asesor audita el tráfico mediante Handshake Token en memoria RAM sin acceder al secreto corporativo."
         },
         {
           badge: "03 / ENTREGABLE AUDITABLE",
           color: "#2F81F7",
-          title: "Diagnóstico de Fuga de PII & Políticas L7",
-          desc: "Informe pericial descargable con la matriz de directivas activas (DNI, IBAN, DLP) exigidas por el Kit Consulting de IA."
+          title: "Matriz de Fugas de PII",
+          desc: "Informe pericial descargable con la matriz de directivas activas (DNI, IBAN, DLP) exigidas por Red.es."
         }
       ]
     },
@@ -193,32 +184,32 @@ export default function App() {
       summary: "Los proyectos de I+D+i intensivos en IA requieren demostrar una arquitectura tecnológica innovadora y robusta, con métricas de latencia validadas, protección de propiedad industrial y cumplimiento preventivo del Reglamento Europeo de IA (EU AI Act).",
       items: [
         {
-          badge: "01 / RIESGO FINANCIERO",
+          badge: "01 / HITO TÉCNICO",
           color: "#FF4D5A",
-          title: "Incumplimiento de Hitos Tecnológicos",
-          desc: "Penalizaciones en tramos no reembolsables de créditos CDTI/ENISA si la arquitectura de software no supera los tests de seguridad y latencia."
+          title: "Validación de Latencia L7",
+          desc: "Evita penalizaciones en tramos no reembolsables demostrando una latencia determinista P99 < 1.16 ms en la capa de seguridad."
         },
         {
           badge: "02 / BLINDAJE SAARE",
           color: "#20C997",
-          title: "Hook Nativo In-Process (Latencia 1.16 ms)",
-          desc: "Integración determinista mediante C-ABI (HugePages / MADV_DONTNEED) que acredita una arquitectura propia de Residuo Cero en RAM."
+          title: "Hook Nativo In-Process C-ABI",
+          desc: "Integración directa que acredita ante ENISA/CDTI una arquitectura de software disruptiva de Residuo Cero en HugePages."
         },
         {
           badge: "03 / ENTREGABLE AUDITABLE",
           color: "#2F81F7",
-          title: "Certificado Registral Safe Creative",
-          desc: "Acreditación de autoría técnica y propiedad del nodo (Safe Creative Nº 2607076315021) aportable al informe de seguimiento anual."
+          title: "Certificado Registral Independiente",
+          desc: "Acreditación de autoría y propiedad del nodo (Safe Creative Nº 2607076315021) aportable al informe de seguimiento técnico."
         }
       ]
     }
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': 'sk_saare_live_AUDITOR_TOKEN',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
-    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": "sk_saare_live_AUDITOR_TOKEN",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
-    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: sk_saare_live_AUDITOR_TOKEN" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context("sk_saare_oem_sensor_hugepages");\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección perimetral L7 hacia el interceptor determinista local o gateway edge\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V9_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [{ role: 'user', content: 'Auditar expediente: Titular con DNI 48593021X' }]\n});`,
+    python: `from openai import OpenAI\nimport os\n\n# Cliente SDK con validación, prueba de rechazo y redacción de PII ex-ante\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V9_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[{"role": "user", "content": "Auditar expediente: Titular con DNI 48593021X"}]\n)`,
+    curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Auditor-Delegation: emp_node_auth_hash_89bc2" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V9_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [{"role": "user", "content": "Auditar titular DNI 48593021X"}]\n  }'`,
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (Zero-Residue L7 Gate) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en memoria RAM mediante SYS_madvise (MADV_DONTNEED)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1; // Transmisión cortada a nivel de socket (< 0.017 ms)\n    }\n    \n    return 0; // Tráfico acotado al perímetro válido\n}`
   };
 
   useEffect(() => {
@@ -404,7 +395,7 @@ export default function App() {
 })();`;
       zip.file("inject.js", injectContent);
 
-      const contentJsCode = `// SAARE L7 TELEMETRY & DOM BRIDGE v9.0.0
+      const contentJsCode = `// SAARE L7 TELEMETRY & PROOF BUNDLE BRIDGE v9.0.0
 function updateDomSettings(settings) {
   if (settings) document.documentElement.setAttribute('data-saare-settings', JSON.stringify(settings));
 }
@@ -491,6 +482,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     setTimeout(() => setCopiedBundle(false), 2000);
   };
 
+  const copyHashToClipboard = () => {
+    navigator.clipboard.writeText(CANONICAL_HASH);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
   const currentGrant = grantsData[activeGrantTab];
 
   return (
@@ -512,7 +509,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       {/* HEADER DEEP TECH */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(7, 10, 15, 0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #151B23' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('LANDING')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('LANDING'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
             <div style={{ width: '28px', height: '28px', backgroundColor: '#E8EDF2', color: '#070A0F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '15px', borderRadius: '4px' }}>
               S
             </div>
@@ -528,6 +525,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             <a href="#proof-bundle" style={{ color: '#20C997', textDecoration: 'none', fontWeight: '600' }}>Proof Bundle</a>
             <a href="#subvenciones" style={{ color: '#2F81F7', textDecoration: 'none', fontWeight: '600' }}>Ayudas & Fondos</a>
             <a href="#solutions" style={{ color: '#8B98A7', textDecoration: 'none' }}>Despliegues</a>
+            <a href="#evidence" style={{ color: '#8B98A7', textDecoration: 'none' }}>Evidencia</a>
 
             {sessionUser ? (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: '12px' }}>
@@ -537,7 +535,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <button onClick={handleLogout} style={{ color: '#FF4D5A', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
               </div>
             ) : (
-              <button onClick={() => setCurrentView('AUTH')} style={{ padding: '7px 16px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', marginLeft: '12px' }}>
+              <button onClick={() => { setMode('login'); setCurrentView('AUTH'); }} style={{ padding: '7px 16px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', marginLeft: '12px' }}>
                 Acceso Bóveda
               </button>
             )}
@@ -672,13 +670,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               <button onClick={() => window.open(CONSOLE_URL, '_blank')} style={{ padding: '12px 28px', backgroundColor: '#2F81F7', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '13.5px', cursor: 'pointer' }}>
                 Probar Sandbox de Evaluación ↗
               </button>
-              <button onClick={() => setCurrentView('AUTH')} style={{ padding: '12px 24px', backgroundColor: '#151B23', color: '#E8EDF2', border: '1px solid #30363D', borderRadius: '4px', fontWeight: '600', fontSize: '13.5px', cursor: 'pointer' }}>
+              <button onClick={() => { setMode('register'); setCurrentView('AUTH'); }} style={{ padding: '12px 24px', backgroundColor: '#151B23', color: '#E8EDF2', border: '1px solid #30363D', borderRadius: '4px', fontWeight: '600', fontSize: '13.5px', cursor: 'pointer' }}>
                 Aprovisionar Asiento Auditor
               </button>
             </div>
           </section>
 
-          {/* NUEVO MÓDULO: ¿QUÉ PROBLEMA RESUELVE? (5 TARJETAS) */}
+          {/* MÓDULO: ¿QUÉ PROBLEMA RESUELVE? */}
           <section id="problem" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0' }}>¿Qué problema resuelve SAARE?</h2>
@@ -713,7 +711,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             </div>
           </section>
 
-          {/* NUEVO MÓDULO: MERCADOS (CASOS DE USO) */}
+          {/* MÓDULO: MERCADOS (CASOS DE USO) */}
           <section id="markets" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 8px 0' }}>¿Dónde quieres integrar SAARE?</h2>
@@ -789,7 +787,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
             </div>
             
-            {/* EL MENSAJE MÁS IMPORTANTE */}
+            {/* MENSAJE DE POSICIONAMIENTO */}
             <div style={{ textAlign: 'center', marginTop: '40px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#E8EDF2', marginBottom: '16px' }}>SAARE no es otro guardrail. Es una capa de control y evidencia alrededor de la ejecución.</h3>
               <p style={{ color: '#8B98A7', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto' }}>
@@ -1009,7 +1007,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 SAARE genera evidencia técnica reutilizable para documentación de gobernanza, auditoría, seguridad y trazabilidad de proyectos de IA. Mapea controles técnicos y evidencias de ejecución a los requisitos aplicables de tu proyecto para cumplir con exigencias de fondos y convocatorias públicas.
               </p>
 
-              {/* TABS DE SUBVENCIONES CONMUTABLES */}
+              {/* TABS DE SUBVENCIONES */}
               <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid #151B23', paddingBottom: '12px', flexWrap: 'wrap' }}>
                 <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '8px 16px', border: '1px solid', borderColor: activeGrantTab === 'nextgen' ? '#2F81F7' : '#151B23', borderRadius: '4px', background: activeGrantTab === 'nextgen' ? '#151B23' : 'transparent', color: activeGrantTab === 'nextgen' ? '#E8EDF2' : '#8B98A7', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
                   🇪🇺 NextGenerationEU & PRTR
@@ -1022,7 +1020,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 </button>
               </div>
 
-              {/* CONTENIDO DINÁMICO SEGÚN LA TAB ACTIVA */}
+              {/* CONTENIDO DINÁMICO */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
                 {currentGrant.items.map((item, idx) => (
                   <div key={idx} style={{ backgroundColor: '#070A0F', border: '1px solid #151B23', padding: '22px', borderRadius: '6px' }}>
@@ -1039,14 +1037,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <span style={{ fontSize: '12.5px', color: '#8B98A7', fontFamily: 'monospace' }}>
                   ¿Gestionas justificaciones o memorias técnicas para clientes? Habilita tu Asiento de Auditor.
                 </span>
-                <button onClick={() => setCurrentView('AUTH')} style={{ padding: '8px 20px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={() => { setMode('register'); setCurrentView('AUTH'); }} style={{ padding: '8px 20px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   Acreditar Asiento Pericial ↗
                 </button>
               </div>
             </div>
           </section>
 
-          {/* VECTORES DE DESPLIEGUE - RENOMBRADOS Y CON ADVERTENCIA DE SDK */}
+          {/* VECTORES DE DESPLIEGUE CON ACCIONES EN TODAS LAS TARJETAS */}
           <section id="solutions" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ marginBottom: '24px' }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#2F81F7' }}>// DEPLOYMENT_MODELS</span>
@@ -1058,53 +1056,72 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>EMBEDDED</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>0.017 ms</span>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>C-ABI / .so / .dll</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
                     Para fabricantes de seguridad y agentes EDR/XDR. Ejecución nativa in-process en memoria volátil.
                   </p>
                 </div>
+                <a href="#developers" onClick={() => setActiveCodeTab('cabi')} style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#20C997', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Ver C-ABI Hook ↓
+                </a>
               </div>
 
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>GATEWAY</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7' }}>Edge / HTTP</span>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>HTTP / API / Edge</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
                     Para plataformas y workflows (LangChain, n8n). Middleware perimetral de filtrado determinista.
                   </p>
                 </div>
+                <a href="#developers" onClick={() => setActiveCodeTab('nodejs')} style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#2F81F7', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Ver SDK Gateway ↓
+                </a>
               </div>
               
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#8B98A7' }}>PRIVATE</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#EAB308' }}>On-Premise</span>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Enterprise / Regulated</h3>
-                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px 0' }}>
                     Para banca, salud, legal y Administración. Despliegue on-premise con independencia del proveedor LLM.
                   </p>
                 </div>
+                <a href="mailto:peritajes@ms3v.es?subject=Consulta%20Despliegue%20Privado%20SAARE" style={{ display: 'inline-block', textAlign: 'center', padding: '8px', backgroundColor: '#151B23', border: '1px solid #30363D', color: '#E8EDF2', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600' }}>
+                  Consultar On-Premise ↗
+                </a>
               </div>
 
               <div style={{ backgroundColor: '#0D1117', border: '1px solid #2F81F7', padding: '24px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(47,129,247,0.08)' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2F81F7', backgroundColor: 'rgba(47,129,247,0.1)', padding: '2px 6px', borderRadius: '4px' }}>AUDITOR</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#20C997' }}>Asiento Único</span>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 8px 0', color: '#E8EDF2' }}>Proof & Compliance</h3>
                   <p style={{ color: '#8B98A7', fontSize: '13px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
                     Para peritos, CISOs y consultoras. Handshake consentido y generación de dictámenes periciales.
                   </p>
+                  <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: '800', color: '#E8EDF2', margin: '0 0 14px 0' }}>
+                    {AUDITOR_PLAN_PRICE} € <span style={{ fontSize: '12px', color: '#8B98A7', fontWeight: 'normal' }}>/ mes</span>
+                  </div>
                 </div>
+                <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '10px', backgroundColor: '#2F81F7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                  Contratar Asiento Auditor ↗
+                </button>
               </div>
             </div>
           </section>
 
-          {/* DEVELOPERS / SNIPPETS Y ADVERTENCIA */}
+          {/* DEVELOPERS / SNIPPETS */}
           <section id="developers" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ backgroundColor: '#0D1117', border: '1px solid #151B23', borderRadius: '8px', padding: '28px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1124,12 +1141,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               </div>
 
               <pre style={{ margin: 0, backgroundColor: '#070A0F', border: '1px solid #21262D', borderRadius: '6px', padding: '18px', color: '#E8EDF2', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
-                {codeSnippets[activeCodeTab].replace("'sk_saare_live_AUDITOR_TOKEN'", "process.env.SAARE_LICENSE").replace('"sk_saare_live_AUDITOR_TOKEN"', 'os.environ.get("SAARE_LICENSE")')}
+                {codeSnippets[activeCodeTab]}
               </pre>
             </div>
           </section>
           
-          {/* EVIDENCIA FORENSE EN VIVO (AL FINAL) */}
+          {/* EVIDENCIA FORENSE EN VIVO */}
           <section id="evidence" style={{ maxWidth: '1100px', margin: '0 auto 80px auto', padding: '0 24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
               <div>
