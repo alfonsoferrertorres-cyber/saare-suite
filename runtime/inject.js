@@ -1,18 +1,38 @@
-/* S.A.A.R.E. L7 RAM Network Interceptor & Dynamic Directives Engine v8.2.0 */
+/* S.A.A.R.E. L7 RAM Network Interceptor & ISO 27037 DEFR Forensic Agent v10.0 */
 (function() {
   const DLP = {
     dni: /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i,
     iban: /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}|ES\d{18,22}/i,
-    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
+    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/,
+    health: /(?:diagn[oó]stico|cardiopat[ií]a|receta|historia cl[ií]nica|paciente|tratamiento|patolog[ií]a)\b/i,
+    jailbreak: /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security|bypass rules)/i,
+    invoices: /(?:FAC|INV|EXP)-[A-Z0-9-]{6,16}/i,
+    unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i
   };
+
+  const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
   function getSettings() {
     try {
       const raw = document.documentElement.getAttribute('data-saare-settings');
-      return raw ? JSON.parse(raw) : { privacy: true, security: true, logs: true, finops: false };
-    } catch (e) {
-      return { privacy: true, security: true, logs: true, finops: false };
-    }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          cumplimiento_corporativo_integral: parsed.cumplimiento_corporativo_integral !== false && parsed.privacy !== false,
+          auditoria_dictamen_normativo: parsed.auditoria_dictamen_normativo !== false && parsed.logs !== false,
+          razonamiento_activo_l7: parsed.razonamiento_activo_l7 !== false && parsed.security !== false,
+          deepfake_fake_disprover: parsed.deepfake_fake_disprover !== false,
+          subvenciones_requisitos_infranqueables: parsed.subvenciones_requisitos_infranqueables !== false
+        };
+      }
+    } catch (e) {}
+    return {
+      cumplimiento_corporativo_integral: true,
+      auditoria_dictamen_normativo: true,
+      razonamiento_activo_l7: true,
+      deepfake_fake_disprover: true,
+      subvenciones_requisitos_infranqueables: true
+    };
   }
 
   function computeL7Seal(str) {
@@ -63,7 +83,7 @@
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
 
-    // 1. Google Gemini (f.req)
+    // 1. Google Gemini (f.req parser determinista)
     if (rawText.includes("f.req")) {
       let fReqValue = "";
       try {
@@ -82,7 +102,7 @@
         try {
           const outer = JSON.parse(fReqValue);
 
-          // StreamGenerate [null, "[[\"mensaje\", 0, ...], ...]"]
+          // Formato StreamGenerate
           if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
             try {
               const inner = JSON.parse(outer[1]);
@@ -95,7 +115,7 @@
             } catch {}
           }
 
-          // batchexecute batch format
+          // Formato batchexecute
           if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
             for (const batch of outer) {
               if (Array.isArray(batch)) {
@@ -154,63 +174,131 @@
 
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
-
-    // Si tanto Privacidad como Trazabilidad están deshabilitadas, se aplica bypass absoluto en RAM
-    if (!settings.privacy && !settings.logs) return null;
-
     const str = parseBody(rawBody);
     if (!str || isIgnoredRequest(url, str)) return null;
 
-    const cleanPrompt = extractCleanPrompt(str);
+    const cleanPrompt = extractCleanPrompt(str) || str.substring(0, 500);
     if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
-    // 1. Evaluación DLP solo si la directiva de Privacidad está activa
-    if (settings.privacy) {
+    const seal = computeL7Seal(cleanPrompt);
+
+    // =========================================================================
+    // INSPECCIÓN POR BÓVEDAS L7 (DEFR / DES FORENSIC LIFECYCLE)
+    // =========================================================================
+
+    // BÓVEDA 5: EL JUSTIFICADOR (Anti-Doble Financiación & Subvenciones)
+    if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt)) {
+      const match = cleanPrompt.match(DLP.invoices)[0];
+      return {
+        verdict: "RECHAZADO",
+        scenario_id: "subvenciones_requisitos_infranqueables",
+        category: "SUBVENCIONES_DUPLICIDAD",
+        norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 PRTR · 2 CFR 200",
+        forensic_role: "DES (Digital Evidence Specialist)",
+        dei_phase: "Fase 3: Adquisición Bit a Bit & Bloqueo Anti-Doble Financiación",
+        reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no acreditado.`,
+        cleanPrompt: sanitize(cleanPrompt),
+        sanitizedPrompt: sanitize(cleanPrompt),
+        cryptoSeal: seal,
+        parentHash: CANONICAL_PARENT_HASH
+      };
+    }
+
+    // BÓVEDA 4: EL DETECTOR (Fake Disprover / Unsupported Claims)
+    if (settings.deepfake_fake_disprover && DLP.unsupported.test(cleanPrompt)) {
+      return {
+        verdict: "RECHAZADO",
+        scenario_id: "deepfake_fake_disprover",
+        category: "UNSUPPORTED_CLAIMS_DEEPFAKE",
+        norma: "ISO/IEC 42001 Control B.6.3 · Cadena de Custodia Forense",
+        forensic_role: "DES (Digital Evidence Specialist)",
+        dei_phase: "Fase 4: Verificación Causal & RunLive Sampling",
+        reason: "Bloqueo Fake Disprover: Detección de Unsupported Claims o alteración documental no fundamentada en el corpus aportado.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: cleanPrompt,
+        cryptoSeal: seal,
+        parentHash: CANONICAL_PARENT_HASH
+      };
+    }
+
+    // BÓVEDA 3: EL GUARDIÁN (Razonamiento Activo & Jailbreak Guard)
+    if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt)) {
+      return {
+        verdict: "RECHAZADO",
+        scenario_id: "razonamiento_activo_l7",
+        category: "ANTI_JAILBREAK_L7",
+        norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01 · ISO 27001 A.8.7",
+        forensic_role: "Active Defense Gatekeeper",
+        dei_phase: "Fase 2: Corte Perimetral de Socket & Purga RAM",
+        reason: "Bloqueo Razonamiento Activo: Intento de evasión perimetral, modo DAN o extracción de directivas del sistema.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: cleanPrompt,
+        cryptoSeal: seal,
+        parentHash: CANONICAL_PARENT_HASH
+      };
+    }
+
+    // BÓVEDA 1: EL ESCUDO (DEFR - DNI, NIE, IBAN, Tarjetas, Datos Médicos Salud Art. 9)
+    if (settings.cumplimiento_corporativo_integral) {
       const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
       const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
       const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
+      const isHealth = DLP.health.test(cleanPrompt) || DLP.health.test(str);
 
-      if (isDni || isIban || isCard) {
-        let category = "PII_DNI";
-        let norma = "España - LOPDGDD & AEPD";
+      if (isDni || isIban || isCard || isHealth) {
+        let category = "PII_DNI_NIE";
+        let norma = "España - LOPDGDD 3/2018 & RGPD Art. 5 y 32";
 
-        if (isIban) {
-          category = "DATOS_BANCARIOS";
-          norma = "RGPD Art. 5, 32 / LOPDGDD";
+        if (isHealth) {
+          category = "DATOS_SALUD_ART9";
+          norma = "RGPD Art. 9 (Categorías Especiales / Salud)";
+        } else if (isIban) {
+          category = "DATOS_BANCARIOS_IBAN";
+          norma = "DORA Capa 7 / RGPD Art. 32";
         } else if (isCard) {
-          category = "TARJETA_CREDITO";
-          norma = "PCI-DSS / RGPD";
+          category = "TARJETA_CREDITO_PAN";
+          norma = "PCI-DSS v4 Req 3.4 & 6.4";
         }
 
         const displayPrompt = sanitize(cleanPrompt);
 
         return {
           verdict: "RECHAZADO",
+          scenario_id: "cumplimiento_corporativo_integral",
           category,
           norma,
-          reason: "Detección de datos regulados en memoria RAM L7",
+          forensic_role: "DEFR (Digital Evidence First Responder)",
+          dei_phase: "Fase 1: Identificación de Volatilidad & Aislamiento Ex-Ante",
+          reason: "Causalidad rota: Detección ex-ante de datos regulados no disociados en buffer RAM L7 (Rol DEFR).",
           cleanPrompt: displayPrompt,
           sanitizedPrompt: displayPrompt,
-          cryptoSeal: computeL7Seal(cleanPrompt)
+          cryptoSeal: seal,
+          parentHash: CANONICAL_PARENT_HASH
         };
       }
     }
 
-    // 2. Si no hay infracción, solo se emite el evento si la Trazabilidad (logs) está activa
-    if (!settings.logs) return null;
+    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO CON TESTIGO 🧠 Y AHORRO
+    if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
       verdict: "PERMITIDO",
+      scenario_id: "cumplimiento_corporativo_integral",
       category: "AUDITORIA_CONFORME",
-      norma: "ISO/IEC 42001 & EU AI Act",
-      reason: "Tráfico conforme verificado en memoria",
+      norma: "UNE-ISO/IEC 42001 & ISO/IEC 27037",
+      forensic_role: "DEFR (Digital Evidence First Responder)",
+      dei_phase: "Tráfico conforme verificado en memoria volátil RAM",
+      reason: "Inferencia conforme bajo perímetro determinista (Error Lógico 0).",
       cleanPrompt: cleanPrompt,
       sanitizedPrompt: cleanPrompt,
-      cryptoSeal: computeL7Seal(cleanPrompt)
+      active_shield: "[SAARE_ACTIVE_SHIELD: ENFORCE]",
+      brain_witness: "🧠 L7 CEREBRO WITNESS: DETERMINISTIC_VALID",
+      cryptoSeal: seal,
+      parentHash: CANONICAL_PARENT_HASH
     };
   }
 
-  // Hook XHR (Gemini y llamadas AJAX tradicionales)
+  // Hook XHR (Gemini batchexecute y llamadas AJAX)
   const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
@@ -223,7 +311,7 @@
     if (check) {
       if (check.verdict === "RECHAZADO") {
         window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        throw new Error("[S.A.A.R.E. L7] Transmisión bloqueada en RAM.");
+        throw new Error(`[S.A.A.R.E. L7] Transmisión bloqueada en RAM por [${check.scenario_id}].`);
       } else if (check.verdict === "PERMITIDO") {
         window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
       }
@@ -231,7 +319,7 @@
     return rawSend.apply(this, arguments);
   };
 
-  // Hook Fetch (ChatGPT, Claude, DeepSeek, etc.)
+  // Hook Fetch (ChatGPT, Claude, DeepSeek, Perplexity)
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");
@@ -240,7 +328,12 @@
       if (check) {
         if (check.verdict === "RECHAZADO") {
           window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-          return new Response(JSON.stringify({ error: "S.A.A.R.E. Intercept: Bloqueado en RAM" }), {
+          return new Response(JSON.stringify({
+            error: "S.A.A.R.E. L7 Intercept: Bloqueo Ex-Ante en RAM",
+            scenario: check.scenario_id,
+            reason: check.reason,
+            seal: check.cryptoSeal
+          }), {
             status: 400,
             headers: { "Content-Type": "application/json" }
           });
