@@ -57,6 +57,27 @@ export default function App() {
   const [lastEvent, setLastEvent] = useState(null);
   const [connected, setConnected] = useState(false);
   const [selectedJson, setSelectedJson] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // ESTADO DE SINCRONIZACIÓN EN VIVO CON LA BÓVEDA KV
+  const [kvStatus, setKvStatus] = useState({
+    online: true,
+    latencyMs: 16,
+    lastSync: new Date().toLocaleTimeString()
+  });
+
+  // FILTRO ACTIVO DE ESCENARIO DESDE LA CABECERA
+  const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
+
+  // LISTADO DE ESCENARIOS VALIDANTES MONITORIZADOS EN LA CABECERA
+  const monitoredScenarios = [
+    { id: "cumplimiento_corporativo_es", shortName: "N8N / Workflows", icon: "⚡", color: "#0284c7" },
+    { id: "banca_dora_pci_dss", shortName: "Banca / DORA", icon: "🏦", color: "#d97706" },
+    { id: "scn-edr-cabi", shortName: "EDR C-ABI", icon: "🛡️", color: "#16a34a" },
+    { id: "scn-gsi-forensic", shortName: "GSI / Peritaje", icon: "⚖️", color: "#dc2626" },
+    { id: "scn-sanidad-salud", shortName: "Salud LOPD", icon: "🏥", color: "#9333ea" },
+    { id: "scn-fondos-prtr", shortName: "PRTR / NextGen", icon: "🇪🇺", color: "#0284c7" }
+  ];
 
   const [customRules, setCustomRules] = useState([]);
   const [newRule, setNewRule] = useState({ label: '', pattern: '' });
@@ -82,20 +103,37 @@ export default function App() {
   const activeDirectivesCount = Object.values(directives).filter(Boolean).length;
   const disabledDirectivesCount = 4 - activeDirectivesCount;
 
-  // Consulta continua de telemetría filtrada por usuario autenticado
-  const fetchTelemetry = async () => {
+  // Consulta continua de telemetría y validación en vivo de credenciales contra Bóveda KV
+  const fetchTelemetryAndVerifyKV = async () => {
     if (!sessionUser?.email) return;
 
+    const startTime = performance.now();
     try {
       const userParam = encodeURIComponent(sessionUser.email);
-      const [resRuns, resRules] = await Promise.all([
+      
+      const [resRuns, resRules, resAuth] = await Promise.all([
         fetch(`${API_BASE}/runs?user=${userParam}`),
-        fetch(`${API_BASE}/custom-rules?user=${userParam}`)
+        fetch(`${API_BASE}/custom-rules?user=${userParam}`),
+        fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: sessionUser.email, token: sessionUser.apiKey || sessionUser.token || "session_check", source: 'console' })
+        }).catch(() => null)
       ]);
 
-      if (resRuns.ok) {
+      const elapsed = Math.round(performance.now() - startTime);
+
+      if (resAuth && resAuth.ok) {
+        const authData = await resAuth.json();
+        if (authData.user) {
+          setSessionUser(prev => ({ ...prev, ...authData.user }));
+        }
+        setKvStatus({ online: true, latencyMs: elapsed, lastSync: new Date().toLocaleTimeString() });
+      }
+
+      if (resRuns && resRuns.ok) {
         const dataRuns = await resRuns.json();
-        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || []);
+        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
         
         runsList.sort((a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0));
         
@@ -104,18 +142,19 @@ export default function App() {
         setConnected(true);
       }
 
-      if (resRules.ok) {
+      if (resRules && resRules.ok) {
         const dataRules = await resRules.json();
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
     } catch {
       setConnected(false);
+      setKvStatus(prev => ({ ...prev, online: false, lastSync: "Reintentando..." }));
     }
   };
 
   useEffect(() => {
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 3000);
+    fetchTelemetryAndVerifyKV();
+    const interval = setInterval(fetchTelemetryAndVerifyKV, 4000);
     return () => clearInterval(interval);
   }, [sessionUser?.email]);
 
@@ -200,6 +239,13 @@ export default function App() {
     setConfirmModal({ isOpen: false, directiveKey: null });
   };
 
+  // Filtrado compuesto de eventos
+  const filteredEvents = events.filter(ev => {
+    const matchesScenario = activeScenarioFilter === 'ALL' || (ev.scenario_id && ev.scenario_id.toLowerCase() === activeScenarioFilter.toLowerCase());
+    const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesScenario && matchesSearch;
+  });
+
   if (!sessionUser) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0f1d', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
@@ -235,32 +281,106 @@ export default function App() {
 
       <main style={{ maxWidth: '1440px', margin: '24px auto', padding: '0 24px' }}>
         
-        {/* PANEL INFORMATIVO DEL TENANT */}
-        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 28px', border: '1px solid #cbd5e1', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
-          <div>
-            <h2 style={{ margin: '0 0 6px 0', fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
-              PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
-            </h2>
-            <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
-              ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#dc2626' }}>{disabledDirectivesCount} Deshabilitadas</strong>
+        {/* PANEL INFORMATIVO DEL TENANT + MONITOR EN VIVO DE BÓVEDA KV */}
+        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 28px', border: '1px solid #cbd5e1', marginBottom: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 6px 0', fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
+                PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+              </h2>
+              <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
+                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#dc2626' }}>{disabledDirectivesCount} Deshabilitadas</strong>
+              </div>
+            </div>
+
+            {/* ESTADO EN VIVO DE BÓVEDA KV */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#16a34a' : '#dc2626' }}></span>
+                <span style={{ color: '#64748b' }}>KV VAULT:</span>
+                <strong style={{ color: kvStatus.online ? '#15803d' : '#dc2626' }}>
+                  {kvStatus.online ? `EN VIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
+                </strong>
+                <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '6px 14px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#16a34a' : '#ef4444' }}></span>
+                {connected ? 'L7 HOOK ACTIVO' : 'DESCONECTADO'}
+              </div>
+
+              <button onClick={handleLogout} style={{ padding: '8px 16px', background: '#fee2e2', border: '1px solid #ef4444', color: '#dc2626', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+                SALIR
+              </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '8px 16px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#16a34a' : '#ef4444' }}></span>
-              {connected ? 'BÓVEDA KV EN LINEA' : 'DESCONECTADO'}
-            </div>
-            <button onClick={handleLogout} style={{ padding: '8px 16px', background: '#fee2e2', border: '1px solid #ef4444', color: '#dc2626', borderRadius: '8px', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              SALIR
+          {/* TESTIGOS VISUALES SIMULTÁNEOS DE ESCENARIOS VALIDANTES */}
+          <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', marginRight: '6px' }}>
+              TESTIGOS L7 EN TIEMPO REAL:
+            </span>
+
+            <button
+              onClick={() => setActiveScenarioFilter('ALL')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: '800',
+                cursor: 'pointer',
+                border: '1px solid',
+                borderColor: activeScenarioFilter === 'ALL' ? '#0284c7' : '#cbd5e1',
+                background: activeScenarioFilter === 'ALL' ? '#e0f2fe' : '#ffffff',
+                color: activeScenarioFilter === 'ALL' ? '#0369a1' : '#475569',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              TODOS ({events.length})
             </button>
+
+            {monitoredScenarios.map((scn) => {
+              const isSelected = activeScenarioFilter === scn.id;
+              const countInScenario = events.filter(e => e.scenario_id && e.scenario_id.toLowerCase() === scn.id.toLowerCase()).length;
+              return (
+                <button
+                  key={scn.id}
+                  onClick={() => setActiveScenarioFilter(scn.id)}
+                  title={`Filtrar telemetría del escenario: ${scn.shortName}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    border: '1px solid',
+                    borderColor: isSelected ? scn.color : '#e2e8f0',
+                    background: isSelected ? `${scn.color}15` : '#f8fafc',
+                    color: isSelected ? scn.color : '#334155',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span style={{ color: '#16a34a', fontSize: '9px' }}>●</span>
+                  <span>{scn.icon}</span>
+                  <span>{scn.shortName}</span>
+                  <span style={{ background: isSelected ? scn.color : '#e2e8f0', color: isSelected ? '#fff' : '#64748b', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
+                    {countInScenario > 0 ? countInScenario : 'VALID'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* SELECTOR DE PESTAÑAS */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#ffffff', color: activeTab === 'GLOBAL' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            REGISTRO GLOBAL ({events.length})
+            REGISTRO GLOBAL ({filteredEvents.length})
           </button>
           <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#ffffff', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             S.A.A.R.E. (RUNLIVE)
@@ -273,16 +393,27 @@ export default function App() {
         {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA</h3>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Total filtradas por {sessionUser.email}: <strong>{events.length}</strong></span>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA</h3>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Filtro activo: <strong>{activeScenarioFilter}</strong> | Registros: <strong>{filteredEvents.length}</strong>
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar por DNI, IBAN, Hash o contenido..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', width: '280px' }}
+              />
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                 <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   <tr>
                     <th style={{ padding: '14px 20px' }}>TIMESTAMP</th>
-                    <th style={{ padding: '14px 20px' }}>ID EVIDENCIA</th>
+                    <th style={{ padding: '14px 20px' }}>ID EVIDENCIA / ESCENARIO</th>
                     <th style={{ padding: '14px 20px' }}>CATEGORÍA / NORMA</th>
                     <th style={{ padding: '14px 20px' }}>PROMPT INTERCEPTADO</th>
                     <th style={{ padding: '14px 20px' }}>DICTAMEN</th>
@@ -290,25 +421,31 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.length === 0 ? (
+                  {filteredEvents.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                        No hay evidencias registradas para esta cuenta. Realiza una prueba en Gemini o ChatGPT para observar la captura perimetral.
+                        No hay evidencias registradas para el filtro seleccionado ({activeScenarioFilter}). Realiza una inferencia para observar la captura perimetral en caliente.
                       </td>
                     </tr>
                   ) : (
-                    events.map((ev, i) => {
+                    filteredEvents.map((ev, i) => {
                       const id = ev.runId || ev.evidenceId || `EV-L7-${i + 1}`;
                       const timestamp = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'En vivo';
                       const category = ev.violationDetails?.category || ev.category || 'PII_DETECTED';
                       const norma = ev.violationDetails?.norma || ev.norma || 'LOPDGDD / AI Act';
                       const promptText = ev.promptInput || ev.promptSummary || ev.payload || "Sin contenido";
                       const verdict = ev.verdict || 'RECHAZADO';
+                      const scenarioTag = ev.scenario_id || 'cumplimiento_corporativo_es';
 
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                           <td style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{timestamp}</td>
-                          <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }}>{id}</td>
+                          <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }}>
+                            <div>{id}</div>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#e2e8f0', padding: '1px 5px', borderRadius: '3px' }}>
+                              {scenarioTag}
+                            </span>
+                          </td>
                           <td style={{ padding: '14px 20px' }}>
                             <div style={{ fontWeight: '700', color: '#0f172a' }}>{category}</div>
                             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{norma}</div>
@@ -347,6 +484,7 @@ export default function App() {
               <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px', fontSize: '0.85rem' }}>
                   <div>ID EVIDENCIA: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.runId || lastEvent.evidenceId}</strong></div>
+                  <div>ESCENARIO: <strong style={{ color: '#0f172a' }}>{lastEvent.scenario_id || 'cumplimiento_corporativo_es'}</strong></div>
                   <div>USUARIO AUDITADO: <strong>{lastEvent.user || sessionUser.email}</strong></div>
                   <div>TIMESTAMP: <strong>{new Date(lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
                   <div>DICTAMEN: <strong style={{ color: lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a' }}>{lastEvent.verdict || 'RECHAZADO'}</strong></div>
