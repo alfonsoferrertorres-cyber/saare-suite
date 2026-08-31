@@ -134,6 +134,7 @@ export default function App() {
     }
   };
 
+  // Mapeo de las 5 Patas Comerciales con sus imágenes 101 a 105
   const deploymentModes = [
     {
       code: "IPaaS",
@@ -142,6 +143,7 @@ export default function App() {
       badge: "REVENUE SHARING / ADD-ON",
       color: "#06B6D4",
       icon: "🌐",
+      image: "/101.jfif",
       deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL.",
       codeSnippetKey: "nodejs"
     },
@@ -152,6 +154,7 @@ export default function App() {
       badge: "LICENCIA OEM / ARR SEAT",
       color: "#20C997",
       icon: "⚡",
+      image: "/102.jfif",
       deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook.",
       codeSnippetKey: "cabi"
     },
@@ -162,6 +165,7 @@ export default function App() {
       badge: "CANAL ISV & ASIENTO AUDITOR",
       color: "#c084fc",
       icon: "⚖️",
+      image: "/103.jfif",
       deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519.",
       codeSnippetKey: "python"
     },
@@ -172,6 +176,7 @@ export default function App() {
       badge: "PAY-AS-YOU-GO VOLUMEN",
       color: "#2F81F7",
       icon: "📦",
+      image: "/104.jfif",
       deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate.",
       codeSnippetKey: "curl"
     },
@@ -182,6 +187,7 @@ export default function App() {
       badge: "TIER COMPLIANCE MODE (MRR)",
       color: "#EAB308",
       icon: "🔒",
+      image: "/105.jfif",
       deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK.",
       codeSnippetKey: "nodejs"
     }
@@ -224,7 +230,7 @@ export default function App() {
     nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'corp_tenant_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
     python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "corp_tenant_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [\n      {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n      {"role": "user", "content": "Inferencia con testigo L7 del cerebro y telemetria de ahorro"}\n    ]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en RAM mediante SYS_madvise (Zero-Disk Writes)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
   };
 
   const handleDownloadSDK = async () => {
@@ -432,7 +438,7 @@ export default function App() {
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: ESCENARIOS SAARE */}
+          {/* TAB 1: ESCENARIOS SAARE (1.jfif a 5.jfif) */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '48px', paddingTop: '10px' }}>
@@ -832,7 +838,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: ARQUITECTURA & MODELOS ISV (UNIFICADA CON SDK) */}
+          {/* TAB 3: ARQUITECTURA & MODELOS ISV CON IMÁGENES 101 A 105 */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -847,8 +853,8 @@ export default function App() {
                 </p>
               </div>
 
-              {/* GRID DE LAS 5 PATAS COMERCIALES */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '36px' }}>
+              {/* GRID DE LAS 5 PATAS COMERCIALES CON IMÁGENES 101-105 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '36px' }}>
                 {deploymentModes.map((dep) => {
                   const isSelected = selectedArchPillar === dep.code;
                   return (
@@ -860,25 +866,42 @@ export default function App() {
                       }}
                       style={{ 
                         background: isSelected ? 'rgba(56, 189, 248, 0.08)' : '#05070c', 
-                        padding: '22px', 
-                        borderRadius: '10px', 
-                        border: `1px solid ${isSelected ? dep.color : '#1e293b'}`, 
+                        padding: '18px', 
+                        borderRadius: '12px', 
+                        border: `1.5px solid ${isSelected ? dep.color : '#1e293b'}`, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         justifyContent: 'space-between',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        boxShadow: isSelected ? `0 4px 20px ${dep.color}25` : 'none'
+                        boxShadow: isSelected ? `0 6px 24px ${dep.color}30` : 'none'
                       }}
                     >
                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
-                          <span style={{ fontSize: '18px' }}>{dep.icon}</span>
+                        {/* IMAGEN DE LA PATA COMERCIAL */}
+                        <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #1e293b', marginBottom: '14px', background: '#090d16' }}>
+                          <img 
+                            src={dep.image} 
+                            alt={dep.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/saare-brand-header.jpg';
+                            }}
+                          />
+                          <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(5,7,12,0.85)', padding: '3px 8px', borderRadius: '4px', border: `1px solid ${dep.color}`, color: dep.color, fontSize: '10px', fontWeight: 'bold' }}>
+                            {dep.badge}
+                          </div>
                         </div>
-                        <h4 style={{ color: '#fff', margin: '4px 0 8px 0', fontSize: '15px', fontWeight: '800' }}>{dep.title}</h4>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '16px' }}>{dep.icon}</span>
+                          <h4 style={{ color: '#fff', margin: 0, fontSize: '14.5px', fontWeight: '800' }}>{dep.title}</h4>
+                        </div>
+                        
                         <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '0 0 12px 0', lineHeight: 1.45 }}>{dep.desc}</p>
                       </div>
+
                       <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '10px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
                         {dep.deployInfo}
                       </div>
