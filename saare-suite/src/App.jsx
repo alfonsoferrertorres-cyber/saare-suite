@@ -73,26 +73,27 @@ export default function App() {
     }
   };
 
-  // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023
+  // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023 (Completamente Anonimizado)
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ISO27037_DEI",
-    "EVENT_IDENTIFIER": {
-      "EVENT_ID": "EV-2026-0829-7F82A1",
+    "ATTESTATION_METADATA": {
+      "BUNDLE_ID": "PB-2026-0829-7F82A1",
       "PARENT_HASH": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "CONTEXT_ID": "MS3V-RECON-VALID-2026-ALF-0521",
-      "ROOT_NODE_ID": "2607076315021",
-      "ENVIRONMENT": "PRODUCTION_SECURE_RAM"
+      "CONTEXT_ID": "SAARE-RECON-VALID-2026-CORE-0521",
+      "REGISTRATION_ANCHOR": "Safe Creative Record 2607076315021",
+      "ENVIRONMENT": "CORPORATE_ISOLATED_SECURE_RAM",
+      "CHAIN_OF_CUSTODY_STANDARD": "ISO/IEC 27037:2012 (DEFR / DES Framework)"
     },
     "FORENSIC_ROLES_ISO_27037": {
       "DEFR": {
-        "ROLE_NAME": "Digital Evidence First Responder (Empleado Auditado / Sensor Runtime L7)",
-        "SCENARIO_BINDING": "01_EL_ESCUDO",
+        "ROLE_NAME": "Digital Evidence First Responder (Sensor Perimetral Runtime L7)",
+        "SCENARIO_BINDING": "01_PREVENT_EL_ESCUDO",
         "ACTION": "RAM_VOLATILE_BUFFER_ISOLATION",
         "STATUS": "ACQUIRED_ZERO_DISK_SYS_MADVISE"
       },
       "DES": {
-        "ROLE_NAME": "Digital Evidence Specialist (Consultora Auditora GRC / Perito Judicial)",
-        "SCENARIO_BINDING": "04_LA_EVIDENCIA",
+        "ROLE_NAME": "Digital Evidence Specialist (Consola Auditora GRC / Perito Judicial)",
+        "SCENARIO_BINDING": "04_PROVE_LA_EVIDENCIA",
         "ACTION": "CRYPTOGRAPHIC_PRESERVATION_AND_CHAIN_ATTESTATION",
         "STATUS": "QUALIFIED_RFC3161_SEALED"
       }
@@ -127,7 +128,7 @@ export default function App() {
         "CHAIN_STATUS": "CONTINUOUS"
       }
     },
-    "SIGNATURES": {
+    "SIGNATURES_AND_TRUST": {
       "PRIMARY_SIGNATURE": { "ALGORITHM": "Ed25519", "DIGEST": CANONICAL_HASH },
       "TIME_STAMP_AUTHORITY": { "STANDARD": "RFC 3161", "TSA_RECORD": "QUALIFIED_TRUST_ANCHOR_EIDAS" }
     }
@@ -215,8 +216,8 @@ export default function App() {
   };
 
   const codeSnippets = {
-    nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
-    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
+    nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'corp_tenant_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
+    python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "corp_tenant_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [\n      {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n      {"role": "user", "content": "Inferencia con testigo L7 del cerebro y telemetria de ahorro"}\n    ]\n  }'`,
     cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
   };
@@ -225,7 +226,7 @@ export default function App() {
     try {
       setDownloadingZip(true);
       const zip = new JSZip();
-      const tTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITOR";
+      const tTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITORA";
 
       zip.file("manifest.json", JSON.stringify({
         "manifest_version": 3,
@@ -318,6 +319,9 @@ export default function App() {
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios_saare'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#0284c7' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? 'rgba(2, 132, 199, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#38bdf8' : '#ffffff', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
               ⚡ Escenarios SAARE
             </button>
+            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('cases'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'cases' ? '#9333ea' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'cases' ? 'rgba(147, 51, 234, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'cases' ? '#c084fc' : '#94a3b8', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
+              🏛️ Casos de Uso & Negocio
+            </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('architecture'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Arquitectura
             </button>
@@ -362,12 +366,12 @@ export default function App() {
               {mode === 'register' && (
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '6px' }}>ORGANIZACIÓN</label>
-                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Gabinete Jurídico MS3V" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#05070c', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} />
+                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ej: Entidad Corporativa / Consultora" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#05070c', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} />
                 </div>
               )}
               <div>
                 <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '6px' }}>CORREO CORPORATIVO</label>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="auditor@empresa.es" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#05070c', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} />
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="auditor@empresa.com" style={{ width: '100%', padding: '10px 12px', backgroundColor: '#05070c', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '6px' }}>CONTRASEÑA</label>
@@ -406,13 +410,13 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
+      {/* VISTA PRINCIPAL */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
+          {/* TAB 1: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
-              {/* TÍTULO PRINCIPAL */}
               <section style={{ textAlign: 'center', marginBottom: '48px', paddingTop: '10px' }}>
                 <h1 style={{ fontSize: '46px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
                   Cinco formas de proteger tu IA
@@ -428,9 +432,7 @@ export default function App() {
               {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS EN ORDEN CANÓNICO */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                {/* ========================================================================= */}
-                {/* 01. PREVENT — EL ESCUDO (IMAGEN: /1.jfif)                                 */}
-                {/* ========================================================================= */}
+                {/* 01. PREVENT — EL ESCUDO */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>01</div>
@@ -438,10 +440,7 @@ export default function App() {
                       src="/1.jfif" 
                       alt="01. El Escudo - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/saare-brand-header.jpg'; }}
                     />
                   </div>
 
@@ -481,9 +480,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 02. ENFORCE — EL GUARDIÁN (IMAGEN: /3.jfif)                                */}
-                {/* ========================================================================= */}
+                {/* 02. ENFORCE — EL GUARDIÁN */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>02</div>
@@ -491,10 +488,7 @@ export default function App() {
                       src="/3.jfif" 
                       alt="02. Razonamiento Activo - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/saare-brand-header.jpg'; }}
                     />
                   </div>
 
@@ -543,9 +537,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 03. VERIFY — EL DETECTOR (IMAGEN: /4.jfif)                                */}
-                {/* ========================================================================= */}
+                {/* 03. VERIFY — EL DETECTOR */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
@@ -553,10 +545,7 @@ export default function App() {
                       src="/4.jfif" 
                       alt="03. El Detector - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/saare-brand-header.jpg'; }}
                     />
                   </div>
 
@@ -593,9 +582,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 04. PROVE — LA EVIDENCIA (IMAGEN: /2.jfif)                                 */}
-                {/* ========================================================================= */}
+                {/* 04. PROVE — LA EVIDENCIA */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>04</div>
@@ -603,10 +590,7 @@ export default function App() {
                       src="/2.jfif" 
                       alt="04. La Evidencia - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/saare-brand-header.jpg'; }}
                     />
                   </div>
 
@@ -646,9 +630,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 05. JUSTIFY — EL JUSTIFICADOR (IMAGEN: /5.jfif)                           */}
-                {/* ========================================================================= */}
+                {/* 05. JUSTIFY — EL JUSTIFICADOR */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>05</div>
@@ -656,10 +638,7 @@ export default function App() {
                       src="/5.jfif" 
                       alt="05. El Justificador - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/saare-brand-header.jpg'; }}
                     />
                   </div>
 
@@ -828,6 +807,93 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB CASOS DE NEGOCIO (AESIA, PERITAJES Y FONDOS PÚBLICOS) */}
+          {activeNavTab === 'cases' && (
+            <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <span style={{ color: '#c084fc', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: '1px' }}>
+                  // ENTERPRISE USE CASES & LEGAL ASSURANCE
+                </span>
+                <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '8px 0' }}>
+                  Casos de Uso Corporativos & Valor Regulatorio
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '14.5px', maxWidth: '780px', margin: '0 auto' }}>
+                  Transforma la obligación de cumplimiento en una ventaja competitiva blindando la responsabilidad técnica y jurídica de tu entidad.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                
+                {/* 1. AUDITORÍAS FORMALES */}
+                <div style={{ background: '#05070c', border: '1px solid #1e3a8a', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>🛡️</span>
+                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#38bdf8', margin: 0 }}>Auditorías Formales</h3>
+                    </div>
+                    <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      AESIA · EU AI ACT · ISO 42001
+                    </span>
+                    <p style={{ color: '#cbd5e1', fontSize: '13.5px', lineHeight: 1.55, marginTop: '14px' }}>
+                      Acredita ante la <strong>AESIA (Agencia Española de Supervisión de IA)</strong> o comités de gobernanza que los modelos operan con <strong>trazabilidad ex-ante</strong> y sin fugas de datos regulados (PII, nóminas o historias clínicas).
+                    </p>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '14px', marginTop: '16px', fontSize: '12px', color: '#34d399', fontWeight: 'bold' }}>
+                    ✔ Evidencia continua en tiempo de ejecución (Runtime Evidence)
+                  </div>
+                </div>
+
+                {/* 2. PERITAJES JUDICIALES */}
+                <div style={{ background: '#05070c', border: '1px solid #9333ea', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>⚖️</span>
+                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#c084fc', margin: 0 }}>Peritajes Judiciales</h3>
+                    </div>
+                    <span style={{ background: 'rgba(192, 132, 252, 0.1)', color: '#c084fc', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      ISO 27037 · VALIDEZ PROCESAL PLENA
+                    </span>
+                    <p style={{ color: '#cbd5e1', fontSize: '13.5px', lineHeight: 1.55, marginTop: '14px' }}>
+                      Sirve como prueba documental y pericial con <strong>plena validez procesal</strong> en litigios sobre propiedad intelectual, revelación de secretos industriales o responsabilidad civil derivada de decisiones algorítmicas.
+                    </p>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '14px', marginTop: '16px', fontSize: '12px', color: '#c084fc', fontWeight: 'bold' }}>
+                    ✔ Firma asimétrica Ed25519 y sellos de tiempo RFC 3161 eIDAS
+                  </div>
+                </div>
+
+                {/* 3. JUSTIFICACIÓN DE FONDOS PÚBLICOS */}
+                <div style={{ background: '#05070c', border: '1px solid #ca8a04', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>🏛️</span>
+                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#facc15', margin: 0 }}>Justificación de Fondos Públicos</h3>
+                    </div>
+                    <span style={{ background: 'rgba(250, 204, 21, 0.1)', color: '#facc15', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      IGAE · OLAF · PRTR · 2 CFR 200
+                    </span>
+                    <p style={{ color: '#cbd5e1', fontSize: '13.5px', lineHeight: 1.55, marginTop: '14px' }}>
+                      Demuestra ante la <strong>IGAE y la OLAF</strong> la trazabilidad de facturas, la <strong>ausencia de doble financiación</strong> y el cumplimiento de hitos técnicos y medioambientales (DNSH) en proyectos financiados con fondos <strong>NextGenerationEU, CDTI o PRTR</strong>.
+                    </p>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '14px', marginTop: '16px', fontSize: '12px', color: '#facc15', fontWeight: 'bold' }}>
+                    ✔ Bloqueo por Hash SHA-256 de facturas y memorias automatizadas
+                  </div>
+                </div>
+
+              </div>
+
+              <div style={{ textAlign: 'center', background: '#05070c', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+                <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: '0 0 14px 0' }}>
+                  ¿Necesitas desplegar el asiento auditor para tu consultora o departamento pericial?
+                </p>
+                <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '12px 28px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '6px', fontWeight: '800', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
+                  Contratar Asiento Auditor (149 €/mes) ↗
+                </a>
+              </div>
+            </div>
+          )}
+
           {/* TAB ARQUITECTURA */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
@@ -911,7 +977,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB COMPLIANCE CON SELECTOR ACTIVO */}
+          {/* TAB COMPLIANCE */}
           {activeNavTab === 'compliance' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
@@ -987,17 +1053,17 @@ export default function App() {
             </div>
           )}
 
-          {/* FOOTER */}
+          {/* FOOTER ANONIMIZADO */}
           <footer style={{ borderTop: '1px solid #1e293b', marginTop: '60px', paddingTop: '32px', fontSize: '12px', color: '#64748b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
                 <strong style={{ color: '#fff' }}>SAARE</strong> · AI Security & Evidence Layer
-                <div style={{ marginTop: '4px' }}>Safe Creative ID: 2607076315021 / 2607076314949 · © 2026 Gabinete Jurídico y Pericial MS3V</div>
+                <div style={{ marginTop: '4px' }}>Root Authority Registry: Safe Creative 2607076315021 / 2607076314949 · SAARE Digital Governance</div>
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', textDecoration: 'none' }}>Verificador API</a>
                 <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', textDecoration: 'none' }}>Consola GRC</a>
-                <a href="mailto:peritajes@ms3v.es" style={{ color: '#94a3b8', textDecoration: 'none' }}>Contacto</a>
+                <a href="mailto:enterprise.audit@saare.es" style={{ color: '#94a3b8', textDecoration: 'none' }}>Contacto Corporativo</a>
               </div>
             </div>
           </footer>
