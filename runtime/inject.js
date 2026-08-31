@@ -62,7 +62,15 @@
   function isIgnoredRequest(url, bodyStr) {
     if (url) {
       const u = String(url).toLowerCase();
-      if (u.includes("/log?") || u.includes("play.google.com") || u.includes("google-analytics") || u.includes("/collect?") || u.includes("gen_204") || u.includes("/upload/")) {
+      if (
+        u.includes("/log?") || 
+        u.includes("play.google.com") || 
+        u.includes("google-analytics") || 
+        u.includes("/collect?") || 
+        u.includes("gen_204") || 
+        u.includes("/upload/") ||
+        u.includes("saare-api")
+      ) {
         return true;
       }
     }
@@ -187,33 +195,6 @@
       });
   }
 
-  function emitTelemetryToKV(eventData) {
-    try {
-      const activeUser = getActiveUser();
-      const payload = {
-        user: activeUser,
-        scenario_id: eventData.scenario_id,
-        promptInput: eventData.cleanPrompt,
-        verdict: eventData.verdict,
-        violationDetails: { norma: eventData.norma, reason: eventData.reason },
-        forensic_role: eventData.forensic_role,
-        timestamp: new Date().toISOString()
-      };
-
-      if (navigator.sendBeacon) {
-        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-        navigator.sendBeacon(`${API_INGEST_URL}?user=${encodeURIComponent(activeUser)}`, blob);
-      } else {
-        fetch(`${API_INGEST_URL}?user=${encodeURIComponent(activeUser)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          keepalive: true
-        }).catch(() => {});
-      }
-    } catch (e) {}
-  }
-
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
     const str = parseBody(rawBody);
@@ -317,7 +298,7 @@
       }
     }
 
-    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO
+    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO (BÓVEDA 2 AUDITORÍA)
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
@@ -349,7 +330,6 @@
     const check = evaluatePayload(body, this._saare_url);
     if (check) {
       window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-      emitTelemetryToKV(check);
       if (check.verdict === "RECHAZADO") {
         throw new Error(`[S.A.A.R.E. L7] Transmisión bloqueada en RAM por [${check.scenario_id}].`);
       }
@@ -365,7 +345,6 @@
       const check = evaluatePayload(config.body, url);
       if (check) {
         window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        emitTelemetryToKV(check);
         if (check.verdict === "RECHAZADO") {
           return new Response(JSON.stringify({
             error: "S.A.A.R.E. L7 Intercept: Bloqueo Ex-Ante en RAM",

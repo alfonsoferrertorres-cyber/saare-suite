@@ -63,6 +63,7 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [selectedJson, setSelectedJson] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [exportingBundle, setExportingBundle] = useState(false);
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
@@ -72,11 +73,11 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS MAESTRAS
+  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS MAESTRAS (PREVENT -> ENFORCE -> VERIFY -> PROVE -> JUSTIFY)
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
-      name: "01. EL ESCUDO: CUMPLIMIENTO CORPORATIVO & PII (ROL DEFR)",
-      category: "ROL DEFR / PRIVACIDAD & SALUD",
+      name: "01. PREVENT: CUMPLIMIENTO CORPORATIVO & PII (ROL DEFR)",
+      category: "01 / PREVENT (ROL DEFR)",
       badgeColor: "#0284c7",
       desc: "Protección perimetral en memoria RAM para el empleado auditado como primer interviniente (DEFR - ISO 27037). Bloquea y redacta DNI, NIE, IBAN, nóminas, tarjetas y datos médicos (RGPD Art. 9) con purga atómica SYS_madvise.",
       llmEffect: "Redacta o aborta en memoria volátil en 1.16 ms antes de que los datos sensibles alcancen al proveedor LLM.",
@@ -90,25 +91,9 @@ export default function App() {
         { key: "purge_sys_madvise", label: "Purga RAM Zero-Disk (SYS_madvise)", default: true }
       ]
     },
-    auditoria_dictamen_normativo: {
-      name: "02. LA EVIDENCIA: BÓVEDA PERICIAL & DICTAMEN GRC (ROL DES)",
-      category: "ROL DES / ASIENTO AUDITOR",
-      badgeColor: "#9333ea",
-      desc: "Extracción y custodia de pruebas periciales para consultoras y peritos judiciales (DES - ISO 27037). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo cualificados RFC 3161 eIDAS.",
-      llmEffect: "Emite el certificado de evidencia con validez probatoria plena ante comités de auditoría, la AESIA o tribunales.",
-      norma: "ISO/IEC 27037 Fases 3 & 4 · UNE-ISO/IEC 42001:2023 · EU AI Act Art. 12 · RFC 3161",
-      icon: "⚖️",
-      monetization: "Asiento Auditor (149 €/mes)",
-      options: [
-        { key: "rfc3161_qualified_tsa", label: "Sello de Tiempo Cualificado eIDAS / RFC 3161", default: true },
-        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
-        { key: "merkle_root_anchoring", label: "Inclusión en Árbol de Transparencia Merkle", default: true },
-        { key: "safe_creative_anchor", label: "Anclaje Registral Safe Creative Nº 2607076315021", default: true }
-      ]
-    },
     razonamiento_activo_l7: {
-      name: "03. EL GUARDIÁN: RAZONAMIENTO ACTIVO & TESTIGO DEL CEREBRO",
-      category: "BLINDAJE ACTIVO & WITNESS",
+      name: "02. ENFORCE: RAZONAMIENTO ACTIVO & TESTIGO DEL CEREBRO",
+      category: "02 / ENFORCE (DEFENSA ACTIVA)",
       badgeColor: "#16a34a",
       desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica el comando léxico [SAARE_ACTIVE_SHIELD: ENFORCE] e inyecta el testigo 🧠 L7 CEREBRO en la respuesta del modelo.",
       llmEffect: "Inserta la firma 🧠 L7 CEREBRO WITNESS al final de la inferencia y mide el ahorro de pipeline en cada ejecución.",
@@ -123,8 +108,8 @@ export default function App() {
       ]
     },
     deepfake_fake_disprover: {
-      name: "04. EL DETECTOR: INTEGRIDAD FORENSE & FAKE DISPROVER",
-      category: "DETECCIÓN DE FALSEDAD & RUNLIVE",
+      name: "03. VERIFY: INTEGRIDAD FORENSE & FAKE DISPROVER",
+      category: "03 / VERIFY (DETECCIÓN)",
       badgeColor: "#ea580c",
       desc: "Inspección causal estricta (Corpus Grounding / No-Unsupported-Claims) frente a alucinaciones, contratos con cláusulas inventadas (LegalTech), falsificación de atestados de siniestros (Insurtech) o deepfakes documentales.",
       llmEffect: "Fuerza estado RECHAZADO determinista si la inferencia genera aserciones no sustentadas en la evidencia base.",
@@ -138,9 +123,25 @@ export default function App() {
         { key: "anti_tamper_evidence", label: "Verificación de Integridad contra Alteraciones", default: true }
       ]
     },
+    auditoria_dictamen_normativo: {
+      name: "04. PROVE: BÓVEDA PERICIAL & DICTAMEN GRC (ROL DES)",
+      category: "04 / PROVE (ROL DES)",
+      badgeColor: "#9333ea",
+      desc: "Extracción y custodia de pruebas periciales para consultoras y peritos judiciales (DES - ISO 27037). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo cualificados RFC 3161 eIDAS.",
+      llmEffect: "Emite el certificado de evidencia con validez probatoria plena ante comités de auditoría, la AESIA o tribunales.",
+      norma: "ISO/IEC 27037 Fases 3 & 4 · UNE-ISO/IEC 42001:2023 · EU AI Act Art. 12 · RFC 3161",
+      icon: "⚖️",
+      monetization: "Asiento Auditor (149 €/mes)",
+      options: [
+        { key: "rfc3161_qualified_tsa", label: "Sello de Tiempo Cualificado eIDAS / RFC 3161", default: true },
+        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
+        { key: "merkle_root_anchoring", label: "Inclusión en Árbol de Transparencia Merkle", default: true },
+        { key: "safe_creative_anchor", label: "Anclaje Registral Safe Creative Nº 2607076315021", default: true }
+      ]
+    },
     subvenciones_requisitos_infranqueables: {
-      name: "05. EL JUSTIFICADOR: FONDOS PÚBLICOS & SUBVENCIONES",
-      category: "FONDOS & SUBVENCIONES",
+      name: "05. JUSTIFY: FONDOS PÚBLICOS & SUBVENCIONES",
+      category: "05 / JUSTIFY (FONDOS & PRTR)",
       badgeColor: "#ca8a04",
       desc: "Control perimetral infranqueable de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas para la IGAE y OLAF (NextGenEU, PRTR, Kit Digital, CDTI, 2 CFR 200).",
       llmEffect: "Bloquea facturas o partidas presupuestarias duplicadas garantizando el principio de no solapamiento.",
@@ -159,9 +160,9 @@ export default function App() {
   // ESTADO DE LAS 5 BÓVEDAS
   const [directives, setDirectives] = useState({
     cumplimiento_corporativo_integral: true,
-    auditoria_dictamen_normativo: true,
     razonamiento_activo_l7: true,
     deepfake_fake_disprover: true,
+    auditoria_dictamen_normativo: true,
     subvenciones_requisitos_infranqueables: true
   });
 
@@ -380,6 +381,34 @@ export default function App() {
     } catch {}
   };
 
+  const handleExportProofBundle = async (eventLog) => {
+    try {
+      setExportingBundle(true);
+      const res = await fetch(`${API_BASE}/export-proof-bundle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventLog)
+      });
+
+      if (!res.ok) throw new Error("Fallo en la emisión pericial.");
+
+      const bundleData = await res.json();
+      const blob = new Blob([JSON.stringify(bundleData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proof-bundle-${eventLog.runId || eventLog.evidenceId || 'EV'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Error al exportar Proof Bundle: " + err.message);
+    } finally {
+      setExportingBundle(false);
+    }
+  };
+
   const filteredEvents = events.filter(ev => {
     const matchesScenario = activeScenarioFilter === 'ALL' || (ev.scenario_id && ev.scenario_id.toLowerCase().includes(activeScenarioFilter.toLowerCase()));
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
@@ -543,9 +572,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* ========================================================================= */}
-        {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS FORENSES                             */}
-        {/* ========================================================================= */}
+        {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -626,9 +653,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB 2: S.A.A.R.E. RUNLIVE                                                 */}
-        {/* ========================================================================= */}
+        {/* TAB 2: S.A.A.R.E. RUNLIVE */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
@@ -645,7 +670,6 @@ export default function App() {
               </span>
             </div>
 
-            {/* VELOCÍMETRO / GAUGE VISUAL DE AHORRO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
                 <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Ahorro Computacional L7</span>
@@ -687,16 +711,10 @@ export default function App() {
                   "{lastEvent.promptInput || lastEvent.promptSummary || lastEvent.payload || 'Sin contenido'}"
                 </div>
 
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '16px', marginBottom: '18px', fontSize: '0.82rem' }}>
-                  <div style={{ color: '#0284c7', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Muestreo de Integridad Fáctica & Protocolo Fake Disprover:
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', color: '#475569' }}>
-                    <div>• Grounding Causal: <strong style={{ color: '#16a34a' }}>FORMALLY_VERIFIED</strong></div>
-                    <div>• Unsupported Claims: <strong style={{ color: '#16a34a' }}>0 DETECTADAS</strong></div>
-                    <div>• Purga en Memoria RAM: <strong style={{ color: '#16a34a' }}>SYS_madvise (MADV_DONTNEED)</strong></div>
-                    <div>• Sello Temporal RFC 3161: <strong style={{ color: '#0284c7' }}>QUALIFIED TRUST ANCHOR</strong></div>
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                  <button onClick={() => handleExportProofBundle(lastEvent)} disabled={exportingBundle} style={{ padding: '10px 18px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    📦 {exportingBundle ? 'Generando Proof Bundle...' : 'Exportar Proof Bundle (Ed25519 / RFC 3161)'}
+                  </button>
                 </div>
 
                 <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem', overflowX: 'auto' }}>
@@ -713,9 +731,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS Y MONETIZACIÓN ISV                  */}
-        {/* ========================================================================= */}
+        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS */}
         {activeTab === 'CONFIG' && (
           <div>
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -848,10 +864,15 @@ export default function App() {
         {/* MODAL JSON PROOF BUNDLE */}
         {selectedJson && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
-            <div style={{ background: '#090d16', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ background: '#090d16', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>EVIDENCIA FORENSE CRIPTOGRÁFICA (SHA-256)</h3>
-                <button onClick={() => setSelectedJson(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleExportProofBundle(selectedJson)} disabled={exportingBundle} style={{ background: '#9333ea', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    📦 {exportingBundle ? 'Exportando...' : 'Descargar Proof Bundle'}
+                  </button>
+                  <button onClick={() => setSelectedJson(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>✕</button>
+                </div>
               </div>
               <pre style={{ flex: 1, overflowY: 'auto', background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', color: '#34d399', fontSize: '0.8rem', fontFamily: 'monospace' }}>
                 {JSON.stringify(selectedJson, null, 2)}

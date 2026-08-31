@@ -7,11 +7,11 @@
 export const ScenarioRegistry = [
   {
     id: "cumplimiento_corporativo_integral",
-    category: "01. El Escudo (Rol DEFR)",
+    category: "01. PREVENT — El Escudo (Rol DEFR)",
     title: "01. Escudo Corporativo de Cumplimiento & PII Integral (DEFR)",
     description: "Blindaje perimetral para el empleado auditado como primer interviniente (DEFR - Digital Evidence First Responder bajo ISO 27037). Identifica, aísla y redacta en memoria volátil RAM DNIs, NIEs, cuentas bancarias (IBAN), tarjetas de crédito, historiales clínicos (RGPD Art. 9) y secretos corporativos con purga atómica SYS_madvise (Zero-Disk Writes).",
     version: "10.0.0",
-    tag: "DEFR / EMPLEADO AUDITADO",
+    tag: "01 / PREVENT (DEFR)",
     forensic_role: "DEFR (Digital Evidence First Responder)",
     dei_phase: "Fases 1 & 2: Identificación de Volatilidad y Recopilación Segura",
     latency: "1.16 ms",
@@ -52,55 +52,12 @@ export const ScenarioRegistry = [
     }
   },
   {
-    id: "auditoria_dictamen_normativo",
-    category: "02. La Evidencia (Rol DES)",
-    title: "02. Bóveda Pericial de Auditoría & Dictamen Normativo (DES)",
-    description: "Generación automatizada de Proof Bundles e informes periciales para la consultora auditora y peritos judiciales (DES - Digital Evidence Specialist bajo ISO 27037). Adquisición bit a bit con Hashes SHA-256 pre/post, firma digital Ed25519, sellado de tiempo cualificado RFC 3161 (eIDAS) y anclaje a la raíz Safe Creative Nº 2607076315021.",
-    version: "10.0.0",
-    tag: "DES / ASIENTO AUDITOR GRC",
-    forensic_role: "DES (Digital Evidence Specialist)",
-    dei_phase: "Fases 3 & 4: Adquisición Bit a Bit y Preservación de Cadena de Custodia",
-    latency: "RFC 3161",
-    codeTab: "nodejs",
-    verified: "Validez Pericial Plena",
-    gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
-    badgeColor: "#dc2626",
-    icon: "⚖️",
-    compliance_mapping: {
-      iso_27037: [
-        "Fase 3 (Adquisición) - Creación de copia bit a bit e integridad Hash SHA-256",
-        "Fase 4 (Preservación) - Cadena de custodia fiduciaria con sellos eIDAS",
-        "Principios Rectores - Auditabilidad, Repetibilidad y Justificabilidad probatoria"
-      ],
-      iso_42001_19011: [
-        "UNE-ISO/IEC 42001:2023 - Sistema de Gestión de Inteligencia Artificial (SGIA)",
-        "UNE-ISO/IEC 19011:2026 - Directrices para la auditoría de sistemas de gestión",
-        "UNE-ISO/IEC 27007 - Guía para la auditoría de seguridad de la información"
-      ],
-      eu_ai_act_aesia: [
-        "Reglamento UE 2024/1689 Art. 12 - Registro automático de eventos e inmutabilidad de logs",
-        "Reglamento UE 2024/1689 Art. 14 - Supervisión humana efectiva basada en evidencia técnica",
-        "Guías Prácticas AESIA - Evidencia continua en tiempo de ejecución (Runtime Evidence)"
-      ]
-    },
-    rules: {
-      rfc3161_timestamp: true,
-      ed25519_signatures: true,
-      merkle_tree_inclusion: true,
-      proof_bundle_v10: true
-    },
-    testVector: {
-      model: "gpt-4o",
-      messages: [{ role: "user", content: "Generar dictamen pericial con cadena de custodia conforme a ISO/IEC 27037 e ISO/IEC 42001" }]
-    }
-  },
-  {
     id: "razonamiento_activo_l7",
-    category: "03. El Guardián (Blindaje LLM)",
-    title: "03. Razonamiento Activo L7 & Inyección de Testigo en LLM",
+    category: "02. ENFORCE — El Guardián (Blindaje LLM)",
+    title: "02. Razonamiento Activo L7 & Inyección de Testigo en LLM",
     description: "Blindaje perimetral activo frente a ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica el comando léxico [SAARE_ACTIVE_SHIELD: ENFORCE], inyecta el sello [🧠 L7 CEREBRO WITNESS] en la respuesta del modelo y mide la optimización y ahorro de pipeline en cada inferencia.",
     version: "10.0.0",
-    tag: "TESTIGO LLM & AHORRO",
+    tag: "02 / ENFORCE (DEFENSA ACTIVA)",
     forensic_role: "Active Defense Gatekeeper",
     dei_phase: "Runtime Active Protection & Lexical Witness Injection",
     latency: "0.017 ms",
@@ -140,18 +97,18 @@ export const ScenarioRegistry = [
   },
   {
     id: "deepfake_fake_disprover",
-    category: "04. El Detector (Forense & RunLive)",
-    title: "04. Integridad Forense, Deepfake & Fake Disprover",
+    category: "03. VERIFY — El Detector (Forense & RunLive)",
+    title: "03. Integridad Forense, Deepfake & Fake Disprover",
     description: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante alucinaciones algorítmicas, contratos con cláusulas inventadas (LegalTech), falsificación de atestados de siniestros (Insurtech) o deepfakes documentales, emitiendo telemetría de muestreo continuo en la consola RunLive.",
     version: "10.0.0",
-    tag: "DETECCIÓN DE FALSEDAD",
+    tag: "03 / VERIFY (DETECCIÓN)",
     forensic_role: "Forensic Evidence Verifier",
     dei_phase: "Causal Grounding & RunLive Real-time Sampling",
     latency: "1.16 ms",
     codeTab: "python",
     verified: "Zero Hallucination",
     gradient: "linear-gradient(135deg, #4338ca 0%, #0f172a 100%)",
-    badgeColor: "#9333ea",
+    badgeColor: "#ea580c",
     icon: "🔍",
     compliance_mapping: {
       iso_42001: [
@@ -180,19 +137,62 @@ export const ScenarioRegistry = [
     }
   },
   {
+    id: "auditoria_dictamen_normativo",
+    category: "04. PROVE — La Evidencia (Rol DES)",
+    title: "04. Bóveda Pericial de Auditoría & Dictamen Normativo (DES)",
+    description: "Generación automatizada de Proof Bundles e informes periciales para la consultora auditora y peritos judiciales (DES - Digital Evidence Specialist bajo ISO 27037). Adquisición bit a bit con Hashes SHA-256 pre/post, firma digital Ed25519, sellado de tiempo cualificado RFC 3161 (eIDAS) y anclaje a la raíz Safe Creative Nº 2607076315021.",
+    version: "10.0.0",
+    tag: "04 / PROVE (DES / GRC)",
+    forensic_role: "DES (Digital Evidence Specialist)",
+    dei_phase: "Fases 3 & 4: Adquisición Bit a Bit y Preservación de Cadena de Custodia",
+    latency: "RFC 3161",
+    codeTab: "nodejs",
+    verified: "Validez Pericial Plena",
+    gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
+    badgeColor: "#9333ea",
+    icon: "⚖️",
+    compliance_mapping: {
+      iso_27037: [
+        "Fase 3 (Adquisición) - Creación de copia bit a bit e integridad Hash SHA-256",
+        "Fase 4 (Preservación) - Cadena de custodia fiduciaria con sellos eIDAS",
+        "Principios Rectores - Auditabilidad, Repetibilidad y Justificabilidad probatoria"
+      ],
+      iso_42001_19011: [
+        "UNE-ISO/IEC 42001:2023 - Sistema de Gestión de Inteligencia Artificial (SGIA)",
+        "UNE-ISO/IEC 19011:2026 - Directrices para la auditoría de sistemas de gestión",
+        "UNE-ISO/IEC 27007 - Guía para la auditoría de seguridad de la información"
+      ],
+      eu_ai_act_aesia: [
+        "Reglamento UE 2024/1689 Art. 12 - Registro automático de eventos e inmutabilidad de logs",
+        "Reglamento UE 2024/1689 Art. 14 - Supervisión humana efectiva basada en evidencia técnica",
+        "Guías Prácticas AESIA - Evidencia continua en tiempo de ejecución (Runtime Evidence)"
+      ]
+    },
+    rules: {
+      rfc3161_timestamp: true,
+      ed25519_signatures: true,
+      merkle_tree_inclusion: true,
+      proof_bundle_v10: true
+    },
+    testVector: {
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Generar dictamen pericial con cadena de custodia conforme a ISO/IEC 27037 e ISO/IEC 42001" }]
+    }
+  },
+  {
     id: "subvenciones_requisitos_infranqueables",
-    category: "05. El Justificador (Fondos Públicos)",
+    category: "05. JUSTIFY — El Justificador (Fondos Públicos)",
     title: "05. Requisitos Infranqueables de Subvenciones & Justificación",
     description: "Bóveda multi-país de fondos públicos con control infranqueable de no-doble financiación (hash SHA-256 de facturas/gastos), acreditación del principio medioambiental DNSH y generación de memorias técnicas de justificación ante la IGAE y OLAF (NextGenEU, PRTR, Kit Digital, CDTI, 2 CFR 200).",
     version: "10.0.0",
-    tag: "FONDOS & SUBVENCIONES",
+    tag: "05 / JUSTIFY (FONDOS PRTR)",
     forensic_role: "Anti-Fraud & Financial Auditor",
     dei_phase: "Public Funds Traceability & Anti-Double Funding Lock",
     latency: "1.16 ms",
     codeTab: "curl",
     verified: "Anti-Double Funding",
     gradient: "linear-gradient(135deg, #047857 0%, #0f172a 100%)",
-    badgeColor: "#059669",
+    badgeColor: "#ca8a04",
     icon: "🏛️",
     compliance_mapping: {
       espana: [
@@ -240,15 +240,9 @@ const SCENARIO_ALIASES = {
   "scnbank": "cumplimiento_corporativo_integral",
   "elescudo": "cumplimiento_corporativo_integral",
   "defr": "cumplimiento_corporativo_integral",
+  "prevent": "cumplimiento_corporativo_integral",
 
-  // Alias Bóveda 2 (La Evidencia - DES / Dictamen Pericial)
-  "scngsiforensic": "auditoria_dictamen_normativo",
-  "auditoriadictamennormativo": "auditoria_dictamen_normativo",
-  "scngsi": "auditoria_dictamen_normativo",
-  "laevidencia": "auditoria_dictamen_normativo",
-  "des": "auditoria_dictamen_normativo",
-
-  // Alias Bóveda 3 (El Guardián - Razonamiento Activo L7 & Cerebro Witness)
+  // Alias Bóveda 2 (El Guardián - Razonamiento Activo L7 & Cerebro Witness)
   "razonamientoactivol7": "razonamiento_activo_l7",
   "scnedrcabi": "razonamiento_activo_l7",
   "scnedr": "razonamiento_activo_l7",
@@ -256,12 +250,22 @@ const SCENARIO_ALIASES = {
   "scnedgegateway": "razonamiento_activo_l7",
   "scnedge": "razonamiento_activo_l7",
   "elguardian": "razonamiento_activo_l7",
+  "enforce": "razonamiento_activo_l7",
 
-  // Alias Bóveda 4 (El Detector - Deepfake & Fake Disprover)
+  // Alias Bóveda 3 (El Detector - Deepfake & Fake Disprover)
   "deepfakefakedisprover": "deepfake_fake_disprover",
   "scnlegalgrounding": "deepfake_fake_disprover",
   "scninsurtechclaims": "deepfake_fake_disprover",
   "eldetector": "deepfake_fake_disprover",
+  "verify": "deepfake_fake_disprover",
+
+  // Alias Bóveda 4 (La Evidencia - DES / Dictamen Pericial)
+  "scngsiforensic": "auditoria_dictamen_normativo",
+  "auditoriadictamennormativo": "auditoria_dictamen_normativo",
+  "scngsi": "auditoria_dictamen_normativo",
+  "laevidencia": "auditoria_dictamen_normativo",
+  "des": "auditoria_dictamen_normativo",
+  "prove": "auditoria_dictamen_normativo",
 
   // Alias Bóveda 5 (El Justificador - Subvenciones & Fondos Públicos)
   "subvencionesrequisitosinfranqueables": "subvenciones_requisitos_infranqueables",
@@ -270,7 +274,8 @@ const SCENARIO_ALIASES = {
   "scnkitconsulting": "subvenciones_requisitos_infranqueables",
   "scnkit": "subvenciones_requisitos_infranqueables",
   "scnnextgen": "subvenciones_requisitos_infranqueables",
-  "eljustificador": "subvenciones_requisitos_infranqueables"
+  "eljustificador": "subvenciones_requisitos_infranqueables",
+  "justify": "subvenciones_requisitos_infranqueables"
 };
 
 /**

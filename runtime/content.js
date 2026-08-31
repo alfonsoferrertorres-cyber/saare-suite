@@ -2,6 +2,8 @@
 // ISO/IEC 27037:2012 (DEFR/DES) · UNE-ISO/IEC 42001:2023 · EU AI Act
 console.log("[SAARE L7 Engine] Puente DOM & Telemetría Forense Activo en Memoria");
 
+const API_INGEST_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs";
+
 const DEFAULT_SETTINGS_V10 = {
   cumplimiento_corporativo_integral: true,
   auditoria_dictamen_normativo: true,
@@ -52,10 +54,14 @@ if (typeof chrome !== "undefined" && chrome.storage?.local) {
 }
 
 // 2. Inyección del interceptor L7 en el contexto Window
-const injectScript = document.createElement("script");
-injectScript.src = chrome.runtime.getURL("inject.js");
-injectScript.onload = function() { this.remove(); };
-(document.head || document.documentElement).appendChild(injectScript);
+try {
+  const injectScript = document.createElement("script");
+  injectScript.src = chrome.runtime.getURL("inject.js");
+  injectScript.onload = function() { this.remove(); };
+  (document.head || document.documentElement).appendChild(injectScript);
+} catch (e) {
+  console.warn("[SAARE L7] Script injection fallback:", e.message);
+}
 
 // 3. Resolución de identidad activa (DOM scraping + Fallback de Storage)
 function getActiveAccountFromDom() {
@@ -98,7 +104,7 @@ function showModal(text, violationInfo) {
       Carga Neutralizada (RAM): "${text.substring(0, 140)}..."
     </div>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:#64748b; font-family:monospace; border-top:1px dashed #1e293b; paddingTop:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:#64748b; font-family:monospace; border-top:1px dashed #1e293b; padding-top:8px;">
       <span>SELLO: <strong style="color:#38bdf8;">${seal}</strong></span>
       <span>CERO ESCRITURAS EN DISCO (RAM)</span>
     </div>
@@ -108,16 +114,16 @@ function showModal(text, violationInfo) {
   setTimeout(() => { if (banner && banner.parentNode) banner.remove(); }, 6500);
 }
 
-// 5. Transmisión estructurada de la evidencia forense
+// 5. Transmisión dual de la evidencia forense (Service Worker + Direct Fallback Ingest)
 function sendEvidenceToBackground(auditData) {
   const text = auditData.cleanPrompt || auditData.sanitizedPrompt || "";
   if (!text || text.trim() === "") return;
 
-  const detectedUser = getActiveAccountFromDom();
+  const detectedUser = getActiveAccountFromDom() || "auditor@ms3v.es";
 
   const payload = {
     promptInput: text.trim().substring(0, 5000),
-    user: detectedUser || undefined,
+    user: detectedUser,
     scenario_id: auditData.scenario_id || "cumplimiento_corporativo_integral",
     timestamp: new Date().toISOString(),
     verdict: auditData.verdict,
@@ -140,6 +146,8 @@ function sendEvidenceToBackground(auditData) {
     showModal(text, auditData);
   }
 
+  // Canal A: Mensajería estándar Chrome Runtime
+  let messageSent = false;
   if (typeof chrome !== "undefined" && chrome.runtime?.id) {
     try {
       chrome.runtime.sendMessage({
@@ -147,11 +155,37 @@ function sendEvidenceToBackground(auditData) {
         payload: payload
       }, () => {
         if (chrome.runtime.lastError) {
-          // Fallo controlado si el service worker está suspendido
+          // Fallback al Canal B si el background está dormido
+          sendDirectBeacon(payload);
         }
       });
-    } catch {}
+      messageSent = true;
+    } catch {
+      messageSent = false;
+    }
   }
+
+  // Canal B: Envío directo si falla el background
+  if (!messageSent) {
+    sendDirectBeacon(payload);
+  }
+}
+
+// Canal de respaldo directo a Cloudflare Workers
+function sendDirectBeacon(payload) {
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+      navigator.sendBeacon(API_INGEST_URL, blob);
+    } else {
+      fetch(API_INGEST_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(() => {});
+    }
+  } catch {}
 }
 
 // 6. Receptor de mensajes del interceptor Window
