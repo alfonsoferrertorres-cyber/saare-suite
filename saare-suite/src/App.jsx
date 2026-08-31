@@ -41,6 +41,7 @@ export default function App() {
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('nodejs');
   const [activeGrantTab, setActiveGrantTab] = useState('nextgen');
+  const [selectedArchPillar, setSelectedArchPillar] = useState('IPaaS');
 
   const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5174'
@@ -73,7 +74,6 @@ export default function App() {
     }
   };
 
-  // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ISO27037_DEI",
     "ATTESTATION_METADATA": {
@@ -138,11 +138,12 @@ export default function App() {
     {
       code: "IPaaS",
       title: "01. Plataformas de Automatización & Agentes IA",
-      desc: "Integración middleware en flujos de trabajo (n8n, LangChain, Make). Intercepta variables de entrada ex-ante antes de invocar el modelo.",
+      desc: "Integración middleware en flujos de trabajo (n8n, LangChain, Make, CrewAI). Intercepta variables de entrada ex-ante antes de invocar el modelo.",
       badge: "REVENUE SHARING / ADD-ON",
       color: "#06B6D4",
       icon: "🌐",
-      deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL."
+      deployInfo: "Dónde: Nodos de ejecución · Cuándo: Pre-invocación LLM · Cómo: Redirección baseURL.",
+      codeSnippetKey: "nodejs"
     },
     {
       code: "EMBEDDED",
@@ -151,7 +152,8 @@ export default function App() {
       badge: "LICENCIA OEM / ARR SEAT",
       color: "#20C997",
       icon: "⚡",
-      deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook."
+      deployInfo: "Dónde: Endpoint cliente · Cuándo: En memoria volátil (<0.017 ms) · Cómo: C-ABI Hook.",
+      codeSnippetKey: "cabi"
     },
     {
       code: "GSI",
@@ -160,7 +162,8 @@ export default function App() {
       badge: "CANAL ISV & ASIENTO AUDITOR",
       color: "#c084fc",
       icon: "⚖️",
-      deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519."
+      deployInfo: "Dónde: VPC / Consola SaaS · Cuándo: Auditoría continua · Cómo: Telemetría Ed25519.",
+      codeSnippetKey: "python"
     },
     {
       code: "GATEWAY",
@@ -169,7 +172,8 @@ export default function App() {
       badge: "PAY-AS-YOU-GO VOLUMEN",
       color: "#2F81F7",
       icon: "📦",
-      deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate."
+      deployInfo: "Dónde: 300+ Edge PoPs · Cuándo: En tránsito HTTP/S · Cómo: Header L7-SEAL Gate.",
+      codeSnippetKey: "curl"
     },
     {
       code: "VERTICAL",
@@ -178,7 +182,8 @@ export default function App() {
       badge: "TIER COMPLIANCE MODE (MRR)",
       color: "#EAB308",
       icon: "🔒",
-      deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK."
+      deployInfo: "Dónde: Backend transaccional · Cuándo: Al procesar expedientes · Cómo: SAARE SDK.",
+      codeSnippetKey: "nodejs"
     }
   ];
 
@@ -219,10 +224,9 @@ export default function App() {
     nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'corp_tenant_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
     python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "corp_tenant_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [\n      {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n      {"role": "user", "content": "Inferencia con testigo L7 del cerebro y telemetria de ahorro"}\n    ]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en RAM mediante SYS_madvise (Zero-Disk Writes)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
   };
 
-  // Descarga del agente runtime tokenizado con inyección en caliente de credenciales
   const handleDownloadSDK = async () => {
     try {
       setDownloadingZip(true);
@@ -339,8 +343,8 @@ export default function App() {
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('cases'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'cases' ? '#9333ea' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'cases' ? 'rgba(147, 51, 234, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'cases' ? '#c084fc' : '#94a3b8', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
               🏛️ Casos de Uso & Negocio
             </button>
-            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('architecture'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
-              Arquitectura
+            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('architecture'); }} style={{ padding: '6px 12px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'architecture' ? 'rgba(56, 189, 248, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'architecture' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px', fontWeight: '700' }}>
+              🏛️ Arquitectura & Modelos ISV
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('risk_roi'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'risk_roi' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Riesgo & ROI
@@ -350,9 +354,6 @@ export default function App() {
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('compliance'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'compliance' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'compliance' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
               Compliance
-            </button>
-            <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('developers'); }} style={{ padding: '6px 12px', border: 'none', background: currentView === 'LANDING' && activeNavTab === 'developers' ? '#1e293b' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'developers' ? '#38bdf8' : '#94a3b8', cursor: 'pointer', borderRadius: '4px' }}>
-              Integración SDK
             </button>
 
             {sessionUser ? (
@@ -431,7 +432,7 @@ export default function App() {
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
+          {/* TAB 1: ESCENARIOS SAARE */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '48px', paddingTop: '10px' }}>
@@ -446,7 +447,6 @@ export default function App() {
                 </p>
               </section>
 
-              {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS EN ORDEN CANÓNICO */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
                 {/* 01. PREVENT — EL ESCUDO */}
@@ -693,85 +693,6 @@ export default function App() {
 
               </div>
 
-              {/* SECCIÓN: MODELOS DE INTEGRACIÓN & MERCADOS B2B */}
-              <section style={{ marginTop: '60px', borderTop: '1px solid #1e293b', paddingTop: '40px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-                  <span style={{ color: '#38bdf8', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px' }}>
-                    // ECOSYSTEM INTEGRATION & REVENUE MODELS
-                  </span>
-                  <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', margin: '8px 0' }}>
-                    Modelos de Despliegue para Cada Arquitectura
-                  </h2>
-                  <p style={{ color: '#94a3b8', fontSize: '15px', maxWidth: '750px', margin: '0 auto' }}>
-                    SAARE se adapta a la topología de tu infraestructura sin fricción, aportando valor y monetización inmediata.
-                  </p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                  
-                  {/* 1. AUTOMATIZACIÓN & AGENTES IA */}
-                  <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#38bdf8', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>01 / PLATAFORMAS DE AUTOMATIZACIÓN</span>
-                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: '8px 0' }}>Compliance Add-on para Agentes y Flujos</h3>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 }}><strong>Dónde:</strong> Nodos de ejecución y webhooks intermedios.<br/><strong>Cuándo:</strong> Ex-ante, antes de invocar la API del modelo.<br/><strong>Cómo:</strong> Redirección perimetral mediante variable de baseURL.</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', marginTop: '12px', fontSize: '12px', color: '#34d399', fontWeight: 'bold' }}>
-                      Monetización: Revenue sharing / Tarifa por usuario activo
-                    </div>
-                  </div>
-
-                  {/* 2. CIBERSEGURIDAD & EDR */}
-                  <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#20C997', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>02 / FABRICANTES DE CIBERSEGURIDAD</span>
-                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: '8px 0' }}>Sensor L7 Embebido en el Endpoint</h3>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 }}><strong>Dónde:</strong> Residente en el sistema operativo del cliente.<br/><strong>Cuándo:</strong> En memoria RAM (0.017 ms) antes del socket de red.<br/><strong>Cómo:</strong> Librería nativa C-ABI In-Process (.so / .dll).</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', marginTop: '12px', fontSize: '12px', color: '#20C997', fontWeight: 'bold' }}>
-                      Monetización: Licenciamiento OEM / Royalty por agente (ARR)
-                    </div>
-                  </div>
-
-                  {/* 3. CONSULTORAS & GSIs */}
-                  <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#c084fc', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>03 / INTEGRACIONES GSI & AUDITORÍA GRC</span>
-                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: '8px 0' }}>Dossier de Evidencias & Certificación</h3>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 }}><strong>Dónde:</strong> Consola multitenant y Enclave Cloud seguro.<br/><strong>Cuándo:</strong> Supervisión continua y justificación regulatoria.<br/><strong>Cómo:</strong> Generador de Proof Bundles e informes periciales.</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', marginTop: '12px', fontSize: '12px', color: '#c084fc', fontWeight: 'bold' }}>
-                      Monetización: Margen de canal ISV + Asiento Auditor SaaS
-                    </div>
-                  </div>
-
-                  {/* 4. CLOUD & API GATEWAYS */}
-                  <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#06B6D4', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>04 / INFRAESTRUCTURA EDGE & PROXIES</span>
-                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: '8px 0' }}>Filtrado Perimetral Global Sin Latencia</h3>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 }}><strong>Dónde:</strong> Puntos de presencia perimetrales (PoPs mundiales).<br/><strong>Cuándo:</strong> En tránsito en cada petición HTTP/S (&lt;1.16 ms).<br/><strong>Cómo:</strong> Reverse Proxy con sellado de cabeceras L7-SEAL.</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', marginTop: '12px', fontSize: '12px', color: '#06B6D4', fontWeight: 'bold' }}>
-                      Monetización: Pay-as-you-go por volumen de inferencias
-                    </div>
-                  </div>
-
-                  {/* 5. SAAS VERTICALES */}
-                  <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#facc15', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>05 / SOFTWARE VERTICAL (LEGAL / SALUD / FINTECH)</span>
-                      <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: '8px 0' }}>Modo Seguro para Datos Regulados</h3>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 }}><strong>Dónde:</strong> Backend transaccional de la aplicación vertical.<br/><strong>Cuándo:</strong> Al procesar contratos, atestados o historiales.<br/><strong>Cómo:</strong> SAARE SDK integrado en el motor de análisis.</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', marginTop: '12px', fontSize: '12px', color: '#facc15', fontWeight: 'bold' }}>
-                      Monetización: Tier Premium "Secure AI Mode" en su propio SaaS
-                    </div>
-                  </div>
-
-                </div>
-              </section>
-
               {/* BANNERS INFORMATIVOS */}
               <div style={{ marginTop: '36px', backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -813,18 +734,18 @@ export default function App() {
                   <span style={{ fontSize: '24px' }}>⚡</span>
                   <div>
                     <strong style={{ fontSize: '14.5px', color: '#ffffff', display: 'block' }}>¿Quieres saber cómo lo hacemos?</strong>
-                    <span style={{ fontSize: '13px', color: '#64748b' }}>Explora la tecnología, la arquitectura y la seguridad detrás de SAARE.</span>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>Explora la tecnología, los modelos de despliegue y el código SDK detrás de SAARE.</span>
                   </div>
                 </div>
                 <button onClick={() => setActiveNavTab('architecture')} style={{ padding: '10px 20px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                  Ir a la sección técnica →
+                  Ver Arquitectura & Modelos ISV →
                 </button>
               </div>
 
             </div>
           )}
 
-          {/* TAB CASOS DE NEGOCIO (AESIA, PERITAJES Y FONDOS PÚBLICOS) */}
+          {/* TAB 2: CASOS DE NEGOCIO (AESIA, PERITAJES Y FONDOS PÚBLICOS) */}
           {activeNavTab === 'cases' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -911,28 +832,105 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB ARQUITECTURA */}
+          {/* TAB 3: ARQUITECTURA & MODELOS ISV (UNIFICADA CON SDK) */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '12px' }}>Arquitectura de Referencia L7 & DEI (ISO 27037)</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14.5px', marginBottom: '28px' }}>Manejo pericial de evidencia digital: Auditabilidad, Repetibilidad y Justificabilidad.</p>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                {deploymentModes.map((dep) => (
-                  <div key={dep.code} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
-                      <h4 style={{ color: '#fff', margin: '6px 0 8px 0', fontSize: '15px' }}>{dep.title}</h4>
-                      <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '0 0 10px 0', lineHeight: 1.45 }}>{dep.desc}</p>
-                    </div>
-                    <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '8px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
-                      {dep.deployInfo}
-                    </div>
-                  </div>
-                ))}
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: '1px' }}>
+                  // ECOSYSTEM ARCHITECTURE & MONETIZATION
+                </span>
+                <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '8px 0' }}>
+                  Modelos de Despliegue & Código de Integración
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '14.5px', maxWidth: '780px', margin: '0 auto' }}>
+                  Selecciona la pata comercial de tu interés para ver su topología, modelo de ingresos y el snippet de integración correspondiente.
+                </p>
               </div>
 
-              <pre style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b', color: '#38bdf8', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto' }}>
+              {/* GRID DE LAS 5 PATAS COMERCIALES */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '36px' }}>
+                {deploymentModes.map((dep) => {
+                  const isSelected = selectedArchPillar === dep.code;
+                  return (
+                    <div 
+                      key={dep.code} 
+                      onClick={() => {
+                        setSelectedArchPillar(dep.code);
+                        setActiveCodeTab(dep.codeSnippetKey);
+                      }}
+                      style={{ 
+                        background: isSelected ? 'rgba(56, 189, 248, 0.08)' : '#05070c', 
+                        padding: '22px', 
+                        borderRadius: '10px', 
+                        border: `1px solid ${isSelected ? dep.color : '#1e293b'}`, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isSelected ? `0 4px 20px ${dep.color}25` : 'none'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ color: dep.color, fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}>{dep.badge}</span>
+                          <span style={{ fontSize: '18px' }}>{dep.icon}</span>
+                        </div>
+                        <h4 style={{ color: '#fff', margin: '4px 0 8px 0', fontSize: '15px', fontWeight: '800' }}>{dep.title}</h4>
+                        <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '0 0 12px 0', lineHeight: 1.45 }}>{dep.desc}</p>
+                      </div>
+                      <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '10px', color: '#64748b', fontSize: '11px', fontFamily: 'monospace' }}>
+                        {dep.deployInfo}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* CONSOLA DE CÓDIGO SDK VINCULADA */}
+              <div style={{ borderTop: '1px solid #1e293b', paddingTop: '28px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                      Implementación Técnica (Capa 7 L7-Gate)
+                    </h3>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                      Pilar seleccionado: <strong style={{ color: '#38bdf8' }}>{deploymentModes.find(d => d.code === selectedArchPillar)?.title}</strong>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
+                      <button 
+                        key={tab} 
+                        onClick={() => setActiveCodeTab(tab)} 
+                        style={{ 
+                          background: activeCodeTab === tab ? '#1e293b' : 'transparent', 
+                          border: `1px solid ${activeCodeTab === tab ? '#38bdf8' : '#334155'}`, 
+                          color: activeCodeTab === tab ? '#38bdf8' : '#94a3b8', 
+                          padding: '6px 12px', 
+                          borderRadius: '4px', 
+                          fontSize: '11.5px', 
+                          cursor: 'pointer', 
+                          fontWeight: 'bold' 
+                        }}
+                      >
+                        {tab.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <pre style={{ margin: 0, backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px', color: '#f1f5f9', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.55 }}>
+                  {codeSnippets[activeCodeTab]}
+                </pre>
+              </div>
+
+              {/* DIAGRAMA LÓGICO DE FLUJO */}
+              <div style={{ marginTop: '28px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Diagrama de Flujo en Memoria Volátil (Zero-Disk Runtime)
+                </div>
+                <pre style={{ background: '#05070c', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', color: '#38bdf8', fontSize: '11.5px', fontFamily: 'monospace', overflowX: 'auto', margin: 0 }}>
 {`┌──────────────────────────────────────────────┐
 │ CLAIM / INFERENCE PAYLOAD (Raw RAM Buffer)   │
 └──────────────────────┬───────────────────────┘
@@ -948,30 +946,33 @@ export default function App() {
  ╚═════════════════════╤═══════════════════════╝
                        ▼
  [SAARE_ACTIVE_SHIELD: ENFORCE] -> 🧠 TESTIGO L7 CEREBRO INYECTADO`}
-              </pre>
+                </pre>
+              </div>
             </div>
           )}
 
-          {/* TAB DEVELOPERS */}
-          {activeNavTab === 'developers' && (
+          {/* TAB 4: RISK & ROI */}
+          {activeNavTab === 'risk_roi' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Integración SDK (Capa 7)</h2>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
-                    <button key={tab} onClick={() => setActiveCodeTab(tab)} style={{ background: activeCodeTab === tab ? '#1e293b' : 'transparent', border: '1px solid #334155', color: activeCodeTab === tab ? '#38bdf8' : '#94a3b8', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
-                      {tab.toUpperCase()}
-                    </button>
-                  ))}
+              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '16px' }}>Análisis de Riesgo & Retorno de Inversión (ROI)</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <h4 style={{ color: '#38bdf8', margin: '0 0 8px 0' }}>Coste de Auditoría Evitado</h4>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Generación automática de la evidencia continua requerida por la AESIA y comités de gobernanza.</p>
+                </div>
+                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <h4 style={{ color: '#ef4444', margin: '0 0 8px 0' }}>Protección Sancionadora</h4>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Blindaje ex-ante frente a infracciones del EU AI Act, RGPD y DORA.</p>
+                </div>
+                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                  <h4 style={{ color: '#34d399', margin: '0 0 8px 0' }}>Justificación Automática</h4>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Pruebas fiduciarias sin fricción para fondos PRTR y NextGenerationEU.</p>
                 </div>
               </div>
-              <pre style={{ margin: 0, backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px', color: '#f1f5f9', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
-                {codeSnippets[activeCodeTab]}
-              </pre>
             </div>
           )}
 
-          {/* TAB PROOF BUNDLE */}
+          {/* TAB 5: PROOF BUNDLE */}
           {activeNavTab === 'proof' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -994,7 +995,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB COMPLIANCE */}
+          {/* TAB 6: COMPLIANCE */}
           {activeNavTab === 'compliance' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
@@ -1034,28 +1035,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB RISK ROI */}
-          {activeNavTab === 'risk_roi' && (
-            <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', marginBottom: '16px' }}>Análisis de Riesgo & Retorno de Inversión (ROI)</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                  <h4 style={{ color: '#38bdf8', margin: '0 0 8px 0' }}>Coste de Auditoría Evitado</h4>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Generación automática de la evidencia continua requerida por la AESIA y comités de gobernanza.</p>
-                </div>
-                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                  <h4 style={{ color: '#ef4444', margin: '0 0 8px 0' }}>Protección Sancionadora</h4>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Blindaje ex-ante frente a infracciones del EU AI Act, RGPD y DORA.</p>
-                </div>
-                <div style={{ background: '#05070c', padding: '24px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                  <h4 style={{ color: '#34d399', margin: '0 0 8px 0' }}>Justificación Automática</h4>
-                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Pruebas fiduciarias sin fricción para fondos PRTR y NextGenerationEU.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB OVERVIEW */}
+          {/* TAB 7: OVERVIEW */}
           {activeNavTab === 'overview' && (
             <div style={{ textAlign: 'center', margin: '60px 0' }}>
               <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#ffffff', marginBottom: '20px' }}>
