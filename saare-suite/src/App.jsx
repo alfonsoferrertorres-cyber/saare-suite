@@ -73,7 +73,7 @@ export default function App() {
     }
   };
 
-  // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023 (Completamente Anonimizado)
+  // Proof Bundle Canónico estructurado bajo ISO/IEC 27037:2012 y UNE-ISO/IEC 42001:2023
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ISO27037_DEI",
     "ATTESTATION_METADATA": {
@@ -222,31 +222,48 @@ export default function App() {
     cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
   };
 
+  // Descarga del agente runtime tokenizado con inyección en caliente de credenciales
   const handleDownloadSDK = async () => {
     try {
       setDownloadingZip(true);
-      const zip = new JSZip();
+      
+      const response = await fetch('/saare-extension.zip');
+      if (!response.ok) throw new Error("No se pudo cargar el paquete base del agente.");
+      
+      const zipArrayBuffer = await response.arrayBuffer();
+      const zip = await JSZip.loadAsync(zipArrayBuffer);
+      
       const tTenant = sessionUser?.tenantName || "ORGANIZACION_AUDITORA";
+      const tEmail = sessionUser?.email || "auditor@empresa.com";
+      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session";
+      
+      const tokenizedManagedConfig = {
+        "saare_tenant_domain": { "Value": tTenant },
+        "saare_user_email": { "Value": tEmail },
+        "saare_api_key": { "Value": tToken },
+        "saare_license_type": { "Value": sessionUser?.licenseType || "ASIENTO_AUDITOR_ACTIVO" }
+      };
 
-      zip.file("manifest.json", JSON.stringify({
-        "manifest_version": 3,
-        "name": "SAARE L7 Governance & Evidence Agent",
-        "version": "10.0.0",
-        "description": "ISO 42001 & ISO 27037 Runtime Evidence Engine",
-        "background": { "service_worker": "background.js" },
-        "content_scripts": [{ "matches": ["https://*/*"], "js": ["content.js"], "run_at": "document_start" }],
-        "permissions": ["storage"]
-      }, null, 2));
+      const tokenizedLocalConfig = {
+        "tenantName": tTenant,
+        "email": tEmail,
+        "token": tToken,
+        "configuredAt": new Date().toISOString()
+      };
 
-      const blob = await zip.generateAsync({ type: "blob" });
+      zip.file("storage_managed.json", JSON.stringify(tokenizedManagedConfig, null, 2));
+      zip.file("saare_config.json", JSON.stringify(tokenizedLocalConfig, null, 2));
+
+      const customizedBlob = await zip.generateAsync({ type: "blob" });
       const dl = document.createElement("a");
-      dl.href = URL.createObjectURL(blob);
-      dl.download = `saare-proof-runtime-${tTenant.toLowerCase().replace(/\s+/g, '_')}.zip`;
+      dl.href = URL.createObjectURL(customizedBlob);
+      dl.download = `saare-agent-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}-tokenized.zip`;
       document.body.appendChild(dl);
       dl.click();
       document.body.removeChild(dl);
-    } catch {
-      alert("Error al compilar el bundle del agente.");
+      URL.revokeObjectURL(dl.href);
+    } catch (err) {
+      alert("Error al compilar el agente tokenizado: " + err.message);
     } finally {
       setDownloadingZip(false);
     }
@@ -1053,7 +1070,7 @@ export default function App() {
             </div>
           )}
 
-          {/* FOOTER ANONIMIZADO */}
+          {/* FOOTER */}
           <footer style={{ borderTop: '1px solid #1e293b', marginTop: '60px', paddingTop: '32px', fontSize: '12px', color: '#64748b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
