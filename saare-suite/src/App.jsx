@@ -13,12 +13,14 @@ export default function App() {
 
   const [mode, setMode] = useState('register');
   const [currentView, setCurrentView] = useState('LANDING');
-  const [activeNavTab, setActiveNavTab] = useState('scenarios_saare');
+  const [activeNavTab, setActiveNavTab] = useState('overview');
 
-  const [detectorInput, setDetectorInput] = useState('El balance contable muestra un beneficio neto no auditado de 450.000 € imputado al expediente.');
-  const [detectorResult, setDetectorResult] = useState('WARNING');
+  // Simulador interactivo normativo (Honor, Deepfakes y Certeza)
+  const [detectorInput, setDetectorInput] = useState('Generar clon de voz y avatar sintético del director financiero para presentación de resultados sin consentimiento.');
+  const [detectorResult, setDetectorResult] = useState('REJECTED');
   const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
 
+  // Métricas ejecutivas de impacto económico y ahorro computacional
   const [pipelineSavings] = useState({
     tokensSaved: 1420,
     latencyMs: 0.017,
@@ -27,6 +29,7 @@ export default function App() {
     brainWitnessActive: true
   });
 
+  // Estados de formularios y modales
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -62,28 +65,31 @@ export default function App() {
 
   const handleCheckDetector = () => {
     const text = detectorInput.toLowerCase();
-    if (text.includes("no auditado") || text.includes("sin prueba") || text.includes("indeterminado")) {
-      setDetectorResult('WARNING');
-    } else if (text.includes("falso") || text.includes("alterado") || text.includes("inventar") || text.includes("ignora") || text.includes("deepfake")) {
+    if (text.includes("voz") || text.includes("avatar") || text.includes("clon") || text.includes("deepfake") || text.includes("sin consentimiento") || text.includes("imagen")) {
       setDetectorResult('REJECTED');
+    } else if (text.includes("no auditado") || text.includes("sin prueba") || text.includes("indeterminado") || text.includes("estimado")) {
+      setDetectorResult('WARNING');
     } else {
       setDetectorResult('SUCCESS');
     }
   };
 
   const proofBundle = {
-    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ENTERPRISE",
+    "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ENTERPRISE_LEGAL",
     "RESUMEN_EJECUTIVO": {
       "EXPEDIENTE_ID": "PB-2026-0829-7F82A1",
-      "ESTADO_CUMPLIMIENTO": "100%_CONFORME_AUDITADO",
-      "GARANTIA_LEGAL": "Validez probatoria frente a AESIA, Comités e Inspecciones",
-      "ANCLAJE_REGISTRAL": "Registro Safe Creative Nº 2607076315021",
+      "ESTADO_CUMPLIMIENTO": "100%_CONFORME_AUDITADO_EU_AI_ACT",
+      "MARCO_REGULATORIO": "EU AI Act + Ley Honor/Deepfakes 2026 + RGPD Art. 9/32 + ISO 27037",
+      "GARANTIA_LEGAL": "Validez probatoria plena ante la AESIA, Inspecciones de Trabajo y Tribunales",
+      "ANCLAJE_REGISTRAL": "Registro Oficial Safe Creative Nº 2607076315021",
       "ENTORNO": "PRODUCCION_AISLADA_ZERO_FUGA"
     },
-    "BLINDAJE_CORPORATIVO": {
-      "PROTECCION_EMPLEADOS": "Datos personales, bancarios y médicos neutralizados antes de enviarse al proveedor",
-      "PROTECCION_EMPRESA": "Certificado digital inmutable que demuestra diligencia debida y ausencia de dolo",
-      "AHORRO_OPERATIVO": `${pipelineSavings.percentReduction}% de reducción en coste de cómputo y tokens`
+    "BLINDAJE_NORMATIVO_INTEGRAL": {
+      "01_ESCUDO_RGPD": "Filtro ex-ante en memoria RAM que neutraliza salida de PII, salud y secretos corporativos (RGPD Art. 5.2, 9, 32)",
+      "02_ROBUSTEZ_AI_ACT": "Mitigación determinista de prompt injection y robustez técnica (Art. 15 AI Act) con ahorro de tokens",
+      "03_HONOR_DEEPFAKES_VERACIDAD": "Bloqueo de clonación no consentida de voz/imagen (Ley Orgánica 2026) y control de alucinaciones (Art. 13 AI Act)",
+      "04_CUSTODIA_PERICIAL": "Registro inmutable de logs forenses bajo ISO/IEC 27037:2012 y sellado de tiempo cualificado RFC 3161 eIDAS",
+      "05_TRAZABILIDAD_FONDOS": "Prevención de facturación duplicada y auditoría continua para fondos NextGenEU / PRTR ante la IGAE y OLAF"
     },
     "SELLOS_Y_FIRMAS_LEGALES": {
       "INTEGRIDAD_DIGITAL": CANONICAL_HASH,
@@ -92,6 +98,66 @@ export default function App() {
     }
   };
 
+  // 5 Bóvedas Normativas Maestras
+  const legalScenarios = [
+    {
+      id: "01",
+      lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley de Secretos Empresariales 1/2019",
+      name: "01. Escudo RGPD & Secreto Empresarial",
+      subtitle: "Protege la información confidencial que tus empleados consultan en la IA.",
+      desc: "Detecta y bloquea automáticamente en memoria RAM la fuga de DNIs, cuentas bancarias, nóminas, historiales médicos o código fuente antes de que salgan a servidores de terceros.",
+      benefit: "✔ Cero riesgo de multas de hasta 20 M€ (o 4% de facturación) y blindaje de la responsabilidad del administrador.",
+      color: "#0284c7",
+      image: "/1.jfif",
+      actionText: "Proteger Datos RGPD →"
+    },
+    {
+      id: "02",
+      lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez Técnica",
+      name: "02. Blindaje de Robustez & Seguridad AI Act",
+      subtitle: "Defiende tus sistemas contra manipulaciones, jailbreaks y reduce tu factura un 98%.",
+      desc: "Neutraliza ataques de inyección de comandos adversarios, previene desvíos lógicos y optimiza el consumo de tokens eliminando peticiones redundantes o maliciosas.",
+      benefit: `✔ ${pipelineSavings.percentReduction}% de reducción en costes operativos con latencia ultrarrápida (0.017 ms).`,
+      color: "#16a34a",
+      image: "/3.jfif",
+      actionText: "Optimizar Costes & Seguridad →"
+    },
+    {
+      id: "03",
+      lawBadge: "Ley Orgánica del Honor 2026 · AI Act (Art. 13 Transparencia)",
+      name: "03. Antifraude Deepfakes, Honor & Veracidad",
+      subtitle: "Evita demandas por suplantación no consentida de voz/imagen y decisiones basadas en alucinaciones.",
+      desc: "Cumple la nueva Ley de 2026 que prohíbe la clonación de voz e imagen sin consentimiento expreso y verifica mediante Corpus Grounding que cada dato de la IA esté respaldado en documentos reales.",
+      benefit: "✔ Prevención de indemnizaciones por daño moral no simbólicas y decisiones empresariales con base fáctica contrastada.",
+      color: "#ea580c",
+      image: "/4.jfif",
+      actionText: "Verificar Certeza & Deepfakes →"
+    },
+    {
+      id: "04",
+      lawBadge: "ISO/IEC 27037 · AI Act (Art. 12 Logs Forenses) · eIDAS",
+      name: "04. Custodia Pericial & Logs Forenses eIDAS",
+      subtitle: "Genera la prueba documental inmutable que exige cualquier proceso judicial o inspección.",
+      desc: "Convierte cada inferencia relevante en un expediente de evidencia digital (Proof Bundle) con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 con plena validez procesal.",
+      benefit: "✔ Prueba admisible ante tribunales, peritos judiciales, comités de auditoría y la AESIA.",
+      color: "#9333ea",
+      image: "/2.jfif",
+      actionText: "Ver Certificado Pericial →"
+    },
+    {
+      id: "05",
+      lawBadge: "Ley 38/2003 de Subvenciones · PRTR · NextGenEU / OLAF / IGAE",
+      name: "05. Trazabilidad Fiduciaria Fondos Públicos",
+      subtitle: "Garantiza el cobro de tus ayudas públicas sin riesgo de reintegro o sanciones administrativas.",
+      desc: "Controla la autenticidad y ausencia de doble imputación de facturas por hash SHA-256, acredita el principio DNSH y elabora memorias técnicas automáticas listas para entregar a evaluadores públicos.",
+      benefit: "✔ Blindaje total en auditorías de proyectos CDTI, Kit Digital / Consulting, ENISA y NextGenerationEU.",
+      color: "#ca8a04",
+      image: "/5.jfif",
+      actionText: "Asegurar Justificación de Ayudas →"
+    }
+  ];
+
+  // 5 Modelos de Alianza ISV con Imágenes 101 a 105
   const deploymentModes = [
     {
       code: "IPaaS",
@@ -194,14 +260,14 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: '${API_BASE}/intercept', // Pasarela de seguridad SAARE
+  baseURL: '${API_BASE}/intercept', // Pasarela de seguridad y cumplimiento SAARE
   defaultHeaders: {
     'X-SAARE-License': process.env.SAARE_LICENSE,
     'X-SAARE-Execution-Mode': 'PROTECT_AND_ATTEST'
   }
 });
 
-// Tu aplicación funciona igual, pero ahora está 100% blindada y certificada
+// Tu aplicación funciona igual, pero ahora está 100% blindada ante el EU AI Act y RGPD
 const response = await client.chat.completions.create({
   model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Procesar expediente corporativo con datos de clientes' }]
@@ -235,7 +301,7 @@ curl -X POST ${API_BASE}/intercept \\
 #include <saare_security.h>
 
 int proteger_interaccion(const char* prompt) {
-    // Escaneo y neutralización de datos sensibles en milisegundos
+    // Escaneo y neutralización de datos sensibles y deepfakes en milisegundos
     if (saare_validar_seguridad(prompt) != SAARE_CONFORME) {
         saare_bloquear_fuga_memoria();
         return ACCESO_DENEGADO; // Protege el equipo y genera certificado de prevención
@@ -337,7 +403,7 @@ int proteger_interaccion(const char* prompt) {
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(5, 7, 12, 0.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios_saare'); }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => { setCurrentView('LANDING'); setActiveNavTab('overview'); }}>
             <span style={{ fontWeight: '900', fontSize: '22px', letterSpacing: '2px', color: '#ffffff' }}>SAARE</span>
             <span style={{ color: '#38bdf8', fontSize: '12px', borderLeft: '1px solid #334155', paddingLeft: '10px', fontWeight: '700' }}>Seguridad, Control y Rentabilidad en IA</span>
           </div>
@@ -347,7 +413,7 @@ int proteger_interaccion(const char* prompt) {
               Inicio
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('scenarios_saare'); }} style={{ padding: '7px 14px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#0284c7' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? 'rgba(2, 132, 199, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'scenarios_saare' ? '#38bdf8' : '#ffffff', cursor: 'pointer', borderRadius: '6px', fontWeight: '700' }}>
-              ⚡ 5 Capas de Blindaje
+              ⚡ 5 Bóvedas Normativas
             </button>
             <button onClick={() => { setCurrentView('LANDING'); setActiveNavTab('cases'); }} style={{ padding: '7px 14px', border: '1px solid', borderColor: currentView === 'LANDING' && activeNavTab === 'cases' ? '#9333ea' : 'transparent', background: currentView === 'LANDING' && activeNavTab === 'cases' ? 'rgba(147, 51, 234, 0.15)' : 'transparent', color: currentView === 'LANDING' && activeNavTab === 'cases' ? '#c084fc' : '#94a3b8', cursor: 'pointer', borderRadius: '6px', fontWeight: '700' }}>
               🏛️ Casos de Negocio
@@ -427,11 +493,11 @@ int proteger_interaccion(const char* prompt) {
             <p style={{ color: '#94a3b8', fontSize: '14.5px', marginBottom: '28px' }}>Supervisa tus aplicaciones protegidas, revisa alertas y descarga informes periciales para auditorías.</p>
             
             <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ padding: '13px 26px', backgroundColor: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '14px' }}>
-                Abrir Consola de Gestión ↗
+              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ padding: '12px 24px', backgroundColor: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px' }}>
+                Abrir Consola GRC ↗
               </a>
-              <button onClick={handleDownloadSDK} disabled={downloadingZip} style={{ padding: '13px 26px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '6px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
-                {downloadingZip ? 'Generando...' : 'Descargar Agente Autoinstalable (.zip)'}
+              <button onClick={handleDownloadSDK} disabled={downloadingZip} style={{ padding: '12px 24px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '6px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
+                {downloadingZip ? 'Compilando...' : 'Descargar Agente Tokenizado (.zip)'}
               </button>
             </div>
           </div>
@@ -442,209 +508,60 @@ int proteger_interaccion(const char* prompt) {
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1160px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: 5 CAPAS DE BLINDAJE */}
+          {/* TAB 1: 5 BÓVEDAS NORMATIVAS */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '44px', paddingTop: '10px' }}>
                 <span style={{ color: '#38bdf8', fontSize: '13px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  PROTECCIÓN INTEGRAL SIN COMPLICACIONES
+                  BLINDAJE REGULATORIO Y OPERATIVO INTEGRAL
                 </span>
                 <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#ffffff', margin: '8px 0 14px 0', letterSpacing: '-0.5px' }}>
-                  Cinco soluciones que aseguran y rentabilizan tu IA
+                  Cinco Bóvedas Normativas para Cumplir la Ley de IA
                 </h1>
-                <p style={{ fontSize: '18px', color: '#cbd5e1', margin: '0 auto', maxWidth: '760px', lineHeight: 1.5 }}>
-                  Usa ChatGPT, Claude, Gemini o tus propios modelos con la tranquilidad de que tus datos están a salvo, tus costes bajo control y tu empresa protegida legalmente.
+                <p style={{ fontSize: '18px', color: '#cbd5e1', margin: '0 auto', maxWidth: '780px', lineHeight: 1.5 }}>
+                  Cumple el <strong>Reglamento Europeo de IA (EU AI Act)</strong>, la <strong>nueva Ley del Derecho al Honor (Deepfakes 2026)</strong> y el <strong>RGPD</strong> con una arquitectura en memoria que protege tus datos y tu cuenta de resultados.
                 </p>
               </section>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-                {/* 01. EL ESCUDO */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>01</div>
-                    <img src="/1.jfif" alt="El Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '22px' }}>🛡️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Escudo: Cero Fugas de Datos</h2>
+                {legalScenarios.map((scen) => (
+                  <div key={scen.id} style={{ backgroundColor: '#090d16', border: `1px solid ${scen.color}55`, borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: `0 10px 30px ${scen.color}15` }}>
+                    <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                      <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: scen.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>
+                        {scen.id}
+                      </div>
+                      <img src={scen.image} alt={scen.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
                     </div>
-                    <h3 style={{ fontSize: '15px', color: '#38bdf8', fontWeight: '700', margin: '0 0 8px 0' }}>
-                      Tus empleados pueden usar la IA sin poner en riesgo la privacidad de tu empresa.
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-                      Detecta y bloquea automáticamente la salida de DNIs, cuentas bancarias, nóminas, secretos comerciales o datos de clientes antes de que salgan a internet.
-                    </p>
-                    <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>
-                      ✔ Cumplimiento automático del RGPD y protección total del secreto de empresa.
-                    </div>
-                  </div>
 
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', textTransform: 'uppercase' }}>Comparativa Directa</div>
-                    <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '600' }}>
-                      ❌ Sin SAARE: Fuga accidental = Sanciones de hasta 20 M€.
+                    <div>
+                      <div style={{ display: 'inline-block', background: `${scen.color}20`, border: `1px solid ${scen.color}60`, color: scen.color, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        ⚖️ {scen.lawBadge}
+                      </div>
+                      <h2 style={{ fontSize: '21px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0' }}>{scen.name}</h2>
+                      <h3 style={{ fontSize: '14.5px', color: '#38bdf8', fontWeight: '700', margin: '0 0 8px 0' }}>{scen.subtitle}</h3>
+                      <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 10px 0' }}>{scen.desc}</p>
+                      <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>{scen.benefit}</div>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>
-                      ✔ Con SAARE: Los datos sensibles se bloquean antes de salir.
-                    </div>
-                    <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '11px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
-                      Proteger mi Empresa →
-                    </button>
-                  </div>
-                </div>
 
-                {/* 02. EL GUARDIÁN */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>02</div>
-                    <img src="/3.jfif" alt="El Guardián" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '22px' }}>⚡</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Guardián: Máximo Ahorro y Control</h2>
-                    </div>
-                    <h3 style={{ fontSize: '15px', color: '#34d399', fontWeight: '700', margin: '0 0 8px 0' }}>
-                      Reduce tu factura de IA hasta un 98% evitando respuestas repetitivas o erróneas.
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-                      Filtra preguntas trampa, evita manipulaciones de usuarios y optimiza el consumo de tokens para que solo pagues por respuestas útiles y verificadas.
-                    </p>
-                    <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>
-                      ✔ {pipelineSavings.percentReduction}% de reducción en costes operativos con respuesta ultrarrápida.
+                    <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ fontSize: '11px', color: scen.color, fontWeight: '800', textTransform: 'uppercase' }}>Acción de Cumplimiento</div>
+                      <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Módulo activo e integrado en el plan Todo en Uno.</div>
+                      <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '11px', backgroundColor: scen.color, color: scen.id === '05' ? '#000' : '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
+                        {scen.actionText}
+                      </button>
                     </div>
                   </div>
-
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#34d399', fontWeight: '800', textTransform: 'uppercase' }}>Impacto Económico</div>
-                    <div style={{ fontSize: '18px', color: '#34d399', fontWeight: '900' }}>{pipelineSavings.costSavedPerMillion} ahorrados</div>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Por cada millón de tokens consumidos en tus sistemas.</span>
-                    <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '11px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
-                      Empezar a Ahorrar →
-                    </button>
-                  </div>
-                </div>
-
-                {/* 03. EL DETECTOR */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>03</div>
-                    <img src="/4.jfif" alt="El Detector" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '22px' }}>🔍</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Detector: Cero Alucinaciones</h2>
-                    </div>
-                    <h3 style={{ fontSize: '15px', color: '#fb923c', fontWeight: '700', margin: '0 0 8px 0' }}>
-                      Nunca tomes decisiones de negocio basadas en respuestas falsas o inventadas.
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-                      Verifica automáticamente que cada dato, cifra o conclusión generada por la IA esté respaldada en tus documentos reales antes de enviarse al cliente.
-                    </p>
-                    <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>
-                      ✔ Decisiones seguras, contratos sin errores y clientes satisfechos.
-                    </div>
-                  </div>
-
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '11px', color: '#fb923c', fontWeight: '800', textTransform: 'uppercase' }}>Prueba en Vivo</div>
-                    <input type="text" value={detectorInput} onChange={(e) => setDetectorInput(e.target.value)} placeholder="Introduce una frase para verificar" style={{ width: '100%', padding: '8px', background: '#090d16', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px', boxSizing: 'border-box' }} />
-                    <button onClick={handleCheckDetector} style={{ width: '100%', padding: '9px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}>
-                      Comprobar Fiabilidad →
-                    </button>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>Dictamen:</span>
-                      <span style={{ padding: '3px 8px', borderRadius: '4px', background: detectorResult === 'SUCCESS' ? '#15803d' : (detectorResult === 'WARNING' ? '#d97706' : '#dc2626'), color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
-                        {detectorResult === 'SUCCESS' ? '✔ Fiable' : (detectorResult === 'WARNING' ? '⚠️ Sospechoso' : '❌ Bloqueado')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 04. LA EVIDENCIA */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>04</div>
-                    <img src="/2.jfif" alt="La Evidencia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '22px' }}>⚖️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>La Evidencia: Certificados Legales</h2>
-                    </div>
-                    <h3 style={{ fontSize: '15px', color: '#c084fc', fontWeight: '700', margin: '0 0 8px 0' }}>
-                      Prueba legal incontrovertible de que tu empresa actúa con total diligencia.
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-                      Genera certificados oficiales con firma digital y sello de tiempo que demuestran qué ocurrió, cuándo ocurrió y por qué tu empresa cumplió escrupulosamente la ley.
-                    </p>
-                    <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>
-                      ✔ Válido ante jueces, peritos, inspectores y comités de auditoría.
-                    </div>
-                  </div>
-
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '800', textTransform: 'uppercase' }}>Garantía Jurídica</div>
-                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Sellos oficiales RFC 3161 y registro Safe Creative de autoría.</div>
-                    <button onClick={copyBundleJson} style={{ width: '100%', padding: '11px', backgroundColor: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
-                      {copiedBundle ? '✔ Certificado Copiado' : 'Ver Certificado Ejemplo →'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 05. EL JUSTIFICADOR */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>05</div>
-                    <img src="/5.jfif" alt="El Justificador" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '22px' }}>🏛️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Justificador: Subvenciones y Ayudas</h2>
-                    </div>
-                    <h3 style={{ fontSize: '15px', color: '#facc15', fontWeight: '700', margin: '0 0 8px 0' }}>
-                      Asegura el cobro de tus subvenciones sin riesgo de devolución o penalizaciones.
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-                      Controla facturas duplicadas, acredita el principio medioambiental DNSH y elabora memorias técnicas automáticas listas para entregar a la administración.
-                    </p>
-                    <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>
-                      ✔ Blindaje de fondos NextGenEU, Kit Digital, CDTI y convocatorias públicas.
-                    </div>
-                  </div>
-
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#facc15', fontWeight: '800', textTransform: 'uppercase' }}>Fondos Compatibles</div>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {['NextGenEU', 'PRTR', 'Kit Digital', 'CDTI'].map((tag) => (
-                        <span key={tag} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e293b', color: '#facc15', fontWeight: 'bold' }}>{tag}</span>
-                      ))}
-                    </div>
-                    <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '11px', backgroundColor: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
-                      Asegurar Mis Fondos →
-                    </button>
-                  </div>
-                </div>
-
+                ))}
               </div>
 
-              {/* BANNER DE CIERRE COMERCIAL */}
+              {/* BANNER DE CIERRE */}
               <div style={{ marginTop: '40px', backgroundColor: '#090d16', border: '1px solid #1e3a8a', borderRadius: '16px', padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                 <div>
                   <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0' }}>
-                    ¿Quieres ver cómo funciona en tu propia empresa?
+                    Las 5 Bóvedas Normativas incluidas en tu suscripción
                   </h3>
                   <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
-                    Activa tu suscripción hoy mismo y obtén protección inmediata y soporte especializado.
+                    Sin compras por separado. Activa tu suscripción hoy mismo y obtén protección legal inmediata.
                   </p>
                 </div>
                 <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '14px 32px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '8px', fontWeight: '800', fontSize: '15px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(2,132,199,0.4)' }}>
@@ -695,7 +612,7 @@ int proteger_interaccion(const char* prompt) {
                       PLENA VALIDEZ PROBATORIA
                     </span>
                     <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.55, marginTop: '14px' }}>
-                      Presenta ante tribunales certificados digitales indiscutibles que demuestran que tus decisiones automatizadas fueron correctas, diligentes y no vulneraron secretos ni derechos.
+                      Presenta ante tribunales certificados digitales indiscutibles que demuestran que tus decisiones automatizadas fueron correctas, diligentes y no vulneraron secretos ni derechos de imagen/honor.
                     </p>
                   </div>
                   <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '14px', marginTop: '16px', fontSize: '13px', color: '#c084fc', fontWeight: 'bold' }}>
@@ -734,7 +651,7 @@ int proteger_interaccion(const char* prompt) {
           {/* TAB 3: MODELOS COMERCIALES & INTEGRACIÓN (IMÁGENES AMPLIADAS A 210px) */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <span style={{ color: '#38bdf8', fontSize: '13px', fontWeight: '800', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                   OPCIONES DE ALIANZA Y RENTABILIDAD B2B
                 </span>
@@ -961,26 +878,76 @@ int proteger_interaccion(const char* prompt) {
             </div>
           )}
 
-          {/* TAB 7: INICIO (OVERVIEW) */}
+          {/* TAB 7: INICIO (OVERVIEW) — ENFOQUE COMERCIAL ALL-IN-ONE & MARCO LEGAL 2026 */}
           {activeNavTab === 'overview' && (
-            <div style={{ textAlign: 'center', margin: '60px 0' }}>
-              <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '800', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                PLENA CONFIANZA Y CUMPLIMIENTO EN IA
-              </span>
-              <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', margin: '20px 0 16px 0', letterSpacing: '-1px' }}>
-                Usa la Inteligencia Artificial con <span style={{ color: '#38bdf8' }}>total seguridad y ahorro.</span>
-              </h1>
-              <p style={{ fontSize: '18px', color: '#cbd5e1', maxWidth: '780px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
-                SAARE protege la información sensible de tu empresa, evita respuestas falsas y genera certificados oficiales de cumplimiento para auditorías y subvenciones.
-              </p>
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => setActiveNavTab('scenarios_saare')} style={{ padding: '15px 32px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 20px rgba(2,132,199,0.4)' }}>
-                  Ver las 5 Capas de Protección →
-                </button>
-                <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '15px 32px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '8px', fontWeight: '800', fontSize: '15px', textDecoration: 'none' }}>
-                  Contratar Plan (149 €/mes) ↗
-                </a>
-              </div>
+            <div>
+              {/* HERO SECTION DE ALTO IMPACTO */}
+              <section style={{ textAlign: 'center', margin: '40px 0 60px 0' }}>
+                <span style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', padding: '8px 20px', borderRadius: '30px', fontSize: '13px', fontWeight: '900', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'inline-block', marginBottom: '18px', letterSpacing: '0.5px' }}>
+                  🛡️ CUMPLIMIENTO DEL REGLAMENTO EUROPEO DE IA (EU AI ACT) Y LEY DEL HONOR 2026
+                </span>
+                <h1 style={{ fontSize: '52px', fontWeight: '900', color: '#ffffff', margin: '0 0 18px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
+                  Usa la IA con total seguridad, <br />
+                  <span style={{ color: '#38bdf8' }}>ahorro garantizado</span> y blindaje legal.
+                </h1>
+                <p style={{ fontSize: '19px', color: '#cbd5e1', maxWidth: '820px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
+                  SAARE protege los datos de tus empleados, elimina alucinaciones y deepfakes no consentidos, y genera certificados periciales con firma oficial. <strong>Las 5 Bóvedas Normativas integradas en una sola suscripción de 149 €/mes.</strong>
+                </p>
+                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => setActiveNavTab('scenarios_saare')} style={{ padding: '16px 36px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', cursor: 'pointer', fontSize: '16px', boxShadow: '0 4px 25px rgba(2,132,199,0.5)' }}>
+                    Ver las 5 Bóvedas Normativas →
+                  </button>
+                  <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '16px 36px', backgroundColor: '#1e293b', color: '#34d399', border: '1.5px solid #34d399', borderRadius: '8px', fontWeight: '900', fontSize: '16px', textDecoration: 'none', boxShadow: '0 4px 20px rgba(52,211,153,0.15)' }}>
+                    Contratar Todo en Uno (149 €/mes) ↗
+                  </a>
+                </div>
+              </section>
+
+              {/* SECCIÓN COMPARATIVA: PAQUETE ALL-IN-ONE VS. HERRAMIENTAS SUELTAS */}
+              <section style={{ backgroundColor: '#090d16', border: '1.5px solid #1e293b', borderRadius: '18px', padding: '36px', marginBottom: '50px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                  <span style={{ color: '#34d399', fontSize: '12.5px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    PROPUESTA DE VALOR IMBATIBLE
+                  </span>
+                  <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>
+                    ¿Por qué pagar más de 1.200 €/mes contratando soluciones sueltas?
+                  </h2>
+                  <p style={{ color: '#94a3b8', fontSize: '14.5px', margin: 0 }}>
+                    Con SAARE obtienes la suite forense y de seguridad más avanzada de Europa en una tarifa plana sin permanencia.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  <div style={{ background: '#05070c', padding: '22px', borderRadius: '10px', border: '1px solid #334155' }}>
+                    <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>❌ CONTRATACIÓN POR SEPARADO</div>
+                    <ul style={{ paddingLeft: '18px', color: '#94a3b8', fontSize: '13.5px', lineHeight: 1.7, margin: 0 }}>
+                      <li>Filtro DLP de datos y PII: <strong>~150 €/mes</strong></li>
+                      <li>Optimizador de tokens y guardrails: <strong>~120 €/mes</strong></li>
+                      <li>Plataforma de auditoría pericial eIDAS: <strong>~300 €/mes</strong></li>
+                      <li>Detección de deepfakes y honor: <strong>~200 €/mes</strong></li>
+                      <li>Justificación de fondos públicos: <strong>~500 €/informe</strong></li>
+                      <li style={{ borderTop: '1px dashed #334155', paddingTop: '8px', color: '#ef4444', fontWeight: 'bold' }}>Coste total: +1.200 €/mes</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ background: 'rgba(2, 132, 199, 0.08)', padding: '22px', borderRadius: '10px', border: '2px solid #0284c7' }}>
+                    <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '13px', marginBottom: '8px' }}>✔ PAQUETE SAARE ALL-IN-ONE</div>
+                    <ul style={{ paddingLeft: '18px', color: '#e2e8f0', fontSize: '13.5px', lineHeight: 1.7, margin: 0 }}>
+                      <li><strong>Las 5 Bóvedas Normativas</strong> incluidas al 100%</li>
+                      <li>Consola GRC Multi-Inquilino con interruptores</li>
+                      <li>Certificados periciales ilimitados con firma eIDAS</li>
+                      <li>Sensor L7 en memoria con latencia &lt;0.017 ms</li>
+                      <li style={{ borderTop: '1px dashed #0284c7', paddingTop: '8px', color: '#34d399', fontWeight: '900', fontSize: '15px' }}>Precio Único: 149 €/mes</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '28px' }}>
+                  <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ display: 'inline-block', padding: '13px 32px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '6px', fontWeight: '900', fontSize: '14px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(2,132,199,0.3)' }}>
+                    Activar mi Suscripción All-in-One (149 €/mes) ↗
+                  </a>
+                </div>
+              </section>
             </div>
           )}
 
