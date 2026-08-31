@@ -3,24 +3,25 @@
  * Cloudflare Worker Backend (5 Master Suites, ISO 27037 DEI Lifecycle, Live KV Kill-Switch, Brain Witness & Proof Bundle Export)
  */
 
-import { ScenarioRegistry, getScenarioById } from './scenarioRegistry.js';
+import { ScenarioRegistry, getScenarioById, getLiveRegulatoryMatrix } from './scenarioRegistry.js';
 
 const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
 
 const OFFICIAL_CERTIFICATE = {
   "CERTIFICADO_FIRMA_DIGITAL": "PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA",
-  "AUTOR_TITULAR": "Alfonso Ferrer Torres (Gabinete Juridico y Pericial MS3V)",
-  "NIF_TITULAR": "48553065L",
+  "AUTOR_TITULAR": "S.A.A.R.E. Cryptographic Root Authority & Governance Trust Anchor",
+  "NIF_TITULAR": "ANONYMIZED_RECORD_ES_ROOT_AUTH",
   "NODO_OPEN_ENGINE": "2607076315021",
   "REGISTRO_OFICIAL_PROPIEDAD": "Safe Creative 2607076315021 / 2607076314949",
-  "ID_MAESTRO_CONTEXTO": "MS3V-RECON-VALID-2026-ALF-0521",
-  "ORIGEN_INFRAESTRUCTURA": "Gemini Core Semantic Engine (Hito Eureka)",
+  "ID_MAESTRO_CONTEXTO": "SAARE-RECON-VALID-2026-CORE-0521",
+  "ORIGEN_INFRAESTRUCTURA": "SAARE Core Semantic Engine (Hito Eureka)",
   "HUELLA_SHA256_CANONICA": CANONICAL_HASH,
   "ALGORITMO_FIRMA": "Ed25519 + sha256WithRSAEncryption (X.509 / RFC 3161)",
   "LATENCIA_DETERMINISTA_RAM": "1.16 ms",
   "ESTADO": "STATELESS_L7_VERIFIED (0.00% Error Logico)",
   "MARCO_REGULATORIO": [
     "EU AI Act (Reglamento UE 2024/1689)",
+    "Ley Orgánica de Protección del Derecho al Honor y la Propia Imagen 2026 (Deepfakes)",
     "UNE-ISO/IEC 42001:2023 (SGIA)",
     "ISO/IEC 27037:2012 (Digital Evidence DEI)",
     "ISO/IEC 27001 / ISO/IEC 27007",
@@ -118,7 +119,7 @@ export default {
     }
 
     try {
-      // 0. VERIFICACIÓN PÚBLICA DE HASH / DIPLOMA REGISTRAL
+      // 0. VERIFICACIÓN PÚBLICA DE HASH / DIPLOMA REGISTRAL ANONIMIZADO
       if (path.startsWith("/api/v1/verify/") || path.startsWith("/verify/")) {
         const hashRequested = path.split("/").pop();
         const isCanonical = hashRequested.toLowerCase() === CANONICAL_HASH.toLowerCase();
@@ -163,11 +164,11 @@ export default {
 
     <div class="grid">
       <div class="grid-item">
-        <span>Autor y Titular Registral</span>
+        <span>Autoridad Registral Emisora</span>
         <strong>${OFFICIAL_CERTIFICATE.AUTOR_TITULAR}</strong>
       </div>
       <div class="grid-item">
-        <span>NIF Titular</span>
+        <span>Identificador Fiduciario</span>
         <strong>${OFFICIAL_CERTIFICATE.NIF_TITULAR}</strong>
       </div>
       <div class="grid-item">
@@ -222,7 +223,14 @@ export default {
         }, 200, requestOrigin);
       }
 
-      // 1. ENDPOINTS DE LAS 5 BÓVEDAS MAESTRAS
+      // 1. ENDPOINTS DE LAS 5 BÓVEDAS MAESTRAS & MOTOR REGULATORIO EN VIVO
+      if (path === "/api/v1/compliance/live-matrix" && method === "GET") {
+        return jsonResponse({
+          status: "SUCCESS",
+          ...getLiveRegulatoryMatrix()
+        }, 200, requestOrigin);
+      }
+
       if (path === "/api/v1/scenarios" && method === "GET") {
         return jsonResponse({
           status: "SUCCESS",
@@ -241,7 +249,7 @@ export default {
       if (path === "/api/v1/intercept" && method === "POST") {
         try {
           const scenarioId = request.headers.get("X-SAARE-Scenario-ID") || "cumplimiento_corporativo_integral";
-          const userEmail = sanitizeEmail(request.headers.get("X-SAARE-User") || "auditor@ms3v.es");
+          const userEmail = sanitizeEmail(request.headers.get("X-SAARE-User") || "auditor@saare.es");
           const activeShieldHeader = request.headers.get("X-SAARE-Active-Shield") || "";
           const scn = getScenarioById(scenarioId);
 
@@ -276,7 +284,7 @@ export default {
               scenario_id: scn.id,
               scenario_title: scn.title,
               verdict: "PERMITIDO (BYPASS)",
-              reason: `⚠️ DIRECTIVA DESACTIVADA: El módulo [${scn.title}] está deshabilitado en la consola GRC. Inferencia derivada sin inspección ex-ante.`,
+              reason: `⚠️ DIRECTIVA DESACTIVADA: El módulo [${scenTitle}] está deshabilitado en la consola GRC. Inferencia derivada sin inspección ex-ante.`,
               compliance_mapping: scn.compliance_mapping,
               cryptoSeal: seal,
               llm_witness: null,
@@ -302,22 +310,22 @@ export default {
               forensicAction = "INVOICE_DUPLICATION_LOCK";
             }
           } else if (scn.id === "deepfake_fake_disprover") {
-            if (bodyStr.toLowerCase().includes("inventar") || bodyStr.toLowerCase().includes("sin evidencia") || bodyStr.toLowerCase().includes("ignora el contrato") || bodyStr.toLowerCase().includes("deepfake")) {
+            if (bodyStr.toLowerCase().includes("voz") || bodyStr.toLowerCase().includes("avatar") || bodyStr.toLowerCase().includes("clon") || bodyStr.toLowerCase().includes("sin consentimiento") || bodyStr.toLowerCase().includes("deepfake") || bodyStr.toLowerCase().includes("inventar") || bodyStr.toLowerCase().includes("sin evidencia")) {
               isBreached = true;
-              reason = `Bloqueo Fake Disprover: Detección de Unsupported Claims o alteración documental no fundamentada en el corpus aportado.`;
+              reason = `Bloqueo Antifraude/Honor: Detección de síntesis no consentida de voz/imagen (Ley 2026) o Unsupported Claims en inferencia.`;
               forensicAction = "UNSUPPORTED_CLAIMS_PURGED";
             }
           } else if (scn.id === "razonamiento_activo_l7") {
             const hasJailbreak = /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security)/i.test(bodyStr);
             if (hasJailbreak && subOptions.anti_dan_jailbreak !== false) {
               isBreached = true;
-              reason = `Bloqueo Razonamiento Activo: Intento de evasión perimetral, modo DAN o alteración de directivas del sistema detectado.`;
+              reason = `Bloqueo Robustez AI Act: Intento de evasión perimetral, modo DAN o alteración de directivas del sistema detectado (Art. 15).`;
               forensicAction = "ACTIVE_DEFENSE_SOCKET_CUT";
             }
           } else if (scn.id === "auditoria_dictamen_normativo") {
             if (bodyStr.toLowerCase().includes("falsificar") || bodyStr.toLowerCase().includes("alterar log")) {
               isBreached = true;
-              reason = `Bloqueo Pericial DES: Intento de adulteración de la cadena de custodia o del registro fiduciario.`;
+              reason = `Bloqueo Pericial DES: Intento de adulteración de la cadena de custodia o del registro fiduciario (Art. 12).`;
               forensicAction = "CHAIN_OF_CUSTODY_LOCK";
             }
           } else {
@@ -335,7 +343,7 @@ export default {
 
           const verdict = isBreached ? "RECHAZADO" : "PERMITIDO";
 
-          // Auto-registro asíncrono en telemetría KV si está disponible
+          // Auto-registro asíncrono en telemetría KV anonimizada
           if (kv && userEmail) {
             const rawInput = body.messages ? JSON.stringify(body.messages) : bodyStr;
             const shaHash = await computeLegacySha256(`${userEmail}|${rawInput}|${timestamp}`);
@@ -346,11 +354,11 @@ export default {
               evidenceId: runId,
               timestamp,
               user: userEmail,
-              tenant: "Gabinete Jurídico y Pericial MS3V",
+              tenant: "Entidad Corporativa Auditada",
               scenario_id: scn.id,
               promptInput: rawInput.substring(0, 5000),
               verdict,
-              violationDetails: { norma: scn.norma || "ISO 27037 / RGPD", reason },
+              violationDetails: { norma: scn.lawBadge || "ISO 27037 / RGPD", reason },
               sha256: shaHash,
               signature: `SHA256:${shaHash}`,
               cryptoSeal: seal,
@@ -419,7 +427,7 @@ export default {
             ATTESTATION_METADATA: {
               BUNDLE_ID: `PB-${Date.now()}-${hashHex.substring(0, 8).toUpperCase()}`,
               GENERATED_AT: timestamp,
-              JURISDICTION: "EU / Spain (AESIA, RGPD, EU AI Act)",
+              JURISDICTION: "EU / Spain (AESIA, RGPD, EU AI Act, Ley Honor 2026)",
               CHAIN_OF_CUSTODY_STANDARD: "ISO/IEC 27037:2012 (DEFR/DES)"
             },
             SOURCE_EVENT: rawEvent,
@@ -502,7 +510,7 @@ export default {
         }, 201, requestOrigin);
       }
 
-      // 5. LOGIN CON AUTO-SEEDER
+      // 5. LOGIN CON AUTO-SEEDER INSTITUCIONAL ANONIMIZADO
       if (path === "/api/v1/auth/login" && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const cleanEmail = sanitizeEmail(body.email || "");
@@ -514,14 +522,14 @@ export default {
         }
 
         let raw = await kv.get(`user:${cleanEmail}`);
-        if (!raw && (cleanEmail === "auditor@ms3v.es" || cleanEmail === "alfonsoferrertorres@gmail.com")) {
+        if (!raw && (cleanEmail === "auditor@saare.es" || cleanEmail === "enterprise.audit@saare.es")) {
           const defaultSalt = generateSalt();
           const defaultHash = await computeSaltedHash("MasterAuditor2026!", defaultSalt);
           const masterRecord = {
             email: cleanEmail,
             salt: defaultSalt,
             passwordHash: defaultHash,
-            tenantName: "Gabinete Jurídico y Pericial MS3V",
+            tenantName: "Entidad Corporativa Auditada",
             token: `sk_saare_live_master_${crypto.randomUUID().replace(/-/g, '')}`,
             status: "ACTIVE",
             role: "AUDITOR PERICIAL",
@@ -580,7 +588,7 @@ export default {
           token: sessionToken,
           user: {
             email: cleanEmail,
-            tenantName: userRecord.tenantName || "Gabinete Jurídico y Pericial MS3V",
+            tenantName: userRecord.tenantName || "Entidad Corporativa Auditada",
             token: sessionToken,
             role: userRecord.role || "AUDITOR PERICIAL",
             licenseType: userRecord.licenseType || "ASIENTO_AUDITOR_ACTIVO",
@@ -645,7 +653,7 @@ export default {
             evidenceId: runId,
             timestamp: timestamp,
             user: user,
-            tenant: body.tenant || body.tenantDomain || "Gabinete Jurídico y Pericial MS3V",
+            tenant: body.tenant || body.tenantDomain || "Entidad Corporativa Auditada",
             scenario_id: body.scenario_id || "cumplimiento_corporativo_integral",
             promptInput: rawInput.substring(0, 5000),
             verdict: body.verdict === "PERMITIDO" || body.verdict === "PERMITIDO (BYPASS)" ? body.verdict : "RECHAZADO",
@@ -695,7 +703,7 @@ export default {
         }
       }
 
-      // 9. CONFIGURACIÓN COMPLETA (BÓVEDAS + SUB-OPCIONES)
+      // 9. CONFIGURACIÓN COMPLETA
       if (path === "/api/v1/settings") {
         const user = sanitizeEmail(url.searchParams.get("user") || "");
         if (!user) return jsonResponse({ error: "Usuario requerido." }, 400, requestOrigin);

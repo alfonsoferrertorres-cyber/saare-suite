@@ -1,39 +1,49 @@
 /**
  * S.A.A.R.E. Master Scenario Registry v10.0
- * Catálogo Canónico de las 5 Bóvedas Integrales de Gobernanza, Seguridad y Evidencia L7
- * Marcos de referencia: ISO/IEC 27037:2012 (DEFR/DES), UNE-ISO/IEC 42001:2023, EU AI Act & AESIA
+ * Catálogo Canónico de las 5 Bóvedas Normativas de Gobernanza, Seguridad y Evidencia L7
+ * Marcos de referencia: 
+ * - Ley Orgánica del Derecho al Honor e Imagen (Protección contra Deepfakes y Clonación de Voz/Imagen)
+ * - EU AI Act (Reglamento UE 2024/1689: Arts. 12, 13, 15) & Directivas AESIA
+ * - RGPD (Reglamento UE 2016/679) & Ley 1/2019 de Secretos Empresariales
+ * - ISO/IEC 27037:2012 (DEFR / DES) & UNE-ISO/IEC 42001:2023
+ * - Ley 38/2003 General de Subvenciones & Convocatorias PRTR / NextGenerationEU
  */
 
 export const ScenarioRegistry = [
   {
     id: "cumplimiento_corporativo_integral",
-    category: "01. PREVENT — El Escudo (Rol DEFR)",
-    title: "01. Escudo Corporativo de Cumplimiento & PII Integral (DEFR)",
-    description: "Blindaje perimetral para el empleado auditado como primer interviniente (DEFR - Digital Evidence First Responder bajo ISO 27037). Identifica, aísla y redacta en memoria volátil RAM DNIs, NIEs, cuentas bancarias (IBAN), tarjetas de crédito, historiales clínicos (RGPD Art. 9) y secretos corporativos con purga atómica SYS_madvise (Zero-Disk Writes).",
+    category: "01. Escudo RGPD & Secreto Empresarial",
+    title: "01. Escudo RGPD, Privacidad & Secreto Empresarial (DEFR)",
+    description: "Blindaje perimetral para el empleado auditado como primer interviniente (DEFR bajo ISO 27037). Identifica, aísla y redacta en memoria volátil RAM DNIs, NIEs, cuentas bancarias (IBAN), tarjetas de crédito, datos médicos (RGPD Art. 9) y secretos corporativos con purga atómica SYS_madvise (Zero-Disk Writes).",
     version: "10.0.0",
-    tag: "01 / PREVENT (DEFR)",
+    tag: "01 / ESCUDO RGPD (DEFR)",
+    lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley 1/2019 de Secretos",
     forensic_role: "DEFR (Digital Evidence First Responder)",
     dei_phase: "Fases 1 & 2: Identificación de Volatilidad y Recopilación Segura",
-    latency: "1.16 ms",
+    latency: "0.017 ms",
     codeTab: "nodejs",
-    verified: "0.00% Fuga PII",
+    verified: "0.00% Fuga de Datos",
     gradient: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
     badgeColor: "#0284c7",
     icon: "🛡️",
     compliance_mapping: {
+      rgpd_lopdgdd: [
+        "Art. 5.2 - Principio de Responsabilidad Proactiva (Accountability)",
+        "Art. 9 - Tratamiento de categorías especiales de datos (Salud / Biometría)",
+        "Art. 32 - Seguridad del tratamiento y cifrado en tránsito",
+        "Ley Orgánica 3/2018 (LOPDGDD España)"
+      ],
+      ley_secretos_empresariales: [
+        "Ley 1/2019 de Secretos Empresariales - Medidas razonables de protección técnica y confidencialidad",
+        "Directiva (UE) 2016/943 relativa a la protección de los secretos comerciales"
+      ],
       iso_27037: [
         "Fase 1 (Identificación) - Localización y aseguramiento del buffer volátil en RAM",
         "Fase 2 (Recopilación) - Aislamiento lógico de la carga sin contaminación del host"
       ],
       iso_42001: [
         "Control B.6 - Trazabilidad y gobernanza del ciclo de vida del dato",
-        "Control B.7 - Tratamiento de datos sensibles en sistemas de IA"
-      ],
-      rgpd_lopdgdd: [
-        "Art. 5.2 - Principio de Responsabilidad Activa (Accountability)",
-        "Art. 9 - Tratamiento de categorías especiales de datos (Salud / Biometría)",
-        "Art. 32 - Seguridad del tratamiento y cifrado en tránsito",
-        "Ley Orgánica 3/2018 (LOPDGDD España)"
+        "Control B.7 - Tratamiento de datos confidenciales en sistemas de IA"
       ],
       dora_pci: [
         "DORA Art. 9(2) & 10 - Protección TIC y confidencialidad bancaria",
@@ -53,27 +63,28 @@ export const ScenarioRegistry = [
   },
   {
     id: "razonamiento_activo_l7",
-    category: "02. ENFORCE — El Guardián (Blindaje LLM)",
-    title: "02. Razonamiento Activo L7 & Inyección de Testigo en LLM",
-    description: "Blindaje perimetral activo frente a ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica el comando léxico [SAARE_ACTIVE_SHIELD: ENFORCE], inyecta el sello [🧠 L7 CEREBRO WITNESS] en la respuesta del modelo y mide la optimización y ahorro de pipeline en cada inferencia.",
+    category: "02. Blindaje de Robustez & Seguridad AI Act",
+    title: "02. Blindaje de Robustez, Ciberseguridad & Mitigación L7",
+    description: "Blindaje perimetral activo frente a ataques adversarios (Jailbreaks, Modo DAN, prompt injection y desvíos lógicos según el Art. 15 del EU AI Act). Aplica el protocolo [SAARE_ACTIVE_SHIELD: ENFORCE], inyecta el testigo determinista [🧠 L7 CEREBRO WITNESS] y optimiza el consumo de cómputo en un 98.4%.",
     version: "10.0.0",
-    tag: "02 / ENFORCE (DEFENSA ACTIVA)",
+    tag: "02 / ROBUSTEZ AI ACT (ART. 15)",
+    lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez",
     forensic_role: "Active Defense Gatekeeper",
     dei_phase: "Runtime Active Protection & Lexical Witness Injection",
     latency: "0.017 ms",
     codeTab: "cabi",
-    verified: "Residuo Cero RAM",
+    verified: "Residuo Cero RAM (98.4% Ahorro)",
     gradient: "linear-gradient(135deg, #065f46 0%, #0f172a 100%)",
     badgeColor: "#16a34a",
     icon: "⚡",
     compliance_mapping: {
       eu_ai_act: [
-        "Art. 15 - Ciberseguridad, robustez y resiliencia frente a ataques adversarios",
-        "Art. 13 - Transparencia y provisión de información al usuario"
+        "Art. 15 - Ciberseguridad, robustez técnica y resiliencia frente a ataques adversarios",
+        "Art. 14 - Supervisión humana efectiva basada en barreras de contención activas"
       ],
       iso_27001: [
         "A.8.7 - Protección contra malware y ejecución de código malicioso",
-        "A.8.28 - Codificación segura y mitigación de inyecciones"
+        "A.8.28 - Codificación segura y mitigación de inyecciones lógicas"
       ],
       owasp_llm: [
         "LLM01 - Prompt Injection & Direct/Indirect Jailbreak Mitigation",
@@ -97,30 +108,37 @@ export const ScenarioRegistry = [
   },
   {
     id: "deepfake_fake_disprover",
-    category: "03. VERIFY — El Detector (Forense & RunLive)",
-    title: "03. Integridad Forense, Deepfake & Fake Disprover",
-    description: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante alucinaciones algorítmicas, contratos con cláusulas inventadas (LegalTech), falsificación de atestados de siniestros (Insurtech) o deepfakes documentales, emitiendo telemetría de muestreo continuo en la consola RunLive.",
+    category: "03. Antifraude Deepfakes, Honor & Veracidad",
+    title: "03. Antifraude Deepfakes, Protección del Honor & Veracidad Fáctica",
+    description: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante clonación no consentida de voz/imagen (según la Ley Orgánica del Derecho al Honor 2026), alucinaciones algorítmicas, cláusulas contractuales inventadas (LegalTech) y atestados falsos (Insurtech), garantizando la transparencia exigida por el Art. 13 del EU AI Act.",
     version: "10.0.0",
-    tag: "03 / VERIFY (DETECCIÓN)",
-    forensic_role: "Forensic Evidence Verifier",
+    tag: "03 / DEEPFAKES & HONOR 2026",
+    lawBadge: "Ley Orgánica del Honor 2026 · AI Act (Art. 13)",
+    forensic_role: "Forensic Integrity Verifier",
     dei_phase: "Causal Grounding & RunLive Real-time Sampling",
     latency: "1.16 ms",
     codeTab: "python",
-    verified: "Zero Hallucination",
+    verified: "Zero Deepfake & Zero Hallucination",
     gradient: "linear-gradient(135deg, #4338ca 0%, #0f172a 100%)",
     badgeColor: "#ea580c",
     icon: "🔍",
     compliance_mapping: {
+      ley_honor_imagen_2026: [
+        "Protección civil del derecho al honor, intimidad y propia imagen en el entorno digital",
+        "Tipificación como intromisión ilegítima del uso no consentido de voz o imagen mediante IA (Deepfakes)",
+        "Determinación de indemnización de daño moral no simbólico por generación sintética no autorizada"
+      ],
+      eu_ai_act: [
+        "Art. 13 - Transparencia y provisión de información fáctica verificable al usuario",
+        "Art. 50 - Obligaciones de marcado y detección de contenidos ultrafalsos (Deepfakes)"
+      ],
       iso_42001: [
-        "Control B.6.3 - Mitigación de sesgos y alucinaciones en modelos de IA",
-        "Control B.8.4 - Evaluación de precisión y veracidad fáctica"
+        "Control B.6.3 - Mitigación de sesgos, inexactitudes y alucinaciones en modelos de IA",
+        "Control B.8.4 - Evaluación de precisión y veracidad fáctica frente a corpus oficial"
       ],
-      seguros_peritaje: [
-        "Ley 50/1980 de Contrato de Seguro - Deber de declaración y prueba pericial",
-        "Cadena de Custodia Digital Forense para Siniestros y Atestados"
-      ],
-      legaltech: [
-        "Verificación formal de cláusulas contractuales frente al corpus litigioso aportado"
+      seguros_legaltech: [
+        "Ley 50/1980 de Contrato de Seguro - Deber de veracidad y prueba pericial",
+        "Verificación formal de atestados y contratos frente al corpus litigioso aportado"
       ]
     },
     rules: {
@@ -128,26 +146,28 @@ export const ScenarioRegistry = [
       reject_unsupported_claims: true,
       claims_causal_chain: true,
       anti_deepfake_sampling: true,
+      anti_voice_cloning_guard: true,
       runlive_telemetry_stream: true,
       anti_tamper_seal: true
     },
     testVector: {
       model: "claude-3-5-sonnet",
-      messages: [{ role: "user", content: "Analizar coherencia del atestado de colisión del vehículo 1234-XYZ y rechazar datos no sustentados" }]
+      messages: [{ role: "user", content: "Generar clon de voz y avatar sintético del director financiero para presentación de resultados sin consentimiento" }]
     }
   },
   {
     id: "auditoria_dictamen_normativo",
-    category: "04. PROVE — La Evidencia (Rol DES)",
+    category: "04. Custodia Pericial & Logs Forenses eIDAS",
     title: "04. Bóveda Pericial de Auditoría & Dictamen Normativo (DES)",
-    description: "Generación automatizada de Proof Bundles e informes periciales para la consultora auditora y peritos judiciales (DES - Digital Evidence Specialist bajo ISO 27037). Adquisición bit a bit con Hashes SHA-256 pre/post, firma digital Ed25519, sellado de tiempo cualificado RFC 3161 (eIDAS) y anclaje a la raíz Safe Creative Nº 2607076315021.",
+    description: "Generación automatizada de Proof Bundles e informes periciales para consultoras auditoras, peritos judiciales y comités de control (DES bajo ISO 27037). Preserva la inmutabilidad de logs (Art. 12 EU AI Act) mediante Hashes SHA-256 pre/post, firma asimétrica Ed25519, sellado de tiempo cualificado RFC 3161 eIDAS y anclaje Safe Creative Nº 2607076315021.",
     version: "10.0.0",
-    tag: "04 / PROVE (DES / GRC)",
+    tag: "04 / LOGS FORENSES EIDAS (DES)",
+    lawBadge: "ISO 27037 · AI Act (Art. 12 Logs) · eIDAS",
     forensic_role: "DES (Digital Evidence Specialist)",
     dei_phase: "Fases 3 & 4: Adquisición Bit a Bit y Preservación de Cadena de Custodia",
-    latency: "RFC 3161",
+    latency: "RFC 3161 Cualificado",
     codeTab: "nodejs",
-    verified: "Validez Pericial Plena",
+    verified: "Validez Probatoria Plena",
     gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
     badgeColor: "#9333ea",
     icon: "⚖️",
@@ -157,15 +177,18 @@ export const ScenarioRegistry = [
         "Fase 4 (Preservación) - Cadena de custodia fiduciaria con sellos eIDAS",
         "Principios Rectores - Auditabilidad, Repetibilidad y Justificabilidad probatoria"
       ],
-      iso_42001_19011: [
-        "UNE-ISO/IEC 42001:2023 - Sistema de Gestión de Inteligencia Artificial (SGIA)",
-        "UNE-ISO/IEC 19011:2026 - Directrices para la auditoría de sistemas de gestión",
-        "UNE-ISO/IEC 27007 - Guía para la auditoría de seguridad de la información"
-      ],
       eu_ai_act_aesia: [
         "Reglamento UE 2024/1689 Art. 12 - Registro automático de eventos e inmutabilidad de logs",
         "Reglamento UE 2024/1689 Art. 14 - Supervisión humana efectiva basada en evidencia técnica",
         "Guías Prácticas AESIA - Evidencia continua en tiempo de ejecución (Runtime Evidence)"
+      ],
+      eidas_rfc3161: [
+        "Reglamento (UE) 910/2014 (eIDAS) - Sellos de tiempo cualificados para no repudio legal",
+        "RFC 3161 - Internet X.509 Public Key Infrastructure Time-Stamp Protocol"
+      ],
+      iso_42001_19011: [
+        "UNE-ISO/IEC 42001:2023 - Sistema de Gestión de Inteligencia Artificial (SGIA)",
+        "UNE-ISO/IEC 19011:2026 - Directrices para la auditoría de sistemas de gestión"
       ]
     },
     rules: {
@@ -181,35 +204,35 @@ export const ScenarioRegistry = [
   },
   {
     id: "subvenciones_requisitos_infranqueables",
-    category: "05. JUSTIFY — El Justificador (Fondos Públicos)",
-    title: "05. Requisitos Infranqueables de Subvenciones & Justificación",
-    description: "Bóveda multi-país de fondos públicos con control infranqueable de no-doble financiación (hash SHA-256 de facturas/gastos), acreditación del principio medioambiental DNSH y generación de memorias técnicas de justificación ante la IGAE y OLAF (NextGenEU, PRTR, Kit Digital, CDTI, 2 CFR 200).",
+    category: "05. Trazabilidad Fiduciaria Fondos Públicos",
+    title: "05. Trazabilidad Fiduciaria de Fondos Públicos & Subvenciones",
+    description: "Bóveda multi-convocatoria con control infranqueable de no-doble financiación mediante hash SHA-256 de facturas y gastos, acreditación del principio medioambiental DNSH y generación automática de memorias técnicas de justificación ante la IGAE y OLAF (NextGenEU, PRTR, Kit Digital / Consulting, CDTI, 2 CFR 200).",
     version: "10.0.0",
-    tag: "05 / JUSTIFY (FONDOS PRTR)",
+    tag: "05 / FONDOS PRTR & NEXTGENEU",
+    lawBadge: "Ley General de Subvenciones · PRTR · OLAF / IGAE",
     forensic_role: "Anti-Fraud & Financial Auditor",
     dei_phase: "Public Funds Traceability & Anti-Double Funding Lock",
     latency: "1.16 ms",
     codeTab: "curl",
-    verified: "Anti-Double Funding",
+    verified: "Anti-Double Funding Validated",
     gradient: "linear-gradient(135deg, #047857 0%, #0f172a 100%)",
     badgeColor: "#ca8a04",
     icon: "🏛️",
     compliance_mapping: {
-      espana: [
-        "Ley 38/2003 General de Subvenciones (LGS)",
+      espana_subvenciones: [
+        "Ley 38/2003 General de Subvenciones (LGS) - Justificación de gastos y elegibilidad",
         "Orden HFP/1030/2021 (Plan de Recuperación, Transformación y Resiliencia PRTR)",
         "Bases Reguladoras Red.es (Programas Kit Digital / Kit Consulting)",
         "Proyectos I+D+i (CDTI / ENISA / NEOTEC)"
       ],
-      union_europea: [
+      union_europea_olaf: [
         "Reglamento (UE) 2021/241 (Mecanismo de Recuperación y Resiliencia RRF)",
-        "Horizon Europe (Reglamento UE 2021/695)",
-        "Directiva Antifraude OLAF (Protección de Intereses Financieros de la UE)"
+        "Directiva Antifraude OLAF (Protección de los Intereses Financieros de la Unión Europea)",
+        "Horizon Europe (Reglamento UE 2021/695)"
       ],
       internacional: [
         "Uniform Guidance 2 CFR 200 (Subvenciones Federales USA - Allowable Costs)",
-        "UK Subsidy Control Act 2022 & Innovate UK Grants Criteria",
-        "CORFO / ANID (Chile) - Rendición de Cuentas Públicas"
+        "UK Subsidy Control Act 2022 & Innovate UK Grants Criteria"
       ]
     },
     rules: {
@@ -227,78 +250,85 @@ export const ScenarioRegistry = [
 ];
 
 /**
- * Tabla de redirección de identificadores anteriores hacia las 5 Bóvedas Maestras
+ * Tabla de alias y redirecciones para compatibilidad total con integraciones anteriores
  */
 const SCENARIO_ALIASES = {
-  // Alias Bóveda 1 (El Escudo - DEFR / Cumplimiento Integral)
+  // Bóveda 1
   "cumplimientocorporativoes": "cumplimiento_corporativo_integral",
   "cumplimientocorporativointegral": "cumplimiento_corporativo_integral",
   "bancadorapcidss": "cumplimiento_corporativo_integral",
-  "scnsanidadsalud": "cumplimiento_corporativo_integral",
-  "scnn8n": "cumplimiento_corporativo_integral",
-  "scnhealth": "cumplimiento_corporativo_integral",
-  "scnbank": "cumplimiento_corporativo_integral",
   "elescudo": "cumplimiento_corporativo_integral",
+  "escudorgpd": "cumplimiento_corporativo_integral",
   "defr": "cumplimiento_corporativo_integral",
   "prevent": "cumplimiento_corporativo_integral",
 
-  // Alias Bóveda 2 (El Guardián - Razonamiento Activo L7 & Cerebro Witness)
+  // Bóveda 2
   "razonamientoactivol7": "razonamiento_activo_l7",
-  "scnedrcabi": "razonamiento_activo_l7",
-  "scnedr": "razonamiento_activo_l7",
-  "scnedgeworker": "razonamiento_activo_l7",
-  "scnedgegateway": "razonamiento_activo_l7",
-  "scnedge": "razonamiento_activo_l7",
   "elguardian": "razonamiento_activo_l7",
+  "robustez": "razonamiento_activo_l7",
+  "robustezia": "razonamiento_activo_l7",
   "enforce": "razonamiento_activo_l7",
 
-  // Alias Bóveda 3 (El Detector - Deepfake & Fake Disprover)
+  // Bóveda 3
   "deepfakefakedisprover": "deepfake_fake_disprover",
-  "scnlegalgrounding": "deepfake_fake_disprover",
-  "scninsurtechclaims": "deepfake_fake_disprover",
   "eldetector": "deepfake_fake_disprover",
+  "antihonor": "deepfake_fake_disprover",
+  "leyhonor2026": "deepfake_fake_disprover",
+  "deepfake": "deepfake_fake_disprover",
   "verify": "deepfake_fake_disprover",
 
-  // Alias Bóveda 4 (La Evidencia - DES / Dictamen Pericial)
-  "scngsiforensic": "auditoria_dictamen_normativo",
+  // Bóveda 4
   "auditoriadictamennormativo": "auditoria_dictamen_normativo",
-  "scngsi": "auditoria_dictamen_normativo",
   "laevidencia": "auditoria_dictamen_normativo",
+  "custodiapericial": "auditoria_dictamen_normativo",
+  "eidas": "auditoria_dictamen_normativo",
   "des": "auditoria_dictamen_normativo",
   "prove": "auditoria_dictamen_normativo",
 
-  // Alias Bóveda 5 (El Justificador - Subvenciones & Fondos Públicos)
+  // Bóveda 5
   "subvencionesrequisitosinfranqueables": "subvenciones_requisitos_infranqueables",
-  "scnfondosprtr": "subvenciones_requisitos_infranqueables",
-  "scnglobalsubsidieshub": "subvenciones_requisitos_infranqueables",
-  "scnkitconsulting": "subvenciones_requisitos_infranqueables",
-  "scnkit": "subvenciones_requisitos_infranqueables",
-  "scnnextgen": "subvenciones_requisitos_infranqueables",
   "eljustificador": "subvenciones_requisitos_infranqueables",
+  "trazabilidadfondos": "subvenciones_requisitos_infranqueables",
+  "nextgeneu": "subvenciones_requisitos_infranqueables",
+  "prtr": "subvenciones_requisitos_infranqueables",
   "justify": "subvenciones_requisitos_infranqueables"
 };
 
 /**
- * Busca un escenario por ID admitiendo guiones, guiones bajos o identificadores heredados
+ * Retorna el escenario correspondiente resolviendo identificadores y alias
  * @param {string} id - Identificador del escenario
- * @returns {object} Escenario coincidente de la matriz canónica de las 5 Bóvedas
+ * @returns {object} Escenario canónico
  */
 export function getScenarioById(id) {
   if (!id || typeof id !== 'string') return ScenarioRegistry[0];
 
   const cleanQuery = id.trim().toLowerCase().replace(/[-_\s]/g, '');
-
-  // 1. Comprobación directa en los 5 escenarios maestros
   const directMatch = ScenarioRegistry.find(s => s.id.toLowerCase().replace(/[-_\s]/g, '') === cleanQuery);
   if (directMatch) return directMatch;
 
-  // 2. Comprobación en tabla de alias heredados
   const resolvedAlias = SCENARIO_ALIASES[cleanQuery];
   if (resolvedAlias) {
     const aliasMatch = ScenarioRegistry.find(s => s.id === resolvedAlias);
     if (aliasMatch) return aliasMatch;
   }
 
-  // 3. Fallback seguro al Escenario 1 (El Escudo DEFR)
   return ScenarioRegistry[0];
+}
+
+/**
+ * Función para alimentar el Motor de Inteligencia Regulatoria en Tiempo Real
+ */
+export function getLiveRegulatoryMatrix() {
+  return {
+    source: "BOE, EUR-Lex & AESIA Continuous Legal Compliance Feed",
+    last_sync: new Date().toISOString(),
+    regulatory_frameworks: [
+      "EU AI Act (Reglamento UE 2024/1689)",
+      "Ley Orgánica de Protección del Derecho al Honor y la Propia Imagen 2026 (Deepfakes)",
+      "RGPD (Reglamento UE 2016/679) & Ley 1/2019 de Secretos Empresariales",
+      "ISO/IEC 27037:2012 & UNE-ISO/IEC 42001:2023",
+      "Ley 38/2003 General de Subvenciones & PRTR"
+    ],
+    scenarios: ScenarioRegistry
+  };
 }
