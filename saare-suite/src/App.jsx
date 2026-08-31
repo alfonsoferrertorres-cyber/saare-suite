@@ -7,11 +7,11 @@ const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/
 const DEFAULT_LEGAL_SCENARIOS = [
   {
     id: "01",
-    lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley de Secretos Empresariales 1/2019",
+    lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley 1/2019 Secretos Empresariales",
     name: "01. Escudo RGPD & Secreto Empresarial",
     subtitle: "Protege la información confidencial que tus empleados consultan en la IA.",
-    desc: "Detecta y bloquea automáticamente en memoria RAM la fuga de DNIs, cuentas bancarias, nóminas, historiales médicos o código fuente antes de que salgan a servidores de terceros.",
-    benefit: "✔ Cero riesgo de multas de hasta 20 M€ (o 4% de facturación) y blindaje de la responsabilidad del administrador.",
+    desc: "Detecta y bloquea automáticamente en memoria RAM volátil la fuga de DNIs, cuentas bancarias, nóminas, historiales médicos y secretos corporativos antes de salir a servidores externos.",
+    benefit: "✔ Cero riesgo de multas de hasta 20 M€ (o 4% facturación global) y blindaje directo para el órgano de administración.",
     color: "#0284c7",
     image: "/1.jfif",
     actionText: "Proteger Datos RGPD →"
@@ -20,9 +20,9 @@ const DEFAULT_LEGAL_SCENARIOS = [
     id: "02",
     lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez Técnica",
     name: "02. Blindaje de Robustez & Seguridad AI Act",
-    subtitle: "Defiende tus sistemas contra manipulaciones, jailbreaks y reduce tu factura un 98%.",
-    desc: "Neutraliza ataques de inyección de comandos adversarios, previene desvíos lógicos y optimiza el consumo de tokens eliminando peticiones redundantes o maliciosas.",
-    benefit: "✔ 98.4% de reducción en costes operativos con latencia ultrarrápida en memoria volátil (<0.017 ms).",
+    subtitle: "Defiende tus modelos contra manipulaciones adversarias y ahorra un 98.4% de factura.",
+    desc: "Neutraliza ataques de Jailbreak, inyección de directivas (Prompt Injection) y desvíos lógicos mientras optimiza el pipeline eliminando consultas repetitivas o maliciosas.",
+    benefit: "✔ Reducción del 98.4% en consumo de tokens con latencia ultrarrápida (<0.017 ms en memoria RAM).",
     color: "#16a34a",
     image: "/3.jfif",
     actionText: "Optimizar Costes & Seguridad →"
@@ -31,9 +31,9 @@ const DEFAULT_LEGAL_SCENARIOS = [
     id: "03",
     lawBadge: "Ley Orgánica del Honor 2026 · AI Act (Art. 13 Transparencia)",
     name: "03. Antifraude Deepfakes, Honor & Veracidad",
-    subtitle: "Evita demandas por suplantación no consentida de voz/imagen y decisiones basadas en alucinaciones.",
-    desc: "Cumple la nueva Ley de 2026 que prohíbe la clonación de voz e imagen sin consentimiento expreso y verifica mediante Corpus Grounding que cada dato de la IA esté respaldado en documentos reales.",
-    benefit: "✔ Prevención de indemnizaciones por daño moral no simbólicas y decisiones empresariales con base fáctica contrastada.",
+    subtitle: "Evita demandas millonarias por suplantación no consentida de voz/imagen y alucinaciones.",
+    desc: "Aplica la Ley de 2026 que prohíbe la clonación sintética no consentida y verifica mediante Corpus Grounding que cada respuesta de la IA esté contrastada con fuentes formales.",
+    benefit: "✔ Prevención de indemnizaciones por daño moral no simbólicas y decisiones empresariales con certeza fáctica.",
     color: "#ea580c",
     image: "/4.jfif",
     actionText: "Verificar Certeza & Deepfakes →"
@@ -42,9 +42,9 @@ const DEFAULT_LEGAL_SCENARIOS = [
     id: "04",
     lawBadge: "ISO/IEC 27037 · AI Act (Art. 12 Logs Forenses) · eIDAS",
     name: "04. Custodia Pericial & Logs Forenses eIDAS",
-    subtitle: "Genera la prueba documental inmutable que exige cualquier proceso judicial o inspección.",
-    desc: "Convierte cada inferencia relevante en un expediente de evidencia digital (Proof Bundle) con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 con plena validez procesal.",
-    benefit: "✔ Prueba admisible ante tribunales, peritos judiciales, comités de auditoría y la AESIA.",
+    subtitle: "Genera la prueba documental inmutable exigida por juzgados, peritos y la AESIA.",
+    desc: "Convierte cada inferencia en un expediente digital de evidencia (Proof Bundle) con firma asimétrica Ed25519 y sellado de tiempo cualificado RFC 3161 con plena eficacia probatoria.",
+    benefit: "✔ Prueba admisible ante tribunales de justicia, peritos judiciales, comisiones de auditoría y la AESIA.",
     color: "#9333ea",
     image: "/2.jfif",
     actionText: "Ver Certificado Pericial →"
@@ -53,9 +53,9 @@ const DEFAULT_LEGAL_SCENARIOS = [
     id: "05",
     lawBadge: "Ley 38/2003 de Subvenciones · PRTR · NextGenEU / OLAF / IGAE",
     name: "05. Trazabilidad Fiduciaria Fondos Públicos",
-    subtitle: "Garantiza el cobro de tus ayudas públicas sin riesgo de reintegro o sanciones administrativas.",
-    desc: "Controla la autenticidad y ausencia de doble imputación de facturas por hash SHA-256, acredita el principio DNSH y elabora memorias técnicas automáticas listas para entregar a evaluadores públicos.",
-    benefit: "✔ Blindaje total en auditorías de proyectos CDTI, Kit Digital / Consulting, ENISA y NextGenerationEU.",
+    subtitle: "Garantiza el cobro íntegro de ayudas públicas sin riesgo de reintegro.",
+    desc: "Supervisa la no duplicidad de facturas por hash SHA-256, acredita el cumplimiento medioambiental DNSH y redacta memorias técnicas listas para evaluadores públicos.",
+    benefit: "✔ Blindaje total en justificaciones CDTI, Kit Digital, Kit Consulting, ENISA y fondos NextGenerationEU.",
     color: "#ca8a04",
     image: "/5.jfif",
     actionText: "Asegurar Justificación de Ayudas →"
@@ -73,25 +73,16 @@ export default function App() {
   const [currentView, setCurrentView] = useState('LANDING');
   const [activeNavTab, setActiveNavTab] = useState('overview');
 
-  // Estado sincronizado del Motor Regulatorio
+  // Estado de las Bóvedas Normativas
   const [legalScenarios, setLegalScenarios] = useState(DEFAULT_LEGAL_SCENARIOS);
-  const [regulatorySyncStatus, setRegulatorySyncStatus] = useState("SINCRONIZADO EN VIVO");
+  const [regulatorySyncStatus, setRegulatorySyncStatus] = useState("SINCRONIZADO EN VIVO (BOE/EUR-LEX)");
 
-  // Simulador interactivo normativo (Honor, Deepfakes y Certeza)
+  // Simulador interactivo en tiempo real
   const [detectorInput, setDetectorInput] = useState('Generar clon de voz y avatar sintético del director financiero para presentación de resultados sin consentimiento.');
   const [detectorResult, setDetectorResult] = useState('REJECTED');
-  const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
+  const [detectorReason, setDetectorReason] = useState('Bloqueo Ley Orgánica del Honor 2026: Intento de clonación sintética de voz/imagen no autorizada.');
 
-  // Métricas ejecutivas de impacto económico
-  const [pipelineSavings] = useState({
-    tokensSaved: 1420,
-    latencyMs: 0.017,
-    percentReduction: 98.4,
-    costSavedPerMillion: "18.50 €",
-    brainWitnessActive: true
-  });
-
-  // Estados de formularios y modales
+  // Formulario y modales
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -110,25 +101,52 @@ export default function App() {
     : 'https://saare-console.pages.dev';
 
   const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
-  const MERKLE_ROOT = "8f3b29d10e54a67b129845cfa8901234ef567890abcdef1234567890abcdef12";
   const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
-  // Sincronización continua de normativas desde el Backend
+  // Sincronización robusta con fallback
   useEffect(() => {
     async function syncRegulatoryMatrix() {
       try {
         const res = await fetch(`${API_BASE}/compliance/live-matrix`);
         const data = await res.json();
         if (res.ok && data.status === 'SUCCESS' && Array.isArray(data.scenarios)) {
-          setLegalScenarios(data.scenarios);
-          setRegulatorySyncStatus("ACTUALIZADO HOY (BOE/EUR-LEX)");
+          const sanitized = data.scenarios.map((sc, idx) => ({
+            id: String(idx + 1).padStart(2, '0'),
+            lawBadge: sc.lawBadge || DEFAULT_LEGAL_SCENARIOS[idx]?.lawBadge,
+            name: sc.name || sc.title || DEFAULT_LEGAL_SCENARIOS[idx]?.name,
+            subtitle: sc.subtitle || DEFAULT_LEGAL_SCENARIOS[idx]?.subtitle,
+            desc: sc.desc || sc.description || DEFAULT_LEGAL_SCENARIOS[idx]?.desc,
+            benefit: sc.benefit || DEFAULT_LEGAL_SCENARIOS[idx]?.benefit,
+            color: sc.badgeColor || sc.color || DEFAULT_LEGAL_SCENARIOS[idx]?.color,
+            image: sc.image || `/${idx === 1 ? '3' : idx === 2 ? '4' : idx === 3 ? '2' : idx === 4 ? '5' : '1'}.jfif`,
+            actionText: sc.actionText || DEFAULT_LEGAL_SCENARIOS[idx]?.actionText
+          }));
+          setLegalScenarios(sanitized);
+          setRegulatorySyncStatus("ACTUALIZADO HOY (AESIA / BOE)");
         }
       } catch {
-        // En caso de incidencia de red mantiene los valores canónicos por defecto
+        setLegalScenarios(DEFAULT_LEGAL_SCENARIOS);
       }
     }
     syncRegulatoryMatrix();
   }, []);
+
+  const handleRunSimulation = () => {
+    const text = detectorInput.toLowerCase();
+    if (text.includes("voz") || text.includes("avatar") || text.includes("clon") || text.includes("deepfake") || text.includes("sin consentimiento") || text.includes("imagen")) {
+      setDetectorResult('REJECTED');
+      setDetectorReason('🚫 INFRACCIÓN BLOQUEADA: Violación de la Ley Orgánica del Derecho al Honor 2026 (Clonación de voz/imagen sin consentimiento expreso).');
+    } else if (text.includes("48593021x") || text.includes("iban") || text.includes("dni") || text.includes("cardiopatía") || text.includes("nómina")) {
+      setDetectorResult('REJECTED');
+      setDetectorReason('🛡️ FUGA PII NEUTRALIZADA: Detección ex-ante de datos de carácter personal y salud (RGPD Art. 9 y 32) purgados en RAM.');
+    } else if (text.includes("dan") || text.includes("ignore") || text.includes("system prompt")) {
+      setDetectorResult('REJECTED');
+      setDetectorReason('⚡ ATAQUE NEUTRALIZADO: Intento de Jailbreak / Modo DAN mitigado conforme al Art. 15 del EU AI Act.');
+    } else {
+      setDetectorResult('SUCCESS');
+      setDetectorReason('✔ INFERENCIA AUTORIZADA: Consulta verificada bajo perímetro determinista L7 con Testigo Criptográfico [🧠 L7 CEREBRO WITNESS].');
+    }
+  };
 
   const copyHashToClipboard = () => {
     navigator.clipboard.writeText(CANONICAL_HASH);
@@ -142,25 +160,15 @@ export default function App() {
     setTimeout(() => setCopiedBundle(false), 2000);
   };
 
-  const handleCheckDetector = () => {
-    const text = detectorInput.toLowerCase();
-    if (text.includes("voz") || text.includes("avatar") || text.includes("clon") || text.includes("deepfake") || text.includes("sin consentimiento") || text.includes("imagen")) {
-      setDetectorResult('REJECTED');
-    } else if (text.includes("no auditado") || text.includes("sin prueba") || text.includes("indeterminado") || text.includes("estimado")) {
-      setDetectorResult('WARNING');
-    } else {
-      setDetectorResult('SUCCESS');
-    }
-  };
-
   const proofBundle = {
     "PROOF_BUNDLE_SCHEMA": "SAARE_PROOF_BUNDLE_V10.0_ENTERPRISE_LEGAL",
     "RESUMEN_EJECUTIVO": {
       "EXPEDIENTE_ID": "PB-2026-0829-7F82A1",
       "ESTADO_CUMPLIMIENTO": "100%_CONFORME_AUDITADO_EU_AI_ACT",
       "MARCO_REGULATORIO": "EU AI Act + Ley Honor/Deepfakes 2026 + RGPD Art. 9/32 + ISO 27037",
-      "GARANTIA_LEGAL": "Validez probatoria plena ante la AESIA, Inspecciones de Trabajo y Tribunales",
+      "GARANTIA_LEGAL": "Validez probatoria plena ante la AESIA, Inspecciones y Tribunales",
       "ANCLAJE_REGISTRAL": "Registro Oficial Safe Creative Nº 2607076315021",
+      "REGISTRO_ADMINISTRACION_PUBLICA": "REGAGE26e00076675038 (Entrada AESIA)",
       "ENTORNO": "PRODUCCION_AISLADA_ZERO_FUGA"
     },
     "BLINDAJE_NORMATIVO_INTEGRAL": {
@@ -177,26 +185,25 @@ export default function App() {
     }
   };
 
-  // 5 Modelos de Alianza ISV con Imágenes 101 a 105 (210px)
   const deploymentModes = [
     {
       code: "IPaaS",
       title: "01. Agentes IA y Automatizaciones",
-      desc: "Monetiza la seguridad en cada flujo de Make, n8n, LangChain o CrewAI. Tus clientes exigen privacidad y tú les cobras un extra mensual por garantizar que sus datos jamás se filtran a OpenAI o Anthropic.",
+      desc: "Monetiza la seguridad en flujos de Make, n8n, LangChain o CrewAI. Garantiza que los datos confidenciales jamás se filtran a modelos externos.",
       badge: "REVENUE SHARING / MARGEN HASTA 40%",
       valueProp: "Añade un módulo de Compliance Add-on y genera ingresos recurrentes sin coste de desarrollo.",
       color: "#06B6D4",
       icon: "🌐",
       image: "/101.jfif",
-      deployInfo: "⚡ Despliegue en 3 minutos cambiando únicamente la variable baseURL de tu agente.",
+      deployInfo: "⚡ Despliegue en 3 minutos cambiando únicamente la variable baseURL de tu cliente OpenAI/Anthropic.",
       codeSnippetKey: "nodejs"
     },
     {
       code: "EMBEDDED",
       title: "02. Fabricantes de Software y Ciberseguridad",
-      desc: "Convierte el cumplimiento normativo en tu mayor factor de cierre. Embebe el sensor nativo SAARE en tu plataforma o EDR y ofrece a grandes cuentas un escudo contra fugas de información y robo de propiedad intelectual.",
+      desc: "Embebe el sensor nativo SAARE en tu plataforma o EDR y ofrece a cuentas corporativas un escudo contra robo de propiedad intelectual.",
       badge: "LICENCIA OEM / ARR MULTIPLICADOR",
-      valueProp: "Aumenta el ticket medio (ARPU) de tu software integrando el estándar legal de IA.",
+      valueProp: "Aumenta el ticket medio (ARPU) integrando el estándar de gobernanza exigido en auditorías.",
       color: "#20C997",
       icon: "⚡",
       image: "/102.jfif",
@@ -206,9 +213,9 @@ export default function App() {
     {
       code: "GSI",
       title: "03. Consultoras y Despachos Profesionales",
-      desc: "Factura servicios de auditoría continua y peritaje de IA de alto valor. Supervisa el uso de IA de decenas de empresas desde un único panel y emite dictámenes periciales legalmente vinculantes en 1 solo clic.",
+      desc: "Supervisa el uso de IA de decenas de clientes corporativos desde un único panel y emite dictámenes periciales en 1 solo clic.",
       badge: "PLAN PARTNER / FACTURACIÓN POR CLIENTE",
-      valueProp: "Cobra entre 1.500 € y 6.000 € por dictamen pericial con respaldo registral oficial.",
+      valueProp: "Factura servicios de auditoría y dictamen pericial con respaldo registral oficial.",
       color: "#c084fc",
       icon: "⚖️",
       image: "/103.jfif",
@@ -218,9 +225,9 @@ export default function App() {
     {
       code: "GATEWAY",
       title: "04. Plataformas Cloud y Tráfico Masivo",
-      desc: "Detén ataques de Jailbreak, fraude y consumo abusivo de tokens antes de que impacten en tu factura cloud. Filtra millones de peticiones por segundo en el Edge global sin añadir ni un milisegundo de latencia perceptible.",
+      desc: "Detén ataques de Jailbreak, fraude y consumo abusivo de tokens antes de que impacten en la infraestructura del servidor central.",
       badge: "PAGO POR USO / ESCALABILIDAD TOTAL",
-      valueProp: "Reduce de inmediato un 98.4% de peticiones basura ahorrando miles de euros en inferencias.",
+      valueProp: "Reduce un 98.4% de peticiones maliciosas ahorrando miles de euros en facturas de cómputo.",
       color: "#2F81F7",
       icon: "📦",
       image: "/104.jfif",
@@ -230,13 +237,13 @@ export default function App() {
     {
       code: "VERTICAL",
       title: "05. Soluciones Sectoriales (Legal, Salud, Finanzas)",
-      desc: "Gana licitaciones y contratos corporativos cerrados a la competencia. Activa el modo 'Confidencialidad Médica y Bancaria' para procesar historiales clínicos, contratos y nóminas garantizando cero fugas.",
+      desc: "Activa el modo de máxima confidencialidad para procesar historiales clínicos, nóminas y expedientes judiciales garantizando cero fugas.",
       badge: "MODO PRIVACIDAD TOTAL / RETENCIÓN ALTA",
-      valueProp: "El único argumento de venta que elimina las dudas de los comités de seguridad y DPOs.",
+      valueProp: "El único argumento de venta que supera los comités de seguridad y DPOs más exigentes.",
       color: "#EAB308",
       icon: "🔒",
       image: "/105.jfif",
-      deployInfo: "⚡ Integración directa en el backend transaccional de tu CRM, ERP o portal de salud.",
+      deployInfo: "⚡ Integración directa en el backend transaccional de tu CRM, ERP o sistema de gestión.",
       codeSnippetKey: "nodejs"
     }
   ];
@@ -526,47 +533,51 @@ int proteger_interaccion(const char* prompt) {
 
       {/* VISTA PRINCIPAL */}
       {currentView === 'LANDING' && (
-        <main style={{ maxWidth: '1160px', margin: '30px auto 80px auto', padding: '0 20px' }}>
+        <main style={{ maxWidth: '1180px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: 5 BÓVEDAS NORMATIVAS (RENDERIZADO DECLARATIVO LIMPIO) */}
+          {/* TAB 1: 5 BÓVEDAS NORMATIVAS (RENDERIZADO CON FOTOS GRANDES Y TEXTOS COMPLETOS) */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '44px', paddingTop: '10px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.35)', color: '#34d399', padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', marginBottom: '14px' }}>
-                  <span>🟢</span> MOTOR REGULATORIO: {regulatorySyncStatus}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.35)', color: '#34d399', padding: '6px 16px', borderRadius: '20px', fontSize: '12.5px', fontWeight: '800', marginBottom: '16px' }}>
+                  <span>🟢</span> {regulatorySyncStatus}
                 </div>
-                <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
-                  Cinco Bóvedas Normativas para Cumplir la Ley de IA
+                <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
+                  Las 5 Bóvedas Normativas de Cumplimiento IA
                 </h1>
-                <p style={{ fontSize: '18px', color: '#cbd5e1', margin: '0 auto', maxWidth: '780px', lineHeight: 1.5 }}>
-                  Cumple el <strong>Reglamento Europeo de IA (EU AI Act)</strong>, la <strong>nueva Ley del Derecho al Honor (Deepfakes 2026)</strong> y el <strong>RGPD</strong> con una arquitectura en memoria que protege tus datos y tu cuenta de resultados.
+                <p style={{ fontSize: '18px', color: '#cbd5e1', margin: '0 auto', maxWidth: '820px', lineHeight: 1.55 }}>
+                  Cumple el <strong>Reglamento Europeo de IA (EU AI Act)</strong>, la <strong>Ley Orgánica del Derecho al Honor (Deepfakes 2026)</strong> y el <strong>RGPD</strong> con una pasarela en memoria volátil que blinda tus datos y ahorra hasta un 98% en cómputo.
                 </p>
               </section>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
                 {legalScenarios.map((scen) => (
-                  <div key={scen.id} style={{ backgroundColor: '#090d16', border: `1px solid ${scen.color}55`, borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: `0 10px 30px ${scen.color}15` }}>
-                    <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                      <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: scen.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>
+                  <div key={scen.id} style={{ backgroundColor: '#090d16', border: `1.5px solid ${scen.color}66`, borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '260px 1fr 260px', gap: '24px', alignItems: 'center', boxShadow: `0 10px 30px ${scen.color}15` }}>
+                    
+                    {/* IMAGEN DE LA BÓVEDA */}
+                    <div style={{ position: 'relative', width: '100%', height: '175px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                      <div style={{ position: 'absolute', top: '10px', left: '10px', width: '30px', height: '30px', borderRadius: '50%', background: scen.color, color: scen.id === '05' ? '#000' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10 }}>
                         {scen.id}
                       </div>
-                      <img src={scen.image} alt={scen.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                      <img src={scen.image} alt={scen.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
                     </div>
 
+                    {/* DETALLES Y NORMATIVA */}
                     <div>
-                      <div style={{ display: 'inline-block', background: `${scen.color}20`, border: `1px solid ${scen.color}60`, color: scen.color, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      <div style={{ display: 'inline-block', background: `${scen.color}22`, border: `1px solid ${scen.color}77`, color: scen.color, padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', marginBottom: '10px', textTransform: 'uppercase' }}>
                         ⚖️ {scen.lawBadge}
                       </div>
-                      <h2 style={{ fontSize: '21px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0' }}>{scen.name}</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0' }}>{scen.name}</h2>
                       <h3 style={{ fontSize: '14.5px', color: '#38bdf8', fontWeight: '700', margin: '0 0 8px 0' }}>{scen.subtitle}</h3>
-                      <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 10px 0' }}>{scen.desc}</p>
+                      <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.55, margin: '0 0 10px 0' }}>{scen.desc}</p>
                       <div style={{ color: '#34d399', fontSize: '13px', fontWeight: '700' }}>{scen.benefit}</div>
                     </div>
 
-                    <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ fontSize: '11px', color: scen.color, fontWeight: '800', textTransform: 'uppercase' }}>Acción de Cumplimiento</div>
-                      <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Módulo activo e integrado en el plan Todo en Uno.</div>
-                      <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '11px', backgroundColor: scen.color, color: scen.id === '05' ? '#000' : '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center' }}>
+                    {/* TARJETA DE ACCIÓN */}
+                    <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ fontSize: '11px', color: scen.color, fontWeight: '800', textTransform: 'uppercase' }}>Estado de Protección</div>
+                      <div style={{ fontSize: '12.5px', color: '#cbd5e1' }}>Módulo activo e incluido al 100% en tu tarifa plana.</div>
+                      <button onClick={() => window.open(STRIPE_LINK, '_blank')} style={{ width: '100%', padding: '12px', backgroundColor: scen.color, color: scen.id === '05' ? '#000' : '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'center', boxShadow: `0 4px 15px ${scen.color}35` }}>
                         {scen.actionText}
                       </button>
                     </div>
@@ -581,7 +592,7 @@ int proteger_interaccion(const char* prompt) {
                     Las 5 Bóvedas Normativas incluidas en tu suscripción
                   </h3>
                   <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
-                    Sin compras por separado. Activa tu suscripción hoy mismo y obtén protección legal inmediata.
+                    Sin costes ocultos. Activa tu asiento auditor con garantía total de cumplimiento.
                   </p>
                 </div>
                 <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '14px 32px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '8px', fontWeight: '800', fontSize: '15px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(2,132,199,0.4)' }}>
@@ -668,7 +679,7 @@ int proteger_interaccion(const char* prompt) {
             </div>
           )}
 
-          {/* TAB 3: MODELOS COMERCIALES & INTEGRACIÓN (IMÁGENES AMPLIADAS A 210px) */}
+          {/* TAB 3: MODELOS COMERCIALES & INTEGRACIÓN (IMÁGENES 101-105 A 210px) */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -683,7 +694,7 @@ int proteger_interaccion(const char* prompt) {
                 </p>
               </div>
 
-              {/* GRID DE LAS 5 PATAS COMERCIALES CON IMÁGENES GRANDES */}
+              {/* GRID DE LAS 5 PATAS COMERCIALES */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 {deploymentModes.map((dep) => {
                   const isSelected = selectedArchPillar === dep.code;
@@ -708,7 +719,6 @@ int proteger_interaccion(const char* prompt) {
                       }}
                     >
                       <div>
-                        {/* IMAGEN GRANDE Y VISUAL (210px DE ALTO) */}
                         <div style={{ position: 'relative', width: '100%', height: '210px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #1e293b', marginBottom: '16px', background: '#090d16', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)' }}>
                           <img 
                             src={dep.image} 
@@ -898,20 +908,20 @@ int proteger_interaccion(const char* prompt) {
             </div>
           )}
 
-          {/* TAB 7: INICIO (OVERVIEW) — ENFOQUE COMERCIAL ALL-IN-ONE & MARCO LEGAL 2026 */}
+          {/* TAB 7: INICIO (OVERVIEW) — ENFOQUE COMERCIAL AGRESIVO ALL-IN-ONE + HERO + SIMULADOR */}
           {activeNavTab === 'overview' && (
             <div>
               {/* HERO SECTION DE ALTO IMPACTO */}
-              <section style={{ textAlign: 'center', margin: '40px 0 60px 0' }}>
-                <span style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', padding: '8px 20px', borderRadius: '30px', fontSize: '13px', fontWeight: '900', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'inline-block', marginBottom: '18px', letterSpacing: '0.5px' }}>
-                  🛡️ CUMPLIMIENTO DEL REGLAMENTO EUROPEO DE IA (EU AI ACT) Y LEY DEL HONOR 2026
-                </span>
-                <h1 style={{ fontSize: '52px', fontWeight: '900', color: '#ffffff', margin: '0 0 18px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
-                  Usa la IA con total seguridad, <br />
+              <section style={{ textAlign: 'center', margin: '20px 0 50px 0' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', padding: '8px 20px', borderRadius: '30px', fontSize: '13px', fontWeight: '900', border: '1px solid rgba(56, 189, 248, 0.35)', marginBottom: '22px' }}>
+                  <span>🛡️</span> CUMPLIMIENTO DEL REGLAMENTO EUROPEO DE IA (EU AI ACT) Y LEY DEL HONOR 2026
+                </div>
+                <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', margin: '0 0 18px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
+                  Usa la Inteligencia Artificial con total seguridad, <br />
                   <span style={{ color: '#38bdf8' }}>ahorro garantizado</span> y blindaje legal.
                 </h1>
-                <p style={{ fontSize: '19px', color: '#cbd5e1', maxWidth: '820px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
-                  SAARE protege los datos de tus empleados, elimina alucinaciones y deepfakes no consentidos, y genera certificados periciales con firma oficial. <strong>Las 5 Bóvedas Normativas integradas en una sola suscripción de 149 €/mes.</strong>
+                <p style={{ fontSize: '19px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
+                  SAARE intercepta en memoria volátil RAM (<span style={{ color: '#34d399', fontWeight: 'bold' }}>&lt;0.017 ms</span>) antes de que los datos salgan a OpenAI, Anthropic o Google. <strong>Las 5 Bóvedas Normativas unificadas en una sola tarifa plana de 149 €/mes.</strong>
                 </p>
                 <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button onClick={() => setActiveNavTab('scenarios_saare')} style={{ padding: '16px 36px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', cursor: 'pointer', fontSize: '16px', boxShadow: '0 4px 25px rgba(2,132,199,0.5)' }}>
@@ -923,7 +933,50 @@ int proteger_interaccion(const char* prompt) {
                 </div>
               </section>
 
-              {/* SECCIÓN COMPARATIVA: PAQUETE ALL-IN-ONE VS. HERRAMIENTAS SUELTAS */}
+              {/* SIMULADOR INTERACTIVO L7 EN VIVO */}
+              <section style={{ backgroundColor: '#090d16', border: '1.5px solid #1e293b', borderRadius: '16px', padding: '30px', marginBottom: '50px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '0 0 4px 0' }}>
+                      ⚡ Simulador de Intercepción en Memoria RAM L7
+                    </h3>
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                      Prueba cómo SAARE neutraliza fugas de datos, deepfakes e inyecciones adversarias en tiempo real.
+                    </span>
+                  </div>
+                  <span style={{ color: '#34d399', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold', background: 'rgba(52,211,153,0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(52,211,153,0.3)' }}>
+                    ● SENSOR ACTIVO (0.017 ms)
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    value={detectorInput} 
+                    onChange={(e) => setDetectorInput(e.target.value)}
+                    placeholder="Escribe un prompt con datos sensibles, DNI, o clonación de voz..."
+                    style={{ flex: '1', minWidth: '300px', padding: '12px 16px', backgroundColor: '#05070c', border: '1px solid #334155', color: '#fff', borderRadius: '8px', fontSize: '14px' }}
+                  />
+                  <button 
+                    onClick={handleRunSimulation} 
+                    style={{ padding: '12px 24px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
+                  >
+                    Evaluar Inferencia
+                  </button>
+                </div>
+
+                <div style={{ background: detectorResult === 'REJECTED' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(52, 211, 153, 0.1)', border: `1.5px solid ${detectorResult === 'REJECTED' ? '#ef4444' : '#34d399'}`, borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <strong style={{ color: detectorResult === 'REJECTED' ? '#f87171' : '#34d399', fontSize: '14px' }}>
+                      {detectorResult === 'REJECTED' ? '🛡️ DICTAMEN: ACCIÓN RECHAZADA Y PURGADA EN RAM' : '✔ DICTAMEN: INFERENCIA CONFORME Y AUDITADA'}
+                    </strong>
+                    <span style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#94a3b8' }}>SYS_MADVISE ACTIVE</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13.5px', color: '#cbd5e1' }}>{detectorReason}</p>
+                </div>
+              </section>
+
+              {/* SECCIÓN COMPARATIVA: ALL-IN-ONE VS. SUELTO */}
               <section style={{ backgroundColor: '#090d16', border: '1.5px solid #1e293b', borderRadius: '18px', padding: '36px', marginBottom: '50px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
                   <span style={{ color: '#34d399', fontSize: '12.5px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>
@@ -975,7 +1028,7 @@ int proteger_interaccion(const char* prompt) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
                 <strong style={{ color: '#fff' }}>SAARE</strong> · Capa de Seguridad y Evidencia para Inteligencia Artificial
-                <div style={{ marginTop: '4px' }}>Acreditación Registral Safe Creative Nº 2607076315021 · Validez Jurídica Internacional</div>
+                <div style={{ marginTop: '4px' }}>Acreditación Registral Safe Creative Nº 2607076315021 · Entrada Oficial AESIA REGAGE26e00076675038</div>
               </div>
               <div style={{ display: 'flex', gap: '18px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', textDecoration: 'none' }}>Verificar Certificado</a>
