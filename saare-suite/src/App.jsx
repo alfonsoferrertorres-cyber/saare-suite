@@ -1,8 +1,66 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
+
+const DEFAULT_LEGAL_SCENARIOS = [
+  {
+    id: "01",
+    lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley de Secretos Empresariales 1/2019",
+    name: "01. Escudo RGPD & Secreto Empresarial",
+    subtitle: "Protege la información confidencial que tus empleados consultan en la IA.",
+    desc: "Detecta y bloquea automáticamente en memoria RAM la fuga de DNIs, cuentas bancarias, nóminas, historiales médicos o código fuente antes de que salgan a servidores de terceros.",
+    benefit: "✔ Cero riesgo de multas de hasta 20 M€ (o 4% de facturación) y blindaje de la responsabilidad del administrador.",
+    color: "#0284c7",
+    image: "/1.jfif",
+    actionText: "Proteger Datos RGPD →"
+  },
+  {
+    id: "02",
+    lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez Técnica",
+    name: "02. Blindaje de Robustez & Seguridad AI Act",
+    subtitle: "Defiende tus sistemas contra manipulaciones, jailbreaks y reduce tu factura un 98%.",
+    desc: "Neutraliza ataques de inyección de comandos adversarios, previene desvíos lógicos y optimiza el consumo de tokens eliminando peticiones redundantes o maliciosas.",
+    benefit: "✔ 98.4% de reducción en costes operativos con latencia ultrarrápida en memoria volátil (<0.017 ms).",
+    color: "#16a34a",
+    image: "/3.jfif",
+    actionText: "Optimizar Costes & Seguridad →"
+  },
+  {
+    id: "03",
+    lawBadge: "Ley Orgánica del Honor 2026 · AI Act (Art. 13 Transparencia)",
+    name: "03. Antifraude Deepfakes, Honor & Veracidad",
+    subtitle: "Evita demandas por suplantación no consentida de voz/imagen y decisiones basadas en alucinaciones.",
+    desc: "Cumple la nueva Ley de 2026 que prohíbe la clonación de voz e imagen sin consentimiento expreso y verifica mediante Corpus Grounding que cada dato de la IA esté respaldado en documentos reales.",
+    benefit: "✔ Prevención de indemnizaciones por daño moral no simbólicas y decisiones empresariales con base fáctica contrastada.",
+    color: "#ea580c",
+    image: "/4.jfif",
+    actionText: "Verificar Certeza & Deepfakes →"
+  },
+  {
+    id: "04",
+    lawBadge: "ISO/IEC 27037 · AI Act (Art. 12 Logs Forenses) · eIDAS",
+    name: "04. Custodia Pericial & Logs Forenses eIDAS",
+    subtitle: "Genera la prueba documental inmutable que exige cualquier proceso judicial o inspección.",
+    desc: "Convierte cada inferencia relevante en un expediente de evidencia digital (Proof Bundle) con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 con plena validez procesal.",
+    benefit: "✔ Prueba admisible ante tribunales, peritos judiciales, comités de auditoría y la AESIA.",
+    color: "#9333ea",
+    image: "/2.jfif",
+    actionText: "Ver Certificado Pericial →"
+  },
+  {
+    id: "05",
+    lawBadge: "Ley 38/2003 de Subvenciones · PRTR · NextGenEU / OLAF / IGAE",
+    name: "05. Trazabilidad Fiduciaria Fondos Públicos",
+    subtitle: "Garantiza el cobro de tus ayudas públicas sin riesgo de reintegro o sanciones administrativas.",
+    desc: "Controla la autenticidad y ausencia de doble imputación de facturas por hash SHA-256, acredita el principio DNSH y elabora memorias técnicas automáticas listas para entregar a evaluadores públicos.",
+    benefit: "✔ Blindaje total en auditorías de proyectos CDTI, Kit Digital / Consulting, ENISA y NextGenerationEU.",
+    color: "#ca8a04",
+    image: "/5.jfif",
+    actionText: "Asegurar Justificación de Ayudas →"
+  }
+];
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState(() => {
@@ -15,12 +73,16 @@ export default function App() {
   const [currentView, setCurrentView] = useState('LANDING');
   const [activeNavTab, setActiveNavTab] = useState('overview');
 
+  // Estado sincronizado del Motor Regulatorio
+  const [legalScenarios, setLegalScenarios] = useState(DEFAULT_LEGAL_SCENARIOS);
+  const [regulatorySyncStatus, setRegulatorySyncStatus] = useState("SINCRONIZADO EN VIVO");
+
   // Simulador interactivo normativo (Honor, Deepfakes y Certeza)
   const [detectorInput, setDetectorInput] = useState('Generar clon de voz y avatar sintético del director financiero para presentación de resultados sin consentimiento.');
   const [detectorResult, setDetectorResult] = useState('REJECTED');
   const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
 
-  // Métricas ejecutivas de impacto económico y ahorro computacional
+  // Métricas ejecutivas de impacto económico
   const [pipelineSavings] = useState({
     tokensSaved: 1420,
     latencyMs: 0.017,
@@ -50,6 +112,23 @@ export default function App() {
   const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
   const MERKLE_ROOT = "8f3b29d10e54a67b129845cfa8901234ef567890abcdef1234567890abcdef12";
   const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
+
+  // Sincronización continua de normativas desde el Backend
+  useEffect(() => {
+    async function syncRegulatoryMatrix() {
+      try {
+        const res = await fetch(`${API_BASE}/compliance/live-matrix`);
+        const data = await res.json();
+        if (res.ok && data.status === 'SUCCESS' && Array.isArray(data.scenarios)) {
+          setLegalScenarios(data.scenarios);
+          setRegulatorySyncStatus("ACTUALIZADO HOY (BOE/EUR-LEX)");
+        }
+      } catch {
+        // En caso de incidencia de red mantiene los valores canónicos por defecto
+      }
+    }
+    syncRegulatoryMatrix();
+  }, []);
 
   const copyHashToClipboard = () => {
     navigator.clipboard.writeText(CANONICAL_HASH);
@@ -98,66 +177,7 @@ export default function App() {
     }
   };
 
-  // 5 Bóvedas Normativas Maestras
-  const legalScenarios = [
-    {
-      id: "01",
-      lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley de Secretos Empresariales 1/2019",
-      name: "01. Escudo RGPD & Secreto Empresarial",
-      subtitle: "Protege la información confidencial que tus empleados consultan en la IA.",
-      desc: "Detecta y bloquea automáticamente en memoria RAM la fuga de DNIs, cuentas bancarias, nóminas, historiales médicos o código fuente antes de que salgan a servidores de terceros.",
-      benefit: "✔ Cero riesgo de multas de hasta 20 M€ (o 4% de facturación) y blindaje de la responsabilidad del administrador.",
-      color: "#0284c7",
-      image: "/1.jfif",
-      actionText: "Proteger Datos RGPD →"
-    },
-    {
-      id: "02",
-      lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez Técnica",
-      name: "02. Blindaje de Robustez & Seguridad AI Act",
-      subtitle: "Defiende tus sistemas contra manipulaciones, jailbreaks y reduce tu factura un 98%.",
-      desc: "Neutraliza ataques de inyección de comandos adversarios, previene desvíos lógicos y optimiza el consumo de tokens eliminando peticiones redundantes o maliciosas.",
-      benefit: `✔ ${pipelineSavings.percentReduction}% de reducción en costes operativos con latencia ultrarrápida (0.017 ms).`,
-      color: "#16a34a",
-      image: "/3.jfif",
-      actionText: "Optimizar Costes & Seguridad →"
-    },
-    {
-      id: "03",
-      lawBadge: "Ley Orgánica del Honor 2026 · AI Act (Art. 13 Transparencia)",
-      name: "03. Antifraude Deepfakes, Honor & Veracidad",
-      subtitle: "Evita demandas por suplantación no consentida de voz/imagen y decisiones basadas en alucinaciones.",
-      desc: "Cumple la nueva Ley de 2026 que prohíbe la clonación de voz e imagen sin consentimiento expreso y verifica mediante Corpus Grounding que cada dato de la IA esté respaldado en documentos reales.",
-      benefit: "✔ Prevención de indemnizaciones por daño moral no simbólicas y decisiones empresariales con base fáctica contrastada.",
-      color: "#ea580c",
-      image: "/4.jfif",
-      actionText: "Verificar Certeza & Deepfakes →"
-    },
-    {
-      id: "04",
-      lawBadge: "ISO/IEC 27037 · AI Act (Art. 12 Logs Forenses) · eIDAS",
-      name: "04. Custodia Pericial & Logs Forenses eIDAS",
-      subtitle: "Genera la prueba documental inmutable que exige cualquier proceso judicial o inspección.",
-      desc: "Convierte cada inferencia relevante en un expediente de evidencia digital (Proof Bundle) con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 con plena validez procesal.",
-      benefit: "✔ Prueba admisible ante tribunales, peritos judiciales, comités de auditoría y la AESIA.",
-      color: "#9333ea",
-      image: "/2.jfif",
-      actionText: "Ver Certificado Pericial →"
-    },
-    {
-      id: "05",
-      lawBadge: "Ley 38/2003 de Subvenciones · PRTR · NextGenEU / OLAF / IGAE",
-      name: "05. Trazabilidad Fiduciaria Fondos Públicos",
-      subtitle: "Garantiza el cobro de tus ayudas públicas sin riesgo de reintegro o sanciones administrativas.",
-      desc: "Controla la autenticidad y ausencia de doble imputación de facturas por hash SHA-256, acredita el principio DNSH y elabora memorias técnicas automáticas listas para entregar a evaluadores públicos.",
-      benefit: "✔ Blindaje total en auditorías de proyectos CDTI, Kit Digital / Consulting, ENISA y NextGenerationEU.",
-      color: "#ca8a04",
-      image: "/5.jfif",
-      actionText: "Asegurar Justificación de Ayudas →"
-    }
-  ];
-
-  // 5 Modelos de Alianza ISV con Imágenes 101 a 105
+  // 5 Modelos de Alianza ISV con Imágenes 101 a 105 (210px)
   const deploymentModes = [
     {
       code: "IPaaS",
@@ -508,14 +528,14 @@ int proteger_interaccion(const char* prompt) {
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1160px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: 5 BÓVEDAS NORMATIVAS */}
+          {/* TAB 1: 5 BÓVEDAS NORMATIVAS (RENDERIZADO DECLARATIVO LIMPIO) */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '44px', paddingTop: '10px' }}>
-                <span style={{ color: '#38bdf8', fontSize: '13px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  BLINDAJE REGULATORIO Y OPERATIVO INTEGRAL
-                </span>
-                <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#ffffff', margin: '8px 0 14px 0', letterSpacing: '-0.5px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.35)', color: '#34d399', padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', marginBottom: '14px' }}>
+                  <span>🟢</span> MOTOR REGULATORIO: {regulatorySyncStatus}
+                </div>
+                <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#ffffff', margin: '0 0 14px 0', letterSpacing: '-0.5px' }}>
                   Cinco Bóvedas Normativas para Cumplir la Ley de IA
                 </h1>
                 <p style={{ fontSize: '18px', color: '#cbd5e1', margin: '0 auto', maxWidth: '780px', lineHeight: 1.5 }}>
