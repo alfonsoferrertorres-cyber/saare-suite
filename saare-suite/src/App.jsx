@@ -92,7 +92,7 @@ export default function App() {
       },
       "DES": {
         "ROLE_NAME": "Digital Evidence Specialist (Consultora Auditora GRC / Perito Judicial)",
-        "SCENARIO_BINDING": "02_LA_EVIDENCIA",
+        "SCENARIO_BINDING": "04_LA_EVIDENCIA",
         "ACTION": "CRYPTOGRAPHIC_PRESERVATION_AND_CHAIN_ATTESTATION",
         "STATUS": "QUALIFIED_RFC3161_SEALED"
       }
@@ -218,7 +218,7 @@ export default function App() {
     nodejs: `import OpenAI from 'openai';\n\n// Redirección L7 hacia el interceptor forense SAARE (ISO 42001 / ISO 27037)\nconst client = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n  baseURL: '${API_BASE}/intercept',\n  defaultHeaders: {\n    'X-SAARE-License': process.env.SAARE_LICENSE,\n    'X-SAARE-Scenario-ID': 'cumplimiento_corporativo_integral',\n    'X-SAARE-Auditor-Delegation': 'emp_node_auth_hash_89bc2',\n    'X-SAARE-Execution-Mode': 'IN_MEMORY_ENFORCE',\n    'X-SAARE-Active-Shield': '[SAARE_ACTIVE_SHIELD: ENFORCE]',\n    'X-SAARE-Proof-Bundle': 'REQUIRE_V10_ISO27037_FULL_ATTESTATION'\n  }\n});\n\nconst res = await client.chat.completions.create({\n  model: 'gpt-4o',\n  messages: [\n    { role: 'system', content: 'Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.' },\n    { role: 'user', content: 'Auditar titular DNI 48593021X con cuenta ES2114650100722030876293' }\n  ]\n});`,
     python: `from openai import OpenAI\nimport os\n\nclient = OpenAI(\n    api_key=os.environ.get("OPENAI_API_KEY"),\n    base_url="${API_BASE}/intercept",\n    default_headers={\n        "X-SAARE-License": os.environ.get("SAARE_LICENSE"),\n        "X-SAARE-Scenario-ID": "razonamiento_activo_l7",\n        "X-SAARE-Auditor-Delegation": "emp_node_auth_hash_89bc2",\n        "X-SAARE-Execution-Mode": "IN_MEMORY_ENFORCE",\n        "X-SAARE-Active-Shield": "[SAARE_ACTIVE_SHIELD: ENFORCE]",\n        "X-SAARE-Proof-Bundle": "REQUIRE_V10_ISO27037_FULL_ATTESTATION"\n    }\n)\n\nresponse = client.chat.completions.create(\n    model="gpt-4o",\n    messages=[\n        {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n        {"role": "user", "content": "Verificar atestado con firma RFC 3161 y testigo L7"}\n    ]\n)`,
     curl: `curl -X POST ${API_BASE}/intercept \\\n  -H "Content-Type: application/json" \\\n  -H "X-SAARE-License: \$SAARE_LICENSE" \\\n  -H "X-SAARE-Scenario-ID: razonamiento_activo_l7" \\\n  -H "X-SAARE-Active-Shield: [SAARE_ACTIVE_SHIELD: ENFORCE]" \\\n  -H "X-SAARE-Proof-Bundle: REQUIRE_V10_ISO27037_FULL_ATTESTATION" \\\n  -d '{\n    "model": "gpt-4o",\n    "messages": [\n      {"role": "system", "content": "Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas."},\n      {"role": "user", "content": "Inferencia con testigo L7 del cerebro y telemetria de ahorro"}\n    ]\n  }'`,
-    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        // Purga atómica en RAM mediante SYS_madvise (Zero-Disk Writes)\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0; // Tráfico validado bajo perímetro ISO 42001 con Testigo L7\n}`
+    cabi: `/* SAARE Native C-ABI In-Process Sensor Hook (ISO 27037 DEI Runtime) */\n#include <saare_l7.h>\n\nint process_inference_buffer(const uint8_t* payload_ptr, size_t payload_len) {\n    saare_ctx_t* ctx = saare_init_context(getenv("SAARE_LICENSE"));\n    saare_verdict_t verdict = saare_scan_memory_buffer(ctx, payload_ptr, payload_len);\n    \n    if (verdict.state == SAARE_STATE_REJECTED || verdict.state == SAARE_STATE_INDETERMINATE) {\n        saare_purge_madvise((void*)payload_ptr, payload_len);\n        saare_emit_signed_rejection_proof(ctx, verdict.rejection_digest);\n        return -1;\n    }\n    return 0;\n}`
   };
 
   const handleDownloadSDK = async () => {
@@ -406,7 +406,7 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON LAS 5 IMÁGENES */}
+      {/* VISTA PRINCIPAL: ESCENARIOS SAARE CON LAS 5 IMÁGENES (1.jfif a 5.jfif) */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
@@ -425,10 +425,12 @@ export default function App() {
                 </p>
               </section>
 
-              {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS */}
+              {/* CONTENEDOR DE LAS 5 TARJETAS MAESTRAS EN ORDEN CANÓNICO */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                {/* 01. EL ESCUDO */}
+                {/* ========================================================================= */}
+                {/* 01. PREVENT — EL ESCUDO (IMAGEN: /1.jfif)                                 */}
+                {/* ========================================================================= */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #1e3a8a55', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(2,132,199,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>01</div>
@@ -446,7 +448,7 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px' }}>🛡️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Escudo (DEFR)</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>01. PREVENT — El Escudo (DEFR)</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#38bdf8', fontWeight: '700', margin: '0 0 10px 0' }}>
                       Protege la información que tus empleados llevan a la IA (Rol DEFR ISO 27037).
@@ -479,64 +481,15 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 02. LA EVIDENCIA */}
-                <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>02</div>
-                    <img 
-                      src="/2.jfif" 
-                      alt="02. La Evidencia - SAARE L7" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/saare-brand-header.jpg';
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '20px' }}>⚖️</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>La Evidencia (DES)</h2>
-                    </div>
-                    <h3 style={{ fontSize: '15px', color: '#c084fc', fontWeight: '700', margin: '0 0 10px 0' }}>
-                      Demuestra qué ocurrió y por qué (Rol DES ISO 27037).
-                    </h3>
-                    <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                      SAARE convierte cada ejecución relevante en evidencia verificable con sellos de tiempo cualificados RFC 3161 y anclaje registral independiente.
-                    </p>
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#cbd5e1' }}>
-                      <span>🔏 Ed25519</span> • <span>⏱️ RFC 3161</span> • <span>🔗 Trazabilidad</span> • <span>📦 Proof Bundle</span>
-                    </div>
-                  </div>
-
-                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → 🤖 → ❓
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
-                        👤 → <span style={{ color: '#c084fc', fontWeight: 'bold' }}>[S]</span> → 📄 ✔ → 👥 ✔
-                      </div>
-                    </div>
-                    <button onClick={copyBundleJson} style={{ width: '100%', padding: '9px', backgroundColor: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
-                      {copiedBundle ? '✔ Bundle Copiado' : 'Abrir evidencia real →'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 03. RAZONAMIENTO ACTIVO */}
+                {/* ========================================================================= */}
+                {/* 02. ENFORCE — EL GUARDIÁN (IMAGEN: /3.jfif)                                */}
+                {/* ========================================================================= */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #16a34a44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(22,163,74,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>02</div>
                     <img 
                       src="/3.jfif" 
-                      alt="03. Razonamiento Activo - SAARE L7" 
+                      alt="02. Razonamiento Activo - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
                       onError={(e) => {
                         e.target.onerror = null;
@@ -548,7 +501,7 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '22px' }}>🧠</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>Razonamiento Activo</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>02. ENFORCE — Razonamiento Activo</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#34d399', fontWeight: '700', margin: '0 0 10px 0' }}>
                       Protocolo S.A.A.R.E. en Modo Seguridad & Testigo L7 CEREBRO.
@@ -590,13 +543,15 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 04. EL DETECTOR */}
+                {/* ========================================================================= */}
+                {/* 03. VERIFY — EL DETECTOR (IMAGEN: /4.jfif)                                */}
+                {/* ========================================================================= */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #f9731644', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(249,115,22,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
-                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>04</div>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>03</div>
                     <img 
                       src="/4.jfif" 
-                      alt="04. El Detector - SAARE L7" 
+                      alt="03. El Detector - SAARE L7" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
                       onError={(e) => {
                         e.target.onerror = null;
@@ -608,7 +563,7 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px' }}>🔍</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Detector</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>03. VERIFY — El Detector</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#fb923c', fontWeight: '700', margin: '0 0 10px 0' }}>
                       No conviertas una respuesta sin pruebas en un hecho.
@@ -638,7 +593,62 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 05. EL JUSTIFICADOR */}
+                {/* ========================================================================= */}
+                {/* 04. PROVE — LA EVIDENCIA (IMAGEN: /2.jfif)                                 */}
+                {/* ========================================================================= */}
+                <div style={{ backgroundColor: '#090d16', border: '1px solid #9333ea44', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(147,51,234,0.06)' }}>
+                  <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>04</div>
+                    <img 
+                      src="/2.jfif" 
+                      alt="04. La Evidencia - SAARE L7" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/saare-brand-header.jpg';
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '20px' }}>⚖️</span>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>04. PROVE — La Evidencia (DES)</h2>
+                    </div>
+                    <h3 style={{ fontSize: '15px', color: '#c084fc', fontWeight: '700', margin: '0 0 10px 0' }}>
+                      Demuestra qué ocurrió y por qué (Rol DES ISO 27037).
+                    </h3>
+                    <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                      SAARE convierte cada ejecución relevante en evidencia verificable con sellos de tiempo cualificados RFC 3161 y anclaje registral independiente.
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#cbd5e1' }}>
+                      <span>🔏 Ed25519</span> • <span>⏱️ RFC 3161</span> • <span>🔗 Trazabilidad</span> • <span>📦 Proof Bundle</span>
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Así funciona</div>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                      <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sin SAARE</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
+                        👤 → 🤖 → ❓
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>Con SAARE</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: '#cbd5e1' }}>
+                        👤 → <span style={{ color: '#c084fc', fontWeight: 'bold' }}>[S]</span> → 📄 ✔ → 👥 ✔
+                      </div>
+                    </div>
+                    <button onClick={copyBundleJson} style={{ width: '100%', padding: '9px', backgroundColor: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', textAlign: 'center' }}>
+                      {copiedBundle ? '✔ Bundle Copiado' : 'Abrir evidencia real →'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ========================================================================= */}
+                {/* 05. JUSTIFY — EL JUSTIFICADOR (IMAGEN: /5.jfif)                           */}
+                {/* ========================================================================= */}
                 <div style={{ backgroundColor: '#090d16', border: '1px solid #eab30844', borderRadius: '16px', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr 280px', gap: '24px', alignItems: 'center', boxShadow: '0 10px 30px rgba(234,179,8,0.06)' }}>
                   <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', background: '#05070c' }}>
                     <div style={{ position: 'absolute', top: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#ca8a04', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>05</div>
@@ -656,7 +666,7 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px' }}>€</span>
-                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>El Justificador</h2>
+                      <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: 0 }}>05. JUSTIFY — El Justificador</h2>
                     </div>
                     <h3 style={{ fontSize: '15px', color: '#facc15', fontWeight: '700', margin: '0 0 10px 0' }}>
                       Cada euro. Cada factura. Cada decisión. Con evidencia.
@@ -901,10 +911,34 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB COMPLIANCE */}
+          {/* TAB COMPLIANCE CON SELECTOR ACTIVO */}
           {activeNavTab === 'compliance' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '20px' }}>Marcos Normativos & Autoridades de Control</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0' }}>Marcos Normativos & Autoridades de Control</h2>
+                  <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>Evidencia fiduciaria para convocatorias y requerimientos de auditoría.</p>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '6px', background: '#05070c', padding: '4px', borderRadius: '8px', border: '1px solid #334155' }}>
+                  <button onClick={() => setActiveGrantTab('nextgen')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'nextgen' ? '#0284c7' : 'transparent', color: activeGrantTab === 'nextgen' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    NextGenEU / PRTR
+                  </button>
+                  <button onClick={() => setActiveGrantTab('kit')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'kit' ? '#0284c7' : 'transparent', color: activeGrantTab === 'kit' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    Kit Consulting
+                  </button>
+                  <button onClick={() => setActiveGrantTab('cdti')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: activeGrantTab === 'cdti' ? '#0284c7' : 'transparent', color: activeGrantTab === 'cdti' ? '#fff' : '#94a3b8', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                    CDTI / ENISA
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ background: '#05070c', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>{currentGrant.tag}</span>
+                <h3 style={{ fontSize: '18px', color: '#fff', margin: '4px 0 8px 0' }}>{currentGrant.title}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: 0 }}>{currentGrant.summary}</p>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
                 {currentGrant.items.map((item, idx) => (
                   <div key={idx} style={{ background: '#05070c', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
