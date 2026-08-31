@@ -15,12 +15,10 @@ export default function App() {
   const [currentView, setCurrentView] = useState('LANDING');
   const [activeNavTab, setActiveNavTab] = useState('scenarios_saare');
 
-  // Simulador interactivo comercial
   const [detectorInput, setDetectorInput] = useState('El balance contable muestra un beneficio neto no auditado de 450.000 € imputado al expediente.');
   const [detectorResult, setDetectorResult] = useState('WARNING');
   const [activeGrantTag, setActiveGrantTag] = useState('NextGenEU');
 
-  // Métricas ejecutivas de impacto económico
   const [pipelineSavings] = useState({
     tokensSaved: 1420,
     latencyMs: 0.017,
@@ -29,7 +27,6 @@ export default function App() {
     brainWitnessActive: true
   });
 
-  // Estados de formularios y modales
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -95,66 +92,65 @@ export default function App() {
     }
   };
 
-  // 5 Patas Comerciales de Alianza con Imágenes 101 a 105
   const deploymentModes = [
     {
       code: "IPaaS",
       title: "01. Agentes IA y Automatizaciones",
-      desc: "Protege tus flujos en Make, n8n, LangChain o CrewAI. Filtra entradas y salidas con cero fricción para tus clientes.",
-      badge: "ALIANZA COMERCIAL / REVENUE SHARE",
-      valueProp: "Añade un módulo de seguridad en tus servicios con tu propio margen de beneficio.",
+      desc: "Monetiza la seguridad en cada flujo de Make, n8n, LangChain o CrewAI. Tus clientes exigen privacidad y tú les cobras un extra mensual por garantizar que sus datos jamás se filtran a OpenAI o Anthropic.",
+      badge: "REVENUE SHARING / MARGEN HASTA 40%",
+      valueProp: "Añade un módulo de Compliance Add-on y genera ingresos recurrentes sin coste de desarrollo.",
       color: "#06B6D4",
       icon: "🌐",
       image: "/101.jfif",
-      deployInfo: "Puesta en marcha en 5 minutos cambiando la URL base de conexión.",
+      deployInfo: "⚡ Despliegue en 3 minutos cambiando únicamente la variable baseURL de tu agente.",
       codeSnippetKey: "nodejs"
     },
     {
       code: "EMBEDDED",
       title: "02. Fabricantes de Software y Ciberseguridad",
-      desc: "Integra la protección nativa en tu propia solución o agente endpoint para blindar a tus clientes finales en tiempo real.",
-      badge: "LICENCIA OEM / FACTURACIÓN ARR",
-      valueProp: "Convierte la seguridad en IA en una nueva fuente recurrente de ingresos anuales.",
+      desc: "Convierte el cumplimiento normativo en tu mayor factor de cierre. Embebe el sensor nativo SAARE en tu plataforma o EDR y ofrece a grandes cuentas un escudo contra fugas de información y robo de propiedad intelectual.",
+      badge: "LICENCIA OEM / ARR MULTIPLICADOR",
+      valueProp: "Aumenta el ticket medio (ARPU) de tu software integrando el estándar legal de IA.",
       color: "#20C997",
       icon: "⚡",
       image: "/102.jfif",
-      deployInfo: "Sensor ultraligero que opera en memoria sin ralentizar equipos.",
+      deployInfo: "⚡ Sensor ultraligero que inspecciona en memoria RAM (<0.017 ms) sin tocar el disco del cliente.",
       codeSnippetKey: "cabi"
     },
     {
       code: "GSI",
       title: "03. Consultoras y Despachos Profesionales",
-      desc: "Supervisa clientes corporativos y genera informes ejecutivos listos para auditorías regulatorias y juntas directivas.",
-      badge: "PLAN PARTNER / ASIENTO CONSULTOR",
-      valueProp: "Ofrece auditoría continua de IA con entrega de dictámenes certificados.",
+      desc: "Factura servicios de auditoría continua y peritaje de IA de alto valor. Supervisa el uso de IA de decenas de empresas desde un único panel y emite dictámenes periciales legalmente vinculantes en 1 solo clic.",
+      badge: "PLAN PARTNER / FACTURACIÓN POR CLIENTE",
+      valueProp: "Cobra entre 1.500 € y 6.000 € por dictamen pericial con respaldo registral oficial.",
       color: "#c084fc",
       icon: "⚖️",
       image: "/103.jfif",
-      deployInfo: "Panel centralizado multi-empresa con certificados descargables en 1 clic.",
+      deployInfo: "⚡ Panel multi-inquilino con exportación instantánea de certificados con sello de tiempo eIDAS.",
       codeSnippetKey: "python"
     },
     {
       code: "GATEWAY",
       title: "04. Plataformas Cloud y Tráfico Masivo",
-      desc: "Inspección perimetral global para organizaciones con alto volumen de peticiones e infraestructuras cloud.",
-      badge: "PAGO POR USO / ESCALA EMPRESARIAL",
-      valueProp: "Tarifa reducida por volumen con máxima disponibilidad garantizada.",
+      desc: "Detén ataques de Jailbreak, fraude y consumo abusivo de tokens antes de que impacten en tu factura cloud. Filtra millones de peticiones por segundo en el Edge global sin añadir ni un milisegundo de latencia perceptible.",
+      badge: "PAGO POR USO / ESCALABILIDAD TOTAL",
+      valueProp: "Reduce de inmediato un 98.4% de peticiones basura ahorrando miles de euros en inferencias.",
       color: "#2F81F7",
       icon: "📦",
       image: "/104.jfif",
-      deployInfo: "Protección perimetral distribuida en más de 300 puntos globales.",
+      deployInfo: "⚡ Red perimetral distribuida en más de 300 PoPs con sellado de cabeceras HTTP en tránsito.",
       codeSnippetKey: "curl"
     },
     {
       code: "VERTICAL",
       title: "05. Soluciones Sectoriales (Legal, Salud, Finanzas)",
-      desc: "Activa el modo de máxima confidencialidad para software que gestiona contratos, nóminas o expedientes médicos.",
-      badge: "MODO COMPLIANCE EMPRESARIAL",
-      valueProp: "Diferénciate ofreciendo IA 100% conforme a normativas de privacidad.",
+      desc: "Gana licitaciones y contratos corporativos cerrados a la competencia. Activa el modo 'Confidencialidad Médica y Bancaria' para procesar historiales clínicos, contratos y nóminas garantizando cero fugas.",
+      badge: "MODO PRIVACIDAD TOTAL / RETENCIÓN ALTA",
+      valueProp: "El único argumento de venta que elimina las dudas de los comités de seguridad y DPOs.",
       color: "#EAB308",
       icon: "🔒",
       image: "/105.jfif",
-      deployInfo: "Blindaje automático sin necesidad de cambiar de proveedor de IA.",
+      deployInfo: "⚡ Integración directa en el backend transaccional de tu CRM, ERP o portal de salud.",
       codeSnippetKey: "nodejs"
     }
   ];
@@ -444,9 +440,9 @@ int proteger_interaccion(const char* prompt) {
 
       {/* VISTA PRINCIPAL */}
       {currentView === 'LANDING' && (
-        <main style={{ maxWidth: '1080px', margin: '30px auto 80px auto', padding: '0 20px' }}>
+        <main style={{ maxWidth: '1160px', margin: '30px auto 80px auto', padding: '0 20px' }}>
 
-          {/* TAB 1: 5 CAPAS DE BLINDAJE (1.jfif a 5.jfif) */}
+          {/* TAB 1: 5 CAPAS DE BLINDAJE */}
           {activeNavTab === 'scenarios_saare' && (
             <div>
               <section style={{ textAlign: 'center', marginBottom: '44px', paddingTop: '10px' }}>
@@ -735,23 +731,23 @@ int proteger_interaccion(const char* prompt) {
             </div>
           )}
 
-          {/* TAB 3: MODELOS COMERCIALES & INTEGRACIÓN (CON IMÁGENES 101-105) */}
+          {/* TAB 3: MODELOS COMERCIALES & INTEGRACIÓN (IMÁGENES AMPLIADAS A 210px) */}
           {activeNavTab === 'architecture' && (
             <div style={{ backgroundColor: '#090d16', border: '1px solid #1e293b', borderRadius: '16px', padding: '36px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <span style={{ color: '#38bdf8', fontSize: '13px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  OPCIONES DE INTEGRACIÓN Y MONETIZACIÓN
+              <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+                <span style={{ color: '#38bdf8', fontSize: '13px', fontWeight: '800', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                  OPCIONES DE ALIANZA Y RENTABILIDAD B2B
                 </span>
-                <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0' }}>
-                  Cinco Modelos de Alianza para Tu Negocio
+                <h2 style={{ fontSize: '34px', fontWeight: '900', color: '#fff', margin: '8px 0 12px 0' }}>
+                  Cinco Vías para Multiplicar tus Ingresos con SAARE
                 </h2>
-                <p style={{ color: '#94a3b8', fontSize: '15px', maxWidth: '780px', margin: '0 auto' }}>
-                  Elige cómo quieres incorporar SAARE a tu empresa o producto para generar nuevos ingresos y proteger a tus usuarios.
+                <p style={{ color: '#cbd5e1', fontSize: '16px', maxWidth: '820px', margin: '0 auto', lineHeight: 1.55 }}>
+                  Elige el formato que mejor encaja con tu modelo de negocio. Integra la capa de seguridad en tus servicios, obtén márgenes de venta recurrentes y cierra cuentas corporativas de alto valor.
                 </p>
               </div>
 
-              {/* GRID DE LAS 5 PATAS COMERCIALES */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '36px' }}>
+              {/* GRID DE LAS 5 PATAS COMERCIALES CON IMÁGENES GRANDES */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 {deploymentModes.map((dep) => {
                   const isSelected = selectedArchPillar === dep.code;
                   return (
@@ -763,43 +759,44 @@ int proteger_interaccion(const char* prompt) {
                       }}
                       style={{ 
                         background: isSelected ? 'rgba(56, 189, 248, 0.08)' : '#05070c', 
-                        padding: '18px', 
-                        borderRadius: '12px', 
-                        border: `1.5px solid ${isSelected ? dep.color : '#1e293b'}`, 
+                        padding: '22px', 
+                        borderRadius: '16px', 
+                        border: `2px solid ${isSelected ? dep.color : '#1e293b'}`, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         justifyContent: 'space-between',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: isSelected ? `0 6px 24px ${dep.color}30` : 'none'
+                        transition: 'all 0.25s ease',
+                        boxShadow: isSelected ? `0 10px 30px ${dep.color}35` : '0 4px 15px rgba(0,0,0,0.5)'
                       }}
                     >
                       <div>
-                        {/* IMAGEN DE LA PATA COMERCIAL */}
-                        <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #1e293b', marginBottom: '14px', background: '#090d16' }}>
+                        {/* IMAGEN GRANDE Y VISUAL (210px DE ALTO) */}
+                        <div style={{ position: 'relative', width: '100%', height: '210px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #1e293b', marginBottom: '16px', background: '#090d16', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)' }}>
                           <img 
                             src={dep.image} 
                             alt={dep.title} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.3s ease' }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
-                          <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(5,7,12,0.85)', padding: '4px 10px', borderRadius: '4px', border: `1px solid ${dep.color}`, color: dep.color, fontSize: '10.5px', fontWeight: '800' }}>
+                          <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(5,7,12,0.92)', padding: '5px 12px', borderRadius: '6px', border: `1.5px solid ${dep.color}`, color: dep.color, fontSize: '11px', fontWeight: '900', letterSpacing: '0.5px' }}>
                             {dep.badge}
                           </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '18px' }}>{dep.icon}</span>
-                          <h4 style={{ color: '#fff', margin: 0, fontSize: '16px', fontWeight: '800' }}>{dep.title}</h4>
+                          <span style={{ fontSize: '20px' }}>{dep.icon}</span>
+                          <h4 style={{ color: '#fff', margin: 0, fontSize: '17px', fontWeight: '900' }}>{dep.title}</h4>
                         </div>
                         
-                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 10px 0', lineHeight: 1.45 }}>{dep.desc}</p>
-                        <div style={{ color: dep.color, fontSize: '12.5px', fontWeight: '700', marginBottom: '12px' }}>
+                        <p style={{ color: '#94a3b8', fontSize: '13.5px', margin: '0 0 12px 0', lineHeight: 1.55 }}>{dep.desc}</p>
+                        
+                        <div style={{ background: `${dep.color}15`, borderLeft: `3px solid ${dep.color}`, padding: '10px 12px', borderRadius: '4px', color: '#fff', fontSize: '13px', fontWeight: '700', marginBottom: '14px' }}>
                           💰 {dep.valueProp}
                         </div>
                       </div>
 
-                      <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '10px', color: '#64748b', fontSize: '11.5px', fontFamily: 'monospace' }}>
+                      <div style={{ borderTop: '1px dashed #1e293b', paddingTop: '12px', color: '#38bdf8', fontSize: '12px', fontFamily: 'monospace', fontWeight: '600' }}>
                         {dep.deployInfo}
                       </div>
                     </div>
@@ -808,30 +805,30 @@ int proteger_interaccion(const char* prompt) {
               </div>
 
               {/* SECCIÓN DE INTEGRACIÓN SENCILLA */}
-              <div style={{ borderTop: '1px solid #1e293b', paddingTop: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ borderTop: '1px solid #1e293b', paddingTop: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: 0 }}>
                       Integración en 2 Líneas de Código
                     </h3>
-                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
-                      Compatible con cualquier lenguaje y sin cambiar tu proveedor actual de IA.
+                    <span style={{ fontSize: '13.5px', color: '#94a3b8' }}>
+                      Puesta en marcha garantizada en cualquier lenguaje sin sustituir tus modelos actuales.
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     {['nodejs', 'python', 'curl', 'cabi'].map(tab => (
                       <button 
                         key={tab} 
                         onClick={() => setActiveCodeTab(tab)} 
                         style={{ 
                           background: activeCodeTab === tab ? '#1e293b' : 'transparent', 
-                          border: `1px solid ${activeCodeTab === tab ? '#38bdf8' : '#334155'}`, 
+                          border: `1.5px solid ${activeCodeTab === tab ? '#38bdf8' : '#334155'}`, 
                           color: activeCodeTab === tab ? '#38bdf8' : '#94a3b8', 
-                          padding: '6px 14px', 
-                          borderRadius: '4px', 
+                          padding: '7px 16px', 
+                          borderRadius: '6px', 
                           fontSize: '12px', 
                           cursor: 'pointer', 
-                          fontWeight: '700' 
+                          fontWeight: '800' 
                         }}
                       >
                         {tab.toUpperCase()}
@@ -840,7 +837,7 @@ int proteger_interaccion(const char* prompt) {
                   </div>
                 </div>
 
-                <pre style={{ margin: 0, backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px', color: '#f1f5f9', fontSize: '13px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.55 }}>
+                <pre style={{ margin: 0, backgroundColor: '#05070c', border: '1px solid #1e293b', borderRadius: '10px', padding: '22px', color: '#f1f5f9', fontSize: '13px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.6 }}>
                   {codeSnippets[activeCodeTab]}
                 </pre>
               </div>
