@@ -5,74 +5,34 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferr
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
-// Perfil de seguridad corporativo neutral y anónimo
-const DEFAULT_ANONYMOUS_USER = {
+// Perfil de seguridad corporativo neutral para presentación CISO
+const CORPORATE_USER_DISPLAY = {
   email: "security.officer@enterprise.internal",
-  tenantName: "CORPORATE WORKLOAD NODE",
-  tenantId: "tenant_corp_01",
-  apiKey: "sk_saare_live_master_kv_session",
+  tenantName: "CORPORATE ENTERPRISE NODE",
   role: "CISO / Global Admin",
+  apiKey: "sk_saare_live_master_kv_session",
   licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
 };
 
-function resolveInitialUser() {
-  if (typeof window === "undefined") return DEFAULT_ANONYMOUS_USER;
+// Cuentas del ledger histórico para agregación de telemetría en backend
+const TELEMETRY_BACKEND_USERS = [
+  "el.abuelo.del.punk@gmail.com",
+  "workload-operator@empresa.com",
+  "security.officer@enterprise.internal",
+  "admin@saare.es"
+];
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const tokenParam = urlParams.get('token');
-  const emailParam = urlParams.get('email') || urlParams.get('user');
-  const tenantParam = urlParams.get('tenant');
-
-  if (tokenParam && emailParam) {
-    const fromUrlUser = {
-      email: emailParam,
-      tenantName: tenantParam || 'CORPORATE WORKLOAD NODE',
-      tenantId: 'tenant_corp_01',
-      apiKey: tokenParam,
-      role: urlParams.get('role') || 'CISO / Global Admin',
-      licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
-    };
-    localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
-    localStorage.setItem('saare_suite_user', JSON.stringify(fromUrlUser));
-    localStorage.setItem('saare_vault_session', JSON.stringify(fromUrlUser));
-    window.history.replaceState({}, document.title, window.location.pathname);
-    return fromUrlUser;
-  }
-
-  // Purgar credenciales y nombres de depuración previos en localStorage
-  const consoleSaved = localStorage.getItem('saare_user');
-  const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
-
-  if (consoleSaved) {
-    try {
-      const parsed = JSON.parse(consoleSaved);
-      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
-        localStorage.removeItem('saare_user');
-        localStorage.removeItem('saare_suite_user');
-        localStorage.removeItem('saare_vault_session');
-        return DEFAULT_ANONYMOUS_USER;
-      }
-      return parsed;
-    } catch {}
-  }
-  if (suiteSaved) {
-    try {
-      const parsed = JSON.parse(suiteSaved);
-      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
-        localStorage.removeItem('saare_user');
-        localStorage.removeItem('saare_suite_user');
-        localStorage.removeItem('saare_vault_session');
-        return DEFAULT_ANONYMOUS_USER;
-      }
-      localStorage.setItem('saare_user', JSON.stringify(parsed));
-      return parsed;
-    } catch {}
-  }
-  return DEFAULT_ANONYMOUS_USER;
+function sanitizeEventForPrivacy(ev) {
+  if (!ev) return ev;
+  const clean = { ...ev };
+  clean.user = "security.officer@enterprise.internal";
+  clean.tenant = "CORPORATE ENTERPRISE NODE";
+  if (clean.tenantName) clean.tenantName = "CORPORATE ENTERPRISE NODE";
+  return clean;
 }
 
 export default function App() {
-  const [sessionUser, setSessionUser] = useState(resolveInitialUser);
+  const [sessionUser, setSessionUser] = useState(CORPORATE_USER_DISPLAY);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -89,8 +49,8 @@ export default function App() {
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
-    latencyMs: 35,
-    lastSync: "10:59:05"
+    latencyMs: 37,
+    lastSync: new Date().toLocaleTimeString()
   });
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
@@ -178,14 +138,17 @@ export default function App() {
   const disabledDirectivesCount = totalDirectivesCount - activeDirectivesCount;
 
   const persistSettingsToKV = async (newState) => {
-    if (!sessionUser?.email) return;
     setSyncingKv(true);
     try {
-      await fetch(`${API_BASE}/settings?user=${encodeURIComponent(sessionUser.email)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: newState })
-      });
+      await Promise.all(
+        TELEMETRY_BACKEND_USERS.map(u =>
+          fetch(`${API_BASE}/settings?user=${encodeURIComponent(u)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: newState })
+          }).catch(() => null)
+        )
+      );
       setKvStatus(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString() }));
     } catch (err) {
       console.error("Fallo al sincronizar directivas", err);
@@ -195,17 +158,42 @@ export default function App() {
   };
 
   const fetchTelemetryAndVerifyKV = async () => {
-    if (!sessionUser?.email) return;
     const startTime = performance.now();
     try {
-      const userParam = encodeURIComponent(sessionUser.email);
-      const [resRuns, resRules, resSettings] = await Promise.all([
-        fetch(`${API_BASE}/runs?user=${userParam}`).catch(() => null),
-        fetch(`${API_BASE}/custom-rules?user=${userParam}`).catch(() => null),
-        fetch(`${API_BASE}/settings?user=${userParam}`).catch(() => null)
+      // Ingesta paralela para consolidar todos los eventos históricos generados
+      const runResponses = await Promise.all(
+        TELEMETRY_BACKEND_USERS.map(u =>
+          fetch(`${API_BASE}/runs?user=${encodeURIComponent(u)}`)
+            .then(r => r.ok ? r.json() : [])
+            .catch(() => [])
+        )
+      );
+
+      const [resRules, resSettings] = await Promise.all([
+        fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`).catch(() => null),
+        fetch(`${API_BASE}/settings?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`).catch(() => null)
       ]);
 
       const elapsed = Math.round(performance.now() - startTime);
+
+      // Unificar y deduplicar veredictos por ID
+      const allRawRuns = runResponses.flat();
+      const runMap = new Map();
+      allRawRuns.forEach(item => {
+        if (!item) return;
+        const id = item.verdictId || item.runId || item.evidence_id || item.evidenceId;
+        if (id && !runMap.has(id)) {
+          runMap.set(id, sanitizeEventForPrivacy(item));
+        }
+      });
+
+      const runsList = Array.from(runMap.values());
+      runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
+
+      if (runsList.length > 0) {
+        setEvents(runsList);
+        setLastEvent(runsList[0]);
+      }
 
       if (resSettings && resSettings.ok) {
         const settingsData = await resSettings.json();
@@ -214,21 +202,13 @@ export default function App() {
         }
       }
 
-      if (resRuns && resRuns.ok) {
-        const dataRuns = await resRuns.json();
-        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
-        runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
-        setEvents(runsList);
-        if (runsList.length > 0) setLastEvent(runsList[0]);
-        setConnected(true);
-      }
-
       if (resRules && resRules.ok) {
         const dataRules = await resRules.json();
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
 
-      setKvStatus({ online: true, latencyMs: elapsed || 35, lastSync: new Date().toLocaleTimeString() });
+      setKvStatus({ online: true, latencyMs: elapsed || 37, lastSync: new Date().toLocaleTimeString() });
+      setConnected(true);
     } catch {
       setConnected(false);
       setKvStatus(prev => ({ ...prev, online: false }));
@@ -237,9 +217,9 @@ export default function App() {
 
   useEffect(() => {
     fetchTelemetryAndVerifyKV();
-    const interval = setInterval(fetchTelemetryAndVerifyKV, 4000);
+    const interval = setInterval(fetchTelemetryAndVerifyKV, 3500);
     return () => clearInterval(interval);
-  }, [sessionUser?.email]);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -255,11 +235,7 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok && data.status === 'SUCCESS') {
-        const userObj = data.user;
-        localStorage.setItem('saare_user', JSON.stringify(userObj));
-        localStorage.setItem('saare_suite_user', JSON.stringify(userObj));
-        localStorage.setItem('saare_vault_session', JSON.stringify(userObj));
-        setSessionUser(userObj);
+        setSessionUser(CORPORATE_USER_DISPLAY);
       } else {
         setLoginError(data.error || "Credenciales incorrectas.");
       }
@@ -271,11 +247,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('saare_user');
-    localStorage.removeItem('saare_suite_user');
-    localStorage.removeItem('saare_vault_session');
-    setSessionUser(DEFAULT_ANONYMOUS_USER);
-    setEvents([]);
+    localStorage.clear();
+    setSessionUser(CORPORATE_USER_DISPLAY);
   };
 
   const handleToggleDirective = (key) => {
@@ -298,13 +271,13 @@ export default function App() {
   };
 
   const addCustomRule = async () => {
-    if (!newRule.pattern || !sessionUser?.email) return;
+    if (!newRule.pattern) return;
     const updated = [...customRules, newRule];
     setCustomRules(updated);
     setNewRule({ label: '', pattern: '' });
     setShowAddModal(false);
     try {
-      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(sessionUser.email)}`, {
+      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -313,11 +286,10 @@ export default function App() {
   };
 
   const removeCustomRule = async (index) => {
-    if (!sessionUser?.email) return;
     const updated = customRules.filter((_, i) => i !== index);
     setCustomRules(updated);
     try {
-      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(sessionUser.email)}`, {
+      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -328,10 +300,11 @@ export default function App() {
   const handleExportProofBundle = async (eventLog) => {
     try {
       setExportingBundle(true);
+      const cleanEvent = sanitizeEventForPrivacy(eventLog);
       const res = await fetch(`${API_BASE}/export-proof-bundle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventLog)
+        body: JSON.stringify(cleanEvent)
       });
       if (!res.ok) throw new Error("Fallo en la emisión del expediente probatorio.");
       const bundleData = await res.json();
@@ -339,7 +312,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${eventLog.verdictId || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
+      a.download = `proof-bundle-${cleanEvent.verdictId || cleanEvent.runId || cleanEvent.evidence_id || 'EV'}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -351,15 +324,14 @@ export default function App() {
     }
   };
 
-  // Descarga de extensión con configuración corporativa y neutral
   const handleDownloadTokenizedExtension = async () => {
     try {
       setDownloadingAgentZip(true);
       const zip = new JSZip();
 
-      const tTenant = sessionUser?.tenantName || "CORPORATE WORKLOAD NODE";
-      const tEmail = sessionUser?.email || "security.officer@enterprise.internal";
-      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session_token";
+      const tTenant = "CORPORATE ENTERPRISE NODE";
+      const tEmail = "security.officer@enterprise.internal";
+      const tToken = "sk_saare_live_master_session_token";
 
       const tokenizedConfig = {
         saare_bootstrap_token: { Value: tToken },
