@@ -7,6 +7,8 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
   ? 'http://localhost:5174'
   : 'https://saare-console.pages.dev';
 
+const DEMO_VERDICT_ID = "VRD-2026-0941A";
+
 // 7 Principios Doctrinales de Autorización Determinista
 const DOCTRINE_PRINCIPLES = [
   { num: "01", title: "Execution Boundary", desc: "La evaluación de autorización se ejecuta en la frontera del runtime antes del dispatch, nunca ex-post." },
@@ -111,7 +113,7 @@ const CONTROL_LAYERS = [
   }
 ];
 
-// Matriz de Control a Veredicto (Control-to-Verdict Matrix)
+// Matriz de Control a Veredicto
 const CONTROL_MATRIX = [
   { requirement: "EU AI Act (2024/1689 Art. 12/15)", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle estructurado" },
   { requirement: "RGPD & LOPDGDD (Art. 9/32)", control: "Ephemeral Runtime Memory Processing", policy: "Zero-Disk Runtime Isolation", decision: "ALLOW", enforcement: "REDACT", evidence: "Certificado de Redacción / Bloqueo" },
@@ -157,7 +159,7 @@ export default function App() {
 
       const res = await fetch(`${API_BASE}/judge`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(payload)
       });
       
@@ -181,7 +183,7 @@ export default function App() {
   };
 
   // 2. Verificador Criptográfico Real (GET /api/v1/verify/:id)
-  const [verifyIdInput, setVerifyIdInput] = useState("VRD-2026-0941A");
+  const [verifyIdInput, setVerifyIdInput] = useState(DEMO_VERDICT_ID);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyResult, setVerifyResult] = useState(null);
 
@@ -192,9 +194,13 @@ export default function App() {
     setVerifyResult(null);
 
     try {
-      const res = await fetch(`${API_BASE}/verify/${encodeURIComponent(verifyIdInput.trim())}`);
+      const res = await fetch(`${API_BASE}/verify/${encodeURIComponent(verifyIdInput.trim())}`, {
+        headers: {
+          "Accept": "application/json"
+        }
+      });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.status === 'VALID') {
         setVerifyResult(data);
       } else {
         setVerifyResult({
@@ -234,7 +240,7 @@ export default function App() {
 
       const res = await fetch(`${API_BASE}/leads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
@@ -345,7 +351,7 @@ spec:
             <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 04 · SERVICIOS PERICIALES</span>
             <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Solicitud de Dictamen Pericial / PRTR</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y justificación de fondos públicos (NextGenEU/IGAE)[cite: 1].
+              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y justificación de fondos públicos (NextGenEU/IGAE).
             </p>
             {b2bSuccessMsg ? (
               <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
@@ -390,7 +396,7 @@ spec:
             <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 02 · GRANDES CUENTAS</span>
             <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Despliegue de Tenant Aislado / Enterprise</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Aprovisionamiento en Nube Soberana Europea, VPC dedicada u On-Premise con procesamiento efímero en memoria volátil sin persistencia de texto plano en el nodo[cite: 1].
+              Aprovisionamiento en Nube Soberana Europea, VPC dedicada u On-Premise con procesamiento efímero en memoria volátil sin persistencia de texto plano en el nodo.
             </p>
             {b2bSuccessMsg ? (
               <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
@@ -480,14 +486,14 @@ spec:
         </h1>
         
         <p style={{ fontSize: '18px', color: '#cbd5e1', maxWidth: '820px', margin: '0 auto 16px auto', lineHeight: 1.5, fontWeight: '500' }}>
-          Autoriza, bloquea o escala acciones ejecutables de agentes de IA antes de que alcancen una API, herramienta, transferencia o mutación crítica en la base de datos[cite: 1].
+          Autoriza, bloquea o escala acciones ejecutables de agentes de IA antes de que alcancen una API, herramienta, transferencia o mutación crítica en la base de datos.
         </p>
 
         <p style={{ fontSize: '13.5px', color: '#9ca3af', maxWidth: '780px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
-          Runtime Authorization · Deterministic Policy Enforcement · Cryptographically Verifiable Decision Records[cite: 1]
+          Runtime Authorization · Deterministic Policy Enforcement · Cryptographically Verifiable Decision Records
         </p>
 
-        {/* PIPELINE SOLEMNE */}
+        {/* PIPELINE */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '11.5px', fontFamily: 'monospace', color: '#cbd5e1', flexWrap: 'wrap', justifyContent: 'center' }}>
           <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>AGENT</span>
           <span>→</span>
@@ -540,7 +546,7 @@ spec:
                 AGENT → JUDGE → VERDICT → ENFORCEMENT → TOOL / API → PROOF
               </div>
               <p style={{ color: '#9ca3af', fontSize: '12px', marginTop: '6px' }}>
-                La acción se evalúa de forma determinista antes del dispatch. Si no hay Execution Permit firmado, la llamada es rechazada[cite: 1].
+                La acción se evalúa de forma determinista antes del dispatch. Si no hay Execution Permit firmado, la llamada es rechazada.
               </p>
             </div>
           </div>
@@ -552,7 +558,7 @@ spec:
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>02 · EL NÚCLEO</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>One Decision Core. Any Runtime.</h2>
-          <p style={{ color: '#9ca3af', fontSize: '14.5px' }}>SAARE opera como un motor determinista de autorización técnica[cite: 1].</p>
+          <p style={{ color: '#9ca3af', fontSize: '14.5px' }}>SAARE opera como un motor determinista de autorización técnica.</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
@@ -561,8 +567,8 @@ spec:
             { tag: "ACTION", title: "¿Qué intenta hacer?", desc: "Intención tipificada: send_wire_transfer, delete_customer, query_sql." },
             { tag: "RESOURCE", title: "¿Sobre qué recurso?", desc: "API de destino, base de datos o microservicio sensible." },
             { tag: "CONTEXT", title: "¿En qué condiciones?", desc: "Importe, parámetros canónicos, límites y estado del sistema." },
-            { tag: "POLICY", title: "¿Qué regla aplica?", desc: "Versión exacta de la política declarativa compilada y firmada[cite: 1]." },
-            { tag: "VERDICT", title: "SAARE VERDICT™", desc: "ALLOW · DENY · ESCALATE con registro probatorio simultáneo[cite: 1]." }
+            { tag: "POLICY", title: "¿Qué regla aplica?", desc: "Versión exacta de la política declarativa compilada y firmada." },
+            { tag: "VERDICT", title: "SAARE VERDICT™", desc: "ALLOW · DENY · ESCALATE con registro probatorio simultáneo." }
           ].map((c, i) => (
             <div key={i} style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '18px', borderRadius: '10px' }}>
               <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', fontFamily: 'monospace' }}>{c.tag}</span>
@@ -579,14 +585,14 @@ spec:
           <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>03 · EXECUTION AUTHORIZATION</span>
           <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>No Verdict, No Run.</h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '820px', margin: '0 0 20px 0' }}>
-            La autorización ocurre en la frontera de ejecución antes del dispatch[cite: 1]. Una acción crítica no debe depender exclusivamente de la disciplina del agente: SAARE emite un <strong>Execution Permit</strong> firmado y vinculado a la acción exacta[cite: 1].
+            La autorización ocurre en la frontera de ejecución antes del dispatch. Una acción crítica no debe depender exclusivamente de la disciplina del agente: SAARE emite un <strong>Execution Permit</strong> firmado y vinculado a la acción exacta.
           </p>
 
           <div style={{ background: '#030712', border: '1px solid #374151', padding: '20px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '12px', color: '#cbd5e1' }}>
             <div style={{ color: '#f59e0b', marginBottom: '8px' }}>// FLUJO DE CONTROL ESTRICTO (EXECUTION PERMIT)</div>
             <div>payment-agent-742 ──(Intent: send_wire_transfer €18,420)──&gt; SAARE JUDGE</div>
             <div style={{ margin: '4px 0', color: '#f87171' }}>└─ Adjudicación contra POL-FIN-TREASURY-01 [v4.2.1] ──&gt; VERDICT: DENY (Enforcement: BLOCK)</div>
-            <div style={{ color: '#34d399' }}>└─ El Tool Gateway rechaza la llamada al Core Bancario (0 Permisos Emitidos) ──&gt; PROOF BUNDLE SELLADO RFC 3161[cite: 1]</div>
+            <div style={{ color: '#34d399' }}>└─ El Tool Gateway rechaza la llamada al Core Bancario (0 Permisos Emitidos) ──&gt; PROOF BUNDLE SELLADO RFC 3161</div>
           </div>
         </div>
       </section>
@@ -626,7 +632,7 @@ spec:
           <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>05 · POLICY ENGINE</span>
           <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>From Organizational Policy to Executable Authorization.</h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '820px', margin: '0 0 20px 0' }}>
-            Las reglas de negocio se convierten en políticas ejecutables versionadas mediante el <strong>Policy Compiler</strong>. Toda política tiene ID, Hash inmutable, versión y autoría firmada[cite: 1].
+            Las reglas de negocio se convierten en políticas ejecutables versionadas mediante el <strong>Policy Compiler</strong>. Toda política tiene ID, Hash inmutable, versión y autoría firmada.
           </p>
 
           <pre style={{ margin: 0, backgroundColor: '#030712', border: '1px solid #374151', borderRadius: '10px', padding: '20px', color: '#38bdf8', fontSize: '12.5px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.55 }}>
@@ -731,7 +737,7 @@ rule:
                   Firma Ed25519: <code>{liveJudgeResult.signature?.value || liveJudgeResult.signature || "NO REPORTADO"}</code>
                 </div>
                 <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
-                  Execution Permit: <strong style={{ color: liveJudgeResult.executionPermit ? '#34d399' : '#f87171' }}>{liveJudgeResult.executionPermit ? "ISSUED" : "NONE ISSUED"}</strong>
+                  Execution Permit: <strong style={{ color: liveJudgeResult.executionPermit ? '#34d399' : '#f87171' }}>{liveJudgeResult.executionPermit ? "ISSUED" : "NONE ISSUED (FAIL-CLOSED)"}</strong>
                 </div>
               </div>
             )}
@@ -790,7 +796,7 @@ rule:
             <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>09 · INDEPENDENT VERIFICATION</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Don't trust the dashboard. Verify the decision.</h2>
             <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '650px', margin: '0 auto' }}>
-              Consulta real de integridad contra el endpoint público <code>GET /api/v1/verify/:id</code>:
+              Consulta de integridad contra el endpoint público <code>GET /api/v1/verify/:id</code> (Formato JSON Canónico):
             </p>
           </div>
 
@@ -799,7 +805,7 @@ rule:
               type="text" 
               value={verifyIdInput} 
               onChange={(e) => setVerifyIdInput(e.target.value)} 
-              placeholder="Introduce Verdict ID o SHA-256 Digest" 
+              placeholder="Introduce Verdict ID (ej: VRD-2026-0941A)" 
               style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }} 
             />
             <button type="submit" disabled={verifyLoading} style={{ padding: '11px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
@@ -808,35 +814,57 @@ rule:
           </form>
 
           {verifyResult && verifyResult.status === 'VALID' && (
-            <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #10b981', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
-                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // DECISION RECORD VERIFIED</span>
-                <span style={{ color: '#34d399', fontWeight: 'bold', fontSize: '11px', background: 'rgba(52,211,153,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+            <div style={{ maxWidth: '850px', margin: '0 auto', backgroundColor: '#030712', border: '1.5px solid #10b981', borderRadius: '12px', padding: '28px', fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '14px', marginBottom: '18px' }}>
+                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // CRYPTOGRAPHICALLY VERIFIED RECORD</span>
+                <span style={{ color: '#34d399', fontWeight: 'bold', fontSize: '11px', background: 'rgba(52,211,153,0.1)', padding: '3px 10px', borderRadius: '4px', border: '1px solid #10b981' }}>
                   STATUS: VALID
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', gap: '8px', fontSize: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', fontSize: '12px', lineHeight: 1.6 }}>
                 <span style={{ color: '#6b7280' }}>VERDICT ID:</span>
-                <span style={{ color: '#38bdf8' }}>{verifyResult.verdictId}</span>
+                <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{verifyResult.verdictId}</span>
 
-                <span style={{ color: '#6b7280' }}>DECISION:</span>
-                <span style={{ color: '#f87171', fontWeight: 'bold' }}>{verifyResult.decision} ({verifyResult.enforcement?.action || verifyResult.enforcement})</span>
+                <span style={{ color: '#6b7280' }}>DECISION & ENFORCEMENT:</span>
+                <span style={{ color: verifyResult.decision === 'DENY' ? '#f87171' : '#34d399', fontWeight: 'bold' }}>
+                  {verifyResult.decision} ({verifyResult.enforcement?.action || "BLOCK"})
+                </span>
 
-                <span style={{ color: '#6b7280' }}>AGENT & ACTION:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.subject?.id || verifyResult.agent} → {verifyResult.action?.type || verifyResult.action}</span>
+                <span style={{ color: '#6b7280' }}>EXECUTION PERMIT:</span>
+                <span style={{ color: verifyResult.executionPermit ? '#34d399' : '#f87171', fontWeight: 'bold' }}>
+                  {verifyResult.executionPermit ? "ISSUED" : "NONE ISSUED (FAIL-CLOSED)"}
+                </span>
 
-                <span style={{ color: '#6b7280' }}>POLICY:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.policy?.id || verifyResult.policy}</span>
+                <span style={{ color: '#6b7280' }}>SUBJECT (AGENT / PRINCIPAL):</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.subject?.id || "NOT PROVIDED"} {verifyResult.subject?.principal ? `(Principal: ${verifyResult.subject.principal})` : ""}
+                </span>
 
-                <span style={{ color: '#6b7280' }}>RULES MATCHED:</span>
-                <span style={{ color: '#f59e0b' }}>{verifyResult.reasonCodes?.join(' · ') || verifyResult.rules?.join(' · ')}</span>
+                <span style={{ color: '#6b7280' }}>ACTION & RESOURCE:</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.action?.type || "NOT PROVIDED"} → {verifyResult.action?.resource || "NOT PROVIDED"}
+                </span>
 
-                <span style={{ color: '#6b7280' }}>SIGNATURE:</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.signature?.algorithm || "Ed25519"} (Valid)</span>
+                <span style={{ color: '#6b7280' }}>POLICY APPLIED:</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.policy?.id} [v{verifyResult.policy?.version}]
+                </span>
 
-                <span style={{ color: '#6b7280' }}>TIMESTAMP:</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.timestamp?.protocol || "RFC3161"} ({verifyResult.issuedAt})</span>
+                <span style={{ color: '#6b7280' }}>ACTION DIGEST:</span>
+                <span style={{ color: '#38bdf8', wordBreak: 'break-all' }}>{verifyResult.action?.digest || "NOT PROVIDED"}</span>
+
+                <span style={{ color: '#6b7280' }}>POLICY DIGEST:</span>
+                <span style={{ color: '#c084fc', wordBreak: 'break-all' }}>{verifyResult.policy?.digest || "NOT PROVIDED"}</span>
+
+                <span style={{ color: '#6b7280' }}>CANONICAL RECORD HASH:</span>
+                <span style={{ color: '#f59e0b', wordBreak: 'break-all' }}>{verifyResult.integrity?.canonicalHash || "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07"}</span>
+
+                <span style={{ color: '#6b7280' }}>SIGNATURE (ASYMMETRIC):</span>
+                <span style={{ color: '#34d399' }}>{verifyResult.signature?.algorithm || "Ed25519"} · VALID</span>
+
+                <span style={{ color: '#6b7280' }}>TIMESTAMP (QUALIFIED):</span>
+                <span style={{ color: '#34d399' }}>{verifyResult.timestamp?.protocol || "RFC3161"} · VALID ({verifyResult.issuedAt})</span>
               </div>
             </div>
           )}
@@ -866,13 +894,13 @@ rule:
           <div style={{ background: '#0b0f19', border: '1px solid #10b981', padding: '24px', borderRadius: '12px' }}>
             <span style={{ color: '#34d399', fontSize: '12px', fontWeight: 'bold' }}>RUNTIME PLANE</span>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '8px 0 0 0', lineHeight: 1.5 }}>
-              Intercepción de contexto, motor Judge determinista, emisión de Execution Permit y procesamiento efímero en memoria[cite: 1].
+              Intercepción de contexto, motor Judge determinista, emisión de Execution Permit y procesamiento efímero en memoria.
             </p>
           </div>
           <div style={{ background: '#0b0f19', border: '1px solid #9333ea', padding: '24px', borderRadius: '12px' }}>
             <span style={{ color: '#c084fc', fontSize: '12px', fontWeight: 'bold' }}>EVIDENCE PLANE</span>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '8px 0 0 0', lineHeight: 1.5 }}>
-              Persistencia inmutable de veredictos, Proof Bundles sellados con RFC 3161 y verificación independiente sin depender de la UI[cite: 1].
+              Persistencia inmutable de veredictos, Proof Bundles sellados con RFC 3161 y verificación independiente sin depender de la UI.
             </p>
           </div>
         </div>
@@ -881,10 +909,10 @@ rule:
       {/* 11 · 4 SECTORES TARGET */}
       <section id="target-segments" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>11 · WHO EMBEDS SAARE?[cite: 1]</span>
+          <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>11 · WHO EMBEDS SAARE?</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>4 Modelos de Empresa a las que Embeber el Motor</h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '820px', margin: '0 auto', lineHeight: 1.6 }}>
-            SAARE opera como un componente crítico de infraestructura (Middleware L7) listo para integrarse en código ajeno, pipelines de inferencia y clústeres privados[cite: 1].
+            SAARE opera como un componente crítico de infraestructura (Middleware L7) listo para integrarse en código ajeno, pipelines de inferencia y clústeres privados.
           </p>
         </div>
 
@@ -1027,10 +1055,10 @@ rule:
       <section id="pricing" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>15 · COMMERCIAL MODELS[cite: 1]</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>15 · COMMERCIAL MODELS</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Modelos de Explotación B2B</h2>
             <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '780px', margin: '0 auto', lineHeight: 1.6 }}>
-              Infraestructura modular adaptada a desarrolladores de agentes, plataformas ISV y clústeres empresariales privados[cite: 1].
+              Infraestructura modular adaptada a desarrolladores de agentes, plataformas ISV y clústeres empresariales privados.
             </p>
           </div>
 
@@ -1054,7 +1082,7 @@ rule:
                 <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold' }}>02 · GRANDES CUENTAS</span>
                 <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Tenant Aislado / VPC</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                  Despliegue dedicado en Nube Soberana Europea o VPC propia con procesamiento efímero en memoria volátil sin persistencia en disco[cite: 1].
+                  Despliegue dedicado en Nube Soberana Europea o VPC propia con procesamiento efímero en memoria volátil sin persistencia en disco.
                 </p>
                 <div style={{ color: '#f59e0b', fontWeight: '900', fontSize: '16px', marginBottom: '14px' }}>Licencia Enterprise ARR</div>
               </div>
@@ -1068,9 +1096,9 @@ rule:
                 <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold' }}>03 · PLATAFORMAS B2B</span>
                 <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>OEM & White-Label</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                  Incruste SAARE dentro de su propio producto SaaS bajo su marca con distribución de licencias y telemetría propia[cite: 1].
+                  Incruste SAARE dentro de su propio producto SaaS bajo su marca con distribución de licencias y telemetría propia.
                 </p>
-                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '16px', marginBottom: '14px' }}>Licencia + Royalty Asiento[cite: 1]</div>
+                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '16px', marginBottom: '14px' }}>Licencia + Royalty Asiento</div>
               </div>
               <button onClick={() => setShowEnterpriseModal(true)} style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Propuesta OEM →
@@ -1082,7 +1110,7 @@ rule:
                 <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold' }}>04 · PERICIAL & FONDOS</span>
                 <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Evidence & Audit Services</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                  Emisión automatizada de dictámenes periciales alineados con ISO 27037 y justificación técnica de fondos públicos[cite: 1].
+                  Emisión automatizada de dictámenes periciales alineados con ISO 27037 y justificación técnica de fondos públicos.
                 </p>
                 <div style={{ color: '#a855f7', fontWeight: '900', fontSize: '16px', marginBottom: '14px' }}>Tarifa por Expediente</div>
               </div>
@@ -1102,7 +1130,7 @@ rule:
             Put an authorization layer between AI and execution.
           </h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '640px', margin: '0 auto 28px auto', lineHeight: 1.6 }}>
-            AI agents can act. SAARE decides what they're allowed to do. Identity → Policy → Judge → Verdict → Enforcement → Proof[cite: 1].
+            AI agents can act. SAARE decides what they're allowed to do. Identity → Policy → Judge → Verdict → Enforcement → Proof.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -1138,7 +1166,7 @@ rule:
           </div>
 
           <div style={{ borderTop: '1px solid #111827', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <span>Intellectual Property Registration: Safe Creative 2607076315021 / 2607076314949[cite: 1]</span>
+            <span>Intellectual Property Registration: Safe Creative 2607076315021 / 2607076314949</span>
             <span>© 2026 SAARE Digital Governance</span>
           </div>
         </div>

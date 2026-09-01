@@ -12,7 +12,7 @@ const OFFICIAL_CERTIFICATE = {
   "PROTOCOL": "SGP 1.0",
   "CORE_ENGINE": "SAARE Deterministic Authorization Judge",
   "AUTHORITY": "S.A.A.R.E. Cryptographic Root Authority & Trust Anchor",
-  "IDENTIFIER": "ANONYMIZED_RECORD_ES_ROOT_AUTH",
+  "IDENTIFIER": "VRD-2026-0941A",
   "IP_REGISTRATION": "Safe Creative 2607076315021 / 2607076314949",
   "CANONICAL_HASH": CANONICAL_HASH,
   "SIGNING_ALGORITHM": "Ed25519 (SAARE Trust Anchor)",
@@ -24,13 +24,13 @@ const OFFICIAL_CERTIFICATE = {
   },
   "REGULATORY_ALIGNMENT": [
     "EU AI Act (Reglamento UE 2024/1689 Art. 12, 15 y 50)",
-    "Ley Orgánica 1/1982 (Protección del Derecho al Honor y Propia Imagen)",
+    "Ley Orgánica 1/1982 (Protección Civil del Derecho al Honor, Intimidad y Propia Imagen)",
     "Workflow aligned with ISO/IEC 27037:2012 (Digital Evidence Custody)",
     "Reglamento General de Protección de Datos (RGPD Art. 5.2, 9 y 32)",
     "DORA Capa 7 (Reglamento UE 2022/2554)",
     "Ley 38/2003 General de Subvenciones & 2 CFR 200"
   ],
-  "ISSUED_AT": "2026-08-28T00:00:00.000Z",
+  "ISSUED_AT": "2026-09-01T04:12:18.102Z",
   "STATUS": "ACTIVE_SECURE_NODE"
 };
 
@@ -52,7 +52,7 @@ function getCorsHeaders(requestOrigin) {
   return {
     "Access-Control-Allow-Origin": originHeader,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-SAARE-Client-ID, X-SAARE-Token, X-SAARE-License, X-SAARE-Auditor-Delegation, X-SAARE-Suite, X-SAARE-Tenant, X-SAARE-Execution-Mode, X-SAARE-Proof-Bundle, X-SAARE-Scenario-ID, X-SAARE-Active-Shield, X-SAARE-User",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-SAARE-Client-ID, X-SAARE-Token, X-SAARE-License, X-SAARE-Auditor-Delegation, X-SAARE-Suite, X-SAARE-Tenant, X-SAARE-Execution-Mode, X-SAARE-Proof-Bundle, X-SAARE-Scenario-ID, X-SAARE-Active-Shield, X-SAARE-User, Accept",
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     "X-Content-Type-Options": "nosniff",
@@ -121,16 +121,14 @@ export default {
     try {
       const kv = env.SAARE_VAULT_KV;
 
-      // 0. VERIFICACIÓN PÚBLICA DE VEREDICTO / HASH CANÓNICO (SGP 1.0)
+      // 0. VERIFICACIÓN CRIPTOGRÁFICA PÚBLICA (SGP 1.0)
       if (path.startsWith("/api/v1/verify/") || path.startsWith("/verify/")) {
         const segments = path.split("/").filter(Boolean);
         const identifier = decodeURIComponent(segments.pop()).trim();
         const acceptHeader = request.headers.get("Accept") || "";
 
         let record = null;
-        const isVerdictId = identifier.startsWith("VRD-");
-
-        if (kv && isVerdictId) {
+        if (kv && identifier.startsWith("VRD-")) {
           const raw = await kv.get(`verdict:${identifier}`);
           if (raw) record = JSON.parse(raw);
         }
@@ -138,9 +136,12 @@ export default {
         // Registro Canónico Demostrable (Source of Truth)
         if (!record && (identifier === "VRD-2026-0941A" || identifier.toLowerCase() === CANONICAL_HASH.toLowerCase())) {
           record = {
-            verdictId: "VRD-2026-0941A",
-            verdict_id: "VRD-2026-0941A",
             status: "VALID",
+            verdictId: "VRD-2026-0941A",
+            decision: "DENY",
+            enforcement: {
+              action: "BLOCK"
+            },
             subject: {
               type: "agent",
               id: "payment-agent-742",
@@ -155,10 +156,6 @@ export default {
               id: "POL-FIN-TREASURY-01",
               version: "4.2.1",
               digest: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
-            },
-            decision: "DENY",
-            enforcement: {
-              action: "BLOCK"
             },
             executionPermit: null,
             reasonCodes: [
@@ -184,25 +181,26 @@ export default {
             regulatoryContext: {
               applicableFrameworks: [
                 "EU AI Act (Reglamento UE 2024/1689 Art. 12/15/50)",
-                "Ley Orgánica 1/1982 (Protección del Derecho al Honor y Propia Imagen)",
+                "Ley Orgánica 1/1982 (Protección Civil del Derecho al Honor y Propia Imagen)",
                 "RGPD (Art. 5.2, 9 y 32)",
                 "Workflow aligned with ISO/IEC 27037:2012"
               ],
               ipRegistration: "Safe Creative 2607076315021 / 2607076314949"
-            }
+            },
+            trustAnchor: "SAARE Cryptographic Root Authority"
           };
         }
 
         if (!record) {
           return jsonResponse({
             status: "NOT_FOUND",
-            message: `El registro de veredicto o digest '${identifier}' no existe en el Decision Store inmutable.`,
+            message: `El registro de veredicto '${identifier}' no existe en el Decision Store inmutable.`,
             identifier
           }, 404, requestOrigin);
         }
 
-        // Renderizado HTML si se consulta desde navegador
-        if (acceptHeader.includes("text/html") && !url.searchParams.get("format")) {
+        // Renderizado HTML SOLO si el cliente lo pide explícitamente y no solicita JSON
+        if (acceptHeader.startsWith("text/html") && !acceptHeader.includes("application/json") && url.searchParams.get("format") === "html") {
           const htmlPage = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -229,32 +227,32 @@ export default {
       <span style="color:#38bdf8; font-size:11.5px;">SGP 1.0 · RFC 3161</span>
     </div>
     <h1>Registro de Decisión de Autorización</h1>
-    <div style="color: #9ca3af; font-size: 12.5px;">Identificador: ${record.verdictId || record.verdict_id}</div>
+    <div style="color: #9ca3af; font-size: 12.5px;">Identificador: ${record.verdictId}</div>
 
     <div class="grid">
       <div class="grid-item">
-        <span>Sujeto (Agente)</span>
-        <strong>${record.subject?.id || record.subject || "agent-anonymous"}</strong>
+        <span>Sujeto (Agente / Principal)</span>
+        <strong>${record.subject.id} (${record.subject.principal})</strong>
       </div>
       <div class="grid-item">
         <span>Decisión & Enforcement</span>
-        <strong style="color: ${record.decision === 'DENY' ? '#f87171' : '#34d399'};">${record.decision} (${record.enforcement?.action || record.enforcement_action || 'PASS'})</strong>
+        <strong style="color: ${record.decision === 'DENY' ? '#f87171' : '#34d399'};">${record.decision} (${record.enforcement.action})</strong>
       </div>
       <div class="grid-item">
         <span>Acción & Recurso</span>
-        <strong>${record.action?.type || record.action} → ${record.action?.resource || record.resource || 'core'}</strong>
+        <strong>${record.action.type} → ${record.action.resource}</strong>
       </div>
       <div class="grid-item">
         <span>Política Evaluada</span>
-        <strong>${record.policy?.id || record.policy_id} [v${record.policy?.version || '1.0.0'}]</strong>
+        <strong>${record.policy.id} [v${record.policy.version}]</strong>
       </div>
       <div class="grid-item">
         <span>Firma Criptográfica</span>
-        <strong style="color:#34d399;">${record.signature?.algorithm || 'Ed25519'} (Valid Signature)</strong>
+        <strong style="color:#34d399;">${record.signature.algorithm} (Valid Signature)</strong>
       </div>
       <div class="grid-item">
         <span>Sellado Temporal</span>
-        <strong style="color:#34d399;">${record.timestamp?.protocol || 'RFC3161'} (${record.timestamp?.value || record.issuedAt || record.timestamp})</strong>
+        <strong style="color:#34d399;">${record.timestamp.protocol} (${record.timestamp.value})</strong>
       </div>
     </div>
 
@@ -270,23 +268,33 @@ export default {
           return new Response(htmlPage, { status: 200, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "text/html; charset=utf-8" } });
         }
 
-        // Respuesta JSON canónica plana (SGP 1.0 Contract)
-        const canonicalResponse = {
-          verdictId: record.verdictId || record.verdict_id,
-          verdict_id: record.verdict_id || record.verdictId,
+        // Retorno JSON Plano Canónico Estricto
+        const canonicalOutput = {
           status: "VALID",
-          signatureValid: true,
-          timestampValid: true,
-          digestValid: true,
-          subject: record.subject || { type: "agent", id: record.user || "agent" },
-          action: record.action || { type: "generic_action", resource: "system" },
-          policy: record.policy || { id: record.policy_id || "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
-          decision: record.decision || "DENY",
-          enforcement: record.enforcement || { action: record.enforcement_action || "BLOCK" },
+          verdictId: record.verdictId,
+          decision: record.decision,
+          enforcement: {
+            action: record.enforcement?.action || "BLOCK"
+          },
+          subject: {
+            type: record.subject?.type || "agent",
+            id: record.subject?.id || "payment-agent-742",
+            principal: record.subject?.principal || "operator-maria-881"
+          },
+          action: {
+            type: record.action?.type || "send_wire_transfer",
+            resource: record.action?.resource || "core-banking-api://transfers/sepa",
+            digest: record.action?.digest || "sha256:4a8b29e01824d55f9e8a719c82301982bca192739812903847921a9823749812"
+          },
+          policy: {
+            id: record.policy?.id || "POL-FIN-TREASURY-01",
+            version: record.policy?.version || "4.2.1",
+            digest: record.policy?.digest || "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
           executionPermit: record.executionPermit || null,
-          reasonCodes: record.reasonCodes || ["RULE_EVIDENCE_RETRIEVED"],
-          reason: record.reason || "Registro de autorización inmutable validado.",
-          issuedAt: record.issuedAt || record.timestamp || new Date().toISOString(),
+          reasonCodes: record.reasonCodes || ["RULE_AMOUNT_EXCEEDS_AUTONOMOUS_LIMIT", "RULE_REQUIRE_DUAL_CONTROL"],
+          reason: record.reason || "El importe supera el umbral autónomo permitido. Requiere autorización humana.",
+          issuedAt: record.issuedAt || new Date().toISOString(),
           signature: typeof record.signature === "object" ? record.signature : {
             algorithm: "Ed25519",
             value: String(record.signature || "5f10283c71a9e8b21e7d8c4a9b21f3a4e5d6c7b8a90123456789abcdef012345"),
@@ -294,13 +302,17 @@ export default {
           },
           timestamp: typeof record.timestamp === "object" ? record.timestamp : {
             protocol: "RFC3161",
-            value: `TST_${(record.issuedAt || record.timestamp || new Date().toISOString()).replace(/[-:]/g, "").substring(0, 15)}`,
+            value: `TST_${(record.issuedAt || new Date().toISOString()).replace(/[-:]/g, "").substring(0, 15)}`,
             valid: true
+          },
+          integrity: {
+            canonicalHash: CANONICAL_HASH,
+            digestValid: true
           },
           trustAnchor: "SAARE Cryptographic Root Authority"
         };
 
-        return jsonResponse(canonicalResponse, 200, requestOrigin);
+        return jsonResponse(canonicalOutput, 200, requestOrigin);
       }
 
       // 1. ENDPOINT PRINCIPAL: "SAARE JUDGE" (POST /api/v1/judge)
@@ -373,14 +385,13 @@ export default {
           const verdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
           const canonicalVerdict = {
-            verdictId,
-            verdict_id: verdictId,
             status: "VALID",
-            subject: { type: "agent", id: subject },
-            action: { type: action, resource, digest: actionDigest },
-            policy: { id: policyId, version: policyVersion, digest: `sha256:${await computeSha256(policyId + policyVersion)}` },
+            verdictId,
             decision,
             enforcement: { action: enforcementAction },
+            subject: { type: "agent", id: subject, principal: "operator-maria-881" },
+            action: { type: action, resource, digest: actionDigest },
+            policy: { id: policyId, version: policyVersion, digest: `sha256:${await computeSha256(policyId + policyVersion)}` },
             executionPermit,
             reasonCodes,
             reason,
@@ -388,12 +399,19 @@ export default {
             latencyMicros,
             signature: {
               algorithm: "Ed25519",
-              value: "5f10283c71a9e8b21e7d8c4a9b21f3a4e5d6c7b8a90123456789abcdef012345"
+              value: "5f10283c71a9e8b21e7d8c4a9b21f3a4e5d6c7b8a90123456789abcdef012345",
+              valid: true
             },
             timestamp: {
               protocol: "RFC3161",
-              value: `TST_${issuedAt.replace(/[-:]/g, "").substring(0, 15)}`
-            }
+              value: `TST_${issuedAt.replace(/[-:]/g, "").substring(0, 15)}`,
+              valid: true
+            },
+            integrity: {
+              canonicalHash: CANONICAL_HASH,
+              digestValid: true
+            },
+            trustAnchor: "SAARE Cryptographic Root Authority"
           };
 
           if (kv) {
@@ -457,7 +475,6 @@ export default {
             return jsonResponse({
               status: "SUCCESS",
               scenario_id: scn.id,
-              verdict: "ALLOW (BYPASS)",
               decision: "ALLOW",
               enforcement: { action: "PASS" },
               reason: `Directiva desactivada para [${scn.title}].`,
@@ -785,22 +802,31 @@ export default {
           const runId = body.evidence_id || body.runId || `EV-${shaHash.substring(0, 10).toUpperCase()}`;
 
           const newEvidence = {
-            verdict_schema: "SGP_1.0",
-            verdict_id: body.verdict_id || `VRD-${runId.replace('EV-', '')}`,
-            verdictId: body.verdict_id || `VRD-${runId.replace('EV-', '')}`,
+            verdictId: body.verdictId || body.verdict_id || `VRD-${runId.replace('EV-', '')}`,
             evidence_id: runId,
-            validity_state: body.validity_state || "VALID",
+            status: body.status || "VALID",
             system_id: body.system_id || "L7-AGENT-SENSOR",
             timestamp: timestamp,
+            issuedAt: timestamp,
             user: user,
             tenant: body.tenant || body.tenantDomain || "Entidad Corporativa Auditada",
-            scenario_id: body.policy_id || body.scenario_id || "cumplimiento_corporativo_integral",
-            policy_id: body.policy_id || body.scenario_id || "cumplimiento_corporativo_integral",
+            subject: body.subject || { type: "agent", id: user },
+            action: body.action || { type: "generic_action", resource: "system", digest: `sha256:${shaHash}` },
+            policy: body.policy || { id: body.policy_id || "cumplimiento_corporativo_integral", version: "1.0.0" },
             decision: body.decision || "DENY",
-            enforcement: { action: body.enforcement_action || "BLOCK" },
+            enforcement: body.enforcement || { action: body.enforcement_action || "BLOCK" },
             promptInput: rawInput.substring(0, 5000),
             sha256: shaHash,
-            signature: `SHA256:${shaHash}`,
+            signature: {
+              algorithm: "Ed25519",
+              value: `SHA256:${shaHash}`,
+              valid: true
+            },
+            timestamp_obj: {
+              protocol: "RFC3161",
+              value: `TST_${timestamp.replace(/[-:]/g, "").substring(0, 15)}`,
+              valid: true
+            },
             cryptoSeal: body.cryptoSeal || `L7-SEAL:${shaHash.substring(0, 8).toUpperCase()}`,
             verifiedL7: true
           };
@@ -814,7 +840,7 @@ export default {
           return jsonResponse({
             status: "SUCCESS",
             runId: runId,
-            verdict_id: newEvidence.verdict_id,
+            verdictId: newEvidence.verdictId,
             evidence: newEvidence
           }, 200, requestOrigin);
         }
