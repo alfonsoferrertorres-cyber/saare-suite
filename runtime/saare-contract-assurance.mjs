@@ -9,28 +9,43 @@ console.log("===============================================================");
 
 let violations = 0;
 
+// Patrones prohibidos en el código fuente de producción
+const FORBIDDEN_PATTERNS = [
+  { pattern: /"verdict_id"/g, name: 'Legacy key "verdict_id"' },
+  { pattern: /'verdict_id'/g, name: "Legacy key 'verdict_id'" },
+  { pattern: /data\.signature\s*\|\|/g, name: "Fallback fabricado en signature" },
+  { pattern: /data\.reasonCodes\s*\|\|/g, name: "Fallback fabricado en reasonCodes" }
+];
+
 function scanDir(dir) {
   const files = fs.readdirSync(dir);
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    if (file === 'node_modules' || file === '.git' || file === 'dist' || file === '.wrangler') continue;
+    
+    // Excluir dependencias, carpetas de compilación y herramientas de testeo/assurance
+    if (
+      file === 'node_modules' || 
+      file === '.git' || 
+      file === 'dist' || 
+      file === '.wrangler' ||
+      file === 'saare-contract-assurance.mjs' ||
+      file === 'resilienceGate.js' ||
+      file === 'test-saare-e2e.ps1'
+    ) {
+      continue;
+    }
     
     if (fs.statSync(fullPath).isDirectory()) {
       scanDir(fullPath);
     } else if (file.endsWith('.js') || file.endsWith('.jsx') || file.endsWith('.mjs')) {
       const content = fs.readFileSync(fullPath, 'utf8');
       
-      // Chequeo 1: Prohibido verdict_id como clave pública o asignación en código nuevo
-      if (content.includes('"verdict_id"') || content.includes("'verdict_id'")) {
-        console.error(`[FAIL] Legacy key 'verdict_id' detectada en: ${fullPath}`);
-        violations++;
-      }
-
-      // Chequeo 2: Prohibido fabricar fallbacks para evidencia o firmas
-      if (content.includes('data.signature ||') || content.includes('data.reasonCodes ||')) {
-        console.error(`[FAIL] Fallback fabricado detectado en: ${fullPath}`);
-        violations++;
-      }
+      FORBIDDEN_PATTERNS.forEach(({ pattern, name }) => {
+        if (pattern.test(content)) {
+          console.error(`[FAIL] ${name} detectada en: ${fullPath}`);
+          violations++;
+        }
+      });
     }
   }
 }
