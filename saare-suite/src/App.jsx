@@ -20,6 +20,49 @@ const DOCTRINE_PRINCIPLES = [
   { num: "07", title: "Independent Verification", desc: "La prueba no depende de la UI: verificable vía API pública y RFC 3161." }
 ];
 
+const TARGET_SEGMENTS = [
+  {
+    id: "01",
+    tag: "ISVS & SAAS B2B",
+    title: "Otras ISVs y Plataformas de Software B2B",
+    who: "LegalTech, InsurTech, HRTech, CRMs con funciones de IA generativa integradas.",
+    pain: "Sus clientes corporativos exigen garantías de no filtración (RGPD Art. 9) y cumplimiento del EU AI Act. Desarrollar este motor internamente les retrasaría meses.",
+    embed: "OEM / White-Label SDK (@saare/embedded-core) incrustado directamente en su backend de inferencia.",
+    pricing: "Licencia de desarrollador + Royalty mensual por cliente corporativo activo.",
+    color: "#0284c7"
+  },
+  {
+    id: "02",
+    tag: "AGENTIC AI FACTORIES",
+    title: "Creadores de Agentes Autónomos",
+    who: "Startups de IA que desarrollan agentes con Tool Calling, mutaciones de bases de datos y ejecución transaccional.",
+    pain: "Si el agente alucina o sufre un prompt injection / jailbreak, puede disparar pagos no autorizados o alterar registros críticos.",
+    embed: "SDK 'Ask the Judge' (POST /api/v1/judge) como árbitro determinista previo a cualquier acción sensible.",
+    pricing: "Metered API: Tarificación por tramos o créditos por cada millón de veredictos adjudicados.",
+    color: "#16a34a"
+  },
+  {
+    id: "03",
+    tag: "SYSTEM INTEGRATORS",
+    title: "Grandes Integradores y Consultoras TIC",
+    who: "Big Four, Accenture, Indra y consultoras que despliegan proyectos de IA para el IBEX 35 y Sector Público.",
+    pain: "Necesitan acreditar diligencia debida, justificar fondos europeos (PRTR / NextGenEU) y cumplir NIS 2 / DORA con validez procesal ISO 27037.",
+    embed: "Middleware de Integración en sus plantillas de arquitectura (Terraform / Helm Blueprint).",
+    pricing: "Fee por proyecto entregado o Contrato Marco Anual con tarifa plana de emisión forense.",
+    color: "#9333ea"
+  },
+  {
+    id: "04",
+    tag: "REGULATED ENTERPRISE",
+    title: "Banca, Seguros y Sanidad (Nube Privada)",
+    who: "Corporaciones hiper-reguladas que ejecutan modelos de IA de forma interna o en VPCs aisladas.",
+    pain: "Tienen prohibida la persistencia en disco de secretos empresariales o datos clínicos y el envío a nubes externas.",
+    embed: "Sidecar Container / Kubernetes DaemonSet con aislamiento estricto en memoria RAM (SYS_madvise).",
+    pricing: "Licencia Anual por Clúster (Enterprise ARR) con custodia soberana de claves Ed25519 y SLA crítico.",
+    color: "#ca8a04"
+  }
+];
+
 const CONTROL_LAYERS = [
   {
     id: "01",
@@ -325,7 +368,7 @@ export default function App() {
     }
   };
 
-  // Fontanería B2B persistente conectada con POST /api/v1/leads
+  // Fontanería B2B persistente conectada con POST /api/v1/leads en Cloudflare KV
   const handleSendB2BForm = async (e, formType) => {
     e.preventDefault();
     setLoading(true);
@@ -610,6 +653,7 @@ const response = await client.chat.completions.create({
 
           <nav style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
             <button onClick={() => navigateToSection('decision-layer')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700' }}>Governance Judge</button>
+            <button onClick={() => navigateToSection('target-segments')} style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700' }}>Sectores Target</button>
             <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Capas de Control</button>
             <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Live Runtime</button>
             <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>SAARE VERDICT™</button>
@@ -755,8 +799,8 @@ const response = await client.chat.completions.create({
               <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
                 Evaluar con el Governance Judge ↓
               </button>
-              <button onClick={() => navigateToSection('modelos-explotacion')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                Ver Modelos de Explotación B2B
+              <button onClick={() => navigateToSection('target-segments')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                4 Sectores Target Embebidos
               </button>
             </div>
           </section>
@@ -832,6 +876,44 @@ const response = await client.chat.completions.create({
               <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
                 AI EXECUTION BOUNDARY & PROOF BUNDLE (Ed25519 Signature + RFC 3161 Timestamp)
               </div>
+            </div>
+          </section>
+
+          {/* NUEVA SECCIÓN: 4 SECTORES TARGET / MODELOS EMBEBIDOS */}
+          <section id="target-segments" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ISV TO ISV · ARQUITECTURA DE EMBEBIDO</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>4 Modelos de Empresa a las que Embeber el Motor</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '820px', margin: '0 auto', lineHeight: 1.6 }}>
+                SAARE opera como un componente crítico de infraestructura (Middleware L7) listo para integrarse en código ajeno, pipelines de inferencia y clústeres privados.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+              {TARGET_SEGMENTS.map((seg) => (
+                <div key={seg.id} style={{ background: '#030712', border: `1px solid ${seg.color}66`, borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ color: seg.color, fontSize: '10.5px', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase' }}>{seg.tag}</span>
+                    <h3 style={{ color: '#fff', fontSize: '17px', margin: '8px 0 10px 0', fontWeight: '800' }}>{seg.title}</h3>
+                    
+                    <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '10px' }}>
+                      <strong style={{ color: '#94a3b8' }}>Target:</strong> {seg.who}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', lineHeight: 1.5 }}>
+                      <strong style={{ color: '#f87171' }}>Dolor Clave:</strong> {seg.pain}
+                    </div>
+                    <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '10px', borderRadius: '6px', fontSize: '11.5px', color: '#38bdf8', fontFamily: 'monospace', marginBottom: '14px' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '9.5px', textTransform: 'uppercase', marginBottom: '2px' }}>Modo de Embebido:</span>
+                      {seg.embed}
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #1f2937', paddingTop: '12px', marginTop: '10px' }}>
+                    <span style={{ color: '#64748b', fontSize: '10.5px', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Métrica de Facturación:</span>
+                    <div style={{ color: '#34d399', fontSize: '12.5px', fontWeight: '700' }}>{seg.pricing}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 
