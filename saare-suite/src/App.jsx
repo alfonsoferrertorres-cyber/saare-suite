@@ -92,21 +92,22 @@ export default function App() {
   const [error, setError] = useState('');
   const [showDiploma, setShowDiploma] = useState(false);
 
-  // Verificador Interactivo de Evidencia
-  const [verifySearchId, setVerifySearchId] = useState("PB-2026-0829-7F82A1");
+  // Verificador Interactivo sincronizado con el evento real
+  const [verifySearchId, setVerifySearchId] = useState("EV-CED48F1600");
   const [verifiedRecord, setVerifiedRecord] = useState({
-    id: "PB-2026-0829-7F82A1",
+    id: "EV-CED48F1600",
+    bundleId: "PB-1788223380902-A494A163",
     status: "VERIFIED",
-    policy: "PII_PROTECTION_AND_DATA_ISOLATION",
-    action: "BLOCK_AND_PURGE_RAM",
-    timestamp: "2026-08-29 14:31:08 UTC",
-    inputHash: CANONICAL_HASH,
+    policy: "PCI-DSS / RGPD (TARJETA_CREDITO)",
+    action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+    timestamp: "2026-08-28 13:42:54.583 UTC",
+    inputHash: "ced48f16002bd1da6c45ed431b396950191af853357f6f91d61098f9c63f72b5",
     signature: "Ed25519 (Valid)",
-    tsa: "RFC 3161 Qualified Authority",
-    frameworkMapping: ["EU AI Act Art. 12", "RGPD Art. 32", "ISO 27037"]
+    tsa: "RFC 3161 / ETSI EN 319 422 Qualified Authority",
+    frameworkMapping: ["AESIA", "RGPD", "EU AI Act", "Ley Honor 2026"]
   });
 
-  // Simulación en vivo de flujo de Runtime
+  // Simulación del Live Runtime
   const [runtimeStep, setRuntimeStep] = useState(0);
   const [isRunningSim, setIsRunningSim] = useState(false);
 
@@ -124,12 +125,41 @@ export default function App() {
 
   const handleVerifyLookup = (e) => {
     e.preventDefault();
-    if (verifySearchId.trim().length > 0) {
+    const query = verifySearchId.trim().toLowerCase();
+    
+    if (query.includes("ced48f") || query.includes("1600") || query.includes("tarjeta") || query.includes("dni")) {
+      setVerifiedRecord({
+        id: "EV-CED48F1600",
+        bundleId: "PB-1788223380902-A494A163",
+        status: "VERIFIED",
+        policy: "PCI-DSS / RGPD (TARJETA_CREDITO)",
+        action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+        timestamp: "2026-08-28 13:42:54.583 UTC",
+        inputHash: "ced48f16002bd1da6c45ed431b396950191af853357f6f91d61098f9c63f72b5",
+        signature: "Ed25519 (Valid)",
+        tsa: "RFC 3161 / ETSI EN 319 422 Qualified Authority",
+        frameworkMapping: ["AESIA", "RGPD", "EU AI Act", "Ley Honor 2026"]
+      });
+    } else if (query.includes("deepfake") || query.includes("voz") || query.includes("avatar")) {
+      setVerifiedRecord({
+        id: "EV-HONOR-2026-DF09",
+        bundleId: "PB-2026-0829-DF88B2",
+        status: "VERIFIED",
+        policy: "LEY_HONOR_2026 (CLONACION_NO_CONSENTIDA)",
+        action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + " UTC",
+        inputHash: CANONICAL_HASH,
+        signature: "Ed25519 (Valid)",
+        tsa: "RFC 3161 Qualified Authority",
+        frameworkMapping: ["Ley Orgánica del Honor 2026", "EU AI Act Art. 13", "ISO 27037"]
+      });
+    } else {
       setVerifiedRecord({
         id: verifySearchId.toUpperCase(),
+        bundleId: "PB-2026-LIVE-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
         status: "VERIFIED",
-        policy: verifySearchId.toLowerCase().includes("deepfake") ? "SYNTHETIC_IDENTITY_CONTROL" : "ENTERPRISE_GOVERNANCE_CONTROL",
-        action: verifySearchId.toLowerCase().includes("clean") ? "ALLOW_AND_ATTEST" : "BLOCK_AND_PURGE_RAM",
+        policy: "ENTERPRISE_GOVERNANCE_CONTROL",
+        action: "ALLOW_AND_ATTEST (CONFORME)",
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + " UTC",
         inputHash: CANONICAL_HASH,
         signature: "Ed25519 (Valid)",
@@ -170,6 +200,19 @@ export default function App() {
     }
   };
 
+  const navigateToSection = (sectionId) => {
+    if (currentView !== 'LANDING') {
+      setCurrentView('LANDING');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) element.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    } else {
+      const element = document.getElementById(sectionId);
+      if (element) element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif' }}>
       
@@ -198,11 +241,11 @@ export default function App() {
           </div>
 
           <nav style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
-            <a href="#control-layers" style={{ color: '#9ca3af', textDecoration: 'none' }}>Capas de Control</a>
-            <a href="#live-runtime" style={{ color: '#9ca3af', textDecoration: 'none' }}>Live Runtime</a>
-            <a href="#evidence-verifier" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificar Evidencia</a>
-            <a href="#control-matrix" style={{ color: '#9ca3af', textDecoration: 'none' }}>Control Matrix</a>
-            <a href="#pricing" style={{ color: '#9ca3af', textDecoration: 'none' }}>Planes</a>
+            <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Capas de Control</button>
+            <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Live Runtime</button>
+            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Verificar Evidencia</button>
+            <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Control Matrix</button>
+            <button onClick={() => navigateToSection('pricing')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Planes</button>
 
             {sessionUser ? (
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '8px' }}>
@@ -309,12 +352,12 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="#live-runtime" style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '8px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
+              <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
                 Ver Runtime en Acción ↓
-              </a>
-              <a href="#pricing" style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '14px', textDecoration: 'none' }}>
+              </button>
+              <button onClick={() => navigateToSection('pricing')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
                 Planes de Despliegue (Desde 149 €/mes)
-              </a>
+              </button>
             </div>
           </section>
 
@@ -430,7 +473,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* 5. LAS 5 CAPAS DE CONTROL (CON IMÁGENES /1.jfif a /5.jfif) */}
+          {/* 5. LAS 5 CAPAS DE CONTROL */}
           <section id="control-layers" style={{ marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
               <span style={{ color: '#34d399', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE CINCO NIVELES</span>
@@ -495,7 +538,7 @@ export default function App() {
                 type="text" 
                 value={verifySearchId} 
                 onChange={(e) => setVerifySearchId(e.target.value)}
-                placeholder="Introduce Proof ID o Hash (ej: PB-2026-0829-7F82A1)"
+                placeholder="Introduce Proof ID o Hash (ej: EV-CED48F1600)"
                 style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }}
               />
               <button type="submit" style={{ padding: '11px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
@@ -515,6 +558,9 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '10px', fontSize: '12px' }}>
                 <span style={{ color: '#6b7280' }}>EVENT IDENTIFIER:</span>
                 <span style={{ color: '#38bdf8' }}>{verifiedRecord.id}</span>
+
+                <span style={{ color: '#6b7280' }}>BUNDLE ID:</span>
+                <span style={{ color: '#c084fc' }}>{verifiedRecord.bundleId}</span>
 
                 <span style={{ color: '#6b7280' }}>POLICY APPLIED:</span>
                 <span style={{ color: '#e5e7eb' }}>{verifiedRecord.policy}</span>
