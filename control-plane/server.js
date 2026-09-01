@@ -1,6 +1,6 @@
 ﻿/**
  * S.A.A.R.E. AI-Native Audit & Decision Layer v10.0 (SGP 1.0)
- * Cloudflare Worker Backend (Governance Judge, SAARE VERDICT Engine, Ask the Judge API & Evidence Store)
+ * Cloudflare Worker Backend (Governance Judge, SAARE VERDICT Engine, Ask the Judge API, Evidence Store & B2B Leads)
  */
 
 import { ScenarioRegistry, getScenarioById, getLiveRegulatoryMatrix } from './scenarioRegistry.js';
@@ -523,7 +523,7 @@ export default {
             ATTESTATION_METADATA: {
               BUNDLE_ID: `PB-${Date.now()}-${hashHex.substring(0, 8).toUpperCase()}`,
               GENERATED_AT: timestamp,
-              JURISDICTION: "EU / Spain (AESIA, RGPD, EU AI Act, Ley Honor 2026)",
+              JURISDICTION: "EU / Spain (RGPD, EU AI Act, Ley Honor 2026)",
               CHAIN_OF_CUSTODY_STANDARD: "Workflow aligned with ISO/IEC 27037:2012"
             },
             SOURCE_EVENT: rawEvent,
@@ -541,8 +541,7 @@ export default {
                 STANDARD: "RFC 3161 / ETSI EN 319 422",
                 TIME_STAMP_TOKEN: `TST_RFC3161_${hashHex.substring(0, 16).toUpperCase()}_${Date.now()}`
               },
-              SAFE_CREATIVE_RECORD: "2607076315021",
-              AESIA_ENTRY: "REGAGE26e00076675038"
+              SAFE_CREATIVE_RECORD: "2607076315021 / 2607076314949"
             }
           };
 
@@ -557,7 +556,58 @@ export default {
         return jsonResponse({ error: "Binding SAARE_VAULT_KV no disponible" }, 500, requestOrigin);
       }
 
-      // 5. REGISTRO DE USUARIOS
+      // 5. FONTANERÍA B2B: CAPTURA Y GESTIÓN DE LEADS / SOLICITUDES
+      if (path === "/api/v1/leads") {
+        if (method === "POST") {
+          try {
+            const body = await request.json();
+            const leadId = `lead_${Date.now()}_${crypto.randomUUID().slice(0, 6)}`;
+            const leadRecord = {
+              leadId,
+              formType: body.formType || "CONSULTA_B2B",
+              email: sanitizeEmail(body.email || body.emailContacto),
+              expediente: body.expediente || "NO_ESPECIFICADO",
+              tipoNorma: body.tipoNorma || "PRTR_NEXTGEN",
+              vpcCloud: body.vpcCloud || "SOBERANA_EUROPEA",
+              tokenVolume: body.tokenVolume || "1M_10M",
+              source: body.source || "saare-suite-modal",
+              status: "PENDING_REVIEW",
+              receivedAt: new Date().toISOString()
+            };
+
+            await kv.put(`lead:${leadId}`, JSON.stringify(leadRecord));
+
+            // Indexar en lista maestra de leads
+            const rawIndex = await kv.get("leads:index");
+            let index = rawIndex ? JSON.parse(rawIndex) : [];
+            index.unshift(leadId);
+            await kv.put("leads:index", JSON.stringify(index.slice(0, 200)));
+
+            return jsonResponse({
+              status: "SUCCESS",
+              leadId,
+              message: "Solicitud B2B registrada correctamente en el Decision Store."
+            }, 200, requestOrigin);
+          } catch (err) {
+            return jsonResponse({ error: "Error al registrar solicitud B2B", details: err.message }, 400, requestOrigin);
+          }
+        }
+
+        if (method === "GET") {
+          const rawIndex = await kv.get("leads:index");
+          const index = rawIndex ? JSON.parse(rawIndex) : [];
+          const leads = [];
+
+          for (const id of index.slice(0, 50)) {
+            const raw = await kv.get(`lead:${id}`);
+            if (raw) leads.push(JSON.parse(raw));
+          }
+
+          return jsonResponse({ status: "SUCCESS", count: leads.length, leads }, 200, requestOrigin);
+        }
+      }
+
+      // 6. REGISTRO DE USUARIOS
       if (path === "/api/v1/auth/register" && method === "POST") {
         const body = await request.json();
         const cleanEmail = sanitizeEmail(body.email);
@@ -606,7 +656,7 @@ export default {
         }, 201, requestOrigin);
       }
 
-      // 6. LOGIN
+      // 7. LOGIN
       if (path === "/api/v1/auth/login" && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const cleanEmail = sanitizeEmail(body.email || "");
@@ -693,7 +743,7 @@ export default {
         }, 200, requestOrigin);
       }
 
-      // 7. RUNS / VEREDICTOS TELEMETRÍA
+      // 8. RUNS / VEREDICTOS TELEMETRÍA
       if (path === "/api/v1/runs") {
         if (method === "GET") {
           const user = sanitizeEmail(url.searchParams.get("user") || "");
@@ -752,7 +802,7 @@ export default {
         }
       }
 
-      // 8. REGLAS PERSONALIZADAS
+      // 9. REGLAS PERSONALIZADAS
       if (path === "/api/v1/custom-rules") {
         const user = sanitizeEmail(url.searchParams.get("user") || "");
 
@@ -776,7 +826,7 @@ export default {
         }
       }
 
-      // 9. CONFIGURACIÓN COMPLETA
+      // 10. CONFIGURACIÓN COMPLETA
       if (path === "/api/v1/settings") {
         const user = sanitizeEmail(url.searchParams.get("user") || "");
         if (!user) return jsonResponse({ error: "Usuario requerido." }, 400, requestOrigin);
@@ -835,7 +885,7 @@ export default {
         }
       }
 
-      // 10. STRIPE WEBHOOK & APROVISIONAMIENTO
+      // 11. STRIPE WEBHOOK & APROVISIONAMIENTO
       if (path === "/api/v1/stripe/webhook" && method === "POST") {
         const event = await request.json();
         if (event.type === "checkout.session.completed") {
