@@ -1,10 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "SAARE L7 Governance Agent",
-  "version": "8.1.0",
-  "description": "Universal Compliance & Dynamic Rules Engine for GenAI",
+  "name": "SAARE L7 Governance Judge",
+  "version": "10.0.0",
+  "description": "AI-Native Audit & Decision Layer (SGP 1.0) · SAARE VERDICT Engine",
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SAARE Governance Judge Node"
   },
   "content_scripts": [
     {
@@ -35,5 +39,8 @@
       ]
     }
   ],
-  "permissions": ["storage"]
+  "permissions": [
+    "storage",
+    "alarms"
+  ]
 }

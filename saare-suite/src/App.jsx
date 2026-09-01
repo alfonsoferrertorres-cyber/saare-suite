@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import JSZip from 'jszip';
 
 // Constantes globales de infraestructura
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
@@ -99,6 +100,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloadingZip, setDownloadingZip] = useState(false);
   const [error, setError] = useState('');
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('ask_judge');
@@ -142,6 +144,57 @@ export default function App() {
       setJudgeStep(5);
       setIsRunningJudge(false);
     }, 2400);
+  };
+
+  // Descarga del paquete de agente 100% tokenizado y aprovisionado
+  const handleDownloadTokenizedAgent = async () => {
+    try {
+      setDownloadingZip(true);
+      const response = await fetch('/saare-extension.zip');
+      if (!response.ok) throw new Error("No se pudo obtener el paquete base del agente.");
+
+      const zipArrayBuffer = await response.arrayBuffer();
+      const zip = await JSZip.loadAsync(zipArrayBuffer);
+
+      const tTenant = sessionUser?.tenantName || "SAARE_ENTERPRISE_ORG";
+      const tEmail = sessionUser?.email || "auditor@saare.es";
+      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_live_sgp10_" + Math.random().toString(36).substring(2, 12);
+
+      // 1. Configuración de Políticas de Grupo (GPO / Managed Storage)
+      const tokenizedManagedConfig = {
+        "saare_api_key": { "Value": tToken },
+        "saare_tenant_domain": { "Value": tTenant },
+        "saare_user_email": { "Value": tEmail },
+        "saare_license_type": { "Value": "PLAN_TOKENIZADO_ENTERPRISE" },
+        "governance_protocol": { "Value": "SGP_1.0" }
+      };
+
+      // 2. Archivo de configuración local
+      const runtimeConfig = {
+        tenantName: tTenant,
+        email: tEmail,
+        apiKey: tToken,
+        protocol: "SGP_1.0",
+        enforcementMode: "ADJUDICATE_AND_ATTEST",
+        provisionedAt: new Date().toISOString()
+      };
+
+      zip.file("storage_managed.json", JSON.stringify(tokenizedManagedConfig, null, 2));
+      zip.file("saare_config.json", JSON.stringify(runtimeConfig, null, 2));
+
+      const customizedBlob = await zip.generateAsync({ type: "blob" });
+      const dl = document.createElement("a");
+      dl.href = URL.createObjectURL(customizedBlob);
+      dl.download = `saare-agente-tokenizado-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
+      document.body.appendChild(dl);
+      dl.click();
+      document.body.removeChild(dl);
+      URL.revokeObjectURL(dl.href);
+    } catch (err) {
+      alert("Error al empaquetar agente tokenizado: " + err.message);
+    } finally {
+      setDownloadingZip(false);
+    }
   };
 
   const handleVerifyLookup = (e) => {
@@ -395,7 +448,7 @@ const response = await client.chat.completions.create({
         </main>
       )}
 
-      {/* VISTA: PANEL DE ESTADO */}
+      {/* VISTA: PANEL DE ESTADO Y DESCARGA TOKENIZADA */}
       {currentView === 'STATUS' && sessionUser && (
         <main style={{ maxWidth: '900px', margin: '60px auto', padding: '0 20px' }}>
           <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '12px', padding: '36px' }}>
@@ -407,8 +460,24 @@ const response = await client.chat.completions.create({
             </div>
             <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Consola de Decisiones y Veredictos</h1>
             <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>Organización: <strong>{sessionUser.tenantName || 'Tenant Activo'}</strong> · Cuenta: {sessionUser.email}</p>
+            
+            {/* BLOQUE DE DESPLIEGUE TOKENIZADO */}
+            <div style={{ background: '#030712', border: '1px solid #0284c7', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+              <strong style={{ color: '#38bdf8', fontSize: '14px', display: 'block', marginBottom: '6px' }}>DESPLIEGUE DE NODO TOKENIZADO (SGP 1.0)</strong>
+              <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                Descarga el agente perimetral con tu token corporativo embebido. Ejecuta <code>install_tokenized.bat</code> para aprovisionar el sensor con auto-inyección GPO sin autenticación manual.
+              </p>
+              <button 
+                onClick={handleDownloadTokenizedAgent} 
+                disabled={downloadingZip}
+                style={{ padding: '10px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: downloadingZip ? 'default' : 'pointer' }}
+              >
+                {downloadingZip ? 'Empaquetando Token...' : '⬇ Descargar Agente Tokenizado (.zip)'}
+              </button>
+            </div>
+
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ padding: '10px 20px', backgroundColor: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px' }}>
+              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ padding: '10px 20px', backgroundColor: '#1f2937', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', border: '1px solid #374151' }}>
                 Abrir Consola de Control ↗
               </a>
               <button onClick={() => setShowDiploma(true)} style={{ padding: '10px 20px', backgroundColor: '#1f2937', color: '#c084fc', border: '1px solid #4b5563', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
