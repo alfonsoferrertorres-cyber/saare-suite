@@ -16,11 +16,11 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'SAARE Enterprise Node',
+      tenantName: tenantParam || 'Corporate Workload Node',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
-      role: urlParams.get('role') || 'AUDITOR PERICIAL',
-      licenseType: 'TIER_ENTERPRISE_AUDITOR'
+      role: urlParams.get('role') || 'CISO',
+      licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
     };
     localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
     localStorage.setItem('saare_suite_user', JSON.stringify(fromUrlUser));
@@ -43,11 +43,11 @@ function resolveInitialUser() {
     } catch {}
   }
   return {
-    email: "auditor@empresa.es",
-    tenantName: "SAARE Enterprise Organization",
-    role: "AUDITOR PERICIAL",
+    email: "workload-operator@empresa.com",
+    tenantName: "Corporate Enterprise Node",
+    role: "CISO",
     apiKey: "sk_saare_live_master_kv_session",
-    licenseType: "ASIENTO_AUDITOR_ACTIVO"
+    licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
   };
 }
 
@@ -69,97 +69,89 @@ export default function App() {
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
-    latencyMs: 16,
+    latencyMs: 14,
     lastSync: new Date().toLocaleTimeString()
   });
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS MAESTRAS (SGP 1.0)
+  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS DE AUTORIZACIÓN (SGP 1.0)
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
-      name: "01. PREVENT: PRIVACIDAD & AISLAMIENTO DE DATOS PII (L7)",
-      category: "01 / PRIVACY (RAM ISOLATION)",
+      name: "01. PRIVACY & SENSITIVE DATA CONTROL (DEFR)",
+      category: "01 / PRIVACY CONTROL",
       badgeColor: "#0284c7",
-      desc: "Aislamiento e inspección determinista en memoria volátil (RAM) con purga SYS_madvise. Bloquea y redacta DNI, NIE, IBAN, nóminas, tarjetas y datos médicos (RGPD Art. 9).",
-      llmEffect: "Veredicto BLOCK o REDACT en memoria volátil en <0.017 ms antes de que los datos alcancen al proveedor LLM.",
-      norma: "Workflow aligned with ISO/IEC 27037:2012 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA Capa 7",
+      desc: "Evaluación y aislamiento en memoria volátil de runtime. Identifica, aísla y redacta DNIs, NIEs, IBANs, tarjetas de pago (PCI-DSS) y datos de salud (RGPD Art. 9) antes de la ejecución.",
+      llmEffect: "Veredicto DENY o contención REDACT en memoria volátil antes del dispatch al LLM.",
+      norma: "Workflow aligned with ISO/IEC 27037:2012 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA",
       icon: "🛡️",
-      monetization: "Licencia OEM / Seat ARR",
       options: [
         { key: "dlp_dni_nie", label: "Detección estricta DNI / NIE", default: true },
         { key: "dlp_iban_cards", label: "Aislamiento IBAN & PAN Tarjetas (PCI-DSS)", default: true },
         { key: "dlp_health_art9", label: "Protección Datos de Salud (RGPD Art. 9)", default: true },
-        { key: "purge_sys_madvise", label: "Purga RAM Zero-Disk (SYS_madvise)", default: true }
+        { key: "ephemeral_ram_lock", label: "Aislamiento en Memoria Volátil Efímera", default: true }
       ]
     },
     razonamiento_activo_l7: {
-      name: "02. ENFORCE: ROBUSTEZ L7 & TESTIGO DEL CEREBRO",
-      category: "02 / SECURITY (ACTIVE DEFENSE)",
+      name: "02. L7 RUNTIME SECURITY & ROBUSTNESS",
+      category: "02 / RUNTIME SECURITY",
       badgeColor: "#16a34a",
-      desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica [SAARE_ACTIVE_SHIELD: ENFORCE] e inyecta el testigo 🧠 L7 CEREBRO.",
-      llmEffect: "Inserta la firma 🧠 L7 CEREBRO WITNESS en inferencias válidas y mide el ahorro de pipeline computacional.",
+      desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas e inyecciones lógicas según el Art. 15 del EU AI Act).",
+      llmEffect: "Emite decisión DENY / BLOCK ante manipulaciones de prompt garantizando la contención perimetral.",
       norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · Controls mapped to ISO/IEC 42001",
       icon: "⚡",
-      monetization: "Edge Pay-as-you-go",
       options: [
-        { key: "lexical_enforce_active", label: "Comando Léxico [SAARE_ACTIVE_SHIELD: ENFORCE]", default: true },
-        { key: "brain_witness_injection", label: "Inyección de Testigo 🧠 L7 CEREBRO en el LLM", default: true },
         { key: "anti_dan_jailbreak", label: "Bloqueo Modo DAN & Evasión de Restricciones", default: true },
-        { key: "pipeline_savings_meter", label: "Telemetría de Ahorro y Optimización de Tokens", default: true }
+        { key: "prompt_guard_active", label: "Inspección de System Prompts & Injection", default: true },
+        { key: "runtime_containment", label: "Barrera de Contención Activa Fail-Closed", default: true }
       ]
     },
     deepfake_fake_disprover: {
-      name: "03. VERIFY: VERACIDAD, FACTUALIDAD & ANTI-DEEPFAKE",
-      category: "03 / VERIFICATION (DETECCIÓN)",
+      name: "03. SYNTHETIC MEDIA & RIGHTS CONTROLS",
+      category: "03 / RIGHTS & MEDIA",
       badgeColor: "#ea580c",
-      desc: "Inspección causal estricta (Corpus Grounding / No-Unsupported-Claims) frente a alucinaciones críticas, contratos sin sustento y clonación sintética de voz/imagen sin consentimiento.",
-      llmEffect: "Emite veredicto BLOCK determinista si la inferencia genera aserciones no sustentadas o suplanta identidades.",
-      norma: "Ley Orgánica del Honor 2026 · AI Act Art. 13 · Controls mapped to ISO/IEC 42001",
+      desc: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante clonación o síntesis no consentida de voz/imagen conforme a la Ley Orgánica 1/1982 y el Art. 50 del EU AI Act.",
+      llmEffect: "Emite veredicto DENY determinista si la inferencia intenta generar medios sintéticos no autorizados.",
+      norma: "Ley Orgánica 1/1982 · EU AI Act Art. 13 & 50 · Controls mapped to ISO/IEC 42001",
       icon: "🔍",
-      monetization: "Tier SaaS / Fee Dossier",
       options: [
         { key: "strict_corpus_grounding", label: "Grounding Estricto en Corpus Litigioso", default: true },
         { key: "reject_unsupported_claims", label: "Rechazo Inmediato de Unsupported Claims", default: true },
-        { key: "deepfake_sampling_stream", label: "Muestreo Continuo en Vivo (RunLive Sampling)", default: true },
-        { key: "anti_tamper_evidence", label: "Verificación de Integridad contra Alteraciones", default: true }
+        { key: "voice_clone_guard", label: "Protección contra Clonación de Voz/Imagen (LO 1/1982)", default: true },
+        { key: "anti_tamper_evidence", label: "Verificación de Integridad de Digest", default: true }
       ]
     },
     auditoria_dictamen_normativo: {
-      name: "04. PROVE: EVIDENCE CAPTURE & PROOF BUNDLE (ROL DES)",
-      category: "04 / EVIDENCE (DECISION RECORD)",
+      name: "04. EVIDENCE CAPTURE & PROOF BUNDLE (DES)",
+      category: "04 / EVIDENCE RECORD",
       badgeColor: "#9333ea",
-      desc: "Generación de expedientes probatorios inmutables (SAARE VERDICT™). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo RFC 3161.",
-      llmEffect: "Emite SAARE VERDICT estructurado con trazabilidad y anclaje probatorio ante comités y autoridades.",
-      norma: "Workflow aligned with ISO/IEC 27037:2012 · EU AI Act Art. 12 · RFC 3161 Timestamping",
+      desc: "Generación automatizada de expedientes probatorios inmutables (SAARE VERDICT™). Genera Proof Bundles con Hashes SHA-256, firma asimétrica Ed25519 y sellado temporal RFC 3161.",
+      llmEffect: "Emite SAARE VERDICT estructurado con trazabilidad no repudiable para auditorías y comités.",
+      norma: "Workflow aligned with ISO/IEC 27037:2012 · EU AI Act Art. 12 Logs · RFC 3161",
       icon: "⚖️",
-      monetization: "Asiento Auditor (149 €/mes)",
       options: [
         { key: "rfc3161_qualified_tsa", label: "Estampado Temporal RFC 3161", default: true },
         { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
-        { key: "merkle_root_anchoring", label: "Inclusión en Árbol de Transparencia Merkle", default: true },
-        { key: "safe_creative_anchor", label: "Anclaje Registral Safe Creative Nº 2607076315021", default: true }
+        { key: "action_digest_binding", label: "Action Digest Binding (SHA-256)", default: true },
+        { key: "safe_creative_anchor", label: "Anclaje de Integridad Fiduciaria", default: true }
       ]
     },
     subvenciones_requisitos_infranqueables: {
-      name: "05. JUSTIFY: TRAZABILIDAD FIDUCIARIA & FONDOS PÚBLICOS",
-      category: "05 / TRACEABILITY (FONDOS & PRTR)",
+      name: "05. FIDUCIARY TRACEABILITY & PUBLIC FUNDS",
+      category: "05 / TRACEABILITY",
       badgeColor: "#ca8a04",
-      desc: "Control perimetral de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas para la IGAE y OLAF (PRTR, NextGenEU).",
-      llmEffect: "Bloquea facturas o partidas presupuestarias duplicadas garantizando el principio de no solapamiento.",
-      norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · 2 CFR 200 (USA) · Horizon Europe",
+      desc: "Control automatizado de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas de justificación.",
+      llmEffect: "Bloquea transacciones o facturas duplicadas garantizando el principio de no solapamiento.",
+      norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · PRTR / NextGenEU · 2 CFR 200",
       icon: "🏛️",
-      monetization: "Pack PRTR / Justificación",
       options: [
         { key: "enforce_no_double_funding", label: "Bloqueo Anti-Doble Financiación (Hash Facturas)", default: true },
         { key: "enforce_dnsh_principle", label: "Acreditación Principio No Perjuicio Significativo (DNSH)", default: true },
-        { key: "prtr_nextgen_dossier", label: "Generador de Memorias Técnicas PRTR / NextGenEU", default: true },
-        { key: "daci_conflict_prevention", label: "Declaración Ausencia de Conflicto de Interés (DACI)", default: true }
+        { key: "prtr_nextgen_dossier", label: "Generador de Memorias de Trazabilidad PRTR", default: true }
       ]
     }
   };
 
-  // ESTADO DE LAS 5 BÓVEDAS
   const [directives, setDirectives] = useState({
     cumplimiento_corporativo_integral: true,
     razonamiento_activo_l7: true,
@@ -168,28 +160,25 @@ export default function App() {
     subvenciones_requisitos_infranqueables: true
   });
 
-  // SUB-OPCIONES ACTIVAS
   const [vaultSubOptions, setVaultSubOptions] = useState({
     dlp_dni_nie: true,
     dlp_iban_cards: true,
     dlp_health_art9: true,
-    purge_sys_madvise: true,
-    rfc3161_qualified_tsa: true,
-    ed25519_signatures: true,
-    merkle_root_anchoring: true,
-    safe_creative_anchor: true,
-    lexical_enforce_active: true,
-    brain_witness_injection: true,
+    ephemeral_ram_lock: true,
     anti_dan_jailbreak: true,
-    pipeline_savings_meter: true,
+    prompt_guard_active: true,
+    runtime_containment: true,
     strict_corpus_grounding: true,
     reject_unsupported_claims: true,
-    deepfake_sampling_stream: true,
+    voice_clone_guard: true,
     anti_tamper_evidence: true,
+    rfc3161_qualified_tsa: true,
+    ed25519_signatures: true,
+    action_digest_binding: true,
+    safe_creative_anchor: true,
     enforce_no_double_funding: true,
     enforce_dnsh_principle: true,
-    prtr_nextgen_dossier: true,
-    daci_conflict_prevention: true
+    prtr_nextgen_dossier: true
   });
 
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, directiveKey: null });
@@ -214,7 +203,7 @@ export default function App() {
       });
       setKvStatus(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString() }));
     } catch (err) {
-      console.error("Fallo al sincronizar settings con Bóveda KV", err);
+      console.error("Fallo al sincronizar directivas con Decision Store", err);
     } finally {
       setSyncingKv(false);
     }
@@ -268,7 +257,7 @@ export default function App() {
       if (resRuns && resRuns.ok) {
         const dataRuns = await resRuns.json();
         const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
-        runsList.sort((a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0));
+        runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
         setEvents(runsList);
         if (runsList.length > 0) setLastEvent(runsList[0]);
         setConnected(true);
@@ -315,7 +304,7 @@ export default function App() {
         setLoginError(data.error || "Credenciales corporativas incorrectas.");
       }
     } catch {
-      setLoginError("Error de comunicación con Bóveda KV.");
+      setLoginError("Error de comunicación con el servicio de autenticación.");
     } finally {
       setLoadingLogin(false);
     }
@@ -392,14 +381,14 @@ export default function App() {
         body: JSON.stringify(eventLog)
       });
 
-      if (!res.ok) throw new Error("Fallo en la emisión pericial.");
+      if (!res.ok) throw new Error("Fallo en la emisión del expediente probatorio.");
 
       const bundleData = await res.json();
       const blob = new Blob([JSON.stringify(bundleData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${eventLog.verdict_id || eventLog.runId || eventLog.evidenceId || 'EV'}.json`;
+      a.download = `proof-bundle-${eventLog.verdict_id || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -411,34 +400,35 @@ export default function App() {
     }
   };
 
-  // Descarga del paquete de agente 100% tokenizado y aprovisionado
   const handleDownloadTokenizedAgent = async () => {
     try {
       setDownloadingAgentZip(true);
       const response = await fetch('/saare-extension.zip');
-      if (!response.ok) throw new Error("No se pudo obtener el paquete base del agente.");
+      if (!response.ok) throw new Error("No se pudo obtener el paquete base del sensor.");
 
       const zipArrayBuffer = await response.arrayBuffer();
       const zip = await JSZip.loadAsync(zipArrayBuffer);
 
-      const tTenant = sessionUser?.tenantName || "SAARE_ENTERPRISE_ORG";
-      const tEmail = sessionUser?.email || "auditor@saare.es";
-      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_live_sgp10_" + Math.random().toString(36).substring(2, 12);
+      const tTenant = sessionUser?.tenantName || "CORP_ENTERPRISE_DOMAIN";
+      const tEmail = sessionUser?.email || "workload-operator@empresa.com";
+      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_" + Math.random().toString(36).substring(2, 12);
 
       const tokenizedManagedConfig = {
-        "saare_api_key": { "Value": tToken },
+        "saare_bootstrap_token": { "Value": tToken },
         "saare_tenant_domain": { "Value": tTenant },
         "saare_user_email": { "Value": tEmail },
-        "saare_license_type": { "Value": "PLAN_TOKENIZADO_ENTERPRISE" },
-        "governance_protocol": { "Value": "SGP_1.0" }
+        "saare_license_type": { "Value": "ENTERPRISE_EXECUTION_RUNTIME" },
+        "governance_protocol": { "Value": "SGP_1.0" },
+        "enforcement_mode": { "Value": "FAIL_CLOSED" }
       };
 
       const runtimeConfig = {
-        tenantName: tTenant,
-        email: tEmail,
-        apiKey: tToken,
+        tenantDomain: tTenant,
+        userEmail: tEmail,
         protocol: "SGP_1.0",
-        enforcementMode: "ADJUDICATE_AND_ATTEST",
+        enforcementMode: "FAIL_CLOSED",
+        memoryMode: "EPHEMERAL",
+        endpoint: API_BASE,
         provisionedAt: new Date().toISOString()
       };
 
@@ -448,20 +438,20 @@ export default function App() {
       const customizedBlob = await zip.generateAsync({ type: "blob" });
       const dl = document.createElement("a");
       dl.href = URL.createObjectURL(customizedBlob);
-      dl.download = `saare-nodo-tokenizado-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
+      dl.download = `saare-sensor-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
       document.body.appendChild(dl);
       dl.click();
       document.body.removeChild(dl);
       URL.revokeObjectURL(dl.href);
     } catch (err) {
-      alert("Error al empaquetar agente tokenizado: " + err.message);
+      alert("Error al empaquetar sensor: " + err.message);
     } finally {
       setDownloadingAgentZip(false);
     }
   };
 
   const filteredEvents = events.filter(ev => {
-    const scenario = ev.policy_id || ev.scenario_id || '';
+    const scenario = ev.policy?.id || ev.policy_id || ev.scenario_id || '';
     const matchesScenario = activeScenarioFilter === 'ALL' || scenario.toLowerCase().includes(activeScenarioFilter.toLowerCase());
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
     return matchesScenario && matchesSearch;
@@ -473,15 +463,15 @@ export default function App() {
         <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 6px 0' }}>SAARE GOVERNANCE CONSOLE</h1>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Acceso a Consola de Veredictos & Adjudicación L7 (SGP 1.0)</p>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 6px 0' }}>SAARE CONTROL CONSOLE</h1>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>AI Execution Authorization & Verdict Ledger (SGP 1.0)</p>
           </div>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Correo Corporativo (CISO / Auditor)" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
+            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Correo Corporativo (CISO / Operador)" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
             <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña de Acceso" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
             {loginError && <div style={{ padding: '12px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', textAlign: 'center', fontSize: '0.85rem' }}>{loginError}</div>}
             <button type="submit" disabled={loadingLogin} style={{ padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: loadingLogin ? 'not-allowed' : 'pointer' }}>
-              {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Decision Layer'}
+              {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Control Plane'}
             </button>
           </form>
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
@@ -493,71 +483,68 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#7b92a8', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc' }}>
       
       {/* CABECERA CORPORATIVA */}
-      <header style={{ background: '#ffffff', borderBottom: '2px solid #94a3b8', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <img src="/Cabecera saare-console.jfif" alt="SAARE AI Governance Decision Layer" style={{ width: '100%', maxWidth: '1440px', height: 'auto', maxHeight: '180px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+      <header style={{ background: '#1e293b', borderBottom: '1px solid #334155', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', background: '#0284c7', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900', color: '#fff' }}>S</div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', letterSpacing: '0.5px' }}>SAARE EXECUTION CONTROL CONSOLE</h1>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>AI Execution Authorization Infrastructure · SGP 1.0 Canonical Contract</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0b0f19', border: '1px solid #334155', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#10b981' : '#ef4444' }}></span>
+            <span style={{ color: '#94a3b8' }}>DECISION STORE:</span>
+            <strong style={{ color: kvStatus.online ? '#34d399' : '#ef4444' }}>
+              {kvStatus.online ? `ACTIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
+            </strong>
+          </div>
+          <button onClick={handleLogout} style={{ padding: '6px 14px', background: '#450a0a', border: '1px solid #ef4444', color: '#fca5a5', borderRadius: '6px', fontWeight: '700', fontSize: '0.75rem', cursor: 'pointer' }}>
+            SALIR
+          </button>
+        </div>
       </header>
 
       <main style={{ maxWidth: '1440px', margin: '24px auto', padding: '0 24px' }}>
         
-        {/* PANEL INFORMATIVO DEL TENANT + MONITOR EN VIVO */}
-        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 28px', border: '1px solid #cbd5e1', marginBottom: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
-          
+        {/* PANEL INFORMATIVO DEL TENANT */}
+        <div style={{ background: '#1e293b', borderRadius: '12px', padding: '20px 24px', border: '1px solid #334155', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
-                  CONSOLA DE ADJUDICACIÓN DE POLÍTICAS & SAARE VERDICT™ (SGP 1.0)
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '900', color: '#ffffff' }}>
+                  AUTORIZACIÓN EN TIEMPO DE EJECUCIÓN (L7 RUNTIME)
                 </h2>
                 <span style={{ background: '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
-                  POLICY → JUDGE → VERDICT → PROOF
+                  CANONICAL SGP 1.0
                 </span>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
-                ORGANIZACIÓN: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | OPERADOR: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DOMINIOS L7: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVOS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} OFF</strong>
+              <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                TENANT: <strong style={{ color: '#ffffff' }}>{sessionUser.tenantName || 'CORP_ENTERPRISE_DOMAIN'}</strong> | OPERADOR: <strong style={{ color: '#38bdf8' }}>{sessionUser.email}</strong> | DIRECTIVAS: <strong style={{ color: '#34d399' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#f87171' : '#34d399' }}>{disabledDirectivesCount} SUSPENDIDAS</strong>
               </div>
             </div>
 
-            {/* ESTADO EN VIVO Y ACCIONES RÁPIDAS */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#16a34a' : '#dc2626' }}></span>
-                <span style={{ color: '#64748b' }}>DECISION STORE:</span>
-                <strong style={{ color: kvStatus.online ? '#15803d' : '#dc2626' }}>
-                  {kvStatus.online ? `ACTIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
-                </strong>
-                <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#16a34a' : '#ef4444' }}></span>
-                {connected ? 'JUDGE L7 CONECTADO' : 'DESCONECTADO'}
-              </div>
-
               <button 
                 onClick={handleDownloadTokenizedAgent} 
                 disabled={downloadingAgentZip}
-                style={{ padding: '8px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: downloadingAgentZip ? 'default' : 'pointer' }}
+                style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: downloadingAgentZip ? 'default' : 'pointer' }}
               >
-                {downloadingAgentZip ? 'Generando...' : '⬇ NODO TOKENIZADO (.ZIP)'}
+                {downloadingAgentZip ? 'Generando...' : '⬇ DESCARGAR SENSOR (.ZIP)'}
               </button>
-
-              <a href={PORTAL_URL} style={{ padding: '8px 12px', background: '#e0f2fe', border: '1px solid #0284c7', color: '#0369a1', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', textDecoration: 'none' }}>
-                PORTAL ISV ↗
+              <a href={PORTAL_URL} style={{ padding: '8px 14px', background: '#0f172a', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', textDecoration: 'none' }}>
+                PORTAL SAARE.ES ↗
               </a>
-
-              <button onClick={handleLogout} style={{ padding: '8px 14px', background: '#fee2e2', border: '1px solid #ef4444', color: '#dc2626', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-                SALIR
-              </button>
             </div>
           </div>
 
-          {/* FILTROS POR BÓVEDA / DOMINIO DE GOBERNANZA */}
-          <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', marginRight: '6px' }}>
-              DOMINIOS L7 (5 BÓVEDAS):
+          {/* FILTROS POR BÓVEDA */}
+          <div style={{ borderTop: '1px dashed #334155', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginRight: '6px', whiteSpace: 'nowrap' }}>
+              BÓVEDAS DE CONTROL:
             </span>
 
             <button
@@ -569,9 +556,9 @@ export default function App() {
                 fontWeight: '800',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: activeScenarioFilter === 'ALL' ? '#0284c7' : '#cbd5e1',
-                background: activeScenarioFilter === 'ALL' ? '#e0f2fe' : '#ffffff',
-                color: activeScenarioFilter === 'ALL' ? '#0369a1' : '#475569',
+                borderColor: activeScenarioFilter === 'ALL' ? '#0284c7' : '#334155',
+                background: activeScenarioFilter === 'ALL' ? '#0369a1' : '#0b0f19',
+                color: '#ffffff',
                 whiteSpace: 'nowrap'
               }}
             >
@@ -581,13 +568,12 @@ export default function App() {
             {Object.entries(masterScenariosConfig).map(([key, scn]) => {
               const isEnabled = directives[key];
               const isSelected = activeScenarioFilter === key;
-              const countInScenario = events.filter(e => (e.policy_id || e.scenario_id || '').toLowerCase().includes(key.toLowerCase())).length;
+              const countInScenario = events.filter(e => (e.policy?.id || e.policy_id || e.scenario_id || '').toLowerCase().includes(key.toLowerCase())).length;
 
               return (
                 <button
                   key={key}
                   onClick={() => setActiveScenarioFilter(key)}
-                  title={`Filtrar veredictos: ${scn.name}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -598,20 +584,19 @@ export default function App() {
                     fontWeight: '700',
                     cursor: 'pointer',
                     border: '1px solid',
-                    borderColor: isSelected ? scn.badgeColor : '#e2e8f0',
-                    background: isSelected ? `${scn.badgeColor}15` : '#f8fafc',
-                    color: isSelected ? scn.badgeColor : '#334155',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease'
+                    borderColor: isSelected ? scn.badgeColor : '#334155',
+                    background: isSelected ? `${scn.badgeColor}33` : '#0b0f19',
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  <span style={{ color: isEnabled ? '#16a34a' : '#dc2626', fontSize: '9px' }}>
+                  <span style={{ color: isEnabled ? '#10b981' : '#ef4444', fontSize: '9px' }}>
                     {isEnabled ? '●' : '○'}
                   </span>
                   <span>{scn.icon}</span>
                   <span>{scn.category}</span>
-                  <span style={{ background: isEnabled ? '#dcfce7' : '#fee2e2', color: isEnabled ? '#15803d' : '#dc2626', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
-                    {isEnabled ? (countInScenario > 0 ? countInScenario : 'ACTIVO') : 'OFF'}
+                  <span style={{ background: isEnabled ? '#064e3b' : '#450a0a', color: isEnabled ? '#34d399' : '#fca5a5', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
+                    {isEnabled ? (countInScenario > 0 ? countInScenario : 'ON') : 'OFF'}
                   </span>
                 </button>
               );
@@ -619,87 +604,137 @@ export default function App() {
           </div>
         </div>
 
-        {/* SELECTOR DE PESTAÑAS PRINCIPALES */}
+        {/* SELECTOR DE PESTAÑAS */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-          <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#ffffff', color: activeTab === 'GLOBAL' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            REGISTRO DE VEREDICTOS ({filteredEvents.length})
+          <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            MONITOR DE EJECUCIÓN EN VIVO ({events.length})
           </button>
-          <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#ffffff', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            GOVERNANCE JUDGE (RUNLIVE)
+          <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            REGISTRO DE VEREDICTOS HISTÓRICO
           </button>
-          <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'CONFIG' ? '#0284c7' : '#ffffff', color: activeTab === 'CONFIG' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            POLICY-TO-VERDICT COMPILER ({activeDirectivesCount} ACTIVAS)
+          <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'CONFIG' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            POLÍTICAS DE AUTORIZACIÓN ({activeDirectivesCount} ACTIVAS)
           </button>
         </div>
 
-        {/* TAB 1: REGISTRO GLOBAL DE VEREDICTOS */}
-        {activeTab === 'GLOBAL' && (
-          <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        {/* TAB 1: RUNLIVE */}
+        {activeTab === 'RUNLIVE' && (
+          <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', padding: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>SAARE VERDICT™ LEDGER HISTÓRICO</h3>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Filtro activo: <strong>{activeScenarioFilter}</strong> | Veredictos registrados: <strong>{filteredEvents.length}</strong>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: '900' }}>
+                  TELEMETRÍA & EVALUACIÓN EN TIEMPO DE EJECUCIÓN (SAARE JUDGE)
+                </h3>
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                  Adjudicación determinista de permisos de ejecución según el contrato canónico SGP 1.0.
+                </span>
+              </div>
+              <span style={{ background: '#064e3b', color: '#34d399', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', border: '1px solid #10b981' }}>
+                ● SAARE JUDGE ACTIVO
+              </span>
+            </div>
+
+            {lastEvent ? (
+              <div style={{ background: '#0b0f19', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                  <div>VERDICT ID: <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{lastEvent.verdict_id || lastEvent.runId || lastEvent.evidence_id}</strong></div>
+                  <div>POLÍTICA: <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>{lastEvent.policy?.id || lastEvent.policy_id || 'POL-CORP-GOVERNANCE-01'}</strong></div>
+                  <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981' }}>{lastEvent.decision || (lastEvent.verdict === 'RECHAZADO' ? 'DENY' : 'ALLOW')}</strong></div>
+                  <div>ENFORCEMENT: <strong style={{ color: '#f59e0b' }}>{lastEvent.enforcement?.action || lastEvent.enforcement_action || 'PASS'}</strong></div>
+                  <div>TIMESTAMP: <strong>{new Date(lastEvent.issuedAt || lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
+                  <div>SELLO: <strong style={{ color: '#c084fc', fontFamily: 'monospace' }}>{lastEvent.cryptoSeal || 'L7-SEAL:ED25519'}</strong></div>
+                </div>
+
+                <div style={{ background: '#020617', padding: '16px', borderLeft: `4px solid ${(lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981'}`, borderRadius: '4px', marginBottom: '16px', fontSize: '0.9rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    PAYLOAD EVALUADO EN RUNTIME:
+                  </div>
+                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || 'Sin contenido'}"
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                  <button onClick={() => handleExportProofBundle(lastEvent)} disabled={exportingBundle} style={{ padding: '8px 16px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    📦 {exportingBundle ? 'Generando...' : 'Exportar Proof Bundle (Ed25519 / RFC 3161)'}
+                  </button>
+                </div>
+
+                <pre style={{ background: '#020617', padding: '14px', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem', overflowX: 'auto', margin: 0 }}>
+                  {JSON.stringify(lastEvent, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
+                <strong>Esperando llamadas de agentes o sensores L7...</strong>
+                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una acción o inferencia para observar el veredicto canónico en tiempo real.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: GLOBAL LEDGER */}
+        {activeTab === 'GLOBAL' && (
+          <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: '900' }}>SAARE VERDICT™ LEDGER</h3>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                  Filtro: <strong>{activeScenarioFilter}</strong> | Veredictos registrados: <strong>{filteredEvents.length}</strong>
                 </span>
               </div>
               <input
                 type="text"
-                placeholder="Buscar por Verdict ID, Policy, Hash o Payload..."
+                placeholder="Buscar por ID, Política, Digest o Payload..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', width: '280px' }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', fontSize: '0.85rem', width: '280px' }}
               />
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-                <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead style={{ background: '#0b0f19', borderBottom: '1px solid #334155' }}>
                   <tr>
-                    <th style={{ padding: '14px 20px' }}>TIMESTAMP</th>
-                    <th style={{ padding: '14px 20px' }}>VERDICT ID / SYSTEM</th>
-                    <th style={{ padding: '14px 20px' }}>POLÍTICA / MARCO</th>
-                    <th style={{ padding: '14px 20px' }}>PAYLOAD EVALUADO (RAM)</th>
-                    <th style={{ padding: '14px 20px' }}>DECISIÓN</th>
-                    <th style={{ padding: '14px 20px', textAlign: 'center' }}>ADJUDICACIÓN</th>
+                    <th style={{ padding: '12px 16px' }}>TIMESTAMP</th>
+                    <th style={{ padding: '12px 16px' }}>VERDICT ID</th>
+                    <th style={{ padding: '12px 16px' }}>POLÍTICA</th>
+                    <th style={{ padding: '12px 16px' }}>PAYLOAD EVALUADO</th>
+                    <th style={{ padding: '12px 16px' }}>DECISIÓN</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>EXPEDIENTE</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEvents.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                        No hay veredictos registrados para el filtro seleccionado ({activeScenarioFilter}).
+                      <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                        No hay veredictos registrados para el filtro seleccionado.
                       </td>
                     </tr>
                   ) : (
                     filteredEvents.map((ev, i) => {
-                      const id = ev.verdict_id || ev.evidence_id || ev.runId || `VRD-L7-${i + 1}`;
-                      const timestamp = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'En vivo';
-                      const policy = ev.policy_id || ev.category || 'POL-CORP-GOVERNANCE-01';
+                      const id = ev.verdict_id || ev.evidence_id || ev.runId || `VRD-${i + 1}`;
+                      const timestamp = ev.issuedAt || ev.timestamp ? new Date(ev.issuedAt || ev.timestamp).toLocaleString() : 'En vivo';
+                      const policy = ev.policy?.id || ev.policy_id || ev.category || 'POL-CORP-GOVERNANCE-01';
                       const promptText = ev.promptInput || ev.cleanPrompt || ev.payload || "Sin contenido";
-                      const decision = ev.decision || (ev.verdict === 'RECHAZADO' ? 'BLOCK' : 'ALLOW');
-                      const systemTag = ev.system_id || 'L7-AGENT-SENSOR';
+                      const isDenied = ev.decision === 'DENY' || ev.decision === 'BLOCK' || ev.verdict === 'RECHAZADO';
+                      const decision = isDenied ? 'DENY' : 'ALLOW';
 
                       return (
-                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                          <td style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{timestamp}</td>
-                          <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }}>
-                            <div>{id}</div>
-                            <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#e2e8f0', padding: '1px 5px', borderRadius: '3px' }}>
-                              {systemTag}
-                            </span>
+                        <tr key={i} style={{ borderBottom: '1px solid #334155', background: i % 2 === 0 ? '#1e293b' : '#182234' }}>
+                          <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{timestamp}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace' }}>{id}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: '700', color: '#ffffff' }}>{policy}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{ev.reason || 'Autorización determinista'}</div>
                           </td>
-                          <td style={{ padding: '14px 20px' }}>
-                            <div style={{ fontWeight: '700', color: '#0f172a' }}>{policy}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ev.reason || 'Adjudicación determinista'}</div>
-                          </td>
-                          <td style={{ padding: '14px 20px', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 16px', maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#cbd5e1' }}>
                             "{promptText}"
                           </td>
-                          <td style={{ padding: '14px 20px', fontWeight: '900', color: decision === 'BLOCK' || decision === 'RECHAZADO' ? '#dc2626' : '#16a34a' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: '900', color: isDenied ? '#ef4444' : '#10b981' }}>
                             {decision}
                           </td>
-                          <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                             <button onClick={() => setSelectedJson(ev)} style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
-                              Ver Verdict
+                              Ver JSON
                             </button>
                           </td>
                         </tr>
@@ -712,173 +747,86 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: GOVERNANCE JUDGE RUNLIVE */}
-        {activeTab === 'RUNLIVE' && (
-          <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                  TELEMETRÍA EN VIVO & ADJUDICACIÓN DE VEREDICTOS (L7)
-                </h3>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Motor determinista de evaluación de políticas, testigo 🧠 L7 CEREBRO y adjudicación ex-ante.
-                </span>
-              </div>
-              <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', border: '1px solid #86efac' }}>
-                ● JUDGE ENGINE ACTIVO
-              </span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Ahorro Computacional L7</span>
-                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#34d399', margin: '6px 0' }}>98.4%</div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Carga previa evitada en el LLM</span>
-              </div>
-              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Latencia RAM Determinista</span>
-                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#38bdf8', margin: '6px 0' }}>0.017 ms</div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>P99 de inspección volátil</span>
-              </div>
-              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Veredictos Emitidos</span>
-                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#facc15', margin: '6px 0' }}>{events.length} vrd</div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>SGP 1.0 Canonical Records</span>
-              </div>
-              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Testigo Criptográfico</span>
-                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#c084fc', margin: '10px 0' }}>🧠 L7 CEREBRO</div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Inyectado en respuestas válidas</span>
-              </div>
-            </div>
-
-            {lastEvent ? (
-              <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px', fontSize: '0.85rem' }}>
-                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdict_id || lastEvent.runId || lastEvent.evidence_id}</strong></div>
-                  <div>POLÍTICA APLICADA: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.policy_id || lastEvent.scenario_id || 'POL-CORP-GOVERNANCE-01'}</strong></div>
-                  <div>DECISIÓN L7: <strong style={{ color: (lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a' }}>{lastEvent.decision || lastEvent.verdict || 'ALLOW'}</strong></div>
-                  <div>TIMESTAMP: <strong>{new Date(lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
-                  <div>SELLO CRIPTOGRÁFICO: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.cryptoSeal || 'L7-SEAL:ED25519'}</strong></div>
-                  <div>ESTADO VALIDEZ: <strong style={{ color: '#16a34a', fontFamily: 'monospace' }}>{lastEvent.validity_state || 'VALID'}</strong></div>
-                </div>
-
-                <div style={{ background: '#ffffff', padding: '18px', borderLeft: `5px solid ${(lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a'}`, borderRadius: '4px', marginBottom: '18px', fontSize: '0.95rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: (lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    PAYLOAD EN MEMORIA VOLÁTIL (RAM BUFFER L7):
-                  </div>
-                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || 'Sin contenido'}"
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-                  <button onClick={() => handleExportProofBundle(lastEvent)} disabled={exportingBundle} style={{ padding: '10px 18px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    📦 {exportingBundle ? 'Generando Proof Bundle...' : 'Exportar Proof Bundle (Ed25519 / RFC 3161)'}
-                  </button>
-                </div>
-
-                <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem', overflowX: 'auto' }}>
-                  {JSON.stringify(lastEvent, null, 2)}
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
-                <strong>Esperando intercepciones del Governance Judge...</strong>
-                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una llamada o inferencia para observar la adjudicación en caliente y el testigo 🧠 en vivo.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: CONFIGURACIÓN DE POLÍTICAS Y REGLAS */}
+        {/* TAB 3: CONFIGURACIÓN DE POLÍTICAS */}
         {activeTab === 'CONFIG' && (
           <div>
-            <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
-                    POLICY-TO-VERDICT COMPILER & REGLAS PERSONALIZADAS
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: '900' }}>
+                    DIRECTIVAS DE AUTORIZACIÓN & REGLAS DETERMINISTAS
                   </h3>
-                  <p style={{ margin: 0, fontSize: '0.95rem', color: '#64748b' }}>
-                    Define directivas de adjudicación personalizadas o expresiones regulares complementarias para el Governance Judge.
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8' }}>
+                    Configuración de políticas del SAARE Judge para autorización de acciones en tiempo de ejecución.
                   </p>
                 </div>
-                <button onClick={() => setShowAddModal(true)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem', boxShadow: '0 2px 6px rgba(2,132,199,0.3)' }}>
-                  + AÑADIR REGLA DE ADJUDICACIÓN
+                <button onClick={() => setShowAddModal(true)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  + AÑADIR REGLA
                 </button>
               </div>
 
-              {customRules.length === 0 ? (
-                <div style={{ border: '1px dashed #94a3b8', borderRadius: '8px', padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.95rem', background: '#f8fafc' }}>
-                  No hay reglas personalizadas activas. Las 5 Bóvedas de directivas maestras seleccionadas abajo operan de forma determinista.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {customRules.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {customRules.map((rule, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#0b0f19', border: '1px solid #334155', borderRadius: '6px' }}>
                       <div>
-                        <strong style={{ color: '#0f172a', marginRight: '16px' }}>{rule.label}</strong>
-                        <code style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{rule.pattern}</code>
+                        <strong style={{ color: '#ffffff', marginRight: '12px' }}>{rule.label}</strong>
+                        <code style={{ background: '#0369a1', color: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>{rule.pattern}</code>
                       </div>
-                      <button onClick={() => removeCustomRule(idx)} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.75rem' }}>Eliminar</button>
+                      <button onClick={() => removeCustomRule(idx)} style={{ background: '#450a0a', color: '#fca5a5', border: '1px solid #ef4444', padding: '4px 10px', borderRadius: '4px', fontWeight: '800', cursor: 'pointer', fontSize: '0.75rem' }}>Eliminar</button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* GRID DE LAS 5 BÓVEDAS MAESTRAS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
+            {/* GRID DE LAS 5 BÓVEDAS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '20px' }}>
               {Object.entries(masterScenariosConfig).map(([key, scn]) => {
                 const isEnabled = directives[key] === true;
                 return (
                   <div
                     key={key}
                     style={{
-                      background: '#ffffff',
-                      padding: '28px',
+                      background: '#1e293b',
+                      padding: '24px',
                       borderRadius: '12px',
-                      border: `2px solid ${isEnabled ? '#16a34a' : '#cbd5e1'}`,
+                      border: `1px solid ${isEnabled ? '#10b981' : '#334155'}`,
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                      justifyContent: 'space-between'
                     }}
                   >
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ background: '#0369a1', color: '#e0f2fe', padding: '3px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '900' }}>
                           {scn.category}
                         </span>
-                        <span style={{ border: `1px solid ${isEnabled ? '#22c55e' : '#ef4444'}`, color: isEnabled ? '#16a34a' : '#dc2626', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                          {isEnabled ? 'HABILITADA' : 'DESHABILITADA'}
+                        <span style={{ border: `1px solid ${isEnabled ? '#10b981' : '#ef4444'}`, color: isEnabled ? '#34d399' : '#f87171', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
+                          {isEnabled ? 'ACTIVA' : 'SUSPENDIDA'}
                         </span>
                       </div>
 
-                      <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>
                         {scn.icon} {scn.name}
                       </h4>
-                      <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0 0 10px 0', lineHeight: 1.5 }}>
+                      <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: '0 0 10px 0', lineHeight: 1.5 }}>
                         {scn.desc}
                       </p>
 
-                      <div style={{ fontSize: '0.78rem', color: '#0284c7', fontFamily: 'monospace', fontWeight: 'bold', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontFamily: 'monospace', marginBottom: '12px' }}>
                         Normativa: {scn.norma}
                       </div>
 
-                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '6px', borderLeft: `3px solid ${scn.badgeColor}`, fontSize: '0.8rem', color: '#64748b', marginBottom: '18px' }}>
-                        <strong>Efecto en LLM:</strong> {scn.llmEffect}
-                      </div>
-
-                      <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '14px', marginBottom: '20px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>
-                          Opciones y Controles Específicos:
+                      <div style={{ borderTop: '1px dashed #334155', paddingTop: '12px', marginBottom: '16px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+                          Controles Específicos:
                         </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {scn.options.map((opt) => {
                             const isOptActive = vaultSubOptions[opt.key] !== false;
                             return (
-                              <label key={opt.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: '#334155', cursor: 'pointer', background: '#f8fafc', padding: '6px 10px', borderRadius: '6px' }}>
+                              <label key={opt.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#cbd5e1', cursor: 'pointer', background: '#0b0f19', padding: '6px 10px', borderRadius: '4px' }}>
                                 <span>{opt.label}</span>
                                 <input
                                   type="checkbox"
@@ -899,16 +847,14 @@ export default function App() {
                       disabled={syncingKv}
                       style={{
                         width: '100%',
-                        padding: '16px',
-                        background: isEnabled ? '#16a34a' : '#ef4444',
+                        padding: '12px',
+                        background: isEnabled ? '#10b981' : '#ef4444',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '6px',
                         fontWeight: '900',
                         cursor: syncingKv ? 'wait' : 'pointer',
-                        textTransform: 'uppercase',
-                        fontSize: '0.95rem',
-                        boxShadow: `0 4px 6px ${isEnabled ? 'rgba(22,163,74,0.3)' : 'rgba(239,68,68,0.3)'}`
+                        fontSize: '0.85rem'
                       }}
                     >
                       {isEnabled ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
@@ -922,10 +868,10 @@ export default function App() {
 
         {/* MODAL JSON SAARE VERDICT™ */}
         {selectedJson && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
-            <div style={{ background: '#090d16', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
+            <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>SAARE VERDICT™ // ADJUDICATION RECORD</h3>
+                <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>SAARE VERDICT™ CANONICAL RECORD (SGP 1.0)</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handleExportProofBundle(selectedJson)} disabled={exportingBundle} style={{ background: '#9333ea', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
                     📦 {exportingBundle ? 'Exportando...' : 'Descargar Proof Bundle'}
@@ -942,14 +888,14 @@ export default function App() {
 
         {/* MODAL AÑADIR REGLAS */}
         {showAddModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', maxWidth: '480px', width: '90%' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', fontWeight: '900' }}>Añadir Regla de Adjudicación</h3>
-              <input type="text" placeholder="Identificador de Regla (ej: SECRETO_INDUSTRIAL)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-              <input type="text" placeholder="Patrón Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '24px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button onClick={() => setShowAddModal(false)} style={{ padding: '10px 18px', background: '#94a3b8', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={addCustomRule} style={{ padding: '10px 18px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '90%' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: '900', color: '#fff' }}>Añadir Regla de Autorización</h3>
+              <input type="text" placeholder="Identificador (ej: PROPIEDAD_INTELECTUAL)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', boxSizing: 'border-box' }} />
+              <input type="text" placeholder="Patrón Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button onClick={() => setShowAddModal(false)} style={{ padding: '8px 14px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={addCustomRule} style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
               </div>
             </div>
           </div>
@@ -957,33 +903,23 @@ export default function App() {
 
         {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
         {confirmModal.isOpen && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: '#ffffff', borderRadius: '16px', padding: '36px', maxWidth: '480px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: '1px solid #fca5a5' }}>
-              <div style={{ width: '72px', height: '72px', background: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto', fontSize: '32px' }}>
-                ⚠️
-              </div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '1.4rem', fontWeight: '900', color: '#0f172a' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: '#1e293b', border: '1px solid #ef4444', borderRadius: '12px', padding: '28px', maxWidth: '440px', width: '90%', textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: '900', color: '#fff' }}>
                 Advertencia de Desactivación de Control
               </h3>
-              <p style={{ fontSize: '0.95rem', color: '#475569', margin: '0 0 28px 0', lineHeight: '1.6' }}>
-                Estás a punto de desactivar la directiva:<br/>
-                <strong style={{ color: '#dc2626', display: 'block', marginTop: '10px', fontSize: '1.05rem' }}>
+              <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                Estás a punto de suspender la directiva:<br/>
+                <strong style={{ color: '#ef4444', display: 'block', marginTop: '6px' }}>
                   {masterScenariosConfig[confirmModal.directiveKey]?.name}
                 </strong>
                 <br/>
-                Esto suspenderá la adjudicación en runtime y las interacciones no recibirán veredicto bajo este dominio. ¿Deseas continuar?
+                Esto desactivará la emisión de permisos de ejecución para este dominio.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-                <button 
-                  onClick={() => setConfirmModal({ isOpen: false, directiveKey: null })} 
-                  style={{ padding: '12px 24px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.95rem' }}>
-                  Cancelar
-                </button>
-                <button 
-                  onClick={confirmDeactivation} 
-                  style={{ padding: '12px 24px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.95rem', boxShadow: '0 4px 6px rgba(220,38,38,0.3)' }}>
-                  Sí, desactivar
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <button onClick={() => setConfirmModal({ isOpen: false, directiveKey: null })} style={{ padding: '10px 18px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>Cancelar</button>
+                <button onClick={confirmDeactivation} style={{ padding: '10px 18px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>Sí, desactivar</button>
               </div>
             </div>
           </div>
