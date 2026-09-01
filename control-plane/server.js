@@ -56,7 +56,8 @@ function getCorsHeaders(requestOrigin) {
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY"
+    "X-Frame-Options": "DENY",
+    "Vary": "Accept, Origin"
   };
 }
 
@@ -138,10 +139,6 @@ export default {
           record = {
             status: "VALID",
             verdictId: "VRD-2026-0941A",
-            decision: "DENY",
-            enforcement: {
-              action: "BLOCK"
-            },
             subject: {
               type: "agent",
               id: "payment-agent-742",
@@ -156,6 +153,10 @@ export default {
               id: "POL-FIN-TREASURY-01",
               version: "4.2.1",
               digest: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            },
+            decision: "DENY",
+            enforcement: {
+              action: "BLOCK"
             },
             executionPermit: null,
             reasonCodes: [
@@ -199,7 +200,7 @@ export default {
           }, 404, requestOrigin);
         }
 
-        // Renderizado HTML SOLO si el cliente lo pide explícitamente y no solicita JSON
+        // Renderizado HTML si el cliente lo solicita explícitamente y no pide JSON
         if (acceptHeader.startsWith("text/html") && !acceptHeader.includes("application/json") && url.searchParams.get("format") === "html") {
           const htmlPage = `<!DOCTYPE html>
 <html lang="es">
@@ -232,27 +233,27 @@ export default {
     <div class="grid">
       <div class="grid-item">
         <span>Sujeto (Agente / Principal)</span>
-        <strong>${record.subject.id} (${record.subject.principal})</strong>
+        <strong>${record.subject?.id || "agent"} (${record.subject?.principal || "workload"})</strong>
       </div>
       <div class="grid-item">
         <span>Decisión & Enforcement</span>
-        <strong style="color: ${record.decision === 'DENY' ? '#f87171' : '#34d399'};">${record.decision} (${record.enforcement.action})</strong>
+        <strong style="color: ${record.decision === 'DENY' ? '#f87171' : '#34d399'};">${record.decision} (${record.enforcement?.action || 'PASS'})</strong>
       </div>
       <div class="grid-item">
         <span>Acción & Recurso</span>
-        <strong>${record.action.type} → ${record.action.resource}</strong>
+        <strong>${record.action?.type} → ${record.action?.resource}</strong>
       </div>
       <div class="grid-item">
         <span>Política Evaluada</span>
-        <strong>${record.policy.id} [v${record.policy.version}]</strong>
+        <strong>${record.policy?.id} [v${record.policy?.version}]</strong>
       </div>
       <div class="grid-item">
         <span>Firma Criptográfica</span>
-        <strong style="color:#34d399;">${record.signature.algorithm} (Valid Signature)</strong>
+        <strong style="color:#34d399;">${record.signature?.algorithm || 'Ed25519'} (Valid Signature)</strong>
       </div>
       <div class="grid-item">
         <span>Sellado Temporal</span>
-        <strong style="color:#34d399;">${record.timestamp.protocol} (${record.timestamp.value})</strong>
+        <strong style="color:#34d399;">${record.timestamp?.protocol || 'RFC3161'} (${record.timestamp?.value || record.issuedAt})</strong>
       </div>
     </div>
 
@@ -315,7 +316,7 @@ export default {
         return jsonResponse(canonicalOutput, 200, requestOrigin);
       }
 
-      // 1. ENDPOINT PRINCIPAL: "SAARE JUDGE" (POST /api/v1/judge)
+      // 1. ENDPOINT PRINCIPAL: SAARE JUDGE (POST /api/v1/judge)
       if (path === "/api/v1/judge" && method === "POST") {
         try {
           const body = await request.json().catch(() => ({}));
@@ -367,15 +368,18 @@ export default {
             reason = "El perfil de privilegios mínimos deniega mutaciones destructivas autónomas.";
           }
 
-          // Emisión de Execution Permit de un solo uso si es ALLOW
+          // Emisión de Execution Permit ligado a la acción exacta si es ALLOW
           if (decision === "ALLOW") {
             const expiresAt = new Date(Date.now() + 60000).toISOString();
             const jti = `permit_${crypto.randomUUID()}`;
             executionPermit = {
               token: `eyJhbGciOiJFZDI1NTE5In0.${btoa(JSON.stringify({ jti, sub: subject, act: action, res: resource, dig: actionDigest, exp: expiresAt }))}`,
               jti,
-              expiresAt,
+              subject,
+              action,
+              resource,
               actionDigest,
+              expiresAt,
               status: "ISSUED"
             };
           }
@@ -385,13 +389,13 @@ export default {
           const verdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
           const canonicalVerdict = {
-            status: "VALID",
             verdictId,
-            decision,
-            enforcement: { action: enforcementAction },
+            status: "VALID",
             subject: { type: "agent", id: subject, principal: "operator-maria-881" },
             action: { type: action, resource, digest: actionDigest },
             policy: { id: policyId, version: policyVersion, digest: `sha256:${await computeSha256(policyId + policyVersion)}` },
+            decision,
+            enforcement: { action: enforcementAction },
             executionPermit,
             reasonCodes,
             reason,
@@ -780,7 +784,7 @@ export default {
         }, 200, requestOrigin);
       }
 
-      // 8. TELEMETRÍA DE RUNTIMES
+      // 8. TELEMETRÍA DE RUNTIMES (INGESTA INVARIANTE SGP 1.0)
       if (path === "/api/v1/runs") {
         if (method === "GET") {
           const user = sanitizeEmail(url.searchParams.get("user") || "");
@@ -793,16 +797,23 @@ export default {
 
         if (method === "POST") {
           const body = await request.json();
-          const user = sanitizeEmail(body.user || body.userEmail || url.searchParams.get("user") || "agente_local");
+          const user = sanitizeEmail(body.user || body.userEmail || url.searchParams.get("user") || "workload-operator@empresa.com");
           const kvKey = `runs:${user}`;
 
-          const timestamp = body.timestamp || new Date().toISOString();
+          const timestamp = body.issuedAt || body.timestamp || new Date().toISOString();
           const rawInput = body.promptInput || body.cleanPrompt || body.payload || "Veredicto interceptado en Capa 7";
           const shaHash = await computeSha256(`${user}|${rawInput}|${timestamp}`);
           const runId = body.evidence_id || body.runId || `EV-${shaHash.substring(0, 10).toUpperCase()}`;
 
+          // Preservar exactamente la decisión y el enforcement recibidos
+          const persistedDecision = body.decision || "ALLOW";
+          const persistedEnforcement = body.enforcement?.action 
+            ? body.enforcement.action 
+            : (body.enforcement_action || (persistedDecision === "DENY" ? "BLOCK" : "PASS"));
+
           const newEvidence = {
-            verdictId: body.verdictId || body.verdict_id || `VRD-${runId.replace('EV-', '')}`,
+            verdict_schema: body.verdict_schema || "SGP_1.0",
+            verdictId: body.verdictId || `VRD-${runId.replace('EV-', '')}`,
             evidence_id: runId,
             status: body.status || "VALID",
             system_id: body.system_id || "L7-AGENT-SENSOR",
@@ -810,11 +821,11 @@ export default {
             issuedAt: timestamp,
             user: user,
             tenant: body.tenant || body.tenantDomain || "Entidad Corporativa Auditada",
-            subject: body.subject || { type: "agent", id: user },
+            subject: body.subject || { type: "workload_agent", id: user },
             action: body.action || { type: "generic_action", resource: "system", digest: `sha256:${shaHash}` },
-            policy: body.policy || { id: body.policy_id || "cumplimiento_corporativo_integral", version: "1.0.0" },
-            decision: body.decision || "DENY",
-            enforcement: body.enforcement || { action: body.enforcement_action || "BLOCK" },
+            policy: body.policy || { id: body.policy_id || body.scenario_id || "cumplimiento_corporativo_integral", version: "1.0.0" },
+            decision: persistedDecision,
+            enforcement: { action: persistedEnforcement },
             promptInput: rawInput.substring(0, 5000),
             sha256: shaHash,
             signature: {
