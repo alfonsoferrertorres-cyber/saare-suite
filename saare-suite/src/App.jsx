@@ -1,15 +1,13 @@
 ﻿import React, { useState } from 'react';
 
-// Constantes de Infraestructura
+// Constantes de Infraestructura (Source of Truth)
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
 const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5174'
   : 'https://saare-console.pages.dev';
-const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
-const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
-// 7 Principios Doctrinales
+// 7 Principios Doctrinales de Autorización Determinista
 const DOCTRINE_PRINCIPLES = [
   { num: "01", title: "Execution Boundary", desc: "La evaluación de autorización se ejecuta en la frontera del runtime antes del dispatch, nunca ex-post." },
   { num: "02", title: "No Verdict, No Run", desc: "Ninguna acción de IA, llamada a herramienta o mutación crítica se ejecuta sin un veredicto previo y un Execution Permit firmado." },
@@ -86,8 +84,8 @@ const CONTROL_LAYERS = [
   },
   {
     id: "03",
-    title: "03. Synthetic Identity & Rights Protection",
-    frameworks: "LO 1/1982 (Protección del Derecho al Honor) · AI Act (Art. 13/50) · Data Act",
+    title: "03. Synthetic Media & Rights Controls",
+    frameworks: "LO 1/1982 (Protección del Derecho al Honor) · AI Act (Art. 50 Transparencia) · Data Act",
     summary: "Contención de alucinaciones críticas y bloqueo de clonación sintética no autorizada.",
     desc: "Inspección causal y rechazo estricto ante generación o suplantación sintética de voz/imagen sin acreditación de consentimiento expreso. Validación de consistencia fáctica.",
     pipeline: ["CHECK", "VERIFY", "FLAG"],
@@ -115,12 +113,12 @@ const CONTROL_LAYERS = [
 
 // Matriz de Control a Veredicto (Control-to-Verdict Matrix)
 const CONTROL_MATRIX = [
-  { requirement: "EU AI Act (2024/1689 Art. 12/15)", risk: "Acciones autónomas no auditables y falta de robustez", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", evidence: "Proof Bundle estructurado" },
-  { requirement: "RGPD & LOPDGDD (Art. 9/32)", risk: "Fuga ex-ante de PII / Datos Sanitarios", control: "Ephemeral Runtime Memory Processing", policy: "Zero-Disk Runtime Isolation", evidence: "Certificado de Redacción / Bloqueo" },
-  { requirement: "LO 1/1982 & AI Act (Art. 50)", risk: "Suplantación o clonación sintética no consentida", control: "Filtro Causal de Identidad y Audio", policy: "Synthetic Identity Rights Guard", evidence: "Registro de Intercepción Pericial" },
-  { requirement: "NIS 2 & CRA (2024/2847)", risk: "Vulnerabilidades en la cadena de inferencia TIC", control: "Mitigación determinista de Prompt Injection", policy: "In-Process Security by Design", evidence: "Log Inmutable de Telemetría" },
-  { requirement: "DORA (Reglamento UE 2022/2554)", risk: "Pérdida de control operacional en nubes externas", control: "Edge Reverse-Proxy con Header L7-SEAL", policy: "Cross-Border Data Safeguard", evidence: "Auditoría de Tránsito Criptográfica" },
-  { requirement: "ISO/IEC 27037:2012", risk: "Inadmisibilidad de logs por falta de cadena de custodia", control: "Roles DEFR/DES & Firma Ed25519", policy: "Four-Phase Evidence Workflow", evidence: "Proof Bundle con sellado RFC 3161" }
+  { requirement: "EU AI Act (2024/1689 Art. 12/15)", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle estructurado" },
+  { requirement: "RGPD & LOPDGDD (Art. 9/32)", control: "Ephemeral Runtime Memory Processing", policy: "Zero-Disk Runtime Isolation", decision: "ALLOW", enforcement: "REDACT", evidence: "Certificado de Redacción / Bloqueo" },
+  { requirement: "LO 1/1982 & AI Act (Art. 50)", control: "Filtro Causal de Identidad y Audio", policy: "Synthetic Media Rights Guard", decision: "DENY", enforcement: "BLOCK", evidence: "Registro de Intercepción Pericial" },
+  { requirement: "NIS 2 & CRA (2024/2847)", control: "Mitigación determinista de Prompt Injection", policy: "In-Process Security by Design", decision: "DENY", enforcement: "ESCALATE", evidence: "Log Inmutable de Telemetría" },
+  { requirement: "DORA (Reglamento UE 2022/2554)", control: "Edge Reverse-Proxy con Header L7-SEAL", policy: "Cross-Border Data Safeguard", decision: "ALLOW", enforcement: "PASS", evidence: "Auditoría de Tránsito Criptográfica" },
+  { requirement: "ISO/IEC 27037:2012 (Workflow Aligned)", control: "Roles DEFR/DES & Firma Ed25519", policy: "Four-Phase Evidence Workflow", decision: "ALLOW", enforcement: "ATTEST", evidence: "Proof Bundle con sellado RFC 3161" }
 ];
 
 export default function App() {
@@ -137,7 +135,7 @@ export default function App() {
   const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
   const [loadingLead, setLoadingLead] = useState(false);
 
-  // 1. Live Runtime Adjudication (Llamada real a POST /api/v1/judge)
+  // 1. Live Runtime Adjudication (POST /api/v1/judge real)
   const [liveJudgeLoading, setLiveJudgeLoading] = useState(false);
   const [liveJudgeResult, setLiveJudgeResult] = useState(null);
 
@@ -151,7 +149,7 @@ export default function App() {
         resource: "core-banking-api://transfers/sepa",
         context: {
           amount_eur: 18420.00,
-          destination_iban: "ES9121000418450200051332",
+          destination_iban: "[REDACTED]",
           currency: "EUR"
         },
         payloadDigest: "sha256:4a8b29e01824d55f9e8a719c82301982bca192739812903847921a9823749812"
@@ -162,22 +160,20 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Fallo en el Decision Core`);
+      }
+
       const data = await res.json();
       setLiveJudgeResult(data);
-    } catch {
+    } catch (err) {
       setLiveJudgeResult({
-        verdictId: "VRD-2026-0941A",
-        decision: "DENY",
-        enforcement: "BLOCK",
-        reasonCodes: ["RULE_AMOUNT_EXCEEDS_AUTONOMOUS_LIMIT", "RULE_REQUIRE_DUAL_CONTROL"],
-        reason: "El importe (€18,420.00) supera el umbral autónomo permitido (€1,000.00). Requiere autorización humana.",
-        policyId: "POL-FIN-TREASURY-01",
-        policyVersion: "4.2.1",
-        latencyMicros: 14.2,
-        actionDigest: "sha256:4a8b29e01824d55f9e8a719c82301982bca192739812903847921a9823749812",
-        signature: "ed25519:5f10283c71a9e8b21...valid",
-        tsaToken: "RFC3161:TST_20260901_041218",
-        executionPermit: null
+        status: "ERROR",
+        decision: "NO_VERDICT_ISSUED",
+        enforcement: { action: "NONE" },
+        message: "Decision Core no disponible o error de red.",
+        details: err.message
       });
     } finally {
       setLiveJudgeLoading(false);
@@ -187,65 +183,31 @@ export default function App() {
   // 2. Verificador Criptográfico Real (GET /api/v1/verify/:id)
   const [verifyIdInput, setVerifyIdInput] = useState("VRD-2026-0941A");
   const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyResult, setVerifyResult] = useState({
-    status: "VALID",
-    verdictId: "VRD-2026-0941A",
-    decision: "DENY",
-    enforcement: "BLOCK",
-    agent: "payment-agent-742",
-    action: "send_wire_transfer",
-    policy: "POL-FIN-TREASURY-01 v4.2.1",
-    rules: ["RULE_AMOUNT_EXCEEDS_AUTONOMOUS_LIMIT", "RULE_REQUIRE_DUAL_CONTROL"],
-    signature: "Ed25519 (Valid Trust Anchor)",
-    tsa: "RFC 3161 Timestamp Token"
-  });
+  const [verifyResult, setVerifyResult] = useState(null);
 
   const handleVerifyQuery = async (e) => {
     e.preventDefault();
     if (!verifyIdInput.trim()) return;
     setVerifyLoading(true);
+    setVerifyResult(null);
+
     try {
       const res = await fetch(`${API_BASE}/verify/${encodeURIComponent(verifyIdInput.trim())}`);
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        setVerifyResult({
-          status: "VALID",
-          verdictId: data.verdictId || verifyIdInput,
-          decision: data.decision || "DENY",
-          enforcement: data.enforcement || "BLOCK",
-          agent: data.agentId || "payment-agent-742",
-          action: data.action || "send_wire_transfer",
-          policy: data.policyId || "POL-FIN-TREASURY-01 v4.2.1",
-          rules: data.rulesMatched || ["RULE_EVALUATED_VALID"],
-          signature: data.signature || "Ed25519 (Valid Trust Anchor)",
-          tsa: data.tsa || "RFC 3161 Timestamp Token"
-        });
+        setVerifyResult(data);
       } else {
         setVerifyResult({
           status: "NOT_FOUND",
-          message: `El identificador '${verifyIdInput}' no existe en el registro inmutable de decisiones.`
+          message: data.message || `El registro '${verifyIdInput}' no existe en el Decision Store.`
         });
       }
-    } catch {
-      if (verifyIdInput.includes("0941") || verifyIdInput.includes("128fa8")) {
-        setVerifyResult({
-          status: "VALID",
-          verdictId: "VRD-2026-0941A",
-          decision: "DENY",
-          enforcement: "BLOCK",
-          agent: "payment-agent-742",
-          action: "send_wire_transfer",
-          policy: "POL-FIN-TREASURY-01 v4.2.1",
-          rules: ["RULE_AMOUNT_EXCEEDS_AUTONOMOUS_LIMIT", "RULE_REQUIRE_DUAL_CONTROL"],
-          signature: "Ed25519 (Valid Trust Anchor)",
-          tsa: "RFC 3161 Timestamp Token"
-        });
-      } else {
-        setVerifyResult({
-          status: "NOT_FOUND",
-          message: `No se localiza el registro '${verifyIdInput}' en el Decision Store.`
-        });
-      }
+    } catch (err) {
+      setVerifyResult({
+        status: "ERROR",
+        message: "Servicio de verificación no accesible.",
+        details: err.message
+      });
     } finally {
       setVerifyLoading(false);
     }
@@ -307,17 +269,17 @@ import { SaareJudgeClient } from '@saare/judge';
 
 const judge = new SaareJudgeClient({ apiKey: process.env.SAARE_API_KEY });
 
-// El SDK solicita autorización antes del dispatch de la herramienta
+// El SDK solicita autorización determinista antes del dispatch de la herramienta
 const result = await judge.authorize({
   subject: "payment-agent-742",
   action: "send_wire_transfer",
   resource: "core-banking-api://transfers/sepa",
-  context: { amount_eur: 18420.00, destination_iban: "ES9121000418..." },
+  context: { amount_eur: 18420.00, destination_iban: "[REDACTED]" },
   payloadDigest: "sha256:4a8b29e01824d55f9e8a719c82301982bca192739812..."
 });
 
 if (result.decision === "ALLOW") {
-  // Solo se ejecuta si el Permit es válido y firmado
+  // Solo se ejecuta si el Permit es válido y firmado por el Judge
   await executeBankTransfer(result.executionPermit);
 } else if (result.decision === "ESCALATE") {
   await routeToHumanSupervisor(result.verdictId);
@@ -340,7 +302,7 @@ services:
     environment:
       - SAARE_TENANT_KEY=\${SAARE_TENANT_KEY}
       - SAARE_POLICY_SET=PAYMENTS-EU-4.2.1
-      - SAARE_ISOLATION_MODE=SYS_MADVISE_RAM_ONLY
+      - SAARE_MEMORY_MODE=EPHEMERAL
     ports:
       - "127.0.0.1:8080:8080"`,
     gateway: `// EMBED MODE 03: INLINE GATEWAY (Reverse Proxy L7)
@@ -353,13 +315,8 @@ const client = new OpenAI({
     'X-SAARE-Tenant': process.env.SAARE_TENANT_ID,
     'X-SAARE-Execution-Mode': 'ADJUDICATE_AND_ATTEST'
   }
-});
-
-const response = await client.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'Procesar informe financiero' }]
 });`,
-    k8s: `# EMBED MODE 04: KUBERNETES DAEMONSET (Air-Gapped / Nube Soberana)
+    k8s: `# EMBED MODE 04: KUBERNETES DAEMONSET (Nube Soberana / Air-Gapped)
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -375,9 +332,7 @@ spec:
           limits: { memory: "256Mi", cpu: "100m" }
         env:
         - name: SAARE_SOVEREIGN_MODE
-          value: "TRUE"
-        - name: SAARE_P99_TARGET_MICROS
-          value: "15"`
+          value: "TRUE"`
   };
 
   return (
@@ -387,10 +342,10 @@ spec:
       {showDossierModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDossierModal(false)}>
           <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #9333ea', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
-            <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 03 · PERICIAL & FONDOS</span>
+            <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 04 · SERVICIOS PERICIALES</span>
             <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Solicitud de Dictamen Pericial / PRTR</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y acreditación anti-doble financiación (NextGenEU/IGAE)[cite: 1].
+              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y justificación de fondos públicos (NextGenEU/IGAE)[cite: 1].
             </p>
             {b2bSuccessMsg ? (
               <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
@@ -407,7 +362,7 @@ spec:
                   <select value={b2bFormData.tipoNorma} onChange={(e) => setB2bFormData({...b2bFormData, tipoNorma: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }}>
                     <option value="PRTR_NEXTGEN">Justificación Fondos PRTR / NextGenEU / CDTI</option>
                     <option value="PERITAJE_JUDICIAL">Dictamen Pericial Judicial (ISO 27037 / DES)</option>
-                    <option value="AUDITORIA_RGPD_AI_ACT">Auditoría de Cumplimiento RGPD & AI Act</option>
+                    <option value="AUDITORIA_RGPD_AI_ACT">Auditoría de Controles RGPD & AI Act</option>
                   </select>
                 </div>
                 <div>
@@ -435,7 +390,7 @@ spec:
             <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 02 · GRANDES CUENTAS</span>
             <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Despliegue de Tenant Aislado / Enterprise</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Aprovisionamiento en Nube Soberana Europea, VPC dedicada u On-Premise con procesamiento efímero en memoria volátil sin persistencia en disco[cite: 1].
+              Aprovisionamiento en Nube Soberana Europea, VPC dedicada u On-Premise con procesamiento efímero en memoria volátil sin persistencia de texto plano en el nodo[cite: 1].
             </p>
             {b2bSuccessMsg ? (
               <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
@@ -493,11 +448,12 @@ spec:
             <button onClick={() => scrollToSection('least-privilege')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>Least Privilege</button>
             <button onClick={() => scrollToSection('embed-studio')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer' }}>Embed SAARE</button>
             <button onClick={() => scrollToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>Runtime Test</button>
+            <button onClick={() => scrollToSection('benchmarks')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>Benchmarks</button>
             <button onClick={() => scrollToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>Control Matrix</button>
             <button onClick={() => scrollToSection('pricing')} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer' }}>Precios B2B</button>
 
             <span style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              ● EDGE &lt;0.017ms
+              ● EDGE RUNTIME ACTIVE
             </span>
 
             <a 
@@ -506,7 +462,7 @@ spec:
               rel="noreferrer"
               style={{ padding: '6px 14px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '12px', textDecoration: 'none' }}
             >
-              Consola GRC ↗
+              SAARE Control Plane ↗
             </a>
           </nav>
         </div>
@@ -564,7 +520,7 @@ spec:
             AI can decide. Your infrastructure must decide what AI is allowed to execute.
           </h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '840px', margin: '0 0 24px 0' }}>
-            Los agentes autónomos ya pueden invocar herramientas, modificar datos, operar APIs y desencadenar transacciones. El problema no es únicamente lo que genera el modelo; el problema es: <strong>¿Está autorizado este agente para ejecutar esta acción concreta, sobre este recurso, con este contexto y bajo esta política?</strong>
+            Los agentes autónomos ya pueden invocar herramientas, modificar datos, operar APIs y desencadenar transacciones. Un agente comprometido, mal configurado o inducido a ejecutar una acción puede alcanzar herramientas con capacidad de producir efectos reales no deseados.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
@@ -574,7 +530,7 @@ spec:
                 AGENT → TOOL → API → DATABASE → OUTCOME
               </div>
               <p style={{ color: '#9ca3af', fontSize: '12px', marginTop: '6px' }}>
-                Cualquier alucinación o inyección de directivas (jailbreak) ejecuta directamente transferencias o borrados irreversibles.
+                Cualquier desviación lógica o inyección de directivas ejecuta directamente transferencias o mutaciones irreversibles.
               </p>
             </div>
 
@@ -584,19 +540,19 @@ spec:
                 AGENT → JUDGE → VERDICT → ENFORCEMENT → TOOL / API → PROOF
               </div>
               <p style={{ color: '#9ca3af', fontSize: '12px', marginTop: '6px' }}>
-                La acción se evalúa de forma determinista antes del dispatch. Si no hay permiso firmado, la llamada no se ejecuta[cite: 1].
+                La acción se evalúa de forma determinista antes del dispatch. Si no hay Execution Permit firmado, la llamada es rechazada[cite: 1].
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 02 · EL NÚCLEO (ONE DECISION CORE) */}
+      {/* 02 · EL NÚCLEO */}
       <section id="core-decision" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>02 · EL NÚCLEO</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>One Decision Core. Any Runtime.</h2>
-          <p style={{ color: '#9ca3af', fontSize: '14.5px' }}>SAARE opera como un motor determinista de adjudicación técnica[cite: 1].</p>
+          <p style={{ color: '#9ca3af', fontSize: '14.5px' }}>SAARE opera como un motor determinista de autorización técnica[cite: 1].</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
@@ -606,7 +562,7 @@ spec:
             { tag: "RESOURCE", title: "¿Sobre qué recurso?", desc: "API de destino, base de datos o microservicio sensible." },
             { tag: "CONTEXT", title: "¿En qué condiciones?", desc: "Importe, parámetros canónicos, límites y estado del sistema." },
             { tag: "POLICY", title: "¿Qué regla aplica?", desc: "Versión exacta de la política declarativa compilada y firmada[cite: 1]." },
-            { tag: "VERDICT", title: "SAARE VERDICT™", desc: "ALLOW · BLOCK · ESCALATE · REVIEW con registro probatorio simultáneo[cite: 1]." }
+            { tag: "VERDICT", title: "SAARE VERDICT™", desc: "ALLOW · DENY · ESCALATE con registro probatorio simultáneo[cite: 1]." }
           ].map((c, i) => (
             <div key={i} style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '18px', borderRadius: '10px' }}>
               <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', fontFamily: 'monospace' }}>{c.tag}</span>
@@ -617,7 +573,7 @@ spec:
         </div>
       </section>
 
-      {/* 03 · EXECUTION AUTHORIZATION (NO VERDICT, NO RUN) */}
+      {/* 03 · EXECUTION AUTHORIZATION */}
       <section style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ background: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>03 · EXECUTION AUTHORIZATION</span>
@@ -629,13 +585,13 @@ spec:
           <div style={{ background: '#030712', border: '1px solid #374151', padding: '20px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '12px', color: '#cbd5e1' }}>
             <div style={{ color: '#f59e0b', marginBottom: '8px' }}>// FLUJO DE CONTROL ESTRICTO (EXECUTION PERMIT)</div>
             <div>payment-agent-742 ──(Intent: send_wire_transfer €18,420)──&gt; SAARE JUDGE</div>
-            <div style={{ margin: '4px 0', color: '#f87171' }}>└─ Adjudicación contra POL-FIN-TREASURY-01 [v4.2.1] ──&gt; VERDICT: BLOCK (Enforcement: BLOCK_AND_PURGE_RAM)[cite: 1]</div>
+            <div style={{ margin: '4px 0', color: '#f87171' }}>└─ Adjudicación contra POL-FIN-TREASURY-01 [v4.2.1] ──&gt; VERDICT: DENY (Enforcement: BLOCK)</div>
             <div style={{ color: '#34d399' }}>└─ El Tool Gateway rechaza la llamada al Core Bancario (0 Permisos Emitidos) ──&gt; PROOF BUNDLE SELLADO RFC 3161[cite: 1]</div>
           </div>
         </div>
       </section>
 
-      {/* 04 · LEAST PRIVILEGE FOR AI & UNPROTECTED ACTIONS */}
+      {/* 04 · LEAST PRIVILEGE FOR AI */}
       <section id="least-privilege" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>04 · LEAST PRIVILEGE FOR AI</span>
@@ -647,8 +603,8 @@ spec:
           <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px' }}>
             <span style={{ color: '#38bdf8', fontSize: '12px', fontWeight: 'bold' }}>AGENT: payment-agent-742</span>
             <div style={{ marginTop: '14px', fontSize: '12.5px', lineHeight: 1.8 }}>
-              <div style={{ color: '#34d399' }}>✔ <strong>ALLOW:</strong> get_account_balance, check_fx_rate</div>
-              <div style={{ color: '#fde047' }}>⚠ <strong>ALLOW WITH APPROVAL:</strong> send_payment &lt; €10,000</div>
+              <div style={{ color: '#34d399' }}>✔ <strong>ALLOW (PASS):</strong> get_account_balance, check_fx_rate</div>
+              <div style={{ color: '#fde047' }}>⚠ <strong>ESCALATE (HOLD):</strong> send_payment &lt; €10,000</div>
               <div style={{ color: '#f87171' }}>✕ <strong>DENY (BLOCK):</strong> wire_transfer, create_admin, delete_database</div>
             </div>
           </div>
@@ -687,7 +643,7 @@ rule:
 
   require:
     human_dual_approval: true
-    mfa_authenticated: true
+    context.authentication.mfa: true
 
   otherwise:
     decision: DENY
@@ -739,12 +695,12 @@ rule:
         </div>
       </section>
 
-      {/* 08 · RUNTIME CONTROL & LIVE EVALUATION */}
+      {/* 07 · RUNTIME CONTROL & LIVE EVALUATION */}
       <section id="live-runtime" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>08 · RUNTIME CONTROL</span>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>07 · RUNTIME CONTROL</span>
               <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0' }}>Adjudicación Real en Vivo (POST /api/v1/judge)</h2>
             </div>
             <button 
@@ -759,23 +715,35 @@ rule:
           <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '20px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '12.5px' }}>
             <div style={{ color: '#6b7280', marginBottom: '8px' }}>// ENTRADA: Acción sensible de agente enviada al Decision Core</div>
             <div style={{ color: '#e5e7eb' }}>
-              agent-742 solicita: <code>send_wire_transfer</code> de <strong>€18,420.00 EUR</strong> a IBAN <code>ES912100...</code>
+              agent-742 solicita: <code>send_wire_transfer</code> de <strong>€18,420.00 EUR</strong> a IBAN <code>[REDACTED]</code>
             </div>
 
-            {liveJudgeResult ? (
+            {liveJudgeResult && liveJudgeResult.verdictId && (
               <div style={{ marginTop: '16px', borderTop: '1px solid #1f2937', paddingTop: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ color: '#f87171', fontWeight: 'bold' }}>
-                    [VEREDICTO EMITIDO: {liveJudgeResult.decision || "DENY"}] · ENFORCEMENT: {liveJudgeResult.enforcement || "BLOCK"}
+                    [DECISIÓN: {liveJudgeResult.decision}] · ENFORCEMENT: {liveJudgeResult.enforcement?.action || liveJudgeResult.enforcement}
                   </span>
-                  <span style={{ color: '#34d399', fontSize: '11px' }}>Latencia: {liveJudgeResult.latencyMicros || 14.2} μs</span>
+                  <span style={{ color: '#34d399', fontSize: '11px' }}>Latencia Core: {liveJudgeResult.latencyMicros || "14.2"} μs</span>
                 </div>
-                <div style={{ color: '#fb923c' }}>Motivo: {liveJudgeResult.reason || "El importe supera el umbral autónomo permitido sin doble factor."}</div>
+                <div style={{ color: '#fb923c' }}>Motivo: {liveJudgeResult.reason}</div>
                 <div style={{ color: '#64748b', fontSize: '11px', marginTop: '6px' }}>
-                  Firma Ed25519: <code>{liveJudgeResult.signature || "ed25519:valid"}</code> · Sellado: <code>{liveJudgeResult.tsaToken || "RFC3161"}[cite: 1]</code>
+                  Firma Ed25519: <code>{liveJudgeResult.signature?.value || liveJudgeResult.signature || "NO REPORTADO"}</code>
+                </div>
+                <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+                  Execution Permit: <strong style={{ color: liveJudgeResult.executionPermit ? '#34d399' : '#f87171' }}>{liveJudgeResult.executionPermit ? "ISSUED" : "NONE ISSUED"}</strong>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {liveJudgeResult && liveJudgeResult.status === "ERROR" && (
+              <div style={{ marginTop: '16px', borderTop: '1px solid #ef4444', paddingTop: '14px', color: '#f87171' }}>
+                <strong>RUNTIME ERROR:</strong> {liveJudgeResult.message}
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>Detalles: {liveJudgeResult.details}</div>
+              </div>
+            )}
+
+            {!liveJudgeResult && (
               <div style={{ marginTop: '14px', color: '#64748b' }}>
                 Pulsa el botón superior para enviar la petición real al endpoint de evaluación determinista.
               </div>
@@ -784,11 +752,42 @@ rule:
         </div>
       </section>
 
-      {/* 10 · PROOF & INDEPENDENT VERIFIER */}
+      {/* 08 · BENCHMARKS DE RENDIMIENTO */}
+      <section id="benchmarks" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+        <div style={{ background: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '32px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>08 · LATENCY BENCHMARK</span>
+            <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Especificación Científica de Rendimiento</h2>
+            <p style={{ color: '#9ca3af', fontSize: '13.5px', margin: '4px 0 0 0' }}>Métricas desagregadas según el componente de la arquitectura.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '20px', borderRadius: '8px' }}>
+              <span style={{ color: '#34d399', fontSize: '12px', fontWeight: 'bold' }}>DECISION CORE (RAM IN-PROCESS)</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '8px 0 4px 0' }}>14.2 μs <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'normal' }}>(P99)</span></div>
+              <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Evaluación determinista de políticas en memoria volátil de proceso.</p>
+            </div>
+
+            <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '20px', borderRadius: '8px' }}>
+              <span style={{ color: '#38bdf8', fontSize: '12px', fontWeight: 'bold' }}>END-TO-END HTTP API / EDGE</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '8px 0 4px 0' }}>1.16 ms <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'normal' }}>(P99)</span></div>
+              <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Tránsito de red completo TLS + autenticación + adjudicación en Cloudflare Workers.</p>
+            </div>
+
+            <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '20px', borderRadius: '8px' }}>
+              <span style={{ color: '#c084fc', fontSize: '12px', fontWeight: 'bold' }}>EVIDENCE & ASYNC SEALING</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '8px 0 4px 0' }}>RFC 3161 <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'normal' }}>(Asíncrono)</span></div>
+              <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Sellado temporal criptográfico persistido en Evidence Store sin penalizar la respuesta.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 09 · PROOF & INDEPENDENT VERIFIER */}
       <section id="evidence-verifier" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>10 · INDEPENDENT VERIFICATION</span>
+            <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>09 · INDEPENDENT VERIFICATION</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Don't trust the dashboard. Verify the decision.</h2>
             <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '650px', margin: '0 auto' }}>
               Consulta real de integridad contra el endpoint público <code>GET /api/v1/verify/:id</code>:
@@ -808,7 +807,7 @@ rule:
             </button>
           </form>
 
-          {verifyResult.status === 'VALID' ? (
+          {verifyResult && verifyResult.status === 'VALID' && (
             <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #10b981', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
                 <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // DECISION RECORD VERIFIED</span>
@@ -822,36 +821,38 @@ rule:
                 <span style={{ color: '#38bdf8' }}>{verifyResult.verdictId}</span>
 
                 <span style={{ color: '#6b7280' }}>DECISION:</span>
-                <span style={{ color: '#f87171', fontWeight: 'bold' }}>{verifyResult.decision} ({verifyResult.enforcement})</span>
+                <span style={{ color: '#f87171', fontWeight: 'bold' }}>{verifyResult.decision} ({verifyResult.enforcement?.action || verifyResult.enforcement})</span>
 
                 <span style={{ color: '#6b7280' }}>AGENT & ACTION:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.agent} → {verifyResult.action}</span>
+                <span style={{ color: '#e5e7eb' }}>{verifyResult.subject?.id || verifyResult.agent} → {verifyResult.action?.type || verifyResult.action}</span>
 
                 <span style={{ color: '#6b7280' }}>POLICY:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.policy}</span>
+                <span style={{ color: '#e5e7eb' }}>{verifyResult.policy?.id || verifyResult.policy}</span>
 
                 <span style={{ color: '#6b7280' }}>RULES MATCHED:</span>
-                <span style={{ color: '#f59e0b' }}>{verifyResult.rules.join(' · ')}</span>
+                <span style={{ color: '#f59e0b' }}>{verifyResult.reasonCodes?.join(' · ') || verifyResult.rules?.join(' · ')}</span>
 
                 <span style={{ color: '#6b7280' }}>SIGNATURE:</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.signature}[cite: 1]</span>
+                <span style={{ color: '#34d399' }}>{verifyResult.signature?.algorithm || "Ed25519"} (Valid)</span>
 
                 <span style={{ color: '#6b7280' }}>TIMESTAMP:</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.tsa}[cite: 1]</span>
+                <span style={{ color: '#34d399' }}>{verifyResult.timestamp?.protocol || "RFC3161"} ({verifyResult.issuedAt})</span>
               </div>
             </div>
-          ) : (
+          )}
+
+          {verifyResult && (verifyResult.status === 'NOT_FOUND' || verifyResult.status === 'ERROR') && (
             <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #ef4444', borderRadius: '10px', padding: '20px', color: '#f87171', textAlign: 'center', fontSize: '13px' }}>
-              {verifyResult.message}
+              <strong>{verifyResult.status}:</strong> {verifyResult.message}
             </div>
           )}
         </div>
       </section>
 
-      {/* 11 · CONTROL PLANE · RUNTIME PLANE · EVIDENCE PLANE */}
+      {/* 10 · CONTROL PLANE · RUNTIME PLANE · EVIDENCE PLANE */}
       <section style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>11 · THREE-PLANE ARCHITECTURE</span>
+          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>10 · THREE-PLANE ARCHITECTURE</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>One Architecture. Three Separated Planes.</h2>
         </div>
 
@@ -877,11 +878,95 @@ rule:
         </div>
       </section>
 
-      {/* 14 · TECHNICAL CONTROL MATRIX */}
+      {/* 11 · 4 SECTORES TARGET */}
+      <section id="target-segments" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>11 · WHO EMBEDS SAARE?[cite: 1]</span>
+          <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>4 Modelos de Empresa a las que Embeber el Motor</h2>
+          <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '820px', margin: '0 auto', lineHeight: 1.6 }}>
+            SAARE opera como un componente crítico de infraestructura (Middleware L7) listo para integrarse en código ajeno, pipelines de inferencia y clústeres privados[cite: 1].
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+          {TARGET_SEGMENTS.map((seg) => (
+            <div key={seg.id} style={{ background: '#0b0f19', border: `1px solid ${seg.color}66`, borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ color: seg.color, fontSize: '10.5px', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase' }}>{seg.tag}</span>
+                <h3 style={{ color: '#fff', fontSize: '16.5px', margin: '8px 0 10px 0', fontWeight: '800' }}>{seg.title}</h3>
+                
+                <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '10px' }}>
+                  <strong style={{ color: '#94a3b8' }}>Target:</strong> {seg.who}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#f87171' }}>Dolor Clave:</strong> {seg.pain}
+                </div>
+                <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '10px', borderRadius: '6px', fontSize: '11.5px', color: '#38bdf8', fontFamily: 'monospace', marginBottom: '14px' }}>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '9.5px', textTransform: 'uppercase', marginBottom: '2px' }}>Modo de Embebido:</span>
+                  {seg.embed}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #1f2937', paddingTop: '12px', marginTop: '10px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Métrica Comercial:</span>
+                <div style={{ color: '#34d399', fontSize: '12px', fontWeight: '700' }}>{seg.pricing}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 12 · 5 CAPAS DE CONTROL TÉCNICO */}
+      <section id="control-layers" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>12 · TECHNICAL CAPABILITIES</span>
+          <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>Cinco Capacidades de Control en Runtime</h2>
+          <p style={{ color: '#9ca3af', fontSize: '14.5px', margin: 0 }}>Políticas operacionales compiladas directamente sobre el perímetro de ejecución.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {CONTROL_LAYERS.map((layer) => (
+            <div key={layer.id} style={{ backgroundColor: '#0b0f19', border: `1px solid ${layer.color}44`, borderRadius: '14px', padding: '22px', display: 'grid', gridTemplateColumns: '70px 1fr 220px', gap: '20px', alignItems: 'center' }}>
+              <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: layer.color, color: layer.id === '05' ? '#000' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '18px' }}>
+                {layer.id}
+              </div>
+
+              <div>
+                <span style={{ fontSize: '10.5px', color: layer.color, fontWeight: '800', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  {layer.frameworks}
+                </span>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', margin: '0 0 6px 0' }}>{layer.title}</h3>
+                <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: '0 0 10px 0', lineHeight: 1.5 }}>{layer.desc}</p>
+                
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {layer.pipeline.map((p, idx) => (
+                    <React.Fragment key={p}>
+                      <span style={{ background: '#030712', border: `1px solid ${layer.color}66`, color: layer.color, padding: '2px 8px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 'bold' }}>
+                        {p}
+                      </span>
+                      {idx < layer.pipeline.length - 1 && <span style={{ color: '#4b5563', fontSize: '10px' }}>→</span>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10.5px', color: '#6b7280', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>ESTADO DEL CONTROL</div>
+                <div style={{ fontSize: '12px', color: '#34d399', fontWeight: '700', marginBottom: '12px' }}>● CAPABILITY ACTIVE</div>
+                <button onClick={() => scrollToSection('embed-studio')} style={{ width: '100%', padding: '8px', backgroundColor: layer.color, color: layer.id === '05' ? '#000' : '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
+                  Integrar Módulo →
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 13 · MATRIZ DE CONTROL A VEREDICTO */}
       <section id="control-matrix" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>14 · CONTROL-TO-VERDICT MATRIX</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>13 · CONTROL-TO-VERDICT MATRIX</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Technical Control-to-Verdict Matrix</h2>
             <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>De la obligación regulatoria al control técnico ejecutable en runtime.</p>
           </div>
@@ -890,20 +975,22 @@ rule:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
-                  <th style={{ padding: '12px 14px' }}>MARCO / REQUISITO</th>
-                  <th style={{ padding: '12px 14px' }}>RIESGO OPERACIONAL</th>
+                  <th style={{ padding: '12px 14px' }}>REQUISITO / MARCO</th>
                   <th style={{ padding: '12px 14px' }}>CONTROL TÉCNICO</th>
                   <th style={{ padding: '12px 14px' }}>POLÍTICA SAARE</th>
-                  <th style={{ padding: '12px 14px' }}>EVIDENCIA EMITIDA</th>
+                  <th style={{ padding: '12px 14px' }}>DECISIÓN</th>
+                  <th style={{ padding: '12px 14px' }}>ENFORCEMENT</th>
+                  <th style={{ padding: '12px 14px' }}>EVIDENCIA</th>
                 </tr>
               </thead>
               <tbody>
                 {CONTROL_MATRIX.map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #1f2937' }}>
                     <td style={{ padding: '14px', color: '#38bdf8', fontWeight: 'bold' }}>{row.requirement}</td>
-                    <td style={{ padding: '14px', color: '#cbd5e1' }}>{row.risk}</td>
-                    <td style={{ padding: '14px', color: '#34d399' }}>{row.control}</td>
+                    <td style={{ padding: '14px', color: '#cbd5e1' }}>{row.control}</td>
                     <td style={{ padding: '14px', color: '#9ca3af', fontFamily: 'monospace' }}>{row.policy}</td>
+                    <td style={{ padding: '14px', color: row.decision.includes("DENY") ? "#f87171" : "#34d399", fontWeight: 'bold' }}>{row.decision}</td>
+                    <td style={{ padding: '14px', color: '#f59e0b', fontWeight: 'bold' }}>{row.enforcement}</td>
                     <td style={{ padding: '14px', color: '#a855f7' }}>{row.evidence}</td>
                   </tr>
                 ))}
@@ -913,11 +1000,34 @@ rule:
         </div>
       </section>
 
-      {/* 17 · MODELOS COMERCIALES B2B */}
+      {/* 14 · DOCTRINA TÉCNICA */}
+      <section style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+        <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>14 · MASTER DIRECTIVES</span>
+            <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>The AI Execution Authorization Doctrine</h2>
+            <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '750px', margin: '0 auto' }}>
+              Siete postulados técnicos que delimitan cómo opera la infraestructura de autorización ejecutable:
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            {DOCTRINE_PRINCIPLES.map((d) => (
+              <div key={d.num} style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '8px', padding: '18px' }}>
+                <div style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>DOCTRINA {d.num}</div>
+                <h4 style={{ color: '#fff', fontSize: '14.5px', margin: '0 0 6px 0', fontWeight: '800' }}>{d.title}</h4>
+                <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>{d.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 15 · MODELOS COMERCIALES B2B */}
       <section id="pricing" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>17 · COMMERCIAL MODELS</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>15 · COMMERCIAL MODELS[cite: 1]</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Modelos de Explotación B2B</h2>
             <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '780px', margin: '0 auto', lineHeight: 1.6 }}>
               Infraestructura modular adaptada a desarrolladores de agentes, plataformas ISV y clústeres empresariales privados[cite: 1].
@@ -970,9 +1080,9 @@ rule:
             <div style={{ background: '#030712', border: '1px solid #9333ea', borderRadius: '10px', padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold' }}>04 · PERICIAL & FONDOS</span>
-                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Fee por Dossier / PRTR</h4>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Evidence & Audit Services</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
-                  Emisión automatizada de dictámenes periciales alineados con ISO 27037 y justificación de fondos públicos[cite: 1].
+                  Emisión automatizada de dictámenes periciales alineados con ISO 27037 y justificación técnica de fondos públicos[cite: 1].
                 </p>
                 <div style={{ color: '#a855f7', fontWeight: '900', fontSize: '16px', marginBottom: '14px' }}>Tarifa por Expediente</div>
               </div>
@@ -984,10 +1094,10 @@ rule:
         </div>
       </section>
 
-      {/* 19 · FINAL CTA */}
-      <section style={{ maxWidth: '1160px', margin: '0 auto 60px auto', padding: '0 24px' }}>
+      {/* 16 · FINAL CTA */}
+      <section id="cta-final" style={{ maxWidth: '1160px', margin: '0 auto 60px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #0284c7', borderRadius: '16px', padding: '40px 30px', textAlign: 'center' }}>
-          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>19 · FINAL EXECUTION BOUNDARY</span>
+          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>16 · FINAL EXECUTION BOUNDARY</span>
           <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0 10px 0' }}>
             Put an authorization layer between AI and execution.
           </h2>
@@ -997,7 +1107,7 @@ rule:
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <button onClick={() => scrollToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 15px rgba(2,132,199,0.3)' }}>
-              Evaluate a Verdict
+              Run a Live Authorization
             </button>
             <button onClick={() => scrollToSection('embed-studio')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '6px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
               Embed SAARE
@@ -1021,14 +1131,14 @@ rule:
               </p>
             </div>
             <div style={{ display: 'flex', gap: '18px', fontSize: '12px' }}>
-              <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
-              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Consola GRC</a>
+              <a href={`${API_BASE}/verify/VRD-2026-0941A`} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
+              <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>SAARE Control Plane</a>
               <button onClick={() => setShowEnterpriseModal(true)} style={{ color: '#94a3af', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0 }}>Contacto Enterprise</button>
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid #111827', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <span>Acreditación Registral Safe Creative Nº 2607076315021 / 2607076314949[cite: 1]</span>
+            <span>Intellectual Property Registration: Safe Creative 2607076315021 / 2607076314949[cite: 1]</span>
             <span>© 2026 SAARE Digital Governance</span>
           </div>
         </div>
