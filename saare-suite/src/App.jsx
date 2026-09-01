@@ -325,14 +325,50 @@ export default function App() {
     }
   };
 
-  const handleSendB2BForm = (e, formType) => {
+  // Fontanería B2B persistente conectada con POST /api/v1/leads
+  const handleSendB2BForm = async (e, formType) => {
     e.preventDefault();
-    setB2bSuccessMsg(`Solicitud de ${formType} registrada correctamente. Un arquitecto técnico procesará tu petición en menos de 2 horas.`);
-    setTimeout(() => {
-      setShowDossierModal(false);
-      setShowEnterpriseModal(false);
-      setB2bSuccessMsg('');
-    }, 2800);
+    setLoading(true);
+    try {
+      const payload = {
+        formType,
+        email: b2bFormData.emailContacto,
+        expediente: b2bFormData.expediente || "NO_ESPECIFICADO",
+        tipoNorma: b2bFormData.tipoNorma || "PRTR_NEXTGEN",
+        vpcCloud: b2bFormData.vpcCloud || "SOBERANA_EUROPEA",
+        tokenVolume: b2bFormData.tokenVolume || "1M_10M",
+        source: "saare-suite-modal"
+      };
+
+      const res = await fetch(`${API_BASE}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.status === "SUCCESS") {
+        setB2bSuccessMsg(`Solicitud de ${formType} registrada en el Decision Store (Ref: ${data.leadId}). Un arquitecto técnico se pondrá en contacto.`);
+        setTimeout(() => {
+          setShowDossierModal(false);
+          setShowEnterpriseModal(false);
+          setB2bSuccessMsg('');
+          setB2bFormData({
+            expediente: '',
+            tipoNorma: 'PRTR_NEXTGEN',
+            emailContacto: '',
+            vpcCloud: 'SOBERANA_EUROPEA',
+            tokenVolume: '1M_10M'
+          });
+        }, 3200);
+      } else {
+        alert("Error al registrar solicitud: " + (data.error || "Fallo de respuesta"));
+      }
+    } catch (err) {
+      alert("Error de conexión con el Decision Store: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const integrationSnippets = {
@@ -411,8 +447,8 @@ const response = await client.chat.completions.create({
                   <input type="text" required placeholder="Ej: EXP-PRTR-2026-09A o Ref. Litigio" value={b2bFormData.expediente} onChange={(e) => setB2bFormData({...b2bFormData, expediente: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button type="submit" style={{ flex: 1, padding: '12px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                    Tramitar Solicitud de Dictamen
+                  <button type="submit" disabled={loading} style={{ flex: 1, padding: '12px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: loading ? 'default' : 'pointer' }}>
+                    {loading ? 'Transmitiendo...' : 'Tramitar Solicitud de Dictamen'}
                   </button>
                   <button type="button" onClick={() => setShowDossierModal(false)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
                     Cancelar
@@ -460,8 +496,8 @@ const response = await client.chat.completions.create({
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button type="submit" style={{ flex: 1, padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
-                    Solicitar Propuesta de Despliegue
+                  <button type="submit" disabled={loading} style={{ flex: 1, padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '13px', cursor: loading ? 'default' : 'pointer' }}>
+                    {loading ? 'Transmitiendo...' : 'Solicitar Propuesta de Despliegue'}
                   </button>
                   <button type="button" onClick={() => setShowEnterpriseModal(false)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
                     Cancelar
