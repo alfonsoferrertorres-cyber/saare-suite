@@ -74,7 +74,7 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO DE LAS 5 BÓVEDAS CON LA ESTÉTICA CLÁSICA
+  // CATÁLOGO DE LAS 5 BÓVEDAS DE CONTROL
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -106,7 +106,7 @@ export default function App() {
       norma: "Workflow aligned with ISO/IEC 27037:2012 · EU AI Act Art. 12 Logs · RFC 3161",
       options: [
         { key: "rfc3161_qualified_tsa", label: "Estampado Temporal RFC 3161" },
-        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519" },
+        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519 (RFC 8032)" },
         { key: "action_digest_binding", label: "Action Digest Binding (SHA-256)" },
         { key: "safe_creative_anchor", label: "Anclaje de Integridad Fiduciaria" }
       ]
@@ -115,7 +115,7 @@ export default function App() {
       tag: "MEDIOS SINTÉTICOS",
       name: "CONTROL DE CLONACIÓN DE VOZ & DERECHOS DE IMAGEN",
       desc: "Inspección causal y rechazo estricto ante síntesis de voz o deepfakes no consentidos.",
-      norma: "Ley Orgánica 1/1982 · EU AI Act Art. 13 & 50 · Controls mapped to ISO/IEC 42001",
+      norma: "Ley Orgánica 1/1982 · EU AI Act Art. 50 (Transparencia) · Controls mapped to ISO/IEC 42001",
       options: [
         { key: "strict_corpus_grounding", label: "Grounding Estricto en Corpus Litigioso" },
         { key: "reject_unsupported_claims", label: "Rechazo Inmediato de Unsupported Claims" },
@@ -465,39 +465,26 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#dce3ec', color: '#1e293b', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* 1. HERO BANNER DORADO / BLANCO CORPORATIVO */}
-      <div style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', padding: '16px 24px' }}>
+      {/* 1. CABECERA INSTITUCIONAL CON IMAGEN OFICIAL */}
+      <div style={{ background: '#ffffff', borderBottom: '2px solid #cbd5e1', padding: '12px 24px' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {/* Logo Cerebro Tecnológico */}
-            <div style={{ width: '110px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg viewBox="0 0 100 80" style={{ width: '100%', height: '100%' }}>
-                <defs>
-                  <linearGradient id="brainGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#0284c7" />
-                    <stop offset="100%" stopColor="#0ea5e9" />
-                  </linearGradient>
-                </defs>
-                <path d="M50 15 C35 15 20 25 20 42 C20 58 35 68 50 68 C65 68 80 58 80 42 C80 25 65 15 50 15 Z" fill="none" stroke="url(#brainGlow)" strokeWidth="4" />
-                <path d="M30 35 Q40 25 50 35 T70 35" fill="none" stroke="#38bdf8" strokeWidth="2.5" />
-                <path d="M25 45 Q40 38 50 48 T75 45" fill="none" stroke="#0284c7" strokeWidth="2.5" />
-                <path d="M35 55 Q45 48 50 55 T65 55" fill="none" stroke="#38bdf8" strokeWidth="2" />
-                <circle cx="30" cy="35" r="2.5" fill="#f59e0b" />
-                <circle cx="70" cy="35" r="2.5" fill="#f59e0b" />
-                <circle cx="50" cy="48" r="3" fill="#38bdf8" />
-                <line x1="10" y1="42" x2="20" y2="42" stroke="#cbd5e1" strokeWidth="2" />
-                <line x1="80" y1="42" x2="90" y2="42" stroke="#cbd5e1" strokeWidth="2" />
-              </svg>
-            </div>
-
-            {/* Texto Título Dorado Clásico */}
+            <img 
+              src="/Cabecera saare-console.jfif" 
+              alt="Tecnología de IA Segura y Certificada" 
+              style={{ height: '70px', objectFit: 'contain', borderRadius: '4px' }}
+              onError={(e) => {
+                // Fallback visual en caso de ruta relativa
+                e.target.style.display = 'none';
+              }}
+            />
             <div>
-              <div style={{ fontSize: '38px', fontWeight: '900', color: '#c59b27', letterSpacing: '-0.5px', lineHeight: 1 }}>
-                Tecnología
+              <div style={{ fontSize: '28px', fontWeight: '900', color: '#b45309', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                Tecnología de IA
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '700', color: '#475569', letterSpacing: '0.2px', marginTop: '2px' }}>
-                Control Perimetral y Pericial
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#475569', letterSpacing: '0.2px', marginTop: '3px' }}>
+                Control Perimetral, Ejecución Determinista y Trazabilidad L7
               </div>
             </div>
           </div>
@@ -506,13 +493,13 @@ export default function App() {
             <button 
               onClick={handleDownloadTokenizedAgent}
               disabled={downloadingAgentZip}
-              style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ padding: '7px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
             >
-              {downloadingAgentZip ? 'Generando...' : 'Descargar Sensor (.zip)'}
+              {downloadingAgentZip ? 'Generando...' : '⬇ Descargar Sensor (.zip)'}
             </button>
             <button 
               onClick={handleLogout}
-              style={{ padding: '6px 12px', background: '#e2e8f0', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ padding: '7px 14px', background: '#e2e8f0', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               Cerrar Sesión
             </button>
@@ -527,7 +514,7 @@ export default function App() {
         <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '16px' }}>
           <div>
             <div style={{ fontWeight: '900', fontSize: '13px', color: '#0f172a', letterSpacing: '0.3px' }}>
-              PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+              PANEL DE CONTROL GRC & GOBERNANZA DE EJECUCIÓN SGP 1.0
             </div>
             <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '3px' }}>
               USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | ROL: <strong style={{ color: '#16a34a' }}>{sessionUser.role || 'CISO / Global Admin'}</strong> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#ef4444' }}>{disabledDirectivesCount} Deshabilitadas</strong> | REGLAS PERSONALIZADAS: <strong style={{ color: '#0284c7' }}>{customRules.length} Filtros</strong>
@@ -593,7 +580,7 @@ export default function App() {
         {/* TAB 1: CONFIGURACIÓN (VISTA PRINCIPAL ORIGINAL) */}
         {activeTab === 'CONFIG' && (
           <div>
-            {/* CAJA BLANCA: CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS */}
+            {/* CONFIGURADOR DE FILTROS PERSONALIZADOS */}
             <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '16px 20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <h3 style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>
@@ -629,7 +616,7 @@ export default function App() {
               )}
             </div>
 
-            {/* GRID DE TARJETAS BLANCAS CLÁSICAS CON BOTONES VERDES */}
+            {/* GRID DE TARJETAS DE DIRECTIVAS Y SUB-OPCIONES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
               {Object.entries(masterScenariosConfig).map(([key, scn]) => {
                 const isEnabled = directives[key] === true;
@@ -672,12 +659,33 @@ export default function App() {
                       </h4>
 
                       {/* Descripción */}
-                      <p style={{ margin: '0 0 14px 0', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+                      <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
                         {scn.desc}
                       </p>
+
+                      {/* Sub-opciones técnicas */}
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '10px 12px', marginBottom: '14px' }}>
+                        <span style={{ color: '#475569', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                          Sub-Controles Activos:
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {scn.options.map((opt) => (
+                            <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#334155', cursor: isEnabled ? 'pointer' : 'default' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={vaultSubOptions[opt.key] === true && isEnabled} 
+                                disabled={!isEnabled}
+                                onChange={() => handleToggleSubOption(opt.key)}
+                                style={{ accentColor: '#16a34a' }}
+                              />
+                              <span>{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Botón Verde Clásico: DESACTIVAR / ACTIVAR DIRECTIVA */}
+                    {/* Botón de Activación / Desactivación */}
                     <button
                       onClick={() => handleToggleDirective(key)}
                       disabled={syncingKv}
@@ -705,7 +713,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: RUNLIVE (MONITOR DE EJECUCIÓN) */}
+        {/* TAB 2: RUNLIVE (MONITOR DE EJECUCIÓN EN VIVO) */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
@@ -732,8 +740,8 @@ export default function App() {
                 </div>
 
                 <div style={{ background: '#ffffff', padding: '12px', borderLeft: `3px solid ${(lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a'}`, marginBottom: '12px', fontSize: '12px' }}>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>PAYLOAD EN RUNTIME:</div>
-                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || 'Sin contenido'}"
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>ACCIONES EVALUADAS:</div>
+                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || JSON.stringify(lastEvent.action || 'Sin contenido')}"
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
@@ -776,7 +784,7 @@ export default function App() {
                     <th style={{ padding: '8px 12px' }}>FECHA</th>
                     <th style={{ padding: '8px 12px' }}>VERDICT ID</th>
                     <th style={{ padding: '8px 12px' }}>POLÍTICA</th>
-                    <th style={{ padding: '8px 12px' }}>PAYLOAD</th>
+                    <th style={{ padding: '8px 12px' }}>ACCIONES</th>
                     <th style={{ padding: '8px 12px' }}>DECISIÓN</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center' }}>EXPEDIENTE</th>
                   </tr>
@@ -800,7 +808,7 @@ export default function App() {
                           <td style={{ padding: '8px 12px', fontWeight: 'bold', color: '#0284c7', fontFamily: 'monospace' }}>{id}</td>
                           <td style={{ padding: '8px 12px' }}>{ev.policy?.id || ev.policy_id || 'POL-CORP-GOVERNANCE-01'}</td>
                           <td style={{ padding: '8px 12px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            "{ev.promptInput || ev.cleanPrompt || ev.payload || 'Sin contenido'}"
+                            "{ev.promptInput || ev.cleanPrompt || ev.payload || JSON.stringify(ev.action || 'Sin contenido')}"
                           </td>
                           <td style={{ padding: '8px 12px', fontWeight: 'bold', color: isDenied ? '#ef4444' : '#16a34a' }}>
                             {ev.decision || 'ALLOW'}
