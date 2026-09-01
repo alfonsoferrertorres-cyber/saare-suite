@@ -105,6 +105,18 @@ export default function App() {
   const [showDiploma, setShowDiploma] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState('ask_judge');
 
+  // Modales de fontanería B2B
+  const [showDossierModal, setShowDossierModal] = useState(false);
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
+  const [b2bFormData, setB2bFormData] = useState({
+    expediente: '',
+    tipoNorma: 'PRTR_NEXTGEN',
+    emailContacto: '',
+    vpcCloud: 'SOBERANA_EUROPEA',
+    tokenVolume: '1M_10M'
+  });
+  const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
+
   // Verificador Interactivo de Veredictos (SAARE VERDICT™)
   const [verifySearchId, setVerifySearchId] = useState("EV-CED48F1600");
   const [activeVerdict, setActiveVerdict] = useState({
@@ -130,7 +142,6 @@ export default function App() {
     humanOverride: "NONE (Autonomous Adjudication)"
   });
 
-  // Simulación del Live Runtime / Judge Flow
   const [judgeStep, setJudgeStep] = useState(0);
   const [isRunningJudge, setIsRunningJudge] = useState(false);
 
@@ -146,7 +157,6 @@ export default function App() {
     }, 2400);
   };
 
-  // Descarga del paquete de agente 100% tokenizado y aprovisionado
   const handleDownloadTokenizedAgent = async () => {
     try {
       setDownloadingZip(true);
@@ -160,7 +170,6 @@ export default function App() {
       const tEmail = sessionUser?.email || "auditor@saare.es";
       const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_live_sgp10_" + Math.random().toString(36).substring(2, 12);
 
-      // 1. Configuración de Políticas de Grupo (GPO / Managed Storage)
       const tokenizedManagedConfig = {
         "saare_api_key": { "Value": tToken },
         "saare_tenant_domain": { "Value": tTenant },
@@ -169,7 +178,6 @@ export default function App() {
         "governance_protocol": { "Value": "SGP_1.0" }
       };
 
-      // 2. Archivo de configuración local
       const runtimeConfig = {
         tenantName: tTenant,
         email: tEmail,
@@ -317,6 +325,16 @@ export default function App() {
     }
   };
 
+  const handleSendB2BForm = (e, formType) => {
+    e.preventDefault();
+    setB2bSuccessMsg(`Solicitud de ${formType} registrada correctamente. Un arquitecto técnico procesará tu petición en menos de 2 horas.`);
+    setTimeout(() => {
+      setShowDossierModal(false);
+      setShowEnterpriseModal(false);
+      setB2bSuccessMsg('');
+    }, 2800);
+  };
+
   const integrationSnippets = {
     ask_judge: `// MODO B: ASK THE JUDGE (Para Agentes Autónomos y Tool Calling)
 import { SaareJudgeClient } from '@saare/governance-sdk';
@@ -361,16 +379,104 @@ const response = await client.chat.completions.create({
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif' }}>
       
-      {/* MODAL DE VERIFICACIÓN OFICIAL DE INTEGRIDAD L7 */}
+      {/* MODAL 1: SOLICITUD DE DICTAMEN PERICIAL / FONDOS PRTR */}
+      {showDossierModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDossierModal(false)}>
+          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #9333ea', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 03 · PERICIAL & FONDOS</span>
+            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Solicitud de Dictamen Pericial / PRTR</h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y acreditación anti-doble financiación (NextGenEU/IGAE).
+            </p>
+            {b2bSuccessMsg ? (
+              <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
+                {b2bSuccessMsg}
+              </div>
+            ) : (
+              <form onSubmit={(e) => handleSendB2BForm(e, 'Dictamen Pericial')} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
+                  <input type="email" required placeholder="auditor@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>TIPO DE EXPEDIENTE</label>
+                  <select value={b2bFormData.tipoNorma} onChange={(e) => setB2bFormData({...b2bFormData, tipoNorma: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }}>
+                    <option value="PRTR_NEXTGEN">Justificación Fondos PRTR / NextGenEU / CDTI</option>
+                    <option value="PERITAJE_JUDICIAL">Dictamen Pericial Judicial (ISO 27037 / DES)</option>
+                    <option value="AUDITORIA_RGPD_AI_ACT">Auditoría de Cumplimiento RGPD & AI Act</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>REFERENCIA DE EXPEDIENTE / PROYECTO</label>
+                  <input type="text" required placeholder="Ej: EXP-PRTR-2026-09A o Ref. Litigio" value={b2bFormData.expediente} onChange={(e) => setB2bFormData({...b2bFormData, expediente: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button type="submit" style={{ flex: 1, padding: '12px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                    Tramitar Solicitud de Dictamen
+                  </button>
+                  <button type="button" onClick={() => setShowDossierModal(false)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: SOLICITUD DE TENANT AISLADO ENTERPRISE */}
+      {showEnterpriseModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowEnterpriseModal(false)}>
+          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #ca8a04', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO 04 · GRANDES CUENTAS</span>
+            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Despliegue de Tenant Aislado / Enterprise</h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Aprovisionamiento en Nube Soberana Europea, VPC dedicada u On-Premise con purga en memoria volátil (SYS_madvise).
+            </p>
+            {b2bSuccessMsg ? (
+              <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
+                {b2bSuccessMsg}
+              </div>
+            ) : (
+              <form onSubmit={(e) => handleSendB2BForm(e, 'Tenant Aislado Enterprise')} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO (CISO / CTO / DPO)</label>
+                  <input type="email" required placeholder="ciso@banco.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>INFRAESTRUCTURA DE DESTINO</label>
+                  <select value={b2bFormData.vpcCloud} onChange={(e) => setB2bFormData({...b2bFormData, vpcCloud: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }}>
+                    <option value="SOBERANA_EUROPEA">Nube Soberana Europea (Desacoplada US Cloud Act)</option>
+                    <option value="VPC_CLIENTE">VPC Dedicada (AWS / Azure / GCP del Cliente)</option>
+                    <option value="ON_PREMISE">Despliegue On-Premise / Air-Gapped</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>VOLUMEN ESTIMADO DE TOKENS / ACCIONES</label>
+                  <select value={b2bFormData.tokenVolume} onChange={(e) => setB2bFormData({...b2bFormData, tokenVolume: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }}>
+                    <option value="1M_10M">1 a 10 Millones de Tokens / mes</option>
+                    <option value="10M_100M">10 a 100 Millones de Tokens / mes</option>
+                    <option value="OVER_100M">+100 Millones de Tokens / mes (SLA 99.99%)</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button type="submit" style={{ flex: 1, padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
+                    Solicitar Propuesta de Despliegue
+                  </button>
+                  <button type="button" onClick={() => setShowEnterpriseModal(false)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: VERIFICACIÓN OFICIAL DE INTEGRIDAD L7 */}
       {showDiploma && (
-        <div 
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} 
-          onClick={() => setShowDiploma(false)}
-        >
-          <div 
-            style={{ maxWidth: '820px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #1e293b', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} 
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDiploma(false)}>
+          <div style={{ maxWidth: '820px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #1e293b', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '4px', textTransform: 'uppercase' }}>
                 ✔ VERIFICACIÓN DE DECISIÓN Y REGISTRO CONFORME
@@ -387,7 +493,6 @@ const response = await client.chat.completions.create({
               Validación de Autoría, Propiedad Intelectual e Inmutabilidad de Motor L7 en Memoria RAM.
             </p>
 
-            {/* CAJA DE HASH CANÓNICO */}
             <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '14px', marginBottom: '20px', fontFamily: 'monospace', fontSize: '12.5px', color: '#38bdf8', wordBreak: 'break-all' }}>
               <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>
                 HUELLA HASH SHA-256 DEL NODO VALIDADO:
@@ -395,7 +500,6 @@ const response = await client.chat.completions.create({
               {CANONICAL_HASH}
             </div>
 
-            {/* GRID DE DETALLES TÉCNICOS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px', marginBottom: '20px', fontSize: '12.5px' }}>
               <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
                 <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Autoridad Registral Emisora</span>
@@ -423,7 +527,6 @@ const response = await client.chat.completions.create({
               </div>
             </div>
 
-            {/* MARCOS DE GOBERNANZA */}
             <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '14px', borderRadius: '8px', marginBottom: '20px' }}>
               <span style={{ color: '#64748b', fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Marcos de Gobernanza Mapeados</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -444,7 +547,6 @@ const response = await client.chat.completions.create({
               </div>
             </div>
 
-            {/* FOOTER DEL MODAL */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
               <span style={{ color: '#64748b', fontSize: '11px' }}>
                 SAARE AI Governance Decision Layer · Verificación generada en el Edge por Cloudflare Workers.
@@ -462,7 +564,7 @@ const response = await client.chat.completions.create({
         </div>
       )}
 
-      {/* HEADER DE NAVEGACIÓN PROFESIONAL */}
+      {/* HEADER DE NAVEGACIÓN */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1f2937' }}>
         <div style={{ maxWidth: '1260px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('LANDING')}>
@@ -479,7 +581,6 @@ const response = await client.chat.completions.create({
             <button onClick={() => navigateToSection('modelos-explotacion')} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700' }}>Explotación B2B</button>
             <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Policy Matrix</button>
 
-            {/* BADGE DE ESTADO DEL EDGE */}
             <span style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
               ● EDGE &lt;0.017ms
             </span>
@@ -551,7 +652,6 @@ const response = await client.chat.completions.create({
             <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Consola de Decisiones y Veredictos</h1>
             <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>Organización: <strong>{sessionUser.tenantName || 'Tenant Activo'}</strong> · Cuenta: {sessionUser.email}</p>
             
-            {/* BLOQUE DE DESPLIEGUE TOKENIZADO */}
             <div style={{ background: '#030712', border: '1px solid #0284c7', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
               <strong style={{ color: '#38bdf8', fontSize: '14px', display: 'block', marginBottom: '6px' }}>DESPLIEGUE DE NODO TOKENIZADO (SGP 1.0)</strong>
               <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 14px 0', lineHeight: 1.5 }}>
@@ -601,7 +701,6 @@ const response = await client.chat.completions.create({
               L7 Runtime Execution Boundary · Purga SYS_madvise · SAARE VERDICT™ · Evidencias Ed25519 & RFC 3161
             </p>
 
-            {/* PIPELINE SOLEMNE */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '11.5px', fontFamily: 'monospace', color: '#cbd5e1', flexWrap: 'wrap', justifyContent: 'center' }}>
               <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>POLICY</span>
               <span>→</span>
@@ -626,7 +725,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 2. POSTURE SUMMARY: GOVERNANCE DASHBOARD */}
+          {/* 2. POSTURE SUMMARY */}
           <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '30px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
@@ -662,7 +761,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 3. ARQUITECTURA: SAARE GOVERNANCE JUDGE & THE STACK */}
+          {/* 3. ARQUITECTURA */}
           <section id="decision-layer" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE ADJUDICACIÓN</span>
@@ -672,7 +771,6 @@ const response = await client.chat.completions.create({
               </p>
             </div>
 
-            {/* DIAGRAMA DE DECISIÓN TÉCNICA */}
             <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', fontFamily: 'monospace', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
               <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>
                 ORGANIZATIONAL GOVERNANCE (CISO · DPO · Políticas Internas · Requisitos Normativos)
@@ -701,7 +799,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 4. DOS MODOS DE INTEGRACIÓN TÉCNICA (ENDPOINTS API) */}
+          {/* 4. DOS MODOS DE INTEGRACIÓN TÉCNICA */}
           <section id="integration-modes" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -729,14 +827,14 @@ const response = await client.chat.completions.create({
                 <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO A — INLINE GATEWAY</span>
                 <h4 style={{ color: '#fff', fontSize: '15px', margin: '6px 0 8px 0', fontWeight: '800' }}>Intercepción de Tráfico L7 (Proxy)</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
-                  Redirección perimetral vía <code>baseURL</code>. Supervisa prompts e inferencias de modelos externos (OpenAI, Anthropic, Mistral) con latencia en memoria RAM.
+                  Redirección perimetral vía <code>baseURL</code>. Supervisa prompts e inferencias de modelos externos con latencia en memoria RAM.
                 </p>
               </div>
               <div style={{ background: '#030712', border: `1px solid ${activeCodeTab === 'ask_judge' ? '#0ea5e9' : '#1f2937'}`, padding: '20px', borderRadius: '10px' }}>
                 <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO B — JUDGE API ("ASK THE JUDGE")</span>
                 <h4 style={{ color: '#fff', fontSize: '15px', margin: '6px 0 8px 0', fontWeight: '800' }}>Gobernanza de Acciones y Tool Calling</h4>
                 <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: 0 }}>
-                  Consulta programática previa (<code>POST /v1/judge</code>). Diseñado para agentes autónomos que ejecutan operaciones financieras, mutaciones de bases de datos o envíos de correo.
+                  Consulta programática previa (<code>POST /v1/judge</code>). Diseñado para agentes autónomos que ejecutan operaciones financieras o mutaciones críticas.
                 </p>
               </div>
             </div>
@@ -746,7 +844,7 @@ const response = await client.chat.completions.create({
             </pre>
           </section>
 
-          {/* 5. DOCTRINA: THE AI-NATIVE AUDIT DOCTRINE */}
+          {/* 5. DOCTRINA */}
           <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PRINCIPIOS ESTRUCTURALES</span>
@@ -767,7 +865,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 6. SECCIÓN LIVE RUNTIME / JUDGE EN VIVO */}
+          {/* 6. SECCIÓN LIVE RUNTIME */}
           <section id="live-runtime" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -824,7 +922,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 7. SAARE VERDICT™ (EL OBJETO FUNDAMENTAL) */}
+          {/* 7. SAARE VERDICT™ */}
           <section id="evidence-verifier" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '30px' }}>
               <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>DECISION RECORD</span>
@@ -834,7 +932,6 @@ const response = await client.chat.completions.create({
               </p>
             </div>
 
-            {/* FORMULARIO DE CONSULTA DE VEREDICTO */}
             <form onSubmit={handleVerifyLookup} style={{ display: 'flex', gap: '10px', maxWidth: '650px', margin: '0 auto 28px auto', flexWrap: 'wrap' }}>
               <input 
                 type="text" 
@@ -848,7 +945,6 @@ const response = await client.chat.completions.create({
               </button>
             </form>
 
-            {/* TARJETA VISUAL DEL SAARE VERDICT™ */}
             <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
                 <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // ADJUDICATION CONTRACT</span>
@@ -1002,9 +1098,9 @@ const response = await client.chat.completions.create({
                   Emisión automatizada de dictámenes periciales ISO 27037 y memorias técnicas justificativas ante la IGAE y OLAF.
                 </p>
                 <div style={{ color: '#a855f7', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>Tarifa ad-hoc por expediente</div>
-                <a href="mailto:peritajes@saare.es" style={{ display: 'block', textAlign: 'center', padding: '8px', background: '#111827', border: '1px solid #9333ea', color: '#c084fc', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>
+                <button onClick={() => setShowDossierModal(true)} style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #9333ea', color: '#c084fc', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Solicitar Dictamen →
-                </a>
+                </button>
               </div>
 
               <div style={{ background: '#030712', border: '1px solid #ca8a04', borderRadius: '10px', padding: '22px' }}>
@@ -1014,14 +1110,14 @@ const response = await client.chat.completions.create({
                   Despliegue dedicado en Nube Soberana Europea o VPC propia con aislamiento en memoria RAM (SYS_madvise) para banca y salud.
                 </p>
                 <div style={{ color: '#f59e0b', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>Licencia Enterprise ARR</div>
-                <a href="mailto:enterprise@saare.es" style={{ display: 'block', textAlign: 'center', padding: '8px', background: '#111827', border: '1px solid #ca8a04', color: '#facc15', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>
+                <button onClick={() => setShowEnterpriseModal(true)} style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #ca8a04', color: '#facc15', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Contactar Enterprise →
-                </a>
+                </button>
               </div>
             </div>
           </section>
 
-          {/* 10. POLICY MATRIX (POLICY-TO-VERDICT COMPILER) */}
+          {/* 10. POLICY MATRIX */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>POLICY COMPILER</span>
@@ -1072,9 +1168,9 @@ const response = await client.chat.completions.create({
               <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ padding: '14px 36px', backgroundColor: '#0284c7', color: '#fff', borderRadius: '6px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(2,132,199,0.3)' }}>
                 Aprovisionar Asiento Runtime (149 €/mes) ↗
               </a>
-              <a href="mailto:enterprise@saare.es" style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '6px', fontWeight: '700', fontSize: '14px', textDecoration: 'none' }}>
+              <button onClick={() => setShowEnterpriseModal(true)} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '6px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
                 Contactar Arquitectura Enterprise
-              </a>
+              </button>
             </div>
 
             <div style={{ marginTop: '16px', fontSize: '12px', color: '#6b7280' }}>
@@ -1095,7 +1191,7 @@ const response = await client.chat.completions.create({
               <div style={{ display: 'flex', gap: '18px', fontSize: '12px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
                 <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Consola GRC</a>
-                <a href="mailto:enterprise@saare.es" style={{ color: '#94a3af', textDecoration: 'none' }}>Contacto</a>
+                <button onClick={() => setShowEnterpriseModal(true)} style={{ color: '#94a3af', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0 }}>Contacto Enterprise</button>
               </div>
             </div>
 
