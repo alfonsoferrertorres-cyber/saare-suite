@@ -16,7 +16,7 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'ALFON TEST',
+      tenantName: tenantParam || 'CORPORATE WORKLOAD NODE',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
       role: urlParams.get('role') || 'CISO / Global Admin',
@@ -43,8 +43,8 @@ function resolveInitialUser() {
     } catch {}
   }
   return {
-    email: "el.abuelo.del.punk@gmail.com",
-    tenantName: "ALFON TEST",
+    email: "admin.seguridad@empresa.com",
+    tenantName: "CORPORATE WORKLOAD NODE",
     role: "CISO / Global Admin",
     apiKey: "sk_saare_live_master_kv_session",
     licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
@@ -75,7 +75,7 @@ export default function App() {
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
 
-  // CATÁLOGO DE DIRECTIVAS CLÁSICAS (COMO EN LAS CAPTURAS)
+  // CATÁLOGO DE DIRECTIVAS TÉCNICAS (SIN NOMBRES DE EMPRESAS O SOFTWARE AJENO)
   const masterDirectives = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -126,8 +126,8 @@ export default function App() {
       effectColor: "#10b981",
       effectText: "Genera el Proof Bundle firmado con Ed25519 e integrable en informes periciales."
     },
-    n8n_workflows_guard: {
-      tag: "N8N / WORKFLOWS",
+    orquestacion_workflows_guard: {
+      tag: "ORQUESTADORES / WORKFLOWS",
       title: "ORQUESTACIÓN & TOOL GATEWAY L7",
       desc: "Inspección de Tool Calling, Execution Permits con Single-Use JTI y anti-repetición.",
       effectColor: "#06b6d4",
@@ -143,7 +143,7 @@ export default function App() {
     banca_dora_pci: true,
     sanidad_historia_clinica: true,
     auditoria_dictamen_normativo: true,
-    n8n_workflows_guard: true
+    orquestacion_workflows_guard: true
   });
 
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, directiveKey: null });
@@ -331,6 +331,7 @@ export default function App() {
     }
   };
 
+  // TESTIGOS L7 CON TERMINOLOGÍA TÉCNICA PROPIETARIA Y NEUTRAL
   const witnesses = [
     { key: "TODOS", label: `TODOS (${events.length})`, count: events.length },
     { key: "PRIVACIDAD ES", label: "PRIVACIDAD ES", status: "ACTIVO" },
@@ -338,7 +339,7 @@ export default function App() {
     { key: "TRAZABILIDAD", label: "TRAZABILIDAD", status: "ACTIVO" },
     { key: "FINOPS IT", label: "FINOPS IT", status: "ACTIVO" },
     { key: "BANCA / DORA", label: "Banca / DORA", status: "VALID" },
-    { key: "N8N / WORKFLOWS", label: "N8N / Workflows", status: "VALID" },
+    { key: "ORQUESTADORES / WORKFLOWS", label: "Orquestadores / Workflows", status: "VALID" },
     { key: "EDR C-ABI", label: "EDR C-ABI", status: "VALID" },
     { key: "GSI / PERITAJE", label: "GSI / Peritaje", status: "VALID" },
     { key: "SALUD LOPD", label: "Salud LOPD", status: "VALID" }
@@ -372,14 +373,13 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#64748b', fontFamily: 'Arial, sans-serif', paddingBottom: '40px' }}>
       
-      {/* 1. CABECERA INSTITUCIONAL CLÁSICA (IMAGEN PANORÁMICA EXACTA) */}
+      {/* 1. CABECERA INSTITUCIONAL CLÁSICA */}
       <div style={{ width: '100%', background: '#eae4d9', borderBottom: '2px solid #cbd5e1', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <img 
           src={HEADER_BANNER_SRC} 
           alt="Tecnología de IA Segura y Certificada" 
           style={{ width: '100%', maxWidth: '1320px', height: 'auto', maxHeight: '180px', objectFit: 'cover', display: 'block' }}
           onError={(e) => {
-            // Fallback visual solo si la ruta directa fallara
             e.target.style.display = 'none';
           }}
         />
@@ -387,7 +387,7 @@ export default function App() {
 
       <div style={{ maxWidth: '1280px', margin: '16px auto 0 auto', padding: '0 16px' }}>
         
-        {/* 2. CARD BLANCA DE CONTROL SUPERIOR (CON BOTONES Y BADGES DE ESTADO) */}
+        {/* 2. CARD BLANCA DE CONTROL SUPERIOR */}
         <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
           
           <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', marginBottom: '4px' }}>
@@ -395,7 +395,7 @@ export default function App() {
           </div>
           
           <div style={{ fontSize: '11.5px', color: '#475569', fontWeight: 'bold', marginBottom: '16px' }}>
-            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ALFON TEST'}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
+            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'CORPORATE WORKLOAD NODE'}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>
@@ -457,7 +457,7 @@ export default function App() {
 
         </div>
 
-        {/* 3. PESTAÑAS PRINCIPALES (AZUL CLÁSICO) */}
+        {/* 3. PESTAÑAS PRINCIPALES */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <button
             onClick={() => setActiveTab('GLOBAL')}
@@ -785,7 +785,7 @@ export default function App() {
       {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
             <div style={{ fontSize: '28px', marginBottom: '8px' }}>⚠️</div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#b91c1c' }}>
               Advertencia de Desactivación
