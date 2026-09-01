@@ -14,7 +14,7 @@ const TARGET_SEGMENTS = [
     tag: "AGENTIC AI & ORCHESTRATION",
     title: "01. Fábricas de Agentes y Orquestadores Autónomos",
     who: "Plataformas y desarrolladores que orquestan agentes autónomos con acceso a APIs, pagos y bases de datos.",
-    pain: "Un agente inducido o alucinado ejecuta herramientas sensibles produciendo efectos reales no deseados.",
+    pain: "Un agente comprometido, mal configurado o inducido a ejecutar una acción puede generar una llamada a una herramienta con capacidad de producir efectos reales no deseados.",
     embed: "SDK / Workflow Interceptor (POST /api/v1/judge) como aduana determinista previa a la ejecución.",
     pricing: "Tarificación por volumen de decisiones adjudicadas.",
     color: "#16a34a"
@@ -24,7 +24,7 @@ const TARGET_SEGMENTS = [
     tag: "REGULATED ENTERPRISE",
     title: "02. Banca, Seguros y Sanidad (Nube Privada)",
     who: "Corporaciones reguladas que ejecutan modelos de IA de forma interna o en VPCs soberanas.",
-    pain: "Exigencia de no persistencia en disco de secretos o datos clínicos (RGPD Art. 9) y control perimetral estricto.",
+    pain: "Exigencia de mitigación de riesgos de persistencia de categorías especiales (RGPD Art. 9/32) y control perimetral estricto.",
     embed: "Sidecar Container / Kubernetes DaemonSet con procesamiento efímero en memoria volátil sin persistencia.",
     pricing: "Licencia Anual por Clúster con custodia de claves Ed25519.",
     color: "#ca8a04"
@@ -44,7 +44,7 @@ const TARGET_SEGMENTS = [
     tag: "SYSTEM INTEGRATORS",
     title: "04. Grandes Integradores y Consultoras TIC",
     who: "Firmas que despliegan proyectos de IA para grandes corporaciones y Sector Público.",
-    pain: "Deben justificar técnicamente controles frente a normativas aplicables y fondos públicos.",
+    pain: "Deben justificar técnicamente controles frente a normativas aplicables y custodia de evidencia.",
     embed: "Middleware de Integración en plantillas de arquitectura de infraestructura.",
     pricing: "Tarifa por proyecto entregado o Acuerdo Marco Anual.",
     color: "#9333ea"
@@ -63,7 +63,7 @@ const INTEGRATION_TIERS = [
       "Acceso completo a SAARE Judge API",
       "Emisión de Execution Permits firmados",
       "Protección anti-replay (Validación JTI)",
-      "Decision Store inmutable (30 días de retención)",
+      "Tamper-evident Decision Store (30 días de retención)",
       "Soporte técnico por canal directo",
       "Extra: 0,0015 € por veredicto adicional"
     ],
@@ -83,7 +83,7 @@ const INTEGRATION_TIERS = [
       "Filtros avanzados (DLP, Health Art. 9, Anti-Jailbreak)",
       "Exportación de Proof Bundles sellados (RFC 3161)",
       "Consola de supervisión CISO multi-usuario",
-      "SLA de disponibilidad 99.9%",
+      "SLA de disponibilidad operativa 99.9%",
       "Extra: 0,0008 € por veredicto adicional"
     ],
     highlight: true,
@@ -97,13 +97,13 @@ const INTEGRATION_TIERS = [
     period: "al mes (anual)",
     desc: "Para infraestructuras críticas, banca, sanidad y sector público.",
     features: [
-      "Veredictos ilimitados por clúster",
+      "Capacidad dedicada por clúster",
       "Despliegue On-Premise / Sidecar Container / K8s",
       "Zero-Disk Plaintext Persistence (Memoria Efímera)",
       "Custodia de claves asimétricas Ed25519 propias",
-      "Dictámenes periciales alineados con ISO/IEC 27037",
-      "Soporte 24/7 con arquitecto dedicado",
-      "Auditoría técnica de conformidad regulatoria"
+      "Workflow alineado con ISO/IEC 27037:2012",
+      "Soporte técnico con arquitecto dedicado",
+      "Auditoría técnica de conformidad perimetral"
     ],
     highlight: false,
     cta: "Solicitar Despliegue Dedicado",
@@ -112,12 +112,12 @@ const INTEGRATION_TIERS = [
 ];
 
 const CONTROL_MATRIX = [
-  { requirement: "EU AI Act (2024/1689 Art. 12/15)", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle estructurado" },
-  { requirement: "RGPD & LOPDGDD (Art. 9/32)", control: "Ephemeral Runtime Memory Processing", policy: "Zero-Disk Runtime Isolation", decision: "ALLOW", enforcement: "REDACT", evidence: "Certificado de Redacción / Bloqueo" },
-  { requirement: "LO 1/1982 & AI Act (Art. 50)", control: "Filtro Causal de Identidad y Audio", policy: "Synthetic Media Rights Guard", decision: "DENY", enforcement: "BLOCK", evidence: "Registro de Intercepción Pericial" },
-  { requirement: "NIS 2 & CRA (2024/2847)", control: "Mitigación determinista de Prompt Injection", policy: "In-Process Security by Design", decision: "DENY", enforcement: "ESCALATE", evidence: "Log Inmutable de Telemetría" },
-  { requirement: "DORA (Reglamento UE 2022/2554)", control: "Edge Reverse-Proxy con Header L7-SEAL", policy: "Cross-Border Data Safeguard", decision: "ALLOW", enforcement: "PASS", evidence: "Auditoría de Tránsito Criptográfica" },
-  { requirement: "ISO/IEC 27037:2012 (Workflow Aligned)", control: "Roles DEFR/DES & Firma Ed25519", policy: "Four-Phase Evidence Workflow", decision: "ALLOW", enforcement: "ATTEST", evidence: "Proof Bundle con sellado RFC 3161" }
+  { requirement: "EU AI Act Art. 12/15", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle" },
+  { requirement: "RGPD Art. 9/32", control: "Sensitive Data Runtime Control", policy: "Data Protection Policy", decision: "DENY / ALLOW", enforcement: "BLOCK / PASS", evidence: "Decision Record" },
+  { requirement: "LO 1/1982 + AI Act Art. 50 (Transparency)", control: "Synthetic Media Control", policy: "Synthetic Content Policy", decision: "DENY", enforcement: "BLOCK", evidence: "Interception Record" },
+  { requirement: "NIS 2 / CRA", control: "Runtime Security Control", policy: "Security Policy", decision: "DENY", enforcement: "BLOCK", evidence: "Security Event" },
+  { requirement: "DORA", control: "Operational Authorization Control", policy: "Financial Runtime Policy", decision: "ALLOW / DENY", enforcement: "PASS / BLOCK", evidence: "Decision Record" },
+  { requirement: "ISO/IEC 27037:2012 (Workflow Aligned)", control: "Evidence Handling Workflow", policy: "Evidence Policy", decision: "ALLOW", enforcement: "PASS", evidence: "Proof Bundle" }
 ];
 
 export default function App() {
@@ -256,7 +256,7 @@ export default function App() {
   };
 
   const codeSnippets = {
-    sdk: `// EMBED MODE 01: SAARE SDK (@saare/judge)
+    sdk: `// INTEGRATION PATTERN: SAARE SDK CLIENT EXAMPLE
 import { SaareJudgeClient } from '@saare/judge';
 
 const judge = new SaareJudgeClient({ apiKey: process.env.SAARE_API_KEY });
@@ -278,7 +278,7 @@ if (result.decision === "ALLOW") {
 } else {
   console.error("Acción denegada por política:", result.reasonCodes);
 }`,
-    workflow: `// EMBED MODE 02: ORCHESTRATOR WORKFLOW INTERCEPTOR
+    workflow: `// INTEGRATION PATTERN: ORCHESTRATOR WORKFLOW INTERCEPTOR
 // Inserte este bloque en un nodo de ejecución previo a cualquier Tool Call sensible:
 const saareResponse = await fetch('https://saare-api.alfonsoferrertorres.workers.dev/api/v1/judge', {
   method: 'POST',
@@ -301,7 +301,7 @@ if (saareResponse.decision !== 'ALLOW' || !saareResponse.executionPermit) {
 }
 
 return { executionPermit: saareResponse.executionPermit };`,
-    sidecar: `# EMBED MODE 03: SIDECAR CONTAINER (Docker / VPC Privada)
+    sidecar: `# ILLUSTRATIVE DEPLOYMENT CONFIGURATION: SIDECAR CONTAINER
 version: '3.8'
 services:
   agent-application:
@@ -501,7 +501,7 @@ services:
             AI can decide. Your infrastructure must decide what AI is allowed to execute.
           </h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', lineHeight: 1.6, maxWidth: '840px', margin: '0 0 24px 0' }}>
-            Un agente comprometido, mal configurado o inducido a ejecutar una acción puede alcanzar herramientas con capacidad de producir efectos reales no deseados. SAARE introduce una decisión de autorización independiente antes del dispatch.
+            Un agente comprometido, mal configurado o inducido a ejecutar una acción puede generar una llamada a una herramienta con capacidad de producir efectos reales no deseados. SAARE introduce una decisión de autorización independiente antes del dispatch.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
@@ -729,7 +729,7 @@ services:
                   </div>
                   <div>
                     Integridad Canónica: <strong style={{ color: liveJudgeResult.integrity?.digestValid ? '#34d399' : '#f87171' }}>
-                      {liveJudgeResult.integrity?.digestValid === true ? "MATCH" : "UNVERIFIED"}
+                      {liveJudgeResult.integrity?.digestValid === true ? "CANONICAL HASH VERIFIED" : "DIGEST MISMATCH"}
                     </strong>
                   </div>
                 </div>
@@ -778,8 +778,8 @@ services:
         <div style={{ background: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '32px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LATENCY BENCHMARK</span>
-            <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Especificación Científica de Rendimiento</h2>
-            <p style={{ color: '#9ca3af', fontSize: '13.5px', margin: '4px 0 0 0' }}>Métricas desagregadas según el componente de la arquitectura.</p>
+            <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Performance Benchmark & Measurement Parameters</h2>
+            <p style={{ color: '#9ca3af', fontSize: '13.5px', margin: '4px 0 0 0' }}>Mediciones P99 en aislamiento V8 sobre Edge Network con 10k ejecuciones en caliente.</p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
@@ -886,7 +886,7 @@ services:
 
                 <span style={{ color: '#6b7280' }}>TIMESTAMP (QUALIFIED):</span>
                 <span style={{ color: verifyResult.timestamp?.valid ? '#34d399' : '#f87171' }}>
-                  {verifyResult.timestamp?.protocol ?? "—"} · {verifyResult.timestamp?.valid === true ? "VALID" : "NOT VERIFIED"} ({verifyResult.issuedAt ?? "—"})
+                  {verifyResult.timestamp?.protocol ?? "—"} · {verifyResult.timestamp?.valid === true ? "VALID" : "NOT VERIFIED"}
                 </span>
 
                 <span style={{ color: '#6b7280' }}>INTEGRITY VERIFICATION:</span>
@@ -928,7 +928,7 @@ services:
           <div style={{ background: '#0b0f19', border: '1px solid #9333ea', padding: '24px', borderRadius: '12px' }}>
             <span style={{ color: '#c084fc', fontSize: '12px', fontWeight: 'bold' }}>EVIDENCE PLANE</span>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '8px 0 0 0', lineHeight: 1.5 }}>
-              Persistencia inmutable de veredictos, Proof Bundles sellados con RFC 3161 y verificación independiente sin depender de la UI.
+              Persistencia en Tamper-Evident Store, Proof Bundles sellados con RFC 3161 y verificación independiente sin depender de la UI.
             </p>
           </div>
         </div>
@@ -940,7 +940,7 @@ services:
           <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MODELOS DE INTEGRACIÓN</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>4 Modelos de Integración de Infraestructura</h2>
           <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '820px', margin: '0 auto', lineHeight: 1.6 }}>
-            SAARE opera como un componente crítico de infraestructura (Middleware L7) listo para integrarse en código de agentes, pipelines de inferencia y clústeres privados.
+            SAARE opera como un componente de autorización técnica en Capa 7 para integrarse en código de agentes, pipelines de inferencia y clústeres privados.
           </p>
         </div>
 
@@ -978,7 +978,7 @@ services:
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CONTROL-TO-VERDICT MATRIX</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Technical Control-to-Verdict Matrix</h2>
-            <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Technical controls mapped to applicable regulatory requirements.</p>
+            <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Mapeo de controles técnicos frente a requerimientos regulatorios y normas aplicables.</p>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
