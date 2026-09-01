@@ -16,7 +16,7 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'CORPORATE WORKLOAD NODE',
+      tenantName: tenantParam || 'alfon test',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
       role: urlParams.get('role') || 'CISO / Global Admin',
@@ -43,8 +43,8 @@ function resolveInitialUser() {
     } catch {}
   }
   return {
-    email: "admin.seguridad@empresa.com",
-    tenantName: "CORPORATE WORKLOAD NODE",
+    email: "el.abuelo.del.punk@gmail.com",
+    tenantName: "alfon test",
     role: "CISO / Global Admin",
     apiKey: "sk_saare_live_master_kv_session",
     licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
@@ -58,7 +58,7 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('CONFIG'); // CONFIG, RUNLIVE, GLOBAL
+  const [activeTab, setActiveTab] = useState('RUNLIVE'); // CONFIG, RUNLIVE, GLOBAL
   const [events, setEvents] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const [connected, setConnected] = useState(true);
@@ -69,13 +69,13 @@ export default function App() {
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
-    latencyMs: 124,
-    lastSync: "8:14:04"
+    latencyMs: 35,
+    lastSync: "10:59:05"
   });
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
 
-  // CATÁLOGO DE DIRECTIVAS TÉCNICAS (SIN NOMBRES DE EMPRESAS O SOFTWARE AJENO)
+  // CATÁLOGO DE DIRECTIVAS
   const masterDirectives = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -208,7 +208,7 @@ export default function App() {
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
 
-      setKvStatus({ online: true, latencyMs: elapsed || 124, lastSync: new Date().toLocaleTimeString() });
+      setKvStatus({ online: true, latencyMs: elapsed || 35, lastSync: new Date().toLocaleTimeString() });
     } catch {
       setConnected(false);
       setKvStatus(prev => ({ ...prev, online: false }));
@@ -331,7 +331,74 @@ export default function App() {
     }
   };
 
-  // TESTIGOS L7 CON TERMINOLOGÍA TÉCNICA PROPIETARIA Y NEUTRAL
+  // DESCARGA DE EXTENSIÓN TOKENIZADA AUTÓNOMA CON JSZIP
+  const handleDownloadTokenizedExtension = async () => {
+    try {
+      setDownloadingAgentZip(true);
+      const zip = new JSZip();
+
+      const tTenant = sessionUser?.tenantName || "alfon test";
+      const tEmail = sessionUser?.email || "el.abuelo.del.punk@gmail.com";
+      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session_token";
+
+      const tokenizedConfig = {
+        saare_bootstrap_token: { Value: tToken },
+        saare_tenant_domain: { Value: tTenant },
+        saare_user_email: { Value: tEmail },
+        saare_license_type: { Value: "ENTERPRISE_EXECUTION_RUNTIME" },
+        governance_protocol: { Value: "SGP_1.0" },
+        enforcement_mode: { Value: "FAIL_CLOSED" },
+        endpoint: { Value: API_BASE }
+      };
+
+      const manifest = {
+        manifest_version: 3,
+        name: `SAARE L7 Extension — ${tTenant}`,
+        version: "1.0.4",
+        description: "Sensor perimetral L7 de ejecución determinista y trazabilidad forense SAARE SGP 1.0",
+        permissions: ["storage", "activeTab", "scripting"],
+        host_permissions: ["<all_urls>"],
+        background: { service_worker: "background.js" },
+        action: { default_title: "SAARE L7 Sensor" }
+      };
+
+      const backgroundJs = `// SAARE L7 Sensor Runtime v10.0.4 (SGP 1.0)
+const SAARE_CONFIG = ${JSON.stringify(tokenizedConfig, null, 2)};
+console.log("[SAARE] Sensor L7 activado para Tenant:", SAARE_CONFIG.saare_tenant_domain.Value);
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.set({ saare_config: SAARE_CONFIG });
+});
+`;
+
+      // Intentar cargar la plantilla base si existe, o generar en memoria
+      try {
+        const response = await fetch('/saare-extension.zip');
+        if (response.ok) {
+          const zipArrayBuffer = await response.arrayBuffer();
+          await zip.loadAsync(zipArrayBuffer);
+        }
+      } catch {}
+
+      zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+      zip.file("background.js", backgroundJs);
+      zip.file("storage_managed.json", JSON.stringify(tokenizedConfig, null, 2));
+      zip.file("saare_token.json", JSON.stringify({ tenant: tTenant, email: tEmail, token: tToken, issuedAt: new Date().toISOString() }, null, 2));
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const dl = document.createElement("a");
+      dl.href = URL.createObjectURL(blob);
+      dl.download = `saare-extension-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
+      document.body.appendChild(dl);
+      dl.click();
+      document.body.removeChild(dl);
+      URL.revokeObjectURL(dl.href);
+    } catch (err) {
+      alert("Error al generar la extensión: " + err.message);
+    } finally {
+      setDownloadingAgentZip(false);
+    }
+  };
+
   const witnesses = [
     { key: "TODOS", label: `TODOS (${events.length})`, count: events.length },
     { key: "PRIVACIDAD ES", label: "PRIVACIDAD ES", status: "ACTIVO" },
@@ -373,7 +440,7 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#64748b', fontFamily: 'Arial, sans-serif', paddingBottom: '40px' }}>
       
-      {/* 1. CABECERA INSTITUCIONAL CLÁSICA */}
+      {/* 1. CABECERA INSTITUCIONAL */}
       <div style={{ width: '100%', background: '#eae4d9', borderBottom: '2px solid #cbd5e1', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <img 
           src={HEADER_BANNER_SRC} 
@@ -387,7 +454,7 @@ export default function App() {
 
       <div style={{ maxWidth: '1280px', margin: '16px auto 0 auto', padding: '0 16px' }}>
         
-        {/* 2. CARD BLANCA DE CONTROL SUPERIOR */}
+        {/* 2. CARD DE CONTROL CON BOTÓN DE DESCARGA DE EXTENSIÓN */}
         <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
           
           <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', marginBottom: '4px' }}>
@@ -395,30 +462,57 @@ export default function App() {
           </div>
           
           <div style={{ fontSize: '11.5px', color: '#475569', fontWeight: 'bold', marginBottom: '16px' }}>
-            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'CORPORATE WORKLOAD NODE'}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
+            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'alfon test'}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>
-            {/* Badge KV Vault */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '5px 14px', fontSize: '11px', color: '#475569', background: '#f8fafc' }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16a34a' }}></span>
-              <span>KV VAULT: <strong style={{ color: '#16a34a' }}>EN VIVO ({kvStatus.latencyMs} ms)</strong></span>
-              <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Badge KV Vault */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '5px 14px', fontSize: '11px', color: '#475569', background: '#f8fafc' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16a34a' }}></span>
+                <span>KV VAULT: <strong style={{ color: '#16a34a' }}>EN VIVO ({kvStatus.latencyMs} ms)</strong></span>
+                <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
+              </div>
+
+              {/* Hook Activo */}
+              <button style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ffffff', border: '1.5px solid #16a34a', color: '#16a34a', borderRadius: '6px', padding: '6px 14px', fontSize: '11.5px', fontWeight: '900', cursor: 'default' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }}></span>
+                L7 HOOK ACTIVO
+              </button>
+
+              {/* Botón Salir */}
+              <button onClick={handleLogout} style={{ background: '#ffffff', border: '1.5px solid #ef4444', color: '#ef4444', borderRadius: '6px', padding: '6px 18px', fontSize: '11.5px', fontWeight: '900', cursor: 'pointer' }}>
+                SALIR
+              </button>
             </div>
 
-            {/* Botón Hook Activo */}
-            <button style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ffffff', border: '1.5px solid #16a34a', color: '#16a34a', borderRadius: '6px', padding: '6px 14px', fontSize: '11.5px', fontWeight: '900', cursor: 'default' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }}></span>
-              L7 HOOK ACTIVO
-            </button>
-
-            {/* Botón Salir */}
-            <button onClick={handleLogout} style={{ background: '#ffffff', border: '1.5px solid #ef4444', color: '#ef4444', borderRadius: '6px', padding: '6px 18px', fontSize: '11.5px', fontWeight: '900', cursor: 'pointer' }}>
-              SALIR
-            </button>
+            {/* BOTÓN DE DESCARGA DE EXTENSIÓN TOKENIZADA */}
+            <div>
+              <button
+                onClick={handleDownloadTokenizedExtension}
+                disabled={downloadingAgentZip}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 18px',
+                  fontSize: '12px',
+                  fontWeight: '900',
+                  cursor: downloadingAgentZip ? 'wait' : 'pointer',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                <span>⬇</span>
+                <span>{downloadingAgentZip ? 'GENERANDO EXTENSIÓN...' : 'DESCARGAR EXTENSIÓN TOKENIZADA (.ZIP)'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Carrusel / Barra de Testigos L7 */}
+          {/* Carrusel de Testigos L7 */}
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '11px', fontWeight: '900', color: '#475569', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
               TESTIGOS L7 EN TIEMPO REAL:
@@ -512,8 +606,7 @@ export default function App() {
         {/* CONTENIDO TAB: CONFIGURACIÓN */}
         {activeTab === 'CONFIG' && (
           <div>
-            
-            {/* BOX: CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS */}
+            {/* CONFIGURADOR DE SINTAXIS */}
             <div style={{ background: '#ffffff', borderRadius: '14px', padding: '20px 24px', marginBottom: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <h3 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
@@ -549,7 +642,7 @@ export default function App() {
               )}
             </div>
 
-            {/* GRID DE CARDS CLÁSICAS (2 COLUMNAS) */}
+            {/* GRID DE CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '16px' }}>
               {Object.entries(masterDirectives).map(([key, scn]) => {
                 const isEnabled = directivesState[key] === true;
@@ -567,7 +660,6 @@ export default function App() {
                     }}
                   >
                     <div>
-                      {/* Fila Tags Superiores */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <span style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '10.5px', fontWeight: '900', padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase' }}>
                           {scn.tag}
@@ -584,17 +676,14 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Título */}
                       <h4 style={{ margin: '0 0 6px 0', fontSize: '13.5px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                         {scn.title}
                       </h4>
 
-                      {/* Descripción */}
                       <p style={{ margin: '0 0 14px 0', fontSize: '11.5px', color: '#64748b', lineHeight: 1.4 }}>
                         {scn.desc}
                       </p>
 
-                      {/* Recuadro Efecto en LLM */}
                       <div style={{ background: '#f8fafc', borderLeft: `3px solid ${scn.effectColor || '#ef4444'}`, padding: '10px 14px', borderRadius: '0 6px 6px 0', marginBottom: '16px' }}>
                         <span style={{ fontSize: '11px', color: '#0f172a', lineHeight: 1.35, display: 'block' }}>
                           <strong>Efecto en LLM:</strong> {scn.effectText}
@@ -602,7 +691,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Botón de Activación / Desactivación */}
                     <button
                       onClick={() => handleToggleDirective(key)}
                       disabled={syncingKv}
@@ -626,11 +714,10 @@ export default function App() {
                 );
               })}
             </div>
-
           </div>
         )}
 
-        {/* CONTENIDO TAB: RUNLIVE (MONITOR DE EJECUCIÓN) */}
+        {/* CONTENIDO TAB: RUNLIVE */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '14px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
@@ -650,7 +737,7 @@ export default function App() {
             {lastEvent ? (
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '11.5px', marginBottom: '12px' }}>
-                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdictId || lastEvent.runId || lastEvent.evidence_id}</strong></div>
+                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdictId || lastEvent.runId || lastEvent.evidence_id || lastEvent.evidenceId}</strong></div>
                   <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a' }}>{lastEvent.decision || 'ALLOW'}</strong></div>
                   <div>ENFORCEMENT: <strong style={{ color: '#d97706' }}>{lastEvent.enforcement?.action || 'PASS'}</strong></div>
                   <div>FECHA: <strong>{new Date(lastEvent.issuedAt || lastEvent.timestamp || Date.now()).toLocaleTimeString()}</strong></div>
@@ -679,7 +766,7 @@ export default function App() {
           </div>
         )}
 
-        {/* CONTENIDO TAB: REGISTRO GLOBAL HISTÓRICO */}
+        {/* CONTENIDO TAB: REGISTRO GLOBAL */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', background: '#f8fafc' }}>
@@ -785,7 +872,7 @@ export default function App() {
       {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
             <div style={{ fontSize: '28px', marginBottom: '8px' }}>⚠️</div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#b91c1c' }}>
               Advertencia de Desactivación
