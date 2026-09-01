@@ -1,4 +1,5 @@
 /* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0) */
+/* Protocol Version: 10.0.4 · Bóveda KL Tamper-Evident L7 Gate */
 (function() {
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -10,7 +11,8 @@
     jailbreak: /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security|bypass rules)/i,
     voice_clone: /(?:clonar voz|clonaci[oó]n de voz|avatar sint[eé]tico|suplantar identidad|deepfake voz|audio sint[eé]tico sin consentimiento)/i,
     invoices: /(?:FAC|INV|EXP)-[A-Z0-9-]{6,16}/i,
-    unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i
+    unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i,
+    tool_mutation: /(?:delete_customer_account|delete_database|drop_table|truncate_table|execute_raw_sql|exec_shell)/i
   };
 
   function getSettings() {
@@ -24,6 +26,9 @@
           razonamiento_activo_l7: parsed.razonamiento_activo_l7 !== false,
           deepfake_fake_disprover: parsed.deepfake_fake_disprover !== false,
           subvenciones_requisitos_infranqueables: parsed.subvenciones_requisitos_infranqueables !== false,
+          banca_dora_pci: parsed.banca_dora_pci !== false,
+          sanidad_historia_clinica: parsed.sanidad_historia_clinica !== false,
+          orquestacion_workflows_guard: parsed.orquestacion_workflows_guard !== false,
           subOptions: parsed.subOptions || {}
         };
       }
@@ -35,6 +40,9 @@
       razonamiento_activo_l7: true,
       deepfake_fake_disprover: true,
       subvenciones_requisitos_infranqueables: true,
+      banca_dora_pci: true,
+      sanidad_historia_clinica: true,
+      orquestacion_workflows_guard: true,
       subOptions: {}
     };
   }
@@ -158,6 +166,7 @@
       }
       if (json.prompt) return json.prompt;
       if (json.input) return json.input;
+      if (json.action && json.resource) return `${json.action}:${json.resource}`;
     } catch {}
 
     return "";
@@ -193,14 +202,43 @@
     const subOpts = settings.subOptions;
     const timestampIso = new Date().toISOString();
     const runRandomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const verdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    // 01. CAPA: SUBVENCIONES Y FONDOS PÚBLICOS
+    // 01. CAPA: ORQUESTADORES & WORKFLOWS GUARD (TOOL CALLING)
+    if (settings.orquestacion_workflows_guard && DLP.tool_mutation.test(cleanPrompt)) {
+      return {
+        verdict_schema: "SGP_1.0",
+        verdictId: verdictId,
+        verdict_id: verdictId,
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
+        executionPermit: null,
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy_id: "POL-CRM-LEAST-PRIV-03",
+        policy_version: "1.4.0",
+        risk_level: "CRITICAL",
+        rules_matched: ["RULE_PRIVILEGED_MUTATION_DENIED"],
+        reason: "El perfil de privilegios mínimos deniega mutaciones destructivas o comandos directos sin permiso.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: cleanPrompt,
+        evidence_id: `EV-TOOL-${runRandomId}`,
+        cryptoSeal: seal,
+        parentHash: CANONICAL_PARENT_HASH,
+        timestamp: timestampIso
+      };
+    }
+
+    // 02. CAPA: SUBVENCIONES Y FONDOS PÚBLICOS
     if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
       const match = cleanPrompt.match(DLP.invoices)[0];
       return {
         verdict_schema: "SGP_1.0",
+        verdictId: verdictId,
+        verdict_id: verdictId,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
+        executionPermit: null,
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-GRANTS-DNSH-05",
@@ -217,12 +255,15 @@
       };
     }
 
-    // 02. CAPA: PROTECCIÓN DEL HONOR & DEEPFAKES (LO 1/1982)
+    // 03. CAPA: PROTECCIÓN DEL HONOR & DEEPFAKES (LO 1/1982)
     if (settings.deepfake_fake_disprover && (DLP.voice_clone.test(cleanPrompt) || DLP.unsupported.test(cleanPrompt))) {
       return {
         verdict_schema: "SGP_1.0",
+        verdictId: verdictId,
+        verdict_id: verdictId,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
+        executionPermit: null,
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-HONOR-SYNTHETIC-03",
@@ -239,12 +280,15 @@
       };
     }
 
-    // 03. CAPA: ROBUSTEZ L7 & ANTI-JAILBREAK (AI ACT ART. 15)
+    // 04. CAPA: ROBUSTEZ L7 & ANTI-JAILBREAK (AI ACT ART. 15)
     if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
       return {
         verdict_schema: "SGP_1.0",
+        verdictId: verdictId,
+        verdict_id: verdictId,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
+        executionPermit: null,
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-AI-ACT-ROBUSTNESS-15",
@@ -261,12 +305,12 @@
       };
     }
 
-    // 04. CAPA: PRIVACIDAD, PII & SECRETO EMPRESARIAL (RGPD ART. 9)
-    if (settings.cumplimiento_corporativo_integral) {
+    // 05. CAPA: PRIVACIDAD, PII, SALUD & BANCA (DORA / PCI-DSS / RGPD ART. 9)
+    if (settings.cumplimiento_corporativo_integral || settings.banca_dora_pci || settings.sanidad_historia_clinica) {
       const isDni = subOpts.dlp_dni_nie !== false && (DLP.dni.test(cleanPrompt) || DLP.dni.test(str));
-      const isIban = subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
-      const isCard = subOpts.dlp_iban_cards !== false && (DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, "")));
-      const isHealth = subOpts.dlp_health_art9 !== false && (DLP.health.test(cleanPrompt) || DLP.health.test(str));
+      const isIban = settings.banca_dora_pci && subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
+      const isCard = settings.banca_dora_pci && subOpts.dlp_iban_cards !== false && (DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, "")));
+      const isHealth = settings.sanidad_historia_clinica && subOpts.dlp_health_art9 !== false && (DLP.health.test(cleanPrompt) || DLP.health.test(str));
 
       if (isDni || isIban || isCard || isHealth) {
         let policyId = "POL-RGPD-PII-01";
@@ -289,8 +333,11 @@
 
         return {
           verdict_schema: "SGP_1.0",
+          verdictId: verdictId,
+          verdict_id: verdictId,
           decision: "DENY",
           enforcement: { action: "BLOCK" },
+          executionPermit: null,
           validity_state: "VALID",
           system_id: "L7-AGENT-SENSOR",
           policy_id: policyId,
@@ -308,13 +355,16 @@
       }
     }
 
-    // 05. SI NO HAY INFRACCIÓN: VEREDICTO ALLOW
+    // 06. SI NO HAY INFRACCIÓN: VEREDICTO ALLOW
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
       verdict_schema: "SGP_1.0",
+      verdictId: verdictId,
+      verdict_id: verdictId,
       decision: "ALLOW",
       enforcement: { action: "PASS" },
+      executionPermit: { status: "ISSUED" },
       validity_state: "VALID",
       system_id: "L7-AGENT-SENSOR",
       policy_id: "POL-CORP-GOVERNANCE-01",
@@ -364,6 +414,7 @@
             decision: "DENY",
             enforcement: { action: "BLOCK" },
             error: "SAARE Judge: Bloqueo Ex-Ante en Runtime",
+            verdictId: verdict.verdictId,
             policy_id: verdict.policy_id,
             reason: verdict.reason,
             evidence_id: verdict.evidence_id,

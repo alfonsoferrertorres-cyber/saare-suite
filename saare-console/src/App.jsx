@@ -5,7 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferr
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
-// Resolución dinámica sin usuarios fijos
+// Resolución de sesión vinculada a la Bóveda KL
 function resolveInitialUser() {
   if (typeof window === "undefined") return null;
 
@@ -14,15 +14,16 @@ function resolveInitialUser() {
   const emailParam = urlParams.get('email') || urlParams.get('user');
   const tenantParam = urlParams.get('tenant');
 
-  // Si entra con parámetros de sesión válidos
+  // Si entra con parámetros de sesión válidos por URL
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || emailParam.split('@')[0],
+      tenantName: tenantParam ? tenantParam : emailParam.split('@')[0].toUpperCase(),
       tenantId: `tenant_${emailParam.replace(/[^a-zA-Z0-9]/g, '_')}`,
       apiKey: tokenParam,
-      role: urlParams.get('role') || 'CISO / Global Admin',
-      licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
+      role: urlParams.get('role') ? urlParams.get('role') : 'CISO / Global Admin',
+      licenseType: 'ENTERPRISE_EXECUTION_RUNTIME',
+      klVaultStatus: 'SECURED_EPHEMERAL_LINKED'
     };
     localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
     localStorage.setItem('saare_suite_user', JSON.stringify(fromUrlUser));
@@ -31,19 +32,12 @@ function resolveInitialUser() {
     return fromUrlUser;
   }
 
-  // Si ya tiene sesión activa guardada
-  const consoleSaved = localStorage.getItem('saare_user');
-  const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
+  // Si ya tiene sesión activa guardada en la Bóveda KL
+  const vaultSaved = localStorage.getItem('saare_vault_session') || localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_user');
 
-  if (consoleSaved) {
+  if (vaultSaved) {
     try {
-      const parsed = JSON.parse(consoleSaved);
-      if (parsed?.email && parsed?.apiKey) return parsed;
-    } catch {}
-  }
-  if (suiteSaved) {
-    try {
-      const parsed = JSON.parse(suiteSaved);
+      const parsed = JSON.parse(vaultSaved);
       if (parsed?.email && parsed?.apiKey) {
         localStorage.setItem('saare_user', JSON.stringify(parsed));
         return parsed;
@@ -51,7 +45,6 @@ function resolveInitialUser() {
     } catch {}
   }
 
-  // Si no hay sesión, devuelve null para exigir Login
   return null;
 }
 
@@ -79,7 +72,7 @@ export default function App() {
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
 
-  // Catálogo canónico de directivas
+  // Catálogo canónico de directivas SGP 1.0
   const masterDirectives = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -200,8 +193,8 @@ export default function App() {
 
       if (resRuns && resRuns.ok) {
         const dataRuns = await resRuns.json();
-        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
-        runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
+        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events ? dataRuns.events : (dataRuns.logs ? dataRuns.logs : []));
+        runsList.sort((a, b) => new Date(b.issuedAt ? b.issuedAt : (b.timestamp ? b.timestamp : 0)) - new Date(a.issuedAt ? a.issuedAt : (a.timestamp ? a.timestamp : 0)));
         setEvents(runsList);
         if (runsList.length > 0) setLastEvent(runsList[0]);
         setConnected(true);
@@ -212,7 +205,7 @@ export default function App() {
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
 
-      setKvStatus({ online: true, latencyMs: elapsed || 35, lastSync: new Date().toLocaleTimeString() });
+      setKvStatus({ online: true, latencyMs: elapsed ? elapsed : 35, lastSync: new Date().toLocaleTimeString() });
     } catch {
       setConnected(false);
       setKvStatus(prev => ({ ...prev, online: false }));
@@ -242,22 +235,23 @@ export default function App() {
 
       if (res.ok && data.status === 'SUCCESS') {
         const loggedUser = {
-          email: data.user?.email || emailInput,
-          tenantName: data.user?.tenantName || (emailInput.split('@')[0].toUpperCase()),
-          tenantId: data.user?.tenantId || `tenant_${emailInput.replace(/[^a-zA-Z0-9]/g, '_')}`,
-          apiKey: data.token || data.user?.apiKey || data.user?.token || "sk_saare_live_session_token",
-          role: data.user?.role || "CISO / Global Admin",
-          licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
+          email: data.user?.email ? data.user.email : emailInput,
+          tenantName: data.user?.tenantName ? data.user.tenantName : (emailInput.split('@')[0].toUpperCase()),
+          tenantId: data.user?.tenantId ? data.user.tenantId : `tenant_${emailInput.replace(/[^a-zA-Z0-9]/g, '_')}`,
+          apiKey: data.token ? data.token : (data.user?.apiKey ? data.user.apiKey : "sk_saare_live_session_token"),
+          role: data.user?.role ? data.user.role : "CISO / Global Admin",
+          licenseType: data.user?.licenseType ? data.user.licenseType : "ENTERPRISE_EXECUTION_RUNTIME",
+          klVaultStatus: "SECURED_EPHEMERAL_LINKED"
         };
         localStorage.setItem('saare_user', JSON.stringify(loggedUser));
         localStorage.setItem('saare_suite_user', JSON.stringify(loggedUser));
         localStorage.setItem('saare_vault_session', JSON.stringify(loggedUser));
         setSessionUser(loggedUser);
       } else {
-        setLoginError(data.error || "Credenciales incorrectas.");
+        setLoginError(data.error ? data.error : "Credenciales incorrectas en la Bóveda KL.");
       }
     } catch {
-      setLoginError("Error de comunicación con el servicio.");
+      setLoginError("Error de comunicación con la Bóveda KL.");
     } finally {
       setLoadingLogin(false);
     }
@@ -332,7 +326,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${eventLog.verdictId || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
+      a.download = `proof-bundle-${eventLog.verdictId ? eventLog.verdictId : (eventLog.evidence_id ? eventLog.evidence_id : 'EV')}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -344,7 +338,7 @@ export default function App() {
     }
   };
 
-  // DESCARGA DINÁMICA DE 6 ELEMENTOS: inyecta credenciales reales en storage_managed.json
+  // DESCARGA DINÁMICA DE 6 ELEMENTOS: Vincula directamente el bootstrap token en storage_managed.json
   const handleDownloadTokenizedExtension = async () => {
     try {
       if (!sessionUser?.email || !sessionUser?.apiKey) {
@@ -359,20 +353,21 @@ export default function App() {
       const zipArrayBuffer = await response.arrayBuffer();
       const zip = await JSZip.loadAsync(zipArrayBuffer);
 
-      // Inyección en storage_managed.json con los datos del usuario autenticado
+      // Inyección en storage_managed.json con los datos de la Bóveda KL
       const managedStorageConfig = {
         saare_bootstrap_token: { Value: sessionUser.apiKey },
         saare_tenant_domain: { Value: sessionUser.tenantName },
         saare_user_email: { Value: sessionUser.email },
-        saare_license_type: { Value: "ENTERPRISE_EXECUTION_RUNTIME" },
+        saare_license_type: { Value: sessionUser.licenseType ? sessionUser.licenseType : "ENTERPRISE_EXECUTION_RUNTIME" },
         governance_protocol: { Value: "SGP_1.0" },
         enforcement_mode: { Value: "FAIL_CLOSED" },
+        boveda_kl_status: { Value: "ENFORCED" },
         endpoint: { Value: API_BASE }
       };
 
       zip.file("storage_managed.json", JSON.stringify(managedStorageConfig, null, 2));
 
-      // Limpiar archivos sobrantes para conservar exactamente los 6 archivos originales
+      // Limpiar archivos redundantes para preservar exactamente la estructura limpia de 6 archivos
       zip.remove("popup.html");
       zip.remove("popup.js");
       zip.remove("saare_token.json");
@@ -409,24 +404,26 @@ export default function App() {
   ];
 
   const filteredEvents = events.filter(ev => {
-    const scenario = ev.policy?.id || ev.policy_id || ev.scenario_id || '';
+    const scenario = ev.policy?.id ? ev.policy.id : '';
     const matchesWitness = activeWitnessFilter === 'TODOS' || scenario.toLowerCase().includes(activeWitnessFilter.toLowerCase());
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
     return matchesWitness && matchesSearch;
   });
 
-  // Si no hay usuario autenticado, renderizar Login
   if (!sessionUser) {
     return (
       <div style={{ minHeight: '100vh', background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ maxWidth: '400px', width: '100%', background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
           <h1 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', textAlign: 'center', margin: '0 0 16px 0' }}>SAARE GRC Console</h1>
+          <div style={{ fontSize: '11px', textAlign: 'center', color: '#64748b', marginBottom: '16px', fontWeight: 'bold' }}>
+            ACCESO PROTEGIDO · BÓVEDA KL SGP 1.0
+          </div>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Email Corporativo" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
             <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
             {loginError && <div style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center' }}>{loginError}</div>}
             <button type="submit" disabled={loadingLogin} style={{ padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {loadingLogin ? 'Accediendo...' : 'Iniciar Sesión'}
+              {loadingLogin ? 'Validando en Bóveda KL...' : 'Iniciar Sesión'}
             </button>
           </form>
         </div>
@@ -451,7 +448,7 @@ export default function App() {
 
       <div style={{ maxWidth: '1280px', margin: '16px auto 0 auto', padding: '0 16px' }}>
         
-        {/* 2. Barra de control superior con la sesión real */}
+        {/* 2. Barra de control superior con la sesión real y Bóveda KL */}
         <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
           
           <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', marginBottom: '4px' }}>
@@ -464,10 +461,10 @@ export default function App() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {/* Badge KV Vault */}
+              {/* Badge Bóveda KL / KV Vault */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '5px 14px', fontSize: '11px', color: '#475569', background: '#f8fafc' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16a34a' }}></span>
-                <span>KV VAULT: <strong style={{ color: '#16a34a' }}>EN VIVO ({kvStatus.latencyMs} ms)</strong></span>
+                <span>BÓVEDA KL: <strong style={{ color: '#16a34a' }}>EN VIVO ({kvStatus.latencyMs} ms)</strong></span>
                 <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
               </div>
 
@@ -483,7 +480,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Descarga con token dinámico */}
+            {/* Descarga de Extensión Tokenizada */}
             <div>
               <button
                 onClick={handleDownloadTokenizedExtension}
@@ -679,7 +676,7 @@ export default function App() {
                         {scn.desc}
                       </p>
 
-                      <div style={{ background: '#f8fafc', borderLeft: `3px solid ${scn.effectColor || '#ef4444'}`, padding: '10px 14px', borderRadius: '0 6px 6px 0', marginBottom: '16px' }}>
+                      <div style={{ background: '#f8fafc', borderLeft: `3px solid ${scn.effectColor ? scn.effectColor : '#ef4444'}`, padding: '10px 14px', borderRadius: '0 6px 6px 0', marginBottom: '16px' }}>
                         <span style={{ fontSize: '11px', color: '#0f172a', lineHeight: 1.35, display: 'block' }}>
                           <strong>Efecto en LLM:</strong> {scn.effectText}
                         </span>
@@ -732,15 +729,15 @@ export default function App() {
             {lastEvent ? (
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '11.5px', marginBottom: '12px' }}>
-                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdictId || lastEvent.runId || lastEvent.evidence_id || lastEvent.evidenceId}</strong></div>
-                  <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a' }}>{lastEvent.decision || 'ALLOW'}</strong></div>
-                  <div>ENFORCEMENT: <strong style={{ color: '#d97706' }}>{lastEvent.enforcement?.action || 'PASS'}</strong></div>
-                  <div>FECHA: <strong>{new Date(lastEvent.issuedAt || lastEvent.timestamp || Date.now()).toLocaleTimeString()}</strong></div>
+                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdictId ? lastEvent.verdictId : (lastEvent.evidence_id ? lastEvent.evidence_id : 'EV-ACT')}</strong></div>
+                  <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a' }}>{lastEvent.decision ? lastEvent.decision : 'ALLOW'}</strong></div>
+                  <div>ENFORCEMENT: <strong style={{ color: '#d97706' }}>{lastEvent.enforcement?.action ? lastEvent.enforcement.action : 'PASS'}</strong></div>
+                  <div>FECHA: <strong>{new Date(lastEvent.issuedAt ? lastEvent.issuedAt : (lastEvent.timestamp ? lastEvent.timestamp : Date.now())).toLocaleTimeString()}</strong></div>
                 </div>
 
                 <div style={{ background: '#ffffff', padding: '12px', borderLeft: `3px solid ${(lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a'}`, marginBottom: '12px', fontSize: '12px' }}>
                   <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>ACCIONES EVALUADAS:</div>
-                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || JSON.stringify(lastEvent.action || 'Sin contenido')}"
+                  "{lastEvent.promptInput ? lastEvent.promptInput : (lastEvent.cleanPrompt ? lastEvent.cleanPrompt : (lastEvent.payload ? lastEvent.payload : 'Acción registrada'))}"
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
@@ -797,20 +794,20 @@ export default function App() {
                     </tr>
                   ) : (
                     filteredEvents.map((ev, i) => {
-                      const id = ev.verdictId || ev.evidence_id || ev.runId || `VRD-${i + 1}`;
+                      const id = ev.verdictId ? ev.verdictId : (ev.evidence_id ? ev.evidence_id : `VRD-${i + 1}`);
                       const isDenied = ev.decision === 'DENY' || ev.decision === 'BLOCK';
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                           <td style={{ padding: '10px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                            {new Date(ev.issuedAt || ev.timestamp || Date.now()).toLocaleTimeString()}
+                            {new Date(ev.issuedAt ? ev.issuedAt : (ev.timestamp ? ev.timestamp : Date.now())).toLocaleTimeString()}
                           </td>
                           <td style={{ padding: '10px 14px', fontWeight: 'bold', color: '#0284c7', fontFamily: 'monospace' }}>{id}</td>
-                          <td style={{ padding: '10px 14px' }}>{ev.policy?.id || ev.policy_id || 'POL-CORP-GOVERNANCE-01'}</td>
+                          <td style={{ padding: '10px 14px' }}>{ev.policy?.id ? ev.policy.id : 'POL-CORP-GOVERNANCE-01'}</td>
                           <td style={{ padding: '10px 14px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            "{ev.promptInput || ev.cleanPrompt || ev.payload || JSON.stringify(ev.action || 'Sin contenido')}"
+                            "{ev.promptInput ? ev.promptInput : (ev.cleanPrompt ? ev.cleanPrompt : (ev.payload ? ev.payload : 'Acción evaluada'))}"
                           </td>
                           <td style={{ padding: '10px 14px', fontWeight: 'bold', color: isDenied ? '#ef4444' : '#16a34a' }}>
-                            {ev.decision || 'ALLOW'}
+                            {ev.decision ? ev.decision : 'ALLOW'}
                           </td>
                           <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                             <button onClick={() => setSelectedJson(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
