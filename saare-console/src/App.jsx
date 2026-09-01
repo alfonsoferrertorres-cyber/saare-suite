@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import JSZip from 'jszip';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
@@ -15,7 +16,7 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'Gabinete Jurídico y Pericial MS3V',
+      tenantName: tenantParam || 'SAARE Enterprise Node',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
       role: urlParams.get('role') || 'AUDITOR PERICIAL',
@@ -42,8 +43,8 @@ function resolveInitialUser() {
     } catch {}
   }
   return {
-    email: "auditor@ms3v.es",
-    tenantName: "Gabinete Jurídico y Pericial MS3V",
+    email: "auditor@empresa.es",
+    tenantName: "SAARE Enterprise Organization",
     role: "AUDITOR PERICIAL",
     apiKey: "sk_saare_live_master_kv_session",
     licenseType: "ASIENTO_AUDITOR_ACTIVO"
@@ -57,13 +58,14 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('CONFIG');
+  const [activeTab, setActiveTab] = useState('RUNLIVE');
   const [events, setEvents] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const [connected, setConnected] = useState(false);
   const [selectedJson, setSelectedJson] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [exportingBundle, setExportingBundle] = useState(false);
+  const [downloadingAgentZip, setDownloadingAgentZip] = useState(false);
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
@@ -73,15 +75,15 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS MAESTRAS (PREVENT -> ENFORCE -> VERIFY -> PROVE -> JUSTIFY)
+  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS MAESTRAS (SGP 1.0)
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
-      name: "01. PREVENT: CUMPLIMIENTO CORPORATIVO & PII (ROL DEFR)",
-      category: "01 / PREVENT (ROL DEFR)",
+      name: "01. PREVENT: PRIVACIDAD & AISLAMIENTO DE DATOS PII (L7)",
+      category: "01 / PRIVACY (RAM ISOLATION)",
       badgeColor: "#0284c7",
-      desc: "Protección perimetral en memoria RAM para el empleado auditado como primer interviniente (DEFR - ISO 27037). Bloquea y redacta DNI, NIE, IBAN, nóminas, tarjetas y datos médicos (RGPD Art. 9) con purga atómica SYS_madvise.",
-      llmEffect: "Redacta o aborta en memoria volátil en 1.16 ms antes de que los datos sensibles alcancen al proveedor LLM.",
-      norma: "ISO/IEC 27037 Fases 1 & 2 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA Capa 7",
+      desc: "Aislamiento e inspección determinista en memoria volátil (RAM) con purga SYS_madvise. Bloquea y redacta DNI, NIE, IBAN, nóminas, tarjetas y datos médicos (RGPD Art. 9).",
+      llmEffect: "Veredicto BLOCK o REDACT en memoria volátil en <0.017 ms antes de que los datos alcancen al proveedor LLM.",
+      norma: "Workflow aligned with ISO/IEC 27037:2012 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA Capa 7",
       icon: "🛡️",
       monetization: "Licencia OEM / Seat ARR",
       options: [
@@ -92,12 +94,12 @@ export default function App() {
       ]
     },
     razonamiento_activo_l7: {
-      name: "02. ENFORCE: RAZONAMIENTO ACTIVO & TESTIGO DEL CEREBRO",
-      category: "02 / ENFORCE (DEFENSA ACTIVA)",
+      name: "02. ENFORCE: ROBUSTEZ L7 & TESTIGO DEL CEREBRO",
+      category: "02 / SECURITY (ACTIVE DEFENSE)",
       badgeColor: "#16a34a",
-      desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica el comando léxico [SAARE_ACTIVE_SHIELD: ENFORCE] e inyecta el testigo 🧠 L7 CEREBRO en la respuesta del modelo.",
-      llmEffect: "Inserta la firma 🧠 L7 CEREBRO WITNESS al final de la inferencia y mide el ahorro de pipeline en cada ejecución.",
-      norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · ISO 27001 Control A.8.7",
+      desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas y prompt leaking). Aplica [SAARE_ACTIVE_SHIELD: ENFORCE] e inyecta el testigo 🧠 L7 CEREBRO.",
+      llmEffect: "Inserta la firma 🧠 L7 CEREBRO WITNESS en inferencias válidas y mide el ahorro de pipeline computacional.",
+      norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · Controls mapped to ISO/IEC 42001",
       icon: "⚡",
       monetization: "Edge Pay-as-you-go",
       options: [
@@ -108,12 +110,12 @@ export default function App() {
       ]
     },
     deepfake_fake_disprover: {
-      name: "03. VERIFY: INTEGRIDAD FORENSE & FAKE DISPROVER",
-      category: "03 / VERIFY (DETECCIÓN)",
+      name: "03. VERIFY: VERACIDAD, FACTUALIDAD & ANTI-DEEPFAKE",
+      category: "03 / VERIFICATION (DETECCIÓN)",
       badgeColor: "#ea580c",
-      desc: "Inspección causal estricta (Corpus Grounding / No-Unsupported-Claims) frente a alucinaciones, contratos con cláusulas inventadas (LegalTech), falsificación de atestados de siniestros (Insurtech) o deepfakes documentales.",
-      llmEffect: "Fuerza estado RECHAZADO determinista si la inferencia genera aserciones no sustentadas en la evidencia base.",
-      norma: "ISO/IEC 42001 Control B.6.3 · Ley 50/1980 Contrato de Seguro · Cadena Custodia Digital",
+      desc: "Inspección causal estricta (Corpus Grounding / No-Unsupported-Claims) frente a alucinaciones críticas, contratos sin sustento y clonación sintética de voz/imagen sin consentimiento.",
+      llmEffect: "Emite veredicto BLOCK determinista si la inferencia genera aserciones no sustentadas o suplanta identidades.",
+      norma: "Ley Orgánica del Honor 2026 · AI Act Art. 13 · Controls mapped to ISO/IEC 42001",
       icon: "🔍",
       monetization: "Tier SaaS / Fee Dossier",
       options: [
@@ -124,26 +126,26 @@ export default function App() {
       ]
     },
     auditoria_dictamen_normativo: {
-      name: "04. PROVE: BÓVEDA PERICIAL & DICTAMEN GRC (ROL DES)",
-      category: "04 / PROVE (ROL DES)",
+      name: "04. PROVE: EVIDENCE CAPTURE & PROOF BUNDLE (ROL DES)",
+      category: "04 / EVIDENCE (DECISION RECORD)",
       badgeColor: "#9333ea",
-      desc: "Extracción y custodia de pruebas periciales para consultoras y peritos judiciales (DES - ISO 27037). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo cualificados RFC 3161 eIDAS.",
-      llmEffect: "Emite el certificado de evidencia con validez probatoria plena ante comités de auditoría, la AESIA o tribunales.",
-      norma: "ISO/IEC 27037 Fases 3 & 4 · UNE-ISO/IEC 42001:2023 · EU AI Act Art. 12 · RFC 3161",
+      desc: "Generación de expedientes probatorios inmutables (SAARE VERDICT™). Genera Proof Bundles con Hashes SHA-256 pre/post, firma Ed25519 y sellos de tiempo RFC 3161.",
+      llmEffect: "Emite SAARE VERDICT estructurado con trazabilidad y anclaje probatorio ante comités y autoridades.",
+      norma: "Workflow aligned with ISO/IEC 27037:2012 · EU AI Act Art. 12 · RFC 3161 Timestamping",
       icon: "⚖️",
       monetization: "Asiento Auditor (149 €/mes)",
       options: [
-        { key: "rfc3161_qualified_tsa", label: "Sello de Tiempo Cualificado eIDAS / RFC 3161", default: true },
+        { key: "rfc3161_qualified_tsa", label: "Estampado Temporal RFC 3161", default: true },
         { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
         { key: "merkle_root_anchoring", label: "Inclusión en Árbol de Transparencia Merkle", default: true },
         { key: "safe_creative_anchor", label: "Anclaje Registral Safe Creative Nº 2607076315021", default: true }
       ]
     },
     subvenciones_requisitos_infranqueables: {
-      name: "05. JUSTIFY: FONDOS PÚBLICOS & SUBVENCIONES",
-      category: "05 / JUSTIFY (FONDOS & PRTR)",
+      name: "05. JUSTIFY: TRAZABILIDAD FIDUCIARIA & FONDOS PÚBLICOS",
+      category: "05 / TRACEABILITY (FONDOS & PRTR)",
       badgeColor: "#ca8a04",
-      desc: "Control perimetral infranqueable de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas para la IGAE y OLAF (NextGenEU, PRTR, Kit Digital, CDTI, 2 CFR 200).",
+      desc: "Control perimetral de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas para la IGAE y OLAF (PRTR, NextGenEU).",
       llmEffect: "Bloquea facturas o partidas presupuestarias duplicadas garantizando el principio de no solapamiento.",
       norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · 2 CFR 200 (USA) · Horizon Europe",
       icon: "🏛️",
@@ -166,7 +168,7 @@ export default function App() {
     subvenciones_requisitos_infranqueables: true
   });
 
-  // SUB-OPCIONES ACTIVAS DE CADA BÓVEDA
+  // SUB-OPCIONES ACTIVAS
   const [vaultSubOptions, setVaultSubOptions] = useState({
     dlp_dni_nie: true,
     dlp_iban_cards: true,
@@ -397,7 +399,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${eventLog.runId || eventLog.evidenceId || 'EV'}.json`;
+      a.download = `proof-bundle-${eventLog.verdict_id || eventLog.runId || eventLog.evidenceId || 'EV'}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -409,8 +411,58 @@ export default function App() {
     }
   };
 
+  // Descarga del paquete de agente 100% tokenizado y aprovisionado
+  const handleDownloadTokenizedAgent = async () => {
+    try {
+      setDownloadingAgentZip(true);
+      const response = await fetch('/saare-extension.zip');
+      if (!response.ok) throw new Error("No se pudo obtener el paquete base del agente.");
+
+      const zipArrayBuffer = await response.arrayBuffer();
+      const zip = await JSZip.loadAsync(zipArrayBuffer);
+
+      const tTenant = sessionUser?.tenantName || "SAARE_ENTERPRISE_ORG";
+      const tEmail = sessionUser?.email || "auditor@saare.es";
+      const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_live_sgp10_" + Math.random().toString(36).substring(2, 12);
+
+      const tokenizedManagedConfig = {
+        "saare_api_key": { "Value": tToken },
+        "saare_tenant_domain": { "Value": tTenant },
+        "saare_user_email": { "Value": tEmail },
+        "saare_license_type": { "Value": "PLAN_TOKENIZADO_ENTERPRISE" },
+        "governance_protocol": { "Value": "SGP_1.0" }
+      };
+
+      const runtimeConfig = {
+        tenantName: tTenant,
+        email: tEmail,
+        apiKey: tToken,
+        protocol: "SGP_1.0",
+        enforcementMode: "ADJUDICATE_AND_ATTEST",
+        provisionedAt: new Date().toISOString()
+      };
+
+      zip.file("storage_managed.json", JSON.stringify(tokenizedManagedConfig, null, 2));
+      zip.file("saare_config.json", JSON.stringify(runtimeConfig, null, 2));
+
+      const customizedBlob = await zip.generateAsync({ type: "blob" });
+      const dl = document.createElement("a");
+      dl.href = URL.createObjectURL(customizedBlob);
+      dl.download = `saare-nodo-tokenizado-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
+      document.body.appendChild(dl);
+      dl.click();
+      document.body.removeChild(dl);
+      URL.revokeObjectURL(dl.href);
+    } catch (err) {
+      alert("Error al empaquetar agente tokenizado: " + err.message);
+    } finally {
+      setDownloadingAgentZip(false);
+    }
+  };
+
   const filteredEvents = events.filter(ev => {
-    const matchesScenario = activeScenarioFilter === 'ALL' || (ev.scenario_id && ev.scenario_id.toLowerCase().includes(activeScenarioFilter.toLowerCase()));
+    const scenario = ev.policy_id || ev.scenario_id || '';
+    const matchesScenario = activeScenarioFilter === 'ALL' || scenario.toLowerCase().includes(activeScenarioFilter.toLowerCase());
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
     return matchesScenario && matchesSearch;
   });
@@ -421,15 +473,15 @@ export default function App() {
         <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 6px 0' }}>S.A.A.R.E. CONSOLE GATEWAY</h1>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Acceso a Consola Forense GRC & Auditoría L7</p>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 6px 0' }}>SAARE GOVERNANCE CONSOLE</h1>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Acceso a Consola de Veredictos & Adjudicación L7 (SGP 1.0)</p>
           </div>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Correo Corporativo (CISO / Auditor)" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
             <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña de Acceso" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
             {loginError && <div style={{ padding: '12px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', textAlign: 'center', fontSize: '0.85rem' }}>{loginError}</div>}
             <button type="submit" disabled={loadingLogin} style={{ padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: loadingLogin ? 'not-allowed' : 'pointer' }}>
-              {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Bóveda'}
+              {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Decision Layer'}
             </button>
           </form>
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
@@ -445,44 +497,52 @@ export default function App() {
       
       {/* CABECERA CORPORATIVA */}
       <header style={{ background: '#ffffff', borderBottom: '2px solid #94a3b8', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <img src="/Cabecera saare-console.jfif" alt="SAARE" style={{ width: '100%', maxWidth: '1440px', height: 'auto', maxHeight: '180px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+        <img src="/Cabecera saare-console.jfif" alt="SAARE AI Governance Decision Layer" style={{ width: '100%', maxWidth: '1440px', height: 'auto', maxHeight: '180px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
       </header>
 
       <main style={{ maxWidth: '1440px', margin: '24px auto', padding: '0 24px' }}>
         
-        {/* PANEL INFORMATIVO DEL TENANT + MONITOR EN VIVO DE BÓVEDA KV */}
+        {/* PANEL INFORMATIVO DEL TENANT + MONITOR EN VIVO */}
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px 28px', border: '1px solid #cbd5e1', marginBottom: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                 <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', textTransform: 'uppercase' }}>
-                  PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+                  CONSOLA DE ADJUDICACIÓN DE POLÍTICAS & SAARE VERDICT™ (SGP 1.0)
                 </h2>
                 <span style={{ background: '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
-                  POLÍTICA → CONTROL → EVIDENCIA
+                  POLICY → JUDGE → VERDICT → PROOF
                 </span>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>
-                ORGANIZACION: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | BÓVEDAS L7: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} DESHABILITADAS</strong>
+                ORGANIZACIÓN: <strong style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'ENTORNO AISLADO'}</strong> | OPERADOR: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | DOMINIOS L7: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVOS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#dc2626' : '#16a34a' }}>{disabledDirectivesCount} OFF</strong>
               </div>
             </div>
 
-            {/* ESTADO EN VIVO DE BÓVEDA KV Y ENLACES DE CONTRATACIÓN */}
+            {/* ESTADO EN VIVO Y ACCIONES RÁPIDAS */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#16a34a' : '#dc2626' }}></span>
-                <span style={{ color: '#64748b' }}>KV VAULT:</span>
+                <span style={{ color: '#64748b' }}>DECISION STORE:</span>
                 <strong style={{ color: kvStatus.online ? '#15803d' : '#dc2626' }}>
-                  {kvStatus.online ? `EN VIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
+                  {kvStatus.online ? `ACTIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
                 </strong>
                 <span style={{ color: '#94a3b8' }}>| {kvStatus.lastSync}</span>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${connected ? '#16a34a' : '#ef4444'}`, color: connected ? '#15803d' : '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#16a34a' : '#ef4444' }}></span>
-                {connected ? 'L7 HOOK ACTIVO' : 'DESCONECTADO'}
+                {connected ? 'JUDGE L7 CONECTADO' : 'DESCONECTADO'}
               </div>
+
+              <button 
+                onClick={handleDownloadTokenizedAgent} 
+                disabled={downloadingAgentZip}
+                style={{ padding: '8px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: downloadingAgentZip ? 'default' : 'pointer' }}
+              >
+                {downloadingAgentZip ? 'Generando...' : '⬇ NODO TOKENIZADO (.ZIP)'}
+              </button>
 
               <a href={PORTAL_URL} style={{ padding: '8px 12px', background: '#e0f2fe', border: '1px solid #0284c7', color: '#0369a1', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', textDecoration: 'none' }}>
                 PORTAL ISV ↗
@@ -494,10 +554,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* TESTIGOS VISUALES DE LAS 5 BÓVEDAS MAESTRAS */}
+          {/* FILTROS POR BÓVEDA / DOMINIO DE GOBERNANZA */}
           <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', marginRight: '6px' }}>
-              TESTIGOS L7 (5 BÓVEDAS):
+              DOMINIOS L7 (5 BÓVEDAS):
             </span>
 
             <button
@@ -521,13 +581,13 @@ export default function App() {
             {Object.entries(masterScenariosConfig).map(([key, scn]) => {
               const isEnabled = directives[key];
               const isSelected = activeScenarioFilter === key;
-              const countInScenario = events.filter(e => e.scenario_id && e.scenario_id.toLowerCase().includes(key.toLowerCase())).length;
+              const countInScenario = events.filter(e => (e.policy_id || e.scenario_id || '').toLowerCase().includes(key.toLowerCase())).length;
 
               return (
                 <button
                   key={key}
                   onClick={() => setActiveScenarioFilter(key)}
-                  title={`Filtrar telemetría: ${scn.name}`}
+                  title={`Filtrar veredictos: ${scn.name}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -562,29 +622,29 @@ export default function App() {
         {/* SELECTOR DE PESTAÑAS PRINCIPALES */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#ffffff', color: activeTab === 'GLOBAL' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            REGISTRO GLOBAL ({filteredEvents.length})
+            REGISTRO DE VEREDICTOS ({filteredEvents.length})
           </button>
           <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#ffffff', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            S.A.A.R.E. (RUNLIVE)
+            GOVERNANCE JUDGE (RUNLIVE)
           </button>
           <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '14px 32px', borderRadius: '8px', fontWeight: '900', fontSize: '0.95rem', cursor: 'pointer', border: 'none', background: activeTab === 'CONFIG' ? '#0284c7' : '#ffffff', color: activeTab === 'CONFIG' ? '#ffffff' : '#334155', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            CONFIGURACIÓN ({activeDirectivesCount} ACTIVAS)
+            POLICY-TO-VERDICT COMPILER ({activeDirectivesCount} ACTIVAS)
           </button>
         </div>
 
-        {/* TAB 1: REGISTRO GLOBAL DE EVIDENCIAS */}
+        {/* TAB 1: REGISTRO GLOBAL DE VEREDICTOS */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS EN LAS 5 BÓVEDAS</h3>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: '900', textTransform: 'uppercase' }}>SAARE VERDICT™ LEDGER HISTÓRICO</h3>
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Filtro activo: <strong>{activeScenarioFilter}</strong> | Registros: <strong>{filteredEvents.length}</strong>
+                  Filtro activo: <strong>{activeScenarioFilter}</strong> | Veredictos registrados: <strong>{filteredEvents.length}</strong>
                 </span>
               </div>
               <input
                 type="text"
-                placeholder="Buscar por DNI, IBAN, Hash o contenido..."
+                placeholder="Buscar por Verdict ID, Policy, Hash o Payload..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', width: '280px' }}
@@ -595,29 +655,28 @@ export default function App() {
                 <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   <tr>
                     <th style={{ padding: '14px 20px' }}>TIMESTAMP</th>
-                    <th style={{ padding: '14px 20px' }}>ID EVIDENCIA / BÓVEDA</th>
-                    <th style={{ padding: '14px 20px' }}>CATEGORÍA / MARCO</th>
-                    <th style={{ padding: '14px 20px' }}>PROMPT INTERCEPTADO (RAM)</th>
-                    <th style={{ padding: '14px 20px' }}>DICTAMEN</th>
-                    <th style={{ padding: '14px 20px', textAlign: 'center' }}>AUDITORÍA</th>
+                    <th style={{ padding: '14px 20px' }}>VERDICT ID / SYSTEM</th>
+                    <th style={{ padding: '14px 20px' }}>POLÍTICA / MARCO</th>
+                    <th style={{ padding: '14px 20px' }}>PAYLOAD EVALUADO (RAM)</th>
+                    <th style={{ padding: '14px 20px' }}>DECISIÓN</th>
+                    <th style={{ padding: '14px 20px', textAlign: 'center' }}>ADJUDICACIÓN</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEvents.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                        No hay evidencias registradas para el filtro seleccionado ({activeScenarioFilter}).
+                        No hay veredictos registrados para el filtro seleccionado ({activeScenarioFilter}).
                       </td>
                     </tr>
                   ) : (
                     filteredEvents.map((ev, i) => {
-                      const id = ev.runId || ev.evidenceId || `EV-L7-${i + 1}`;
+                      const id = ev.verdict_id || ev.evidence_id || ev.runId || `VRD-L7-${i + 1}`;
                       const timestamp = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'En vivo';
-                      const category = ev.violationDetails?.category || ev.category || 'CUMPLIMIENTO_INTEGRAL';
-                      const norma = ev.violationDetails?.norma || ev.norma || 'ISO 27037 / RGPD / AI Act';
-                      const promptText = ev.promptInput || ev.promptSummary || ev.payload || "Sin contenido";
-                      const verdict = ev.verdict || 'RECHAZADO';
-                      const scenarioTag = ev.scenario_id || 'cumplimiento_corporativo_integral';
+                      const policy = ev.policy_id || ev.category || 'POL-CORP-GOVERNANCE-01';
+                      const promptText = ev.promptInput || ev.cleanPrompt || ev.payload || "Sin contenido";
+                      const decision = ev.decision || (ev.verdict === 'RECHAZADO' ? 'BLOCK' : 'ALLOW');
+                      const systemTag = ev.system_id || 'L7-AGENT-SENSOR';
 
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#fafafa' }}>
@@ -625,22 +684,22 @@ export default function App() {
                           <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }}>
                             <div>{id}</div>
                             <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#e2e8f0', padding: '1px 5px', borderRadius: '3px' }}>
-                              {scenarioTag}
+                              {systemTag}
                             </span>
                           </td>
                           <td style={{ padding: '14px 20px' }}>
-                            <div style={{ fontWeight: '700', color: '#0f172a' }}>{category}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{norma}</div>
+                            <div style={{ fontWeight: '700', color: '#0f172a' }}>{policy}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ev.reason || 'Adjudicación determinista'}</div>
                           </td>
                           <td style={{ padding: '14px 20px', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             "{promptText}"
                           </td>
-                          <td style={{ padding: '14px 20px', fontWeight: '900', color: verdict === 'RECHAZADO' || verdict === 'BLOQUEADO' ? '#dc2626' : '#16a34a' }}>
-                            {verdict}
+                          <td style={{ padding: '14px 20px', fontWeight: '900', color: decision === 'BLOCK' || decision === 'RECHAZADO' ? '#dc2626' : '#16a34a' }}>
+                            {decision}
                           </td>
                           <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                             <button onClick={() => setSelectedJson(ev)} style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
-                              Ver JSON
+                              Ver Verdict
                             </button>
                           </td>
                         </tr>
@@ -653,20 +712,20 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: S.A.A.R.E. RUNLIVE */}
+        {/* TAB 2: GOVERNANCE JUDGE RUNLIVE */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '32px', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase' }}>
-                  TELEMETRÍA EN VIVO & MUESTREO RUNLIVE (RAM HOOK L7)
+                  TELEMETRÍA EN VIVO & ADJUDICACIÓN DE VEREDICTOS (L7)
                 </h3>
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Monitorización determinista de inferencias, testigo 🧠 L7 CEREBRO y detección de deepfakes.
+                  Motor determinista de evaluación de políticas, testigo 🧠 L7 CEREBRO y adjudicación ex-ante.
                 </span>
               </div>
               <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', border: '1px solid #86efac' }}>
-                ● RUNTIME STREAM ACTIVO
+                ● JUDGE ENGINE ACTIVO
               </span>
             </div>
 
@@ -682,9 +741,9 @@ export default function App() {
                 <span style={{ color: '#64748b', fontSize: '0.75rem' }}>P99 de inspección volátil</span>
               </div>
               <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Tokens Optimizados / Run</span>
-                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#facc15', margin: '6px 0' }}>1.420 tk</div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Ahorro estimado: 18.50 € / 1M tk</span>
+                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Veredictos Emitidos</span>
+                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#facc15', margin: '6px 0' }}>{events.length} vrd</div>
+                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>SGP 1.0 Canonical Records</span>
               </div>
               <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px', textAlign: 'center' }}>
                 <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Testigo Criptográfico</span>
@@ -696,19 +755,19 @@ export default function App() {
             {lastEvent ? (
               <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px', fontSize: '0.85rem' }}>
-                  <div>ID EVIDENCIA: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.runId || lastEvent.evidenceId}</strong></div>
-                  <div>BÓVEDA ACTIVA: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.scenario_id || 'cumplimiento_corporativo_integral'}</strong></div>
-                  <div>ROL ISO 27037: <strong style={{ color: '#9333ea' }}>{lastEvent.forensic_role || 'DEFR / DES Lifecycle'}</strong></div>
+                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdict_id || lastEvent.runId || lastEvent.evidence_id}</strong></div>
+                  <div>POLÍTICA APLICADA: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{lastEvent.policy_id || lastEvent.scenario_id || 'POL-CORP-GOVERNANCE-01'}</strong></div>
+                  <div>DECISIÓN L7: <strong style={{ color: (lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a' }}>{lastEvent.decision || lastEvent.verdict || 'ALLOW'}</strong></div>
                   <div>TIMESTAMP: <strong>{new Date(lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
-                  <div>DICTAMEN L7: <strong style={{ color: lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a' }}>{lastEvent.verdict || 'PERMITIDO'}</strong></div>
                   <div>SELLO CRIPTOGRÁFICO: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.cryptoSeal || 'L7-SEAL:ED25519'}</strong></div>
+                  <div>ESTADO VALIDEZ: <strong style={{ color: '#16a34a', fontFamily: 'monospace' }}>{lastEvent.validity_state || 'VALID'}</strong></div>
                 </div>
 
-                <div style={{ background: '#ffffff', padding: '18px', borderLeft: `5px solid ${lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a'}`, borderRadius: '4px', marginBottom: '18px', fontSize: '0.95rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: lastEvent.verdict === 'RECHAZADO' ? '#dc2626' : '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    CARGA RECEPTADA EN MEMORIA VOLÁTIL (RAM BUFFER L7):
+                <div style={{ background: '#ffffff', padding: '18px', borderLeft: `5px solid ${(lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a'}`, borderRadius: '4px', marginBottom: '18px', fontSize: '0.95rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: (lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#dc2626' : '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    PAYLOAD EN MEMORIA VOLÁTIL (RAM BUFFER L7):
                   </div>
-                  "{lastEvent.promptInput || lastEvent.promptSummary || lastEvent.payload || 'Sin contenido'}"
+                  "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || 'Sin contenido'}"
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
@@ -724,34 +783,34 @@ export default function App() {
             ) : (
               <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
-                <strong>Esperando intercepciones en caliente...</strong>
-                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una prueba en tu aplicación o agente IA para observar la captura perimetral y el testigo 🧠 en vivo.</p>
+                <strong>Esperando intercepciones del Governance Judge...</strong>
+                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una llamada o inferencia para observar la adjudicación en caliente y el testigo 🧠 en vivo.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: CONFIGURACIÓN DE LAS 5 BÓVEDAS */}
+        {/* TAB 3: CONFIGURACIÓN DE POLÍTICAS Y REGLAS */}
         {activeTab === 'CONFIG' && (
           <div>
             <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <h3 style={{ margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
-                    CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS
+                    POLICY-TO-VERDICT COMPILER & REGLAS PERSONALIZADAS
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.95rem', color: '#64748b' }}>
-                    Define palabras clave corporativas o expresiones regulares complementarias para el perímetro L7.
+                    Define directivas de adjudicación personalizadas o expresiones regulares complementarias para el Governance Judge.
                   </p>
                 </div>
                 <button onClick={() => setShowAddModal(true)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem', boxShadow: '0 2px 6px rgba(2,132,199,0.3)' }}>
-                  + AÑADIR BLOQUEO
+                  + AÑADIR REGLA DE ADJUDICACIÓN
                 </button>
               </div>
 
               {customRules.length === 0 ? (
                 <div style={{ border: '1px dashed #94a3b8', borderRadius: '8px', padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.95rem', background: '#f8fafc' }}>
-                  No hay filtros personalizados activos. Las 5 Bóvedas Maestras seleccionadas abajo se mantienen en ejecución determinista.
+                  No hay reglas personalizadas activas. Las 5 Bóvedas de directivas maestras seleccionadas abajo operan de forma determinista.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -861,12 +920,12 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL JSON PROOF BUNDLE */}
+        {/* MODAL JSON SAARE VERDICT™ */}
         {selectedJson && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
             <div style={{ background: '#090d16', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>EVIDENCIA FORENSE CRIPTOGRÁFICA (SHA-256)</h3>
+                <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>SAARE VERDICT™ // ADJUDICATION RECORD</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handleExportProofBundle(selectedJson)} disabled={exportingBundle} style={{ background: '#9333ea', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
                     📦 {exportingBundle ? 'Exportando...' : 'Descargar Proof Bundle'}
@@ -881,16 +940,16 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL AÑADIR FILTROS */}
+        {/* MODAL AÑADIR REGLAS */}
         {showAddModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', maxWidth: '480px', width: '90%' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', fontWeight: '900' }}>Añadir Filtro Personalizado</h3>
-              <input type="text" placeholder="Etiqueta (ej: Secreto Industrial)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-              <input type="text" placeholder="Patrón / Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '24px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', fontWeight: '900' }}>Añadir Regla de Adjudicación</h3>
+              <input type="text" placeholder="Identificador de Regla (ej: SECRETO_INDUSTRIAL)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              <input type="text" placeholder="Patrón Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '24px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button onClick={() => setShowAddModal(false)} style={{ padding: '10px 18px', background: '#94a3b8', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={addCustomRule} style={{ padding: '10px 18px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar</button>
+                <button onClick={addCustomRule} style={{ padding: '10px 18px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
               </div>
             </div>
           </div>
@@ -904,7 +963,7 @@ export default function App() {
                 ⚠️
               </div>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '1.4rem', fontWeight: '900', color: '#0f172a' }}>
-                Advertencia de Seguridad
+                Advertencia de Desactivación de Control
               </h3>
               <p style={{ fontSize: '0.95rem', color: '#475569', margin: '0 0 28px 0', lineHeight: '1.6' }}>
                 Estás a punto de desactivar la directiva:<br/>
@@ -912,7 +971,7 @@ export default function App() {
                   {masterScenariosConfig[confirmModal.directiveKey]?.name}
                 </strong>
                 <br/>
-                Esto detendrá la intercepción en vivo de los eventos y las llamadas LLM asociadas no serán auditadas bajo este marco. ¿Deseas continuar?
+                Esto suspenderá la adjudicación en runtime y las interacciones no recibirán veredicto bajo este dominio. ¿Deseas continuar?
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
                 <button 
