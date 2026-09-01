@@ -1,5 +1,5 @@
 /**
- * SAARE Compliance & Technical Control Mapping Engine v10.0 (SGP 1.0)
+ * SAARE Compliance & Technical Control Mapping Engine v10.0.4 (SGP 1.0)
  * Decision-to-Policy Mapping & Technical Assurance Compiler
  */
 
@@ -10,21 +10,21 @@ export class ComplianceEngine {
    * Vincula la decisión de ejecución de una acción con su impacto en controles técnicos y normativos
    * @param {string} scenarioId - Identificador del escenario o directiva
    * @param {string} decision - 'ALLOW', 'DENY', 'ESCALATE'
-   * @param {string} enforcementAction - 'PASS', 'BLOCK', 'HOLD', 'REDACT', 'QUARANTINE'
+   * @param {string} enforcementAction - 'PASS', 'BLOCK', 'HOLD'
    * @param {string} reason - Motivo técnico de la decisión
    * @returns {object} Dossier estructurado de impacto en controles (SGP 1.0)
    */
   static mapExecutionToCompliance(scenarioId, decision = "ALLOW", enforcementAction = "PASS", reason = "") {
     const scenario = getScenarioById(scenarioId);
-    const isDeniedOrRestricted = decision === "DENY" || decision === "ESCALATE" || enforcementAction === "BLOCK" || enforcementAction === "HOLD" || enforcementAction === "REDACT";
+    const isDeniedOrRestricted = decision === "DENY" || decision === "ESCALATE" || enforcementAction === "BLOCK" || enforcementAction === "HOLD";
 
-    // Si la acción fue bloqueada o modificada, se acreditan los controles de contención aplicados
+    // Si la acción fue bloqueada o retenida, se acreditan los controles técnicos de contención aplicados
     const satisfiedFrameworks = isDeniedOrRestricted
       ? scenario.compliance_mapping
       : {
           runtime_authorization: [
             "Ejecución autorizada bajo perímetro de control determinista L7",
-            "Registro de decisión inmutable conforme a los requisitos de trazabilidad del EU AI Act (Art. 12)",
+            "Registro de decisión estructurado conforme a los requisitos de trazabilidad del EU AI Act (Art. 12)",
             "Mapeo de control operacional de ciclo de vida del dato conforme a UNE-ISO/IEC 42001:2023"
           ]
         };
@@ -47,10 +47,10 @@ export class ComplianceEngine {
         normativa_aplicable: scenario.category,
         evidence_workflow: "Evidence workflow aligned with ISO/IEC 27037:2012 (DEFR/DES)",
         governance_mapping: "Controls mapped to UNE-ISO/IEC 42001:2023",
-        audit_trail_status: "CRYPTOGRAPHICALLY_ANCHORED_IN_DECISION_STORE",
+        audit_trail_status: "TAMPER_EVIDENT_RECORD_IN_DECISION_STORE",
         hash_integrity: "SHA-256_ANCHORED",
-        signing_standard: "Ed25519_ASYMMETRIC",
-        timestamp_standard: "RFC_3161_TIMESTAMP_TOKEN",
+        signing_standard: "Ed25519_ASYMMETRIC_RFC8032",
+        timestamp_standard: "RFC_3161_QUALIFIED_TIMESTAMP_TOKEN",
         timestamp: new Date().toISOString()
       }
     };
