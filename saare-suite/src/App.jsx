@@ -368,7 +368,6 @@ export default function App() {
     }
   };
 
-  // Fontanería B2B persistente conectada con POST /api/v1/leads en Cloudflare KV
   const handleSendB2BForm = async (e, formType) => {
     e.preventDefault();
     setLoading(true);
@@ -879,7 +878,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* NUEVA SECCIÓN: 4 SECTORES TARGET / MODELOS EMBEBIDOS */}
+          {/* 4. SECTORES TARGET / MODELOS EMBEBIDOS */}
           <section id="target-segments" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ISV TO ISV · ARQUITECTURA DE EMBEBIDO</span>
@@ -917,7 +916,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 4. DOS MODOS DE INTEGRACIÓN TÉCNICA */}
+          {/* 5. DOS MODOS DE INTEGRACIÓN TÉCNICA */}
           <section id="integration-modes" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -962,7 +961,7 @@ const response = await client.chat.completions.create({
             </pre>
           </section>
 
-          {/* 5. DOCTRINA */}
+          {/* 6. DOCTRINA */}
           <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PRINCIPIOS ESTRUCTURALES</span>
@@ -983,7 +982,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 6. SECCIÓN LIVE RUNTIME */}
+          {/* 7. SECCIÓN LIVE RUNTIME */}
           <section id="live-runtime" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -1040,7 +1039,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 7. SAARE VERDICT™ */}
+          {/* 8. SAARE VERDICT™ */}
           <section id="evidence-verifier" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '30px' }}>
               <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>DECISION RECORD</span>
@@ -1123,7 +1122,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 8. LAS 5 CAPAS DE CONTROL */}
+          {/* 9. LAS 5 CAPAS DE CONTROL */}
           <section id="control-layers" style={{ marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
               <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>DOMINIOS TÉCNICOS</span>
@@ -1174,7 +1173,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 9. MODELOS DE EXPLOTACIÓN Y RETORNO COMERCIAL */}
+          {/* 10. MODELOS DE EXPLOTACIÓN Y RETORNO COMERCIAL */}
           <section id="modelos-explotacion" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MONETIZACIÓN & MODELOS DE LICENCIA</span>
@@ -1235,7 +1234,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 10. POLICY MATRIX */}
+          {/* 11. POLICY MATRIX */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>POLICY COMPILER</span>
@@ -1269,7 +1268,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 11. PRICING & CALL TO ACTION */}
+          {/* 12. PRICING & CALL TO ACTION */}
           <section id="pricing" style={{ backgroundColor: '#0b0f19', border: '1px solid #0284c7', borderRadius: '16px', padding: '40px 30px', textAlign: 'center', marginBottom: '60px' }}>
             <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>DESPLIEGUE OPERATIVO</span>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0 10px 0' }}>
@@ -1296,7 +1295,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 12. FOOTER INSTITUCIONAL */}
+          {/* 13. FOOTER INSTITUCIONAL */}
           <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '32px', fontSize: '12px', color: '#6b7280' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
               <div style={{ maxWidth: '620px' }}>
