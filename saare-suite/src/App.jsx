@@ -462,32 +462,37 @@ const response = await client.chat.completions.create({
         </div>
       )}
 
-      {/* HEADER DE NAVEGACIÓN */}
+      {/* HEADER DE NAVEGACIÓN PROFESIONAL */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1f2937' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '1260px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('LANDING')}>
             <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2.5px', color: '#ffffff' }}>SAARE</span>
             <span style={{ color: '#0ea5e9', fontSize: '11px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', letterSpacing: '0.8px' }}>AI-NATIVE AUDIT & DECISION LAYER™</span>
           </div>
 
-          <nav style={{ display: 'flex', gap: '18px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
-            <button onClick={() => navigateToSection('decision-layer')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>Governance Judge</button>
-            <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Capas de Control</button>
-            <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Live Runtime</button>
-            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>SAARE VERDICT™</button>
-            <button onClick={() => navigateToSection('integration-modes')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Integración</button>
-            <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Policy Matrix</button>
-            <button onClick={() => navigateToSection('pricing')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Planes</button>
+          <nav style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '12.5px', fontWeight: '600' }}>
+            <button onClick={() => navigateToSection('decision-layer')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700' }}>Governance Judge</button>
+            <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Capas de Control</button>
+            <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Live Runtime</button>
+            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>SAARE VERDICT™</button>
+            <button onClick={() => navigateToSection('integration-modes')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Endpoints API</button>
+            <button onClick={() => navigateToSection('modelos-explotacion')} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700' }}>Explotación B2B</button>
+            <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}>Policy Matrix</button>
+
+            {/* BADGE DE ESTADO DEL EDGE */}
+            <span style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+              ● EDGE &lt;0.017ms
+            </span>
 
             {sessionUser ? (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '8px' }}>
-                <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ background: '#1f2937', border: '1px solid #374151', color: '#38bdf8', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '6px' }}>
+                <button onClick={() => setCurrentView(currentView === 'STATUS' ? 'LANDING' : 'STATUS')} style={{ background: '#1f2937', border: '1px solid #374151', color: '#38bdf8', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '11.5px' }}>
                   Mi Consola
                 </button>
-                <button onClick={() => { localStorage.removeItem('saare_suite_user'); setSessionUser(null); }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
+                <button onClick={() => { localStorage.removeItem('saare_suite_user'); setSessionUser(null); }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11.5px' }}>Salir</button>
               </div>
             ) : (
-              <button onClick={() => { setMode('login'); setCurrentView('AUTH'); }} style={{ padding: '7px 16px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' }}>
+              <button onClick={() => { setMode('login'); setCurrentView('AUTH'); }} style={{ padding: '6px 14px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' }}>
                 Acceso Consola
               </button>
             )}
@@ -584,16 +589,16 @@ const response = await client.chat.completions.create({
             </div>
             
             <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
-              La capa independiente de decisión <br />
-              <span style={{ color: '#38bdf8' }}>para la gobernanza de IA.</span>
+              Real-Time Autonomous AI Audit <br />
+              <span style={{ color: '#38bdf8' }}>& Programmatic Settlement.</span>
             </h1>
             
             <p style={{ fontSize: '18.5px', color: '#cbd5e1', maxWidth: '860px', margin: '0 auto 16px auto', lineHeight: 1.45, fontWeight: '600' }}>
-              SAARE actúa como el Governance Judge técnico que evalúa cada acción en tiempo real, emite un veredicto estructurado y genera evidencia criptográficamente verificable.
+              Arbitraje legal y criptográfico en memoria volátil (&lt;0.017 ms). Asegure el cumplimiento del EU AI Act, RGPD y Ley del Honor 2026 en modelos y agentes autónomos sin persistencia en disco.
             </p>
 
             <p style={{ fontSize: '14.5px', color: '#9ca3af', maxWidth: '780px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
-              Intercepción en Capa 7 · Adjudicación de políticas ex-ante · SAARE VERDICT™ · Evidencia probatoria RFC 3161 / Ed25519
+              L7 Runtime Execution Boundary · Purga SYS_madvise · SAARE VERDICT™ · Evidencias Ed25519 & RFC 3161
             </p>
 
             {/* PIPELINE SOLEMNE */}
@@ -615,16 +620,9 @@ const response = await client.chat.completions.create({
               <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
                 Evaluar con el Governance Judge ↓
               </button>
-              <button onClick={() => navigateToSection('evidence-verifier')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                Consultar un Veredicto
+              <button onClick={() => navigateToSection('modelos-explotacion')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                Ver Modelos de Explotación B2B
               </button>
-            </div>
-
-            {/* FRASE DE DOCTRINA */}
-            <div style={{ marginTop: '40px', padding: '18px 24px', background: 'rgba(3, 7, 18, 0.6)', border: '1px solid #1f2937', borderRadius: '10px', display: 'inline-block' }}>
-              <span style={{ color: '#f3f4f6', fontSize: '15px', fontWeight: '700', fontStyle: 'italic' }}>
-                "No Verdict → No Governed Execution. La gobernanza técnica ocurre dentro de la ejecución."
-              </span>
             </div>
           </section>
 
@@ -703,11 +701,11 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 4. DOS MODOS DE INTEGRACIÓN TÉCNICA */}
+          {/* 4. DOS MODOS DE INTEGRACIÓN TÉCNICA (ENDPOINTS API) */}
           <section id="integration-modes" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>FLEXIBILIDAD DE DESPLIEGUE</span>
+                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ESPECIFICACIÓN DE ENDPOINTS (SGP 1.0)</span>
                 <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Dos Modos de Integración</h2>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -715,13 +713,13 @@ const response = await client.chat.completions.create({
                   onClick={() => setActiveCodeTab('ask_judge')} 
                   style={{ padding: '8px 16px', borderRadius: '6px', border: `1.5px solid ${activeCodeTab === 'ask_judge' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'ask_judge' ? '#111827' : 'transparent', color: activeCodeTab === 'ask_judge' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
                 >
-                  Modo B: Ask the Judge API
+                  POST /api/v1/judge (Ask the Judge)
                 </button>
                 <button 
                   onClick={() => setActiveCodeTab('inline_proxy')} 
                   style={{ padding: '8px 16px', borderRadius: '6px', border: `1.5px solid ${activeCodeTab === 'inline_proxy' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'inline_proxy' ? '#111827' : 'transparent', color: activeCodeTab === 'inline_proxy' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
                 >
-                  Modo A: Inline Gateway L7
+                  POST /api/v1/intercept (Inline Gateway)
                 </button>
               </div>
             </div>
@@ -785,7 +783,6 @@ const response = await client.chat.completions.create({
               </button>
             </div>
 
-            {/* DIAGRAMA DE FLUJO EN VIVO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '24px' }}>
               <div style={{ background: judgeStep >= 1 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 1 ? '#0ea5e9' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 1</div>
@@ -963,7 +960,68 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 9. POLICY MATRIX (POLICY-TO-VERDICT COMPILER) */}
+          {/* 9. MODELOS DE EXPLOTACIÓN Y RETORNO COMERCIAL */}
+          <section id="modelos-explotacion" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MONETIZACIÓN & MODELOS DE LICENCIA</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Modelos de Explotación B2B</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '780px', margin: '0 auto', lineHeight: 1.6 }}>
+                Infraestructura modular adaptada a despachos de auditoría, desarrolladores de agentes autónomos y corporaciones reguladas.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
+              <div style={{ background: '#030712', border: '1px solid #0284c7', borderRadius: '10px', padding: '22px' }}>
+                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold' }}>MODO 01 · SAAS AUDITOR</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Licencia Asiento Runtime</h4>
+                <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  Suscripción por puesto para consultores GRC, DPOs y peritos judiciales. Acceso a consola, telemetría y Proof Bundles.
+                </p>
+                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>149 € / mes / usuario</div>
+                <a href={STRIPE_LINK} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', padding: '8px', background: '#0284c7', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>
+                  Contratar Asiento →
+                </a>
+              </div>
+
+              <div style={{ background: '#030712', border: '1px solid #16a34a', borderRadius: '10px', padding: '22px' }}>
+                <span style={{ color: '#16a34a', fontSize: '11px', fontWeight: 'bold' }}>MODO 02 · CONSUMO API</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Judge API Metered</h4>
+                <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  Tarificación por volumen de veredictos para agentes autónomos y llamadas a herramientas (Tool Calling).
+                </p>
+                <div style={{ color: '#34d399', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>Pago por llamada / Tier</div>
+                <button onClick={() => navigateToSection('integration-modes')} style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #16a34a', color: '#34d399', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Ver Documentación API →
+                </button>
+              </div>
+
+              <div style={{ background: '#030712', border: '1px solid #9333ea', borderRadius: '10px', padding: '22px' }}>
+                <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold' }}>MODO 03 · PERICIAL & FONDOS</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Fee por Dossier / PRTR</h4>
+                <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  Emisión automatizada de dictámenes periciales ISO 27037 y memorias técnicas justificativas ante la IGAE y OLAF.
+                </p>
+                <div style={{ color: '#a855f7', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>Tarifa ad-hoc por expediente</div>
+                <a href="mailto:peritajes@saare.es" style={{ display: 'block', textAlign: 'center', padding: '8px', background: '#111827', border: '1px solid #9333ea', color: '#c084fc', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>
+                  Solicitar Dictamen →
+                </a>
+              </div>
+
+              <div style={{ background: '#030712', border: '1px solid #ca8a04', borderRadius: '10px', padding: '22px' }}>
+                <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold' }}>MODO 04 · GRANDES CUENTAS</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>OEM & Tenant Aislado</h4>
+                <p style={{ color: '#9ca3af', fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                  Despliegue dedicado en Nube Soberana Europea o VPC propia con aislamiento en memoria RAM (SYS_madvise) para banca y salud.
+                </p>
+                <div style={{ color: '#f59e0b', fontWeight: '900', fontSize: '15px', marginBottom: '14px' }}>Licencia Enterprise ARR</div>
+                <a href="mailto:enterprise@saare.es" style={{ display: 'block', textAlign: 'center', padding: '8px', background: '#111827', border: '1px solid #ca8a04', color: '#facc15', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>
+                  Contactar Enterprise →
+                </a>
+              </div>
+            </div>
+          </section>
+
+          {/* 10. POLICY MATRIX (POLICY-TO-VERDICT COMPILER) */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>POLICY COMPILER</span>
@@ -997,7 +1055,7 @@ const response = await client.chat.completions.create({
             </div>
           </section>
 
-          {/* 10. PRICING Y ADOPCIÓN */}
+          {/* 11. PRICING & CALL TO ACTION */}
           <section id="pricing" style={{ backgroundColor: '#0b0f19', border: '1px solid #0284c7', borderRadius: '16px', padding: '40px 30px', textAlign: 'center', marginBottom: '60px' }}>
             <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>DESPLIEGUE OPERATIVO</span>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0 10px 0' }}>
@@ -1020,11 +1078,11 @@ const response = await client.chat.completions.create({
             </div>
 
             <div style={{ marginTop: '16px', fontSize: '12px', color: '#6b7280' }}>
-              Suscripción sin permanencia · Anclaje Registral Oficial: Safe Creative Nº 2607076315021
+              Suscripción sin permanencia · Anclaje Registral Oficial: Safe Creative Nº 2607076315021 / 2607076314949
             </div>
           </section>
 
-          {/* 11. FOOTER INSTITUCIONAL */}
+          {/* 12. FOOTER INSTITUCIONAL */}
           <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '32px', fontSize: '12px', color: '#6b7280' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
               <div style={{ maxWidth: '620px' }}>
