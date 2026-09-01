@@ -1,10 +1,10 @@
 /**
- * SAARE Master Scenario Registry v10.0 (SGP 1.0)
+ * SAARE Master Scenario Registry v10.0.4 (SGP 1.0)
  * Catálogo Canónico de Capacidades de Autorización, Seguridad y Evidencia L7
  * Marcos de referencia:
  * - Ley Orgánica 1/1982 (Protección civil del derecho al honor, intimidad y propia imagen)
  * - EU AI Act (Reglamento UE 2024/1689: Arts. 12, 14, 15 y 50 Transparencia)
- * - RGPD (Reglamento UE 2016/679) & Ley 1/2019 de Secretos Empresariales
+ * - RGPD (Reglamento UE 2016/679: Arts. 5.2, 9 y 32) & Ley 1/2019 de Secretos Empresariales
  * - Workflow aligned with ISO/IEC 27037:2012 (DEFR / DES) & UNE-ISO/IEC 42001:2023
  * - Ley 38/2003 General de Subvenciones & Convocatorias PRTR / NextGenerationEU
  */
@@ -14,13 +14,13 @@ export const ScenarioRegistry = [
     id: "cumplimiento_corporativo_integral",
     category: "01. Privacy & Sensitive Data Control",
     title: "01. Escudo RGPD, Privacidad & Secreto Empresarial (DEFR)",
-    description: "Evaluación y aislamiento en memoria volátil de runtime sin persistencia de texto plano en el nodo de ejecución. Identifica, aísla y redacta DNIs, NIEs, cuentas bancarias (IBAN), tarjetas de crédito, datos médicos (RGPD Art. 9) y secretos corporativos antes del dispatch[cite: 1].",
-    version: "10.0.0",
+    description: "Evaluación y aislamiento en memoria volátil de runtime sin persistencia de texto plano en el nodo de ejecución. Control técnico orientado a mitigar riesgos de persistencia de DNIs, NIEs, cuentas bancarias (IBAN), tarjetas de crédito, datos médicos (RGPD Art. 9) y secretos corporativos antes del dispatch.",
+    version: "10.0.4",
     tag: "01 / ESCUDO PRIVACIDAD (DEFR)",
     lawBadge: "RGPD (Art. 5.2, 9, 32) · Ley 1/2019 de Secretos",
     forensic_role: "DEFR (Digital Evidence First Responder)",
     dei_phase: "Fases 1 & 2: Identificación y Aislamiento en Runtime",
-    latency: "14.2 μs",
+    latency: "14.2 μs (In-Process P99)",
     codeTab: "nodejs",
     verified: "Zero Plaintext Persistence at Node",
     gradient: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
@@ -65,13 +65,13 @@ export const ScenarioRegistry = [
     id: "razonamiento_activo_l7",
     category: "02. L7 Runtime Security & Robustness",
     title: "02. Blindaje de Robustez, Ciberseguridad & Mitigación L7",
-    description: "Blindaje perimetral activo frente a ataques adversarios (Jailbreaks, Modo DAN, prompt injection y desvíos lógicos según el Art. 15 del EU AI Act). Aplica contención técnica en tiempo de ejecución garantizando la trazabilidad de la decisión[cite: 1].",
-    version: "10.0.0",
+    description: "Blindaje perimetral activo frente a ataques adversarios (Jailbreaks, Modo DAN, prompt injection y desvíos lógicos según el Art. 15 del EU AI Act). Aplica contención técnica en tiempo de ejecución garantizando la trazabilidad de la decisión.",
+    version: "10.0.4",
     tag: "02 / ROBUSTEZ AI ACT (ART. 15)",
     lawBadge: "EU AI Act (Art. 15) · Ciberseguridad & Robustez",
     forensic_role: "Active Defense Gatekeeper",
     dei_phase: "Runtime Active Protection & Execution Boundary Guard",
-    latency: "14.2 μs",
+    latency: "14.2 μs (In-Process P99)",
     codeTab: "cabi",
     verified: "Adversarial Mitigation Confirmed",
     gradient: "linear-gradient(135deg, #065f46 0%, #0f172a 100%)",
@@ -107,13 +107,13 @@ export const ScenarioRegistry = [
     id: "deepfake_fake_disprover",
     category: "03. Synthetic Media & Rights Controls",
     title: "03. Protección de Derechos, Medios Sintéticos & Veracidad",
-    description: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante clonación o síntesis no consentida de voz/imagen (conforme a la Ley Orgánica 1/1982 de Protección del Derecho al Honor y los requisitos de transparencia del Art. 50 del EU AI Act).",
-    version: "10.0.0",
+    description: "Inspección causal y rechazo estricto ante clonación o síntesis de voz/imagen sin acreditación de consentimiento (conforme a la Ley Orgánica 1/1982 de Protección Civil del Derecho al Honor y las obligaciones de transparencia y marcado del Art. 50 del EU AI Act).",
+    version: "10.0.4",
     tag: "03 / MEDIOS SINTÉTICOS (LO 1/1982)",
     lawBadge: "LO 1/1982 · AI Act (Art. 50 Transparencia)",
     forensic_role: "Forensic Integrity Verifier",
     dei_phase: "Causal Grounding & Real-time Synthesis Inspection",
-    latency: "14.2 μs",
+    latency: "14.2 μs (In-Process P99)",
     codeTab: "python",
     verified: "Zero Unauthorized Synthesis",
     gradient: "linear-gradient(135deg, #4338ca 0%, #0f172a 100%)",
@@ -122,7 +122,7 @@ export const ScenarioRegistry = [
     compliance_mapping: {
       ley_honor_imagen_1982: [
         "Ley Orgánica 1/1982, de 5 de mayo, de protección civil del derecho al honor, a la intimidad personal y familiar y a la propia imagen",
-        "Protección civil frente a intromisiones ilegítimas y utilización no autorizada de voz o imagen"
+        "Tutela civil frente a intromisiones ilegítimas y utilización no consentida de voz o imagen"
       ],
       eu_ai_act: [
         "Art. 13 - Transparencia y provisión de información fáctica verificable al usuario",
@@ -149,13 +149,13 @@ export const ScenarioRegistry = [
     id: "auditoria_dictamen_normativo",
     category: "04. Evidence Capture & Forensic Sealing",
     title: "04. Bóveda de Custodia Probatoria & Evidencia Forense (DES)",
-    description: "Generación automatizada de Proof Bundles e informes periciales para consultoras, peritos judiciales y comités de control (DES bajo ISO 27037). Preserva la inmutabilidad de logs (Art. 12 EU AI Act) mediante Hashes SHA-256, firma asimétrica Ed25519 y sellado temporal RFC 3161[cite: 1].",
-    version: "10.0.0",
+    description: "Generación estructurada de Proof Bundles y expedientes probatorios (DES bajo ISO/IEC 27037). Preserva la trazabilidad de eventos (Art. 12 EU AI Act) mediante Hashes SHA-256, firma asimétrica Ed25519 (RFC 8032) y sellado temporal RFC 3161.",
+    version: "10.0.4",
     tag: "04 / EVIDENCIA FORENSE (DES)",
     lawBadge: "ISO 27037 Aligned · AI Act (Art. 12 Logs) · RFC 3161",
     forensic_role: "DES (Digital Evidence Specialist)",
     dei_phase: "Fases 3 & 4: Adquisición Bit a Bit y Preservación de Cadena de Custodia",
-    latency: "RFC 3161 Async",
+    latency: "RFC 3161 Async Token",
     codeTab: "nodejs",
     verified: "Integridad Criptográfica Conforme",
     gradient: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
@@ -168,7 +168,7 @@ export const ScenarioRegistry = [
         "Principios Rectores - Auditabilidad, Repetibilidad y Justificabilidad probatoria"
       ],
       eu_ai_act: [
-        "Reglamento UE 2024/1689 Art. 12 - Registro automático de eventos e inmutabilidad de logs",
+        "Reglamento UE 2024/1689 Art. 12 - Registro automático de eventos y trazabilidad técnica",
         "Reglamento UE 2024/1689 Art. 14 - Supervisión humana efectiva basada en evidencia técnica"
       ],
       eidas_rfc3161: [
@@ -193,13 +193,13 @@ export const ScenarioRegistry = [
     id: "subvenciones_requisitos_infranqueables",
     category: "05. Fiduciary Traceability & Audit Trail",
     title: "05. Trazabilidad Fiduciaria de Fondos Públicos & Subvenciones",
-    description: "Control automatizado de no-doble financiación mediante hash SHA-256 de facturas y gastos, acreditación del principio medioambiental DNSH y generación de memorias técnicas de justificación ante la IGAE y OLAF (NextGenEU, PRTR, Kit Digital / Consulting, CDTI)[cite: 1].",
-    version: "10.0.0",
+    description: "Control automatizado de no-doble financiación mediante hash SHA-256 de facturas y gastos, acreditación del principio medioambiental DNSH y generación de memorias técnicas de justificación (NextGenEU, PRTR, CDTI).",
+    version: "10.0.4",
     tag: "05 / FONDOS PRTR & NEXTGENEU",
     lawBadge: "Ley General de Subvenciones · PRTR · NextGenEU",
     forensic_role: "Anti-Fraud & Financial Auditor",
     dei_phase: "Public Funds Traceability & Anti-Double Funding Lock",
-    latency: "14.2 μs",
+    latency: "14.2 μs (In-Process P99)",
     codeTab: "curl",
     verified: "Anti-Double Funding Validated",
     gradient: "linear-gradient(135deg, #047857 0%, #0f172a 100%)",
