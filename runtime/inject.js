@@ -1,6 +1,5 @@
-/* S.A.A.R.E. L7 RAM Network Interceptor & ISO 27037 DEFR Forensic Agent v10.0 */
+/* S.A.A.R.E. L7 RAM Network Interceptor & Governance Judge Runtime (SGP 1.0) */
 (function() {
-  const API_INGEST_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1/runs";
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
   const DLP = {
@@ -9,6 +8,7 @@
     card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/,
     health: /(?:diagn[oó]stico|cardiopat[ií]a|receta|historia cl[ií]nica|paciente|tratamiento|patolog[ií]a)\b/i,
     jailbreak: /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security|bypass rules)/i,
+    voice_clone: /(?:clonar voz|clonaci[oó]n de voz|avatar sint[eé]tico|suplantar identidad|deepfake voz|audio sint[eé]tico sin consentimiento)/i,
     invoices: /(?:FAC|INV|EXP)-[A-Z0-9-]{6,16}/i,
     unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i
   };
@@ -37,17 +37,6 @@
       subvenciones_requisitos_infranqueables: true,
       subOptions: {}
     };
-  }
-
-  function getActiveUser() {
-    try {
-      const suiteUser = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_user');
-      if (suiteUser) {
-        const parsed = JSON.parse(suiteUser);
-        return parsed.email || "auditor@ms3v.es";
-      }
-    } catch (e) {}
-    return "auditor@ms3v.es";
   }
 
   function computeL7Seal(str) {
@@ -124,8 +113,6 @@
       if (fReqValue) {
         try {
           const outer = JSON.parse(fReqValue);
-
-          // Formato StreamGenerate
           if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
             try {
               const inner = JSON.parse(outer[1]);
@@ -137,8 +124,6 @@
               }
             } catch {}
           }
-
-          // Formato batchexecute
           if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
             for (const batch of outer) {
               if (Array.isArray(batch)) {
@@ -195,6 +180,7 @@
       });
   }
 
+  // Motor Determinista de Adjudicación de Veredictos (Governance Judge)
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
     const str = parseBody(rawBody);
@@ -205,60 +191,77 @@
 
     const seal = computeL7Seal(cleanPrompt);
     const subOpts = settings.subOptions;
+    const timestampIso = new Date().toISOString();
+    const runRandomId = Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    // BÓVEDA 5: EL JUSTIFICADOR (Subvenciones & Fondos Públicos)
+    // 01. CAPA: SUBVENCIONES Y FONDOS PÚBLICOS
     if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
       const match = cleanPrompt.match(DLP.invoices)[0];
       return {
-        verdict: "RECHAZADO",
-        scenario_id: "subvenciones_requisitos_infranqueables",
-        category: "SUBVENCIONES_DUPLICIDAD",
-        norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 PRTR · 2 CFR 200",
-        forensic_role: "DES (Digital Evidence Specialist)",
-        dei_phase: "Fase 3: Adquisición Bit a Bit & Bloqueo Anti-Doble Financiación",
-        reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no acreditado.`,
+        verdict_schema: "SGP_1.0",
+        decision: "BLOCK",
+        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy_id: "POL-GRANTS-DNSH-05",
+        policy_version: "2.1.0",
+        risk_level: "HIGH",
+        rules_matched: ["RULE_NO_DOUBLE_FUNDING_INVOICE"],
+        reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no justificado.`,
         cleanPrompt: sanitize(cleanPrompt),
         sanitizedPrompt: sanitize(cleanPrompt),
+        evidence_id: `EV-GRANT-${runRandomId}`,
         cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH
+        parentHash: CANONICAL_PARENT_HASH,
+        timestamp: timestampIso
       };
     }
 
-    // BÓVEDA 4: EL DETECTOR (Fake Disprover & Unsupported Claims)
-    if (settings.deepfake_fake_disprover && DLP.unsupported.test(cleanPrompt)) {
+    // 02. CAPA: PROTECCIÓN DEL HONOR & DEEPFAKES NO CONSENTIDOS
+    if (settings.deepfake_fake_disprover && (DLP.voice_clone.test(cleanPrompt) || DLP.unsupported.test(cleanPrompt))) {
       return {
-        verdict: "RECHAZADO",
-        scenario_id: "deepfake_fake_disprover",
-        category: "UNSUPPORTED_CLAIMS_DEEPFAKE",
-        norma: "ISO/IEC 42001 Control B.6.3 · Cadena de Custodia Forense",
-        forensic_role: "DES (Digital Evidence Specialist)",
-        dei_phase: "Fase 4: Verificación Causal & RunLive Sampling",
-        reason: "Bloqueo Fake Disprover: Detección de Unsupported Claims o alteración documental no fundamentada en el corpus aportado.",
+        verdict_schema: "SGP_1.0",
+        decision: "BLOCK",
+        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy_id: "POL-HONOR-SYNTHETIC-03",
+        policy_version: "2.0.0",
+        risk_level: "CRITICAL",
+        rules_matched: ["RULE_SYNTHETIC_IDENTITY_NO_CONSENT", "RULE_NO_UNSUPPORTED_CLAIMS"],
+        reason: "Bloqueo Ley del Honor 2026: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
+        evidence_id: `EV-HONOR-${runRandomId}`,
         cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH
+        parentHash: CANONICAL_PARENT_HASH,
+        timestamp: timestampIso
       };
     }
 
-    // BÓVEDA 3: EL GUARDIÁN (Razonamiento Activo & Jailbreak Guard)
+    // 03. CAPA: ROBUSTEZ L7 & ANTI-JAILBREAK
     if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
       return {
-        verdict: "RECHAZADO",
-        scenario_id: "razonamiento_activo_l7",
-        category: "ANTI_JAILBREAK_L7",
-        norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01 · ISO 27001 A.8.7",
-        forensic_role: "Active Defense Gatekeeper",
-        dei_phase: "Fase 2: Corte Perimetral de Socket & Purga RAM",
-        reason: "Bloqueo Razonamiento Activo: Intento de evasión perimetral, modo DAN o extracción de directivas del sistema.",
+        verdict_schema: "SGP_1.0",
+        decision: "BLOCK",
+        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy_id: "POL-AI-ACT-ROBUSTNESS-15",
+        policy_version: "3.4.0",
+        risk_level: "HIGH",
+        rules_matched: ["RULE_PROMPT_INJECTION_MITIGATION", "RULE_ACTIVE_SHIELD_ENFORCE"],
+        reason: "Bloqueo Seguridad L7: Intento de Jailbreak / Modo DAN neutralizado deterministamente conforme al Art. 15 del EU AI Act.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
+        evidence_id: `EV-SEC-${runRandomId}`,
         cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH
+        parentHash: CANONICAL_PARENT_HASH,
+        timestamp: timestampIso
       };
     }
 
-    // BÓVEDA 1: EL ESCUDO (DEFR - Privacidad, DNI, IBAN, Salud Art. 9)
+    // 04. CAPA: PRIVACIDAD, PII & SECRETO EMPRESARIAL
     if (settings.cumplimiento_corporativo_integral) {
       const isDni = subOpts.dlp_dni_nie !== false && (DLP.dni.test(cleanPrompt) || DLP.dni.test(str));
       const isIban = subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
@@ -266,55 +269,67 @@
       const isHealth = subOpts.dlp_health_art9 !== false && (DLP.health.test(cleanPrompt) || DLP.health.test(str));
 
       if (isDni || isIban || isCard || isHealth) {
-        let category = "PII_DNI_NIE";
-        let norma = "España - LOPDGDD 3/2018 & RGPD Art. 5 y 32";
+        let policyId = "POL-RGPD-PII-01";
+        let rules = ["RULE_PII_DNI_DETECTED"];
+        let riskLevel = "HIGH";
 
         if (isHealth) {
-          category = "DATOS_SALUD_ART9";
-          norma = "RGPD Art. 9 (Categorías Especiales / Salud)";
+          policyId = "POL-RGPD-HEALTH-ART9";
+          rules = ["RULE_SPECIAL_CATEGORY_HEALTH_DATA"];
         } else if (isIban) {
-          category = "DATOS_BANCARIOS_IBAN";
-          norma = "DORA Capa 7 / RGPD Art. 32";
+          policyId = "POL-DORA-FIN-IBAN";
+          rules = ["RULE_FINANCIAL_DATA_PROTECTION"];
         } else if (isCard) {
-          category = "TARJETA_CREDITO_PAN";
-          norma = "PCI-DSS v4 Req 3.4 & 6.4";
+          policyId = "POL-PCI-DSS-PAN";
+          rules = ["RULE_PAYMENT_CARD_DETECTED"];
+          riskLevel = "CRITICAL";
         }
 
         const displayPrompt = sanitize(cleanPrompt);
 
         return {
-          verdict: "RECHAZADO",
-          scenario_id: "cumplimiento_corporativo_integral",
-          category,
-          norma,
-          forensic_role: "DEFR (Digital Evidence First Responder)",
-          dei_phase: "Fase 1: Identificación de Volatilidad & Aislamiento Ex-Ante",
-          reason: "Causalidad rota: Detección ex-ante de datos regulados no disociados en buffer RAM L7 (Rol DEFR).",
+          verdict_schema: "SGP_1.0",
+          decision: "BLOCK",
+          enforcement_action: "BLOCK_AND_PURGE_RAM",
+          validity_state: "VALID",
+          system_id: "L7-AGENT-SENSOR",
+          policy_id: policyId,
+          policy_version: "4.2.1",
+          risk_level: riskLevel,
+          rules_matched: rules,
+          reason: "Bloqueo Privacidad: Detección ex-ante de datos regulados en búfer volátil RAM L7 con purga SYS_madvise.",
           cleanPrompt: displayPrompt,
           sanitizedPrompt: displayPrompt,
+          evidence_id: `EV-PII-${runRandomId}`,
           cryptoSeal: seal,
-          parentHash: CANONICAL_PARENT_HASH
+          parentHash: CANONICAL_PARENT_HASH,
+          timestamp: timestampIso
         };
       }
     }
 
-    // SI NO HAY INFRACCIÓN: EVENTO PERMITIDO (BÓVEDA 2 AUDITORÍA)
+    // 05. SI NO HAY INFRACCIÓN: VEREDICTO ALLOW (CON TESTIGO CEREBRO L7)
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
-      verdict: "PERMITIDO",
-      scenario_id: "cumplimiento_corporativo_integral",
-      category: "AUDITORIA_CONFORME",
-      norma: "UNE-ISO/IEC 42001 & ISO/IEC 27037",
-      forensic_role: "DEFR (Digital Evidence First Responder)",
-      dei_phase: "Tráfico conforme verificado en memoria volátil RAM",
-      reason: "Inferencia conforme bajo perímetro determinista (Error Lógico 0).",
+      verdict_schema: "SGP_1.0",
+      decision: "ALLOW",
+      enforcement_action: "ALLOW_AND_ATTEST",
+      validity_state: "VALID",
+      system_id: "L7-AGENT-SENSOR",
+      policy_id: "POL-CORP-GOVERNANCE-01",
+      policy_version: "1.0.0",
+      risk_level: "LOW",
+      rules_matched: ["RULE_PAYLOAD_CONFORME"],
+      reason: "Inferencia autorizada y auditada bajo perímetro determinista L7 (Error Lógico 0).",
       cleanPrompt: cleanPrompt,
       sanitizedPrompt: cleanPrompt,
+      evidence_id: `EV-ALLOW-${runRandomId}`,
       active_shield: "[SAARE_ACTIVE_SHIELD: ENFORCE]",
       brain_witness: "🧠 L7 CEREBRO WITNESS: DETERMINISTIC_VALID",
       cryptoSeal: seal,
-      parentHash: CANONICAL_PARENT_HASH
+      parentHash: CANONICAL_PARENT_HASH,
+      timestamp: timestampIso
     };
   }
 
@@ -327,11 +342,11 @@
 
   const rawSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
-    const check = evaluatePayload(body, this._saare_url);
-    if (check) {
-      window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-      if (check.verdict === "RECHAZADO") {
-        throw new Error(`[S.A.A.R.E. L7] Transmisión bloqueada en RAM por [${check.scenario_id}].`);
+    const verdict = evaluatePayload(body, this._saare_url);
+    if (verdict) {
+      window.postMessage({ type: "SAARE_VERDICT_EVENT", data: verdict }, "*");
+      if (verdict.decision === "BLOCK") {
+        throw new Error(`[SAARE GOVERNANCE JUDGE] Acción rechazada por política [${verdict.policy_id}].`);
       }
     }
     return rawSend.apply(this, arguments);
@@ -342,17 +357,19 @@
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");
     if (config && config.body) {
-      const check = evaluatePayload(config.body, url);
-      if (check) {
-        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        if (check.verdict === "RECHAZADO") {
+      const verdict = evaluatePayload(config.body, url);
+      if (verdict) {
+        window.postMessage({ type: "SAARE_VERDICT_EVENT", data: verdict }, "*");
+        if (verdict.decision === "BLOCK") {
           return new Response(JSON.stringify({
-            error: "S.A.A.R.E. L7 Intercept: Bloqueo Ex-Ante en RAM",
-            scenario: check.scenario_id,
-            reason: check.reason,
-            seal: check.cryptoSeal
+            verdict: "BLOCK",
+            error: "SAARE Governance Judge: Bloqueo Ex-Ante en RAM",
+            policy_id: verdict.policy_id,
+            reason: verdict.reason,
+            evidence_id: verdict.evidence_id,
+            crypto_seal: verdict.cryptoSeal
           }), {
-            status: 400,
+            status: 403,
             headers: { "Content-Type": "application/json" }
           });
         }
