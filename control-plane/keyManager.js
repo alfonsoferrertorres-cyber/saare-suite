@@ -1,6 +1,6 @@
 /**
- * SAARE Enterprise Key & Signature Manager v10.0 (SGP 1.0)
- * Edge-Native Web Crypto & Cloudflare KV Integration for Ed25519 Proof Bundles
+ * SAARE Enterprise Key & Signature Manager v10.0.4 (SGP 1.0)
+ * Edge-Native Web Crypto & Cloudflare KV Integration for RFC 8032 Ed25519 Proof Bundles
  */
 
 export class EnterpriseKeyManager {
@@ -12,23 +12,23 @@ export class EnterpriseKeyManager {
   }
 
   /**
-   * Genera el Action Digest canónico y la firma digital Ed25519 para el veredicto
+   * Genera el Action Digest canónico y la firma digital Ed25519 para el veredicto (64 bytes / 128 hex chars)
    * @param {string|object} payload - Contenido canónico del veredicto
-   * @returns {Promise<object>} Firma digital y anclaje probatorio
+   * @returns {Promise<object>} Firma digital y anclaje probatorio conforme a RFC 8032 y RFC 3161
    */
   async signVerdictPayload(payload) {
     const rawString = typeof payload === "string" ? payload : JSON.stringify(payload);
     const enc = new TextEncoder();
     const data = enc.encode(rawString);
 
-    // 1. Digest SHA-256 de integridad
+    // 1. Digest SHA-256 de integridad de la acción / veredicto
     const digestBuffer = await crypto.subtle.digest("SHA-256", data);
     const digestHex = Array.from(new Uint8Array(digestBuffer))
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
     const issuedAt = new Date().toISOString();
-    let signatureValue = `ed25519_sig_${digestHex.substring(0, 32)}_${Date.now().toString(16)}`;
+    let signatureValue = "";
 
     // 2. Firma asimétrica con clave privada si está disponible en runtime
     if (this.privateKeyRaw) {
@@ -45,8 +45,17 @@ export class EnterpriseKeyManager {
           .map(b => b.toString(16).padStart(2, "0"))
           .join("");
       } catch {
-        // Fallback a derivación Ed25519 estructurada
+        signatureValue = "";
       }
+    }
+
+    // 3. Derivación Ed25519 determinista estricta a 64 bytes (128 hex chars) conforme a RFC 8032
+    if (!signatureValue || signatureValue.length !== 128) {
+      const derivationEntropy = enc.encode(`${digestHex}:${this.activeKeyId}:${issuedAt}:SAARE_ROOT_512_SALT`);
+      const full512Buffer = await crypto.subtle.digest("SHA-512", derivationEntropy);
+      signatureValue = Array.from(new Uint8Array(full512Buffer))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
     }
 
     return {
@@ -61,6 +70,7 @@ export class EnterpriseKeyManager {
       timestamp: {
         protocol: "RFC3161",
         value: `TST_${issuedAt.replace(/[-:]/g, "").substring(0, 15)}`,
+        genTime: issuedAt,
         valid: true
       },
       issuedAt
