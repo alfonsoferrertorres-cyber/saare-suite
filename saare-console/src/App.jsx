@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
+const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
 function resolveInitialUser() {
   if (typeof window === "undefined") return null;
@@ -74,7 +75,7 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO DE LAS 5 BÓVEDAS DE CONTROL
+  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -388,7 +389,7 @@ export default function App() {
     try {
       setDownloadingAgentZip(true);
       const response = await fetch('/saare-extension.zip');
-      if (!response.ok) throw new Error("No se pudo obtener el paquete base del sensor.");
+      if (!response.ok) throw new Error("No se pudo obtener el archivo /saare-extension.zip.");
 
       const zipArrayBuffer = await response.arrayBuffer();
       const zip = await JSZip.loadAsync(zipArrayBuffer);
@@ -443,7 +444,7 @@ export default function App() {
 
   if (!sessionUser) {
     return (
-      <div style={{ minHeight: '100vh', background: '#eef2f6', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: '#eef2f6', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ maxWidth: '420px', width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '36px', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h1 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0' }}>S.A.A.R.E. CONSOLE</h1>
@@ -465,26 +466,25 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#dce3ec', color: '#1e293b', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* 1. CABECERA INSTITUCIONAL CON IMAGEN OFICIAL */}
-      <div style={{ background: '#ffffff', borderBottom: '2px solid #cbd5e1', padding: '12px 24px' }}>
+      {/* 1. CABECERA INSTITUCIONAL RESTAURADA CON LA IMAGEN OFICIAL */}
+      <header style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', padding: '14px 24px' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
             <img 
-              src="/Cabecera saare-console.jfif" 
+              src={HEADER_BANNER_SRC} 
               alt="Tecnología de IA Segura y Certificada" 
-              style={{ height: '70px', objectFit: 'contain', borderRadius: '4px' }}
+              style={{ height: '72px', width: 'auto', objectFit: 'contain', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
               onError={(e) => {
-                // Fallback visual en caso de ruta relativa
                 e.target.style.display = 'none';
               }}
             />
             <div>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#b45309', letterSpacing: '-0.5px', lineHeight: 1 }}>
-                Tecnología de IA
+              <div style={{ fontSize: '34px', fontWeight: '900', color: '#c59b27', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                Tecnología
               </div>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#475569', letterSpacing: '0.2px', marginTop: '3px' }}>
-                Control Perimetral, Ejecución Determinista y Trazabilidad L7
+              <div style={{ fontSize: '19px', fontWeight: '700', color: '#475569', letterSpacing: '0.2px', marginTop: '3px' }}>
+                Control Perimetral y Pericial
               </div>
             </div>
           </div>
@@ -493,22 +493,22 @@ export default function App() {
             <button 
               onClick={handleDownloadTokenizedAgent}
               disabled={downloadingAgentZip}
-              style={{ padding: '7px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+              style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11.5px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
             >
               {downloadingAgentZip ? 'Generando...' : '⬇ Descargar Sensor (.zip)'}
             </button>
             <button 
               onClick={handleLogout}
-              style={{ padding: '7px 14px', background: '#e2e8f0', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ padding: '8px 14px', background: '#e2e8f0', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11.5px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               Cerrar Sesión
             </button>
           </div>
 
         </div>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: '1240px', margin: '20px auto', padding: '0 20px' }}>
+      <main style={{ maxWidth: '1240px', margin: '20px auto', padding: '0 20px' }}>
         
         {/* 2. BARRA DE ESTADO / USUARIO CISO */}
         <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '16px' }}>
@@ -527,7 +527,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 3. PESTAÑAS CLÁSICAS */}
+        {/* 3. PESTAÑAS DE NAVEGACIÓN */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
           <button 
             onClick={() => setActiveTab('GLOBAL')} 
@@ -577,7 +577,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* TAB 1: CONFIGURACIÓN (VISTA PRINCIPAL ORIGINAL) */}
+        {/* TAB 1: CONFIGURACIÓN DE DIRECTIVAS Y BÓVEDAS */}
         {activeTab === 'CONFIG' && (
           <div>
             {/* CONFIGURADOR DE FILTROS PERSONALIZADOS */}
@@ -616,7 +616,7 @@ export default function App() {
               )}
             </div>
 
-            {/* GRID DE TARJETAS DE DIRECTIVAS Y SUB-OPCIONES */}
+            {/* GRID DE LAS 5 BÓVEDAS CON SUB-CONTROLES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
               {Object.entries(masterScenariosConfig).map(([key, scn]) => {
                 const isEnabled = directives[key] === true;
@@ -635,7 +635,7 @@ export default function App() {
                     }}
                   >
                     <div>
-                      {/* Fila Superior: Tag Azul y Badge Habilitada/Deshabilitada */}
+                      {/* Tag Azul y Badge Habilitada/Deshabilitada */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <span style={{ color: '#0284c7', fontSize: '10.5px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                           {scn.tag}
@@ -653,7 +653,7 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Título de la Directiva */}
+                      {/* Título */}
                       <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: '900', color: '#0f172a', lineHeight: 1.3 }}>
                         {scn.name}
                       </h4>
@@ -663,7 +663,7 @@ export default function App() {
                         {scn.desc}
                       </p>
 
-                      {/* Sub-opciones técnicas */}
+                      {/* Sub-opciones técnicas con Checkboxes */}
                       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '10px 12px', marginBottom: '14px' }}>
                         <span style={{ color: '#475569', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                           Sub-Controles Activos:
@@ -762,7 +762,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: REGISTRO GLOBAL (LEDGER HISTÓRICO) */}
+        {/* TAB 3: REGISTRO GLOBAL HISTÓRICO */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', background: '#f8fafc' }}>
@@ -828,7 +828,7 @@ export default function App() {
           </div>
         )}
 
-      </div>
+      </main>
 
       {/* MODAL JSON SAARE VERDICT™ */}
       {selectedJson && (
@@ -850,7 +850,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL AÑADIR REGLAS */}
+      {/* MODAL AÑADIR FILTRO PERSONALIZADO */}
       {showAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '20px', maxWidth: '400px', width: '90%' }}>
