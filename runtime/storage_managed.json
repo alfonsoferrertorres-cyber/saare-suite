@@ -1,17 +1,20 @@
 {
   "saare_user_email": {
-    "Value": "usuario@empresa.es"
+    "Value": "workload-operator@empresa.com"
   },
   "saare_tenant_domain": {
-    "Value": "ORGANIZACION"
+    "Value": "CORP_ENTERPRISE_DOMAIN"
   },
-  "saare_api_key": {
-    "Value": "sk_live_managed_identity"
+  "saare_bootstrap_token": {
+    "Value": "boot_sgp10_managed_enrollment"
   },
   "saare_license_type": {
-    "Value": "PLAN_TOKENIZADO_ENTERPRISE"
+    "Value": "ENTERPRISE_EXECUTION_RUNTIME"
   },
   "governance_protocol": {
     "Value": "SGP_1.0"
+  },
+  "enforcement_mode": {
+    "Value": "FAIL_CLOSED"
   }
 }

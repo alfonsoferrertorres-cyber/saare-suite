@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "SAARE L7 Governance Judge",
-  "version": "10.0.0",
-  "description": "AI-Native Audit & Decision Layer (SGP 1.0) · SAARE VERDICT Engine",
+  "name": "SAARE Execution Authorization Sensor",
+  "version": "10.0.4",
+  "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT Engine",
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "SAARE Governance Judge Node"
+    "default_title": "SAARE Execution Guard Node"
   },
   "content_scripts": [
     {
@@ -42,5 +42,10 @@
   "permissions": [
     "storage",
     "alarms"
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }

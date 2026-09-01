@@ -1,7 +1,10 @@
 {
-  "saare_user_email": "usuario@empresa.es",
-  "saare_tenant_domain": "ORGANIZACION",
-  "saare_token": "sk_live_managed_identity",
+  "saare_user_email": "workload-operator@empresa.com",
+  "saare_tenant_domain": "CORP_ENTERPRISE_DOMAIN",
+  "saare_token": "sk_saare_live_bootstrap_node",
   "protocol": "SGP_1.0",
-  "enforcementMode": "ADJUDICATE_AND_ATTEST"
+  "enforcementMode": "FAIL_CLOSED",
+  "memoryMode": "EPHEMERAL",
+  "endpoint": "https://saare-api.alfonsoferrertorres.workers.dev/api/v1",
+  "provisionedAt": "2026-09-01T04:12:18.102Z"
 }

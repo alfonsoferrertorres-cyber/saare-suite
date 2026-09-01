@@ -1,4 +1,4 @@
-/* S.A.A.R.E. L7 RAM Network Interceptor & Governance Judge Runtime (SGP 1.0) */
+/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0) */
 (function() {
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -27,7 +27,7 @@
           subOptions: parsed.subOptions || {}
         };
       }
-    } catch (e) {}
+    } catch {}
 
     return {
       cumplimiento_corporativo_integral: true,
@@ -180,7 +180,7 @@
       });
   }
 
-  // Motor Determinista de Adjudicación de Veredictos (Governance Judge)
+  // Motor Determinista de Autorización (SAARE Judge)
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
     const str = parseBody(rawBody);
@@ -199,8 +199,8 @@
       const match = cleanPrompt.match(DLP.invoices)[0];
       return {
         verdict_schema: "SGP_1.0",
-        decision: "BLOCK",
-        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-GRANTS-DNSH-05",
@@ -217,19 +217,19 @@
       };
     }
 
-    // 02. CAPA: PROTECCIÓN DEL HONOR & DEEPFAKES NO CONSENTIDOS
+    // 02. CAPA: PROTECCIÓN DEL HONOR & DEEPFAKES (LO 1/1982)
     if (settings.deepfake_fake_disprover && (DLP.voice_clone.test(cleanPrompt) || DLP.unsupported.test(cleanPrompt))) {
       return {
         verdict_schema: "SGP_1.0",
-        decision: "BLOCK",
-        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-HONOR-SYNTHETIC-03",
         policy_version: "2.0.0",
         risk_level: "CRITICAL",
         rules_matched: ["RULE_SYNTHETIC_IDENTITY_NO_CONSENT", "RULE_NO_UNSUPPORTED_CLAIMS"],
-        reason: "Bloqueo Ley del Honor 2026: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
+        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
         evidence_id: `EV-HONOR-${runRandomId}`,
@@ -239,19 +239,19 @@
       };
     }
 
-    // 03. CAPA: ROBUSTEZ L7 & ANTI-JAILBREAK
+    // 03. CAPA: ROBUSTEZ L7 & ANTI-JAILBREAK (AI ACT ART. 15)
     if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
       return {
         verdict_schema: "SGP_1.0",
-        decision: "BLOCK",
-        enforcement_action: "BLOCK_AND_PURGE_RAM",
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
         validity_state: "VALID",
         system_id: "L7-AGENT-SENSOR",
         policy_id: "POL-AI-ACT-ROBUSTNESS-15",
         policy_version: "3.4.0",
         risk_level: "HIGH",
         rules_matched: ["RULE_PROMPT_INJECTION_MITIGATION", "RULE_ACTIVE_SHIELD_ENFORCE"],
-        reason: "Bloqueo Seguridad L7: Intento de Jailbreak / Modo DAN neutralizado deterministamente conforme al Art. 15 del EU AI Act.",
+        reason: "Bloqueo Seguridad L7: Intento de Jailbreak o manipulación perimetral neutralizado conforme al Art. 15 del EU AI Act.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
         evidence_id: `EV-SEC-${runRandomId}`,
@@ -261,7 +261,7 @@
       };
     }
 
-    // 04. CAPA: PRIVACIDAD, PII & SECRETO EMPRESARIAL
+    // 04. CAPA: PRIVACIDAD, PII & SECRETO EMPRESARIAL (RGPD ART. 9)
     if (settings.cumplimiento_corporativo_integral) {
       const isDni = subOpts.dlp_dni_nie !== false && (DLP.dni.test(cleanPrompt) || DLP.dni.test(str));
       const isIban = subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
@@ -289,15 +289,15 @@
 
         return {
           verdict_schema: "SGP_1.0",
-          decision: "BLOCK",
-          enforcement_action: "BLOCK_AND_PURGE_RAM",
+          decision: "DENY",
+          enforcement: { action: "BLOCK" },
           validity_state: "VALID",
           system_id: "L7-AGENT-SENSOR",
           policy_id: policyId,
           policy_version: "4.2.1",
           risk_level: riskLevel,
           rules_matched: rules,
-          reason: "Bloqueo Privacidad: Detección ex-ante de datos regulados en búfer volátil RAM L7 con purga SYS_madvise.",
+          reason: "Bloqueo Privacidad: Detección ex-ante de datos regulados en búfer volátil de runtime.",
           cleanPrompt: displayPrompt,
           sanitizedPrompt: displayPrompt,
           evidence_id: `EV-PII-${runRandomId}`,
@@ -308,25 +308,23 @@
       }
     }
 
-    // 05. SI NO HAY INFRACCIÓN: VEREDICTO ALLOW (CON TESTIGO CEREBRO L7)
+    // 05. SI NO HAY INFRACCIÓN: VEREDICTO ALLOW
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
       verdict_schema: "SGP_1.0",
       decision: "ALLOW",
-      enforcement_action: "ALLOW_AND_ATTEST",
+      enforcement: { action: "PASS" },
       validity_state: "VALID",
       system_id: "L7-AGENT-SENSOR",
       policy_id: "POL-CORP-GOVERNANCE-01",
       policy_version: "1.0.0",
       risk_level: "LOW",
       rules_matched: ["RULE_PAYLOAD_CONFORME"],
-      reason: "Inferencia autorizada y auditada bajo perímetro determinista L7 (Error Lógico 0).",
+      reason: "Inferencia autorizada bajo perímetro determinista L7.",
       cleanPrompt: cleanPrompt,
       sanitizedPrompt: cleanPrompt,
       evidence_id: `EV-ALLOW-${runRandomId}`,
-      active_shield: "[SAARE_ACTIVE_SHIELD: ENFORCE]",
-      brain_witness: "🧠 L7 CEREBRO WITNESS: DETERMINISTIC_VALID",
       cryptoSeal: seal,
       parentHash: CANONICAL_PARENT_HASH,
       timestamp: timestampIso
@@ -344,9 +342,9 @@
   XMLHttpRequest.prototype.send = function(body) {
     const verdict = evaluatePayload(body, this._saare_url);
     if (verdict) {
-      window.postMessage({ type: "SAARE_VERDICT_EVENT", data: verdict }, "*");
-      if (verdict.decision === "BLOCK") {
-        throw new Error(`[SAARE GOVERNANCE JUDGE] Acción rechazada por política [${verdict.policy_id}].`);
+      window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
+      if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
+        throw new Error(`[SAARE JUDGE] Acción rechazada por política [${verdict.policy_id}].`);
       }
     }
     return rawSend.apply(this, arguments);
@@ -359,11 +357,13 @@
     if (config && config.body) {
       const verdict = evaluatePayload(config.body, url);
       if (verdict) {
-        window.postMessage({ type: "SAARE_VERDICT_EVENT", data: verdict }, "*");
-        if (verdict.decision === "BLOCK") {
+        window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
+        if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
           return new Response(JSON.stringify({
-            verdict: "BLOCK",
-            error: "SAARE Governance Judge: Bloqueo Ex-Ante en RAM",
+            verdict: "DENY",
+            decision: "DENY",
+            enforcement: { action: "BLOCK" },
+            error: "SAARE Judge: Bloqueo Ex-Ante en Runtime",
             policy_id: verdict.policy_id,
             reason: verdict.reason,
             evidence_id: verdict.evidence_id,

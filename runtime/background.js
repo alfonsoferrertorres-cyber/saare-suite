@@ -1,11 +1,11 @@
 /**
- * S.A.A.R.E. L7 Governance Agent Background Service Worker (SGP 1.0)
- * AI-Native Audit & Decision Layer™ · SAARE VERDICT™ Ledger Ingest
+ * SAARE L7 Execution Authorization Service Worker (SGP 1.0)
+ * Browser Runtime Sensor & SAARE VERDICT™ Ledger Ingestion
  */
 
 const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
-// 1. Resolución de identidad corporativa: Managed Storage (GPO) -> Local Storage -> Fallback
+// 1. Resolución de identidad: Managed Storage (GPO) -> Local Storage -> Fallback
 async function resolveIdentity(payloadUser) {
   return new Promise((resolve) => {
     if (typeof chrome !== "undefined" && chrome.storage?.managed) {
@@ -13,7 +13,7 @@ async function resolveIdentity(payloadUser) {
         if (managed?.saare_user_email) {
           return resolve({
             user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "SAARE Enterprise Node"
+            tenant: managed.saare_tenant_domain || "Corporate Workload Node"
           });
         }
         fallbackLocal();
@@ -25,21 +25,21 @@ async function resolveIdentity(payloadUser) {
     function fallbackLocal() {
       if (typeof chrome !== "undefined" && chrome.storage?.local) {
         chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-          const finalUser = local?.saare_user_email || payloadUser || "auditor@empresa.es";
-          const finalTenant = local?.saare_tenant_domain || "SAARE Enterprise Node";
+          const finalUser = local?.saare_user_email || payloadUser || "operator@empresa.com";
+          const finalTenant = local?.saare_tenant_domain || "Corporate Workload Node";
           resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
         });
       } else {
-        resolve({ user: (payloadUser || "auditor@empresa.es").toLowerCase().trim(), tenant: "SAARE Enterprise Node" });
+        resolve({ user: (payloadUser || "operator@empresa.com").toLowerCase().trim(), tenant: "Corporate Workload Node" });
       }
     }
   });
 }
 
-// 2. Sincronización periódica de políticas y directivas desde el Control Plane
+// 2. Sincronización periódica de directivas desde el SAARE Control Plane
 async function syncDynamicSettings() {
   const { user } = await resolveIdentity();
-  if (user && user !== "usuario_anonimo@tenant.es") {
+  if (user && user !== "anonymous@tenant.local") {
     try {
       const res = await fetch(`${WORKER_URL}/settings?user=${encodeURIComponent(user)}`);
       if (res.ok) {
@@ -54,7 +54,7 @@ async function syncDynamicSettings() {
         }
       }
     } catch {
-      // Tolerancia a microcortes de red
+      // Tolerancia a microcortes de red en background
     }
   }
 }
@@ -81,7 +81,7 @@ if (typeof chrome !== "undefined" && chrome.runtime) {
   }
 }
 
-// 4. Recepción, estructuración normativa (SGP 1.0) y transmisión de veredictos
+// 4. Recepción, estructuración (SGP 1.0) y transmisión de veredictos
 if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "SAARE_LOG_EVENT" || message?.type === "SAARE_VERDICT_EVENT") {
@@ -89,41 +89,52 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
         const timestampIso = message.payload?.timestamp || new Date().toISOString();
         const runId = message.payload?.evidence_id || message.payload?.runId || `EV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
+        const isDenied = message.payload?.decision === "DENY" || message.payload?.verdict === "RECHAZADO" || message.payload?.decision === "BLOCK";
+        const decision = isDenied ? "DENY" : (message.payload?.decision || "ALLOW");
+        const enforcementAction = isDenied ? "BLOCK" : (message.payload?.enforcement?.action || message.payload?.enforcement_action || "PASS");
+
         // Estructura Canónica SGP 1.0 (SAARE VERDICT™)
         const verdictPayload = {
           verdict_schema: "SGP_1.0",
           verdict_id: message.payload?.verdict_id || `VRD-${runId.replace('EV-', '')}`,
           evidence_id: runId,
-          validity_state: message.payload?.validity_state || "VALID",
+          status: message.payload?.status || "VALID",
           system_id: message.payload?.system_id || "L7-BROWSER-SENSOR",
-          actor_id: user,
+          subject: {
+            type: "workload_agent",
+            id: user
+          },
+          action: {
+            type: message.payload?.action?.type || message.payload?.action || "generic_inference",
+            resource: message.payload?.action?.resource || message.payload?.resource || "browser-llm-endpoint",
+            digest: message.payload?.action?.digest || message.payload?.actionDigest || "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          policy: {
+            id: message.payload?.policy_id || message.payload?.scenario_id || "POL-CORP-GOVERNANCE-01",
+            version: message.payload?.policy_version || "1.0.0"
+          },
           tenant: tenant,
           user: user,
-          model_id: message.payload?.model_id || "browser-llm-endpoint",
-          decision: message.payload?.decision || (message.payload?.verdict === "RECHAZADO" ? "BLOCK" : "ALLOW"),
-          enforcement_action: message.payload?.enforcement_action || (message.payload?.verdict === "RECHAZADO" ? "BLOCK_AND_PURGE_RAM" : "ALLOW_AND_ATTEST"),
-          policy_id: message.payload?.policy_id || message.payload?.scenario_id || "POL-CORP-GOVERNANCE-01",
-          policy_version: message.payload?.policy_version || "1.0.0",
-          risk_level: message.payload?.risk_level || (message.payload?.verdict === "RECHAZADO" ? "HIGH" : "LOW"),
-          rules_matched: message.payload?.rules_matched || (message.payload?.category ? [message.payload.category] : []),
-          reason: message.payload?.reason || "Evaluación determinista bajo perímetro L7",
+          decision: decision,
+          enforcement: {
+            action: enforcementAction
+          },
+          executionPermit: message.payload?.executionPermit || null,
+          reasonCodes: message.payload?.reasonCodes || message.payload?.rules_matched || (isDenied ? ["RULE_POLICY_VIOLATION"] : ["RULE_ACTION_PERMITTED"]),
+          reason: message.payload?.reason || (isDenied ? "Acción denegada por política de autorización en tiempo de ejecución." : "Acción autorizada por política determinista."),
           promptInput: message.payload?.promptInput || "",
-          timestamp: timestampIso,
+          issuedAt: timestampIso,
           cryptoSeal: message.payload?.cryptoSeal || "L7-SEAL:ACTIVE",
-          parentHash: message.payload?.parentHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          // Retrocompatibilidad con esquemas previos
-          verdict: message.payload?.decision === "BLOCK" || message.payload?.verdict === "RECHAZADO" ? "RECHAZADO" : "PERMITIDO",
-          category: message.payload?.policy_id || message.payload?.category,
-          norma: message.payload?.policy_id || message.payload?.norma,
-          violationDetails: message.payload?.violationDetails || {
-            category: message.payload?.policy_id,
-            norma: message.payload?.policy_id,
+          // Retrocompatibilidad
+          verdict: isDenied ? "RECHAZADO" : "PERMITIDO",
+          violationDetails: {
+            policy: message.payload?.policy_id || "POL-CORP-GOVERNANCE-01",
             reason: message.payload?.reason,
             cryptoSeal: message.payload?.cryptoSeal
           }
         };
 
-        // Persistencia en búfer local del navegador
+        // Persistencia local en el búfer del navegador
         if (chrome.storage?.local) {
           chrome.storage.local.get({ saare_logs: [], saare_verdicts: [] }, (result) => {
             const currentLogs = Array.isArray(result.saare_logs) ? result.saare_logs : [];
@@ -146,7 +157,7 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
           .catch((err) => sendResponse({ ok: false, error: err.message }));
       });
 
-      return true; // Mantiene el puerto de mensajería abierto para respuesta asíncrona
+      return true;
     }
 
     if (message?.type === "SAARE_GET_RULES") {
