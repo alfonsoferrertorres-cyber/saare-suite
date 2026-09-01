@@ -1,7 +1,13 @@
 ﻿import React, { useState } from 'react';
 
+// Constantes globales de infraestructura
 const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
+const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:5174'
+  : 'https://saare-console.pages.dev';
+const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
+const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
 const CONTROL_LAYERS = [
   {
@@ -69,9 +75,6 @@ const CONTROL_MATRIX = [
   { framework: "DORA & Data Act", risk: "Pérdida de control operacional en nubes externas", policy: "Cross-Border Data Safeguard", control: "Edge Reverse-Proxy con Header L7-SEAL", evidence: "Auditoría de Tránsito Criptográfica" },
   { framework: "ISO/IEC 27037:2012", risk: "Inadmisibilidad de logs en procesos judiciales", policy: "Four-Phase Evidence Workflow", control: "Roles DEFR/DES & Firma Ed25519", evidence: "Proof Bundle con sellado RFC 3161" }
 ];
-
-const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
-const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState(() => {
@@ -363,7 +366,7 @@ export default function App() {
               <div style={{ background: runtimeStep >= 2 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 2 ? '#38bdf8' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 2</div>
                 <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>L7 RAM Buffer</strong>
-                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Aislamiento sin escrituras en disco</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Aislamiento sin persistencia</span>
               </div>
               <div style={{ background: runtimeStep >= 3 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 3 ? '#ea580c' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 3</div>
@@ -544,7 +547,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* 7. CONTROL MATRIX (COMPLIANCE CONVERTIDO EN PRODUCTO) */}
+          {/* 7. CONTROL MATRIX */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MATRIZ DE CONTROL TÉCNICO</span>
@@ -615,7 +618,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '18px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
                 <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Consola GRC</a>
-                <a href="mailto:enterprise@saare.es" style={{ color: '#9ca3af', textDecoration: 'none' }}>Contacto</a>
+                <a href="mailto:enterprise@saare.es" style={{ color: '#94a3af', textDecoration: 'none' }}>Contacto</a>
               </div>
             </div>
           </footer>
