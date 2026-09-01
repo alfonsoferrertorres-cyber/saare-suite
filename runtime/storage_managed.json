@@ -1,0 +1,17 @@
+{
+  "saare_user_email": {
+    "Value": "usuario@empresa.es"
+  },
+  "saare_tenant_domain": {
+    "Value": "ORGANIZACION"
+  },
+  "saare_api_key": {
+    "Value": "sk_live_managed_identity"
+  },
+  "saare_license_type": {
+    "Value": "PLAN_TOKENIZADO_ENTERPRISE"
+  },
+  "governance_protocol": {
+    "Value": "SGP_1.0"
+  }
+}
