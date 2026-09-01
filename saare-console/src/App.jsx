@@ -3,7 +3,6 @@ import JSZip from 'jszip';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
-const STRIPE_LINK = import.meta.env.VITE_STRIPE_LINK || 'https://buy.stripe.com/test_00gbJb6tD0vG0mYfYY';
 
 function resolveInitialUser() {
   if (typeof window === "undefined") return null;
@@ -19,7 +18,7 @@ function resolveInitialUser() {
       tenantName: tenantParam || 'Corporate Workload Node',
       tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
-      role: urlParams.get('role') || 'CISO',
+      role: urlParams.get('role') || 'CISO / Global Admin',
       licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
     };
     localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
@@ -43,9 +42,9 @@ function resolveInitialUser() {
     } catch {}
   }
   return {
-    email: "workload-operator@empresa.com",
+    email: "alfonsosb1@gmail.com",
     tenantName: "Corporate Enterprise Node",
-    role: "CISO",
+    role: "CISO / Global Admin",
     apiKey: "sk_saare_live_master_kv_session",
     licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
   };
@@ -58,7 +57,7 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('RUNLIVE');
+  const [activeTab, setActiveTab] = useState('CONFIG'); // CONFIG, RUNLIVE, GLOBAL
   const [events, setEvents] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -75,79 +74,64 @@ export default function App() {
 
   const [activeScenarioFilter, setActiveScenarioFilter] = useState('ALL');
 
-  // CATÁLOGO CANÓNICO DE LAS 5 BÓVEDAS DE AUTORIZACIÓN (SGP 1.0)
+  // CATÁLOGO DE LAS 5 BÓVEDAS CON LA ESTÉTICA CLÁSICA
   const masterScenariosConfig = {
     cumplimiento_corporativo_integral: {
-      name: "01. PRIVACY & SENSITIVE DATA CONTROL (DEFR)",
-      category: "01 / PRIVACY CONTROL",
-      badgeColor: "#0284c7",
-      desc: "Evaluación y aislamiento en memoria volátil de runtime. Identifica, aísla y redacta DNIs, NIEs, IBANs, tarjetas de pago (PCI-DSS) y datos de salud (RGPD Art. 9) antes de la ejecución.",
-      llmEffect: "Veredicto DENY o contención REDACT en memoria volátil antes del dispatch al LLM.",
+      tag: "PRIVACIDAD ES",
+      name: "ESPAÑA - LOPDGDD & AEPD",
+      desc: "Detección y bloqueo perimetral de DNI, NIE, IBAN, nóminas y fuga de PII.",
       norma: "Workflow aligned with ISO/IEC 27037:2012 · RGPD Art. 5.2, 9 y 32 · LOPDGDD 3/2018 · DORA",
-      icon: "🛡️",
       options: [
-        { key: "dlp_dni_nie", label: "Detección estricta DNI / NIE", default: true },
-        { key: "dlp_iban_cards", label: "Aislamiento IBAN & PAN Tarjetas (PCI-DSS)", default: true },
-        { key: "dlp_health_art9", label: "Protección Datos de Salud (RGPD Art. 9)", default: true },
-        { key: "ephemeral_ram_lock", label: "Aislamiento en Memoria Volátil Efímera", default: true }
+        { key: "dlp_dni_nie", label: "Detección estricta DNI / NIE" },
+        { key: "dlp_iban_cards", label: "Aislamiento IBAN & PAN Tarjetas (PCI-DSS)" },
+        { key: "dlp_health_art9", label: "Protección Datos de Salud (RGPD Art. 9)" },
+        { key: "ephemeral_ram_lock", label: "Aislamiento en Memoria Volátil Efímera" }
       ]
     },
     razonamiento_activo_l7: {
-      name: "02. L7 RUNTIME SECURITY & ROBUSTNESS",
-      category: "02 / RUNTIME SECURITY",
-      badgeColor: "#16a34a",
-      desc: "Mitigación ex-ante de ataques adversarios (Jailbreaks, Modo DAN, anulación de directivas e inyecciones lógicas según el Art. 15 del EU AI Act).",
-      llmEffect: "Emite decisión DENY / BLOCK ante manipulaciones de prompt garantizando la contención perimetral.",
+      tag: "CIBERSEGURIDAD",
+      name: "TOP L7: JAILBREAK & PROMPT INJECTION GUARD",
+      desc: "Mitigación de ataques adversarios, modo DAN y anulación de directivas.",
       norma: "EU AI Act Art. 15 · OWASP Top 10 LLM01/02 · Controls mapped to ISO/IEC 42001",
-      icon: "⚡",
       options: [
-        { key: "anti_dan_jailbreak", label: "Bloqueo Modo DAN & Evasión de Restricciones", default: true },
-        { key: "prompt_guard_active", label: "Inspección de System Prompts & Injection", default: true },
-        { key: "runtime_containment", label: "Barrera de Contención Activa Fail-Closed", default: true }
-      ]
-    },
-    deepfake_fake_disprover: {
-      name: "03. SYNTHETIC MEDIA & RIGHTS CONTROLS",
-      category: "03 / RIGHTS & MEDIA",
-      badgeColor: "#ea580c",
-      desc: "Inspección causal y rechazo estricto (No-Unsupported-Claims) ante clonación o síntesis no consentida de voz/imagen conforme a la Ley Orgánica 1/1982 y el Art. 50 del EU AI Act.",
-      llmEffect: "Emite veredicto DENY determinista si la inferencia intenta generar medios sintéticos no autorizados.",
-      norma: "Ley Orgánica 1/1982 · EU AI Act Art. 13 & 50 · Controls mapped to ISO/IEC 42001",
-      icon: "🔍",
-      options: [
-        { key: "strict_corpus_grounding", label: "Grounding Estricto en Corpus Litigioso", default: true },
-        { key: "reject_unsupported_claims", label: "Rechazo Inmediato de Unsupported Claims", default: true },
-        { key: "voice_clone_guard", label: "Protección contra Clonación de Voz/Imagen (LO 1/1982)", default: true },
-        { key: "anti_tamper_evidence", label: "Verificación de Integridad de Digest", default: true }
+        { key: "anti_dan_jailbreak", label: "Bloqueo Modo DAN & Evasión de Restricciones" },
+        { key: "prompt_guard_active", label: "Inspección de System Prompts & Injection" },
+        { key: "runtime_containment", label: "Barrera de Contención Activa Fail-Closed" }
       ]
     },
     auditoria_dictamen_normativo: {
-      name: "04. EVIDENCE CAPTURE & PROOF BUNDLE (DES)",
-      category: "04 / EVIDENCE RECORD",
-      badgeColor: "#9333ea",
-      desc: "Generación automatizada de expedientes probatorios inmutables (SAARE VERDICT™). Genera Proof Bundles con Hashes SHA-256, firma asimétrica Ed25519 y sellado temporal RFC 3161.",
-      llmEffect: "Emite SAARE VERDICT estructurado con trazabilidad no repudiable para auditorías y comités.",
+      tag: "TRAZABILIDAD FORENSE",
+      name: "SELLO DE TIEMPO RFC 3161 & HASH CANÓNICO",
+      desc: "Indexación criptográfica Ed25519 en Bóveda Forense sin almacenamiento en disco.",
       norma: "Workflow aligned with ISO/IEC 27037:2012 · EU AI Act Art. 12 Logs · RFC 3161",
-      icon: "⚖️",
       options: [
-        { key: "rfc3161_qualified_tsa", label: "Estampado Temporal RFC 3161", default: true },
-        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519", default: true },
-        { key: "action_digest_binding", label: "Action Digest Binding (SHA-256)", default: true },
-        { key: "safe_creative_anchor", label: "Anclaje de Integridad Fiduciaria", default: true }
+        { key: "rfc3161_qualified_tsa", label: "Estampado Temporal RFC 3161" },
+        { key: "ed25519_signatures", label: "Firma Criptográfica Asimétrica Ed25519" },
+        { key: "action_digest_binding", label: "Action Digest Binding (SHA-256)" },
+        { key: "safe_creative_anchor", label: "Anclaje de Integridad Fiduciaria" }
+      ]
+    },
+    deepfake_fake_disprover: {
+      tag: "MEDIOS SINTÉTICOS",
+      name: "CONTROL DE CLONACIÓN DE VOZ & DERECHOS DE IMAGEN",
+      desc: "Inspección causal y rechazo estricto ante síntesis de voz o deepfakes no consentidos.",
+      norma: "Ley Orgánica 1/1982 · EU AI Act Art. 13 & 50 · Controls mapped to ISO/IEC 42001",
+      options: [
+        { key: "strict_corpus_grounding", label: "Grounding Estricto en Corpus Litigioso" },
+        { key: "reject_unsupported_claims", label: "Rechazo Inmediato de Unsupported Claims" },
+        { key: "voice_clone_guard", label: "Protección contra Clonación de Voz/Imagen (LO 1/1982)" },
+        { key: "anti_tamper_evidence", label: "Verificación de Integridad de Digest" }
       ]
     },
     subvenciones_requisitos_infranqueables: {
-      name: "05. FIDUCIARY TRACEABILITY & PUBLIC FUNDS",
-      category: "05 / TRACEABILITY",
-      badgeColor: "#ca8a04",
-      desc: "Control automatizado de no-doble financiación (hash SHA-256 de facturas/gastos), principio medioambiental DNSH y generación de memorias técnicas de justificación.",
-      llmEffect: "Bloquea transacciones o facturas duplicadas garantizando el principio de no solapamiento.",
+      tag: "FINOPS IT & FIDUCIARIO",
+      name: "CONTROL DE COSTES Y CUOTA DE LLM / FONDOS PRTR",
+      desc: "Control de no-doble financiación (hash de facturas), principio DNSH y cuota de inferencias.",
       norma: "Ley 38/2003 LGS · Orden HFP/1030/2021 · PRTR / NextGenEU · 2 CFR 200",
-      icon: "🏛️",
       options: [
-        { key: "enforce_no_double_funding", label: "Bloqueo Anti-Doble Financiación (Hash Facturas)", default: true },
-        { key: "enforce_dnsh_principle", label: "Acreditación Principio No Perjuicio Significativo (DNSH)", default: true },
-        { key: "prtr_nextgen_dossier", label: "Generador de Memorias de Trazabilidad PRTR", default: true }
+        { key: "enforce_no_double_funding", label: "Bloqueo Anti-Doble Financiación (Hash Facturas)" },
+        { key: "enforce_dnsh_principle", label: "Acreditación Principio No Perjuicio Significativo (DNSH)" },
+        { key: "prtr_nextgen_dossier", label: "Generador de Memorias de Trazabilidad PRTR" }
       ]
     }
   };
@@ -155,8 +139,8 @@ export default function App() {
   const [directives, setDirectives] = useState({
     cumplimiento_corporativo_integral: true,
     razonamiento_activo_l7: true,
-    deepfake_fake_disprover: true,
     auditoria_dictamen_normativo: true,
+    deepfake_fake_disprover: true,
     subvenciones_requisitos_infranqueables: true
   });
 
@@ -388,7 +372,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${eventLog.verdict_id || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
+      a.download = `proof-bundle-${eventLog.verdictId || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -410,7 +394,7 @@ export default function App() {
       const zip = await JSZip.loadAsync(zipArrayBuffer);
 
       const tTenant = sessionUser?.tenantName || "CORP_ENTERPRISE_DOMAIN";
-      const tEmail = sessionUser?.email || "workload-operator@empresa.com";
+      const tEmail = sessionUser?.email || "alfonsosb1@gmail.com";
       const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_" + Math.random().toString(36).substring(2, 12);
 
       const tokenizedManagedConfig = {
@@ -459,281 +443,370 @@ export default function App() {
 
   if (!sessionUser) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0f1d', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ maxWidth: '440px', width: '100%', background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{ width: '48px', height: '48px', background: '#1e3a8a', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>🛡️</div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 6px 0' }}>SAARE CONTROL CONSOLE</h1>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>AI Execution Authorization & Verdict Ledger (SGP 1.0)</p>
+      <div style={{ minHeight: '100vh', background: '#eef2f6', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ maxWidth: '420px', width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '36px', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0' }}>S.A.A.R.E. CONSOLE</h1>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Acceso a Panel de Control y Auditoría L7</p>
           </div>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Correo Corporativo (CISO / Operador)" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
-            <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña de Acceso" style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #374151', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} />
-            {loginError && <div style={{ padding: '12px', background: '#450a0a', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', textAlign: 'center', fontSize: '0.85rem' }}>{loginError}</div>}
-            <button type="submit" disabled={loadingLogin} style={{ padding: '14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: loadingLogin ? 'not-allowed' : 'pointer' }}>
-              {loadingLogin ? 'Autenticando...' : '🔒 Iniciar Sesión en Control Plane'}
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Correo Corporativo (CISO / Admin)" style={{ width: '100%', padding: '10px 12px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', boxSizing: 'border-box', fontSize: '13px' }} />
+            <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña de Acceso" style={{ width: '100%', padding: '10px 12px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', boxSizing: 'border-box', fontSize: '13px' }} />
+            {loginError && <div style={{ padding: '10px', background: '#fee2e2', border: '1px solid #ef4444', borderRadius: '4px', color: '#b91c1c', textAlign: 'center', fontSize: '12px' }}>{loginError}</div>}
+            <button type="submit" disabled={loadingLogin} style={{ padding: '12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: loadingLogin ? 'not-allowed' : 'pointer' }}>
+              {loadingLogin ? 'Autenticando...' : 'INICIAR SESIÓN'}
             </button>
           </form>
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <a href={PORTAL_URL} style={{ color: '#38bdf8', fontSize: '0.8rem', textDecoration: 'none' }}>← Volver al Portal Principal (saare.es)</a>
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#dce3ec', color: '#1e293b', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* CABECERA CORPORATIVA */}
-      <header style={{ background: '#1e293b', borderBottom: '1px solid #334155', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', background: '#0284c7', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900', color: '#fff' }}>S</div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', letterSpacing: '0.5px' }}>SAARE EXECUTION CONTROL CONSOLE</h1>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>AI Execution Authorization Infrastructure · SGP 1.0 Canonical Contract</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0b0f19', border: '1px solid #334155', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: kvStatus.online ? '#10b981' : '#ef4444' }}></span>
-            <span style={{ color: '#94a3b8' }}>DECISION STORE:</span>
-            <strong style={{ color: kvStatus.online ? '#34d399' : '#ef4444' }}>
-              {kvStatus.online ? `ACTIVO (${kvStatus.latencyMs} ms)` : 'ERROR SYNC'}
-            </strong>
-          </div>
-          <button onClick={handleLogout} style={{ padding: '6px 14px', background: '#450a0a', border: '1px solid #ef4444', color: '#fca5a5', borderRadius: '6px', fontWeight: '700', fontSize: '0.75rem', cursor: 'pointer' }}>
-            SALIR
-          </button>
-        </div>
-      </header>
+      {/* 1. HERO BANNER DORADO / BLANCO CORPORATIVO */}
+      <div style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', padding: '16px 24px' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {/* Logo Cerebro Tecnológico */}
+            <div style={{ width: '110px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 100 80" style={{ width: '100%', height: '100%' }}>
+                <defs>
+                  <linearGradient id="brainGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#0284c7" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
+                  </linearGradient>
+                </defs>
+                <path d="M50 15 C35 15 20 25 20 42 C20 58 35 68 50 68 C65 68 80 58 80 42 C80 25 65 15 50 15 Z" fill="none" stroke="url(#brainGlow)" strokeWidth="4" />
+                <path d="M30 35 Q40 25 50 35 T70 35" fill="none" stroke="#38bdf8" strokeWidth="2.5" />
+                <path d="M25 45 Q40 38 50 48 T75 45" fill="none" stroke="#0284c7" strokeWidth="2.5" />
+                <path d="M35 55 Q45 48 50 55 T65 55" fill="none" stroke="#38bdf8" strokeWidth="2" />
+                <circle cx="30" cy="35" r="2.5" fill="#f59e0b" />
+                <circle cx="70" cy="35" r="2.5" fill="#f59e0b" />
+                <circle cx="50" cy="48" r="3" fill="#38bdf8" />
+                <line x1="10" y1="42" x2="20" y2="42" stroke="#cbd5e1" strokeWidth="2" />
+                <line x1="80" y1="42" x2="90" y2="42" stroke="#cbd5e1" strokeWidth="2" />
+              </svg>
+            </div>
 
-      <main style={{ maxWidth: '1440px', margin: '24px auto', padding: '0 24px' }}>
-        
-        {/* PANEL INFORMATIVO DEL TENANT */}
-        <div style={{ background: '#1e293b', borderRadius: '12px', padding: '20px 24px', border: '1px solid #334155', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
+            {/* Texto Título Dorado Clásico */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '900', color: '#ffffff' }}>
-                  AUTORIZACIÓN EN TIEMPO DE EJECUCIÓN (L7 RUNTIME)
-                </h2>
-                <span style={{ background: '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
-                  CANONICAL SGP 1.0
-                </span>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: '#c59b27', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                Tecnología
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                TENANT: <strong style={{ color: '#ffffff' }}>{sessionUser.tenantName || 'CORP_ENTERPRISE_DOMAIN'}</strong> | OPERADOR: <strong style={{ color: '#38bdf8' }}>{sessionUser.email}</strong> | DIRECTIVAS: <strong style={{ color: '#34d399' }}>{activeDirectivesCount} ACTIVAS</strong> | <strong style={{ color: disabledDirectivesCount > 0 ? '#f87171' : '#34d399' }}>{disabledDirectivesCount} SUSPENDIDAS</strong>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#475569', letterSpacing: '0.2px', marginTop: '2px' }}>
+                Control Perimetral y Pericial
               </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={handleDownloadTokenizedAgent} 
-                disabled={downloadingAgentZip}
-                style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: downloadingAgentZip ? 'default' : 'pointer' }}
-              >
-                {downloadingAgentZip ? 'Generando...' : '⬇ DESCARGAR SENSOR (.ZIP)'}
-              </button>
-              <a href={PORTAL_URL} style={{ padding: '8px 14px', background: '#0f172a', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', textDecoration: 'none' }}>
-                PORTAL SAARE.ES ↗
-              </a>
             </div>
           </div>
 
-          {/* FILTROS POR BÓVEDA */}
-          <div style={{ borderTop: '1px dashed #334155', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginRight: '6px', whiteSpace: 'nowrap' }}>
-              BÓVEDAS DE CONTROL:
-            </span>
-
-            <button
-              onClick={() => setActiveScenarioFilter('ALL')}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                fontWeight: '800',
-                cursor: 'pointer',
-                border: '1px solid',
-                borderColor: activeScenarioFilter === 'ALL' ? '#0284c7' : '#334155',
-                background: activeScenarioFilter === 'ALL' ? '#0369a1' : '#0b0f19',
-                color: '#ffffff',
-                whiteSpace: 'nowrap'
-              }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              onClick={handleDownloadTokenizedAgent}
+              disabled={downloadingAgentZip}
+              style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
             >
-              TODAS ({events.length})
+              {downloadingAgentZip ? 'Generando...' : 'Descargar Sensor (.zip)'}
             </button>
+            <button 
+              onClick={handleLogout}
+              style={{ padding: '6px 12px', background: '#e2e8f0', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Cerrar Sesión
+            </button>
+          </div>
 
-            {Object.entries(masterScenariosConfig).map(([key, scn]) => {
-              const isEnabled = directives[key];
-              const isSelected = activeScenarioFilter === key;
-              const countInScenario = events.filter(e => (e.policy?.id || e.policy_id || e.scenario_id || '').toLowerCase().includes(key.toLowerCase())).length;
+        </div>
+      </div>
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => setActiveScenarioFilter(key)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    border: '1px solid',
-                    borderColor: isSelected ? scn.badgeColor : '#334155',
-                    background: isSelected ? `${scn.badgeColor}33` : '#0b0f19',
-                    color: isSelected ? '#ffffff' : '#94a3b8',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <span style={{ color: isEnabled ? '#10b981' : '#ef4444', fontSize: '9px' }}>
-                    {isEnabled ? '●' : '○'}
-                  </span>
-                  <span>{scn.icon}</span>
-                  <span>{scn.category}</span>
-                  <span style={{ background: isEnabled ? '#064e3b' : '#450a0a', color: isEnabled ? '#34d399' : '#fca5a5', padding: '1px 5px', borderRadius: '4px', fontSize: '0.7rem' }}>
-                    {isEnabled ? (countInScenario > 0 ? countInScenario : 'ON') : 'OFF'}
-                  </span>
-                </button>
-              );
-            })}
+      <div style={{ maxWidth: '1240px', margin: '20px auto', padding: '0 20px' }}>
+        
+        {/* 2. BARRA DE ESTADO / USUARIO CISO */}
+        <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontWeight: '900', fontSize: '13px', color: '#0f172a', letterSpacing: '0.3px' }}>
+              PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '3px' }}>
+              USUARIO: <strong style={{ color: '#0284c7' }}>{sessionUser.email}</strong> | ROL: <strong style={{ color: '#16a34a' }}>{sessionUser.role || 'CISO / Global Admin'}</strong> | DIRECTIVAS BASE: <strong style={{ color: '#16a34a' }}>{activeDirectivesCount} Activas</strong> | <strong style={{ color: '#ef4444' }}>{disabledDirectivesCount} Deshabilitadas</strong> | REGLAS PERSONALIZADAS: <strong style={{ color: '#0284c7' }}>{customRules.length} Filtros</strong>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #16a34a', background: 'rgba(22, 163, 74, 0.08)', color: '#16a34a', padding: '4px 10px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 'bold', textAlign: 'center', lineHeight: 1.2 }}>
+            LICENCIA ACTIVA<br />
+            <span style={{ fontSize: '11px', fontWeight: '900' }}>001-ENTERPRISE</span>
           </div>
         </div>
 
-        {/* SELECTOR DE PESTAÑAS */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-          <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-            MONITOR DE EJECUCIÓN EN VIVO ({events.length})
+        {/* 3. PESTAÑAS CLÁSICAS */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+          <button 
+            onClick={() => setActiveTab('GLOBAL')} 
+            style={{ 
+              padding: '8px 18px', 
+              background: activeTab === 'GLOBAL' ? '#0284c7' : '#ffffff', 
+              color: activeTab === 'GLOBAL' ? '#ffffff' : '#334155', 
+              border: '1px solid #cbd5e1', 
+              borderBottom: activeTab === 'GLOBAL' ? 'none' : '1px solid #cbd5e1', 
+              borderRadius: '4px 4px 0 0', 
+              fontWeight: 'bold', 
+              fontSize: '11.5px', 
+              cursor: 'pointer' 
+            }}
+          >
+            REGISTRO GLOBAL ({events.length})
           </button>
-          <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'GLOBAL' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-            REGISTRO DE VEREDICTOS HISTÓRICO
+          <button 
+            onClick={() => setActiveTab('RUNLIVE')} 
+            style={{ 
+              padding: '8px 18px', 
+              background: activeTab === 'RUNLIVE' ? '#0284c7' : '#ffffff', 
+              color: activeTab === 'RUNLIVE' ? '#ffffff' : '#334155', 
+              border: '1px solid #cbd5e1', 
+              borderRadius: '4px 4px 0 0', 
+              fontWeight: 'bold', 
+              fontSize: '11.5px', 
+              cursor: 'pointer' 
+            }}
+          >
+            S.A.A.R.E. (RUNLIVE)
           </button>
-          <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 28px', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: activeTab === 'CONFIG' ? '#0284c7' : '#1e293b', color: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-            POLÍTICAS DE AUTORIZACIÓN ({activeDirectivesCount} ACTIVAS)
+          <button 
+            onClick={() => setActiveTab('CONFIG')} 
+            style={{ 
+              padding: '8px 18px', 
+              background: activeTab === 'CONFIG' ? '#0284c7' : '#ffffff', 
+              color: activeTab === 'CONFIG' ? '#ffffff' : '#334155', 
+              border: '1px solid #cbd5e1', 
+              borderRadius: '4px 4px 0 0', 
+              fontWeight: 'bold', 
+              fontSize: '11.5px', 
+              cursor: 'pointer' 
+            }}
+          >
+            CONFIGURACIÓN ({activeDirectivesCount})
           </button>
         </div>
 
-        {/* TAB 1: RUNLIVE */}
+        {/* TAB 1: CONFIGURACIÓN (VISTA PRINCIPAL ORIGINAL) */}
+        {activeTab === 'CONFIG' && (
+          <div>
+            {/* CAJA BLANCA: CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS */}
+            <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '16px 20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <h3 style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>
+                  CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS
+                </h3>
+                <button 
+                  onClick={() => setShowAddModal(true)} 
+                  style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '3px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  + Añadir Filtro
+                </button>
+              </div>
+              <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#64748b' }}>
+                Define palabras clave, frases confidenciales o expresiones regulares (/regex/i) para bloqueo en tiempo real.
+              </p>
+
+              {customRules.length === 0 ? (
+                <div style={{ padding: '14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', textAlign: 'center', color: '#64748b', fontSize: '11px' }}>
+                  No hay filtros personalizados activos. Las {activeDirectivesCount} directivas base de cumplimiento legal se mantienen en ejecución determinista.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {customRules.map((rule, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                      <div style={{ fontSize: '11.5px' }}>
+                        <strong style={{ color: '#0f172a', marginRight: '10px' }}>{rule.label}</strong>
+                        <code style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '3px', fontSize: '11px' }}>{rule.pattern}</code>
+                      </div>
+                      <button onClick={() => removeCustomRule(idx)} style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #ef4444', padding: '2px 8px', borderRadius: '3px', fontWeight: 'bold', fontSize: '10.5px', cursor: 'pointer' }}>Eliminar</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* GRID DE TARJETAS BLANCAS CLÁSICAS CON BOTONES VERDES */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+              {Object.entries(masterScenariosConfig).map(([key, scn]) => {
+                const isEnabled = directives[key] === true;
+                return (
+                  <div 
+                    key={key} 
+                    style={{ 
+                      background: '#ffffff', 
+                      border: '1px solid #cbd5e1', 
+                      borderRadius: '4px', 
+                      padding: '16px 18px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'space-between',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    <div>
+                      {/* Fila Superior: Tag Azul y Badge Habilitada/Deshabilitada */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ color: '#0284c7', fontSize: '10.5px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          {scn.tag}
+                        </span>
+                        <span style={{ 
+                          border: `1px solid ${isEnabled ? '#16a34a' : '#ef4444'}`, 
+                          color: isEnabled ? '#16a34a' : '#ef4444', 
+                          padding: '1px 6px', 
+                          borderRadius: '3px', 
+                          fontSize: '10px', 
+                          fontWeight: 'bold',
+                          background: isEnabled ? 'rgba(22, 163, 74, 0.06)' : 'rgba(239, 68, 68, 0.06)'
+                        }}>
+                          {isEnabled ? 'HABILITADA' : 'DESHABILITADA'}
+                        </span>
+                      </div>
+
+                      {/* Título de la Directiva */}
+                      <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: '900', color: '#0f172a', lineHeight: 1.3 }}>
+                        {scn.name}
+                      </h4>
+
+                      {/* Descripción */}
+                      <p style={{ margin: '0 0 14px 0', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+                        {scn.desc}
+                      </p>
+                    </div>
+
+                    {/* Botón Verde Clásico: DESACTIVAR / ACTIVAR DIRECTIVA */}
+                    <button
+                      onClick={() => handleToggleDirective(key)}
+                      disabled={syncingKv}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: isEnabled ? '#16a34a' : '#ef4444',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontWeight: 'bold',
+                        fontSize: '11px',
+                        cursor: syncingKv ? 'wait' : 'pointer',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {isEnabled ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: RUNLIVE (MONITOR DE EJECUCIÓN) */}
         {activeTab === 'RUNLIVE' && (
-          <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', padding: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: '900' }}>
+                <h3 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
                   TELEMETRÍA & EVALUACIÓN EN TIEMPO DE EJECUCIÓN (SAARE JUDGE)
                 </h3>
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                  Adjudicación determinista de permisos de ejecución según el contrato canónico SGP 1.0.
+                <span style={{ fontSize: '11px', color: '#64748b' }}>
+                  Decisiones deterministas en Capa 7 emitidas bajo el estándar SGP 1.0.
                 </span>
               </div>
-              <span style={{ background: '#064e3b', color: '#34d399', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', border: '1px solid #10b981' }}>
+              <span style={{ background: '#16a34a', color: '#fff', padding: '3px 8px', borderRadius: '3px', fontSize: '10px', fontWeight: 'bold' }}>
                 ● SAARE JUDGE ACTIVO
               </span>
             </div>
 
             {lastEvent ? (
-              <div style={{ background: '#0b0f19', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px', fontSize: '0.85rem' }}>
-                  <div>VERDICT ID: <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{lastEvent.verdict_id || lastEvent.runId || lastEvent.evidence_id}</strong></div>
-                  <div>POLÍTICA: <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>{lastEvent.policy?.id || lastEvent.policy_id || 'POL-CORP-GOVERNANCE-01'}</strong></div>
-                  <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981' }}>{lastEvent.decision || (lastEvent.verdict === 'RECHAZADO' ? 'DENY' : 'ALLOW')}</strong></div>
-                  <div>ENFORCEMENT: <strong style={{ color: '#f59e0b' }}>{lastEvent.enforcement?.action || lastEvent.enforcement_action || 'PASS'}</strong></div>
-                  <div>TIMESTAMP: <strong>{new Date(lastEvent.issuedAt || lastEvent.timestamp || Date.now()).toLocaleString()}</strong></div>
-                  <div>SELLO: <strong style={{ color: '#c084fc', fontFamily: 'monospace' }}>{lastEvent.cryptoSeal || 'L7-SEAL:ED25519'}</strong></div>
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '11.5px', marginBottom: '12px' }}>
+                  <div>VERDICT ID: <strong style={{ color: '#0284c7', fontFamily: 'monospace' }}>{lastEvent.verdictId || lastEvent.runId || lastEvent.evidence_id}</strong></div>
+                  <div>DECISIÓN: <strong style={{ color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a' }}>{lastEvent.decision || 'ALLOW'}</strong></div>
+                  <div>ENFORCEMENT: <strong style={{ color: '#d97706' }}>{lastEvent.enforcement?.action || 'PASS'}</strong></div>
+                  <div>FECHA: <strong>{new Date(lastEvent.issuedAt || lastEvent.timestamp || Date.now()).toLocaleTimeString()}</strong></div>
                 </div>
 
-                <div style={{ background: '#020617', padding: '16px', borderLeft: `4px solid ${(lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981'}`, borderRadius: '4px', marginBottom: '16px', fontSize: '0.9rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: (lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK' || lastEvent.verdict === 'RECHAZADO') ? '#ef4444' : '#10b981', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    PAYLOAD EVALUADO EN RUNTIME:
-                  </div>
+                <div style={{ background: '#ffffff', padding: '12px', borderLeft: `3px solid ${(lastEvent.decision === 'DENY' || lastEvent.decision === 'BLOCK') ? '#ef4444' : '#16a34a'}`, marginBottom: '12px', fontSize: '12px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>PAYLOAD EN RUNTIME:</div>
                   "{lastEvent.promptInput || lastEvent.cleanPrompt || lastEvent.payload || 'Sin contenido'}"
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-                  <button onClick={() => handleExportProofBundle(lastEvent)} disabled={exportingBundle} style={{ padding: '8px 16px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' }}>
-                    📦 {exportingBundle ? 'Generando...' : 'Exportar Proof Bundle (Ed25519 / RFC 3161)'}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                  <button onClick={() => handleExportProofBundle(lastEvent)} disabled={exportingBundle} style={{ padding: '6px 12px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>
+                    📦 {exportingBundle ? 'Exportando...' : 'Descargar Proof Bundle (RFC 3161)'}
                   </button>
                 </div>
 
-                <pre style={{ background: '#020617', padding: '14px', borderRadius: '8px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem', overflowX: 'auto', margin: 0 }}>
+                <pre style={{ background: '#0f172a', color: '#38bdf8', padding: '12px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', overflowX: 'auto', margin: 0 }}>
                   {JSON.stringify(lastEvent, null, 2)}
                 </pre>
               </div>
             ) : (
-              <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>
-                <strong>Esperando llamadas de agentes o sensores L7...</strong>
-                <p style={{ fontSize: '0.85rem', margin: '6px 0 0 0' }}>Realiza una acción o inferencia para observar el veredicto canónico en tiempo real.</p>
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                Esperando eventos o veredictos de agentes en tiempo real...
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2: GLOBAL LEDGER */}
+        {/* TAB 3: REGISTRO GLOBAL (LEDGER HISTÓRICO) */}
         {activeTab === 'GLOBAL' && (
-          <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: '900' }}>SAARE VERDICT™ LEDGER</h3>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                  Filtro: <strong>{activeScenarioFilter}</strong> | Veredictos registrados: <strong>{filteredEvents.length}</strong>
-                </span>
-              </div>
-              <input
-                type="text"
-                placeholder="Buscar por ID, Política, Digest o Payload..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', fontSize: '0.85rem', width: '280px' }}
+          <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', background: '#f8fafc' }}>
+              <h3 style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>
+                HISTORIAL DE VEREDICTOS Y ACCIONES AUDITADAS ({filteredEvents.length})
+              </h3>
+              <input 
+                type="text" 
+                placeholder="Buscar en el registro..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '3px', fontSize: '11px', width: '220px' }} 
               />
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                <thead style={{ background: '#0b0f19', borderBottom: '1px solid #334155' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+                <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>
                   <tr>
-                    <th style={{ padding: '12px 16px' }}>TIMESTAMP</th>
-                    <th style={{ padding: '12px 16px' }}>VERDICT ID</th>
-                    <th style={{ padding: '12px 16px' }}>POLÍTICA</th>
-                    <th style={{ padding: '12px 16px' }}>PAYLOAD EVALUADO</th>
-                    <th style={{ padding: '12px 16px' }}>DECISIÓN</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>EXPEDIENTE</th>
+                    <th style={{ padding: '8px 12px' }}>FECHA</th>
+                    <th style={{ padding: '8px 12px' }}>VERDICT ID</th>
+                    <th style={{ padding: '8px 12px' }}>POLÍTICA</th>
+                    <th style={{ padding: '8px 12px' }}>PAYLOAD</th>
+                    <th style={{ padding: '8px 12px' }}>DECISIÓN</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>EXPEDIENTE</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEvents.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                        No hay veredictos registrados para el filtro seleccionado.
+                      <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                        No hay veredictos persistidos en el Decision Store.
                       </td>
                     </tr>
                   ) : (
                     filteredEvents.map((ev, i) => {
-                      const id = ev.verdict_id || ev.evidence_id || ev.runId || `VRD-${i + 1}`;
-                      const timestamp = ev.issuedAt || ev.timestamp ? new Date(ev.issuedAt || ev.timestamp).toLocaleString() : 'En vivo';
-                      const policy = ev.policy?.id || ev.policy_id || ev.category || 'POL-CORP-GOVERNANCE-01';
-                      const promptText = ev.promptInput || ev.cleanPrompt || ev.payload || "Sin contenido";
-                      const isDenied = ev.decision === 'DENY' || ev.decision === 'BLOCK' || ev.verdict === 'RECHAZADO';
-                      const decision = isDenied ? 'DENY' : 'ALLOW';
-
+                      const id = ev.verdictId || ev.evidence_id || ev.runId || `VRD-${i + 1}`;
+                      const isDenied = ev.decision === 'DENY' || ev.decision === 'BLOCK';
                       return (
-                        <tr key={i} style={{ borderBottom: '1px solid #334155', background: i % 2 === 0 ? '#1e293b' : '#182234' }}>
-                          <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{timestamp}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace' }}>{id}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <div style={{ fontWeight: '700', color: '#ffffff' }}>{policy}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{ev.reason || 'Autorización determinista'}</div>
+                        <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                          <td style={{ padding: '8px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                            {new Date(ev.issuedAt || ev.timestamp || Date.now()).toLocaleTimeString()}
                           </td>
-                          <td style={{ padding: '12px 16px', maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#cbd5e1' }}>
-                            "{promptText}"
+                          <td style={{ padding: '8px 12px', fontWeight: 'bold', color: '#0284c7', fontFamily: 'monospace' }}>{id}</td>
+                          <td style={{ padding: '8px 12px' }}>{ev.policy?.id || ev.policy_id || 'POL-CORP-GOVERNANCE-01'}</td>
+                          <td style={{ padding: '8px 12px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            "{ev.promptInput || ev.cleanPrompt || ev.payload || 'Sin contenido'}"
                           </td>
-                          <td style={{ padding: '12px 16px', fontWeight: '900', color: isDenied ? '#ef4444' : '#10b981' }}>
-                            {decision}
+                          <td style={{ padding: '8px 12px', fontWeight: 'bold', color: isDenied ? '#ef4444' : '#16a34a' }}>
+                            {ev.decision || 'ALLOW'}
                           </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                            <button onClick={() => setSelectedJson(ev)} style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <button onClick={() => setSelectedJson(ev)} style={{ padding: '2px 8px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '3px', fontSize: '10.5px', fontWeight: 'bold', cursor: 'pointer' }}>
                               Ver JSON
                             </button>
                           </td>
@@ -747,185 +820,65 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: CONFIGURACIÓN DE POLÍTICAS */}
-        {activeTab === 'CONFIG' && (
-          <div>
-            <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', padding: '20px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: '900' }}>
-                    DIRECTIVAS DE AUTORIZACIÓN & REGLAS DETERMINISTAS
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8' }}>
-                    Configuración de políticas del SAARE Judge para autorización de acciones en tiempo de ejecución.
-                  </p>
-                </div>
-                <button onClick={() => setShowAddModal(true)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', fontSize: '0.85rem' }}>
-                  + AÑADIR REGLA
+      </div>
+
+      {/* MODAL JSON SAARE VERDICT™ */}
+      {selectedJson && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
+          <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '20px', maxWidth: '680px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#0f172a' }}>SAARE VERDICT™ CANONICAL RECORD</h3>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button onClick={() => handleExportProofBundle(selectedJson)} disabled={exportingBundle} style={{ background: '#9333ea', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                  📦 Exportar Proof Bundle
                 </button>
-              </div>
-
-              {customRules.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {customRules.map((rule, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#0b0f19', border: '1px solid #334155', borderRadius: '6px' }}>
-                      <div>
-                        <strong style={{ color: '#ffffff', marginRight: '12px' }}>{rule.label}</strong>
-                        <code style={{ background: '#0369a1', color: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>{rule.pattern}</code>
-                      </div>
-                      <button onClick={() => removeCustomRule(idx)} style={{ background: '#450a0a', color: '#fca5a5', border: '1px solid #ef4444', padding: '4px 10px', borderRadius: '4px', fontWeight: '800', cursor: 'pointer', fontSize: '0.75rem' }}>Eliminar</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* GRID DE LAS 5 BÓVEDAS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '20px' }}>
-              {Object.entries(masterScenariosConfig).map(([key, scn]) => {
-                const isEnabled = directives[key] === true;
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: '#1e293b',
-                      padding: '24px',
-                      borderRadius: '12px',
-                      border: `1px solid ${isEnabled ? '#10b981' : '#334155'}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ background: '#0369a1', color: '#e0f2fe', padding: '3px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '900' }}>
-                          {scn.category}
-                        </span>
-                        <span style={{ border: `1px solid ${isEnabled ? '#10b981' : '#ef4444'}`, color: isEnabled ? '#34d399' : '#f87171', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800' }}>
-                          {isEnabled ? 'ACTIVA' : 'SUSPENDIDA'}
-                        </span>
-                      </div>
-
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>
-                        {scn.icon} {scn.name}
-                      </h4>
-                      <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: '0 0 10px 0', lineHeight: 1.5 }}>
-                        {scn.desc}
-                      </p>
-
-                      <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontFamily: 'monospace', marginBottom: '12px' }}>
-                        Normativa: {scn.norma}
-                      </div>
-
-                      <div style={{ borderTop: '1px dashed #334155', paddingTop: '12px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
-                          Controles Específicos:
-                        </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {scn.options.map((opt) => {
-                            const isOptActive = vaultSubOptions[opt.key] !== false;
-                            return (
-                              <label key={opt.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#cbd5e1', cursor: 'pointer', background: '#0b0f19', padding: '6px 10px', borderRadius: '4px' }}>
-                                <span>{opt.label}</span>
-                                <input
-                                  type="checkbox"
-                                  checked={isOptActive}
-                                  onChange={() => handleToggleSubOption(opt.key)}
-                                  disabled={!isEnabled || syncingKv}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleDirective(key)}
-                      disabled={syncingKv}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        background: isEnabled ? '#10b981' : '#ef4444',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontWeight: '900',
-                        cursor: syncingKv ? 'wait' : 'pointer',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {isEnabled ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* MODAL JSON SAARE VERDICT™ */}
-        {selectedJson && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
-            <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '720px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem' }}>SAARE VERDICT™ CANONICAL RECORD (SGP 1.0)</h3>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => handleExportProofBundle(selectedJson)} disabled={exportingBundle} style={{ background: '#9333ea', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                    📦 {exportingBundle ? 'Exportando...' : 'Descargar Proof Bundle'}
-                  </button>
-                  <button onClick={() => setSelectedJson(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>✕</button>
-                </div>
-              </div>
-              <pre style={{ flex: 1, overflowY: 'auto', background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', color: '#34d399', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                {JSON.stringify(selectedJson, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL AÑADIR REGLAS */}
-        {showAddModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '90%' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: '900', color: '#fff' }}>Añadir Regla de Autorización</h3>
-              <input type="text" placeholder="Identificador (ej: PROPIEDAD_INTELECTUAL)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', boxSizing: 'border-box' }} />
-              <input type="text" placeholder="Patrón Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #334155', background: '#0b0f19', color: '#fff', boxSizing: 'border-box' }} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setShowAddModal(false)} style={{ padding: '8px 14px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={addCustomRule} style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
+                <button onClick={() => setSelectedJson(null)} style={{ background: '#e2e8f0', color: '#475569', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>✕</button>
               </div>
             </div>
+            <pre style={{ flex: 1, overflowY: 'auto', background: '#0f172a', color: '#38bdf8', padding: '12px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', margin: 0 }}>
+              {JSON.stringify(selectedJson, null, 2)}
+            </pre>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
-        {confirmModal.isOpen && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: '#1e293b', border: '1px solid #ef4444', borderRadius: '12px', padding: '28px', maxWidth: '440px', width: '90%', textAlign: 'center' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: '900', color: '#fff' }}>
-                Advertencia de Desactivación de Control
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-                Estás a punto de suspender la directiva:<br/>
-                <strong style={{ color: '#ef4444', display: 'block', marginTop: '6px' }}>
-                  {masterScenariosConfig[confirmModal.directiveKey]?.name}
-                </strong>
-                <br/>
-                Esto desactivará la emisión de permisos de ejecución para este dominio.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button onClick={() => setConfirmModal({ isOpen: false, directiveKey: null })} style={{ padding: '10px 18px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>Cancelar</button>
-                <button onClick={confirmDeactivation} style={{ padding: '10px 18px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800' }}>Sí, desactivar</button>
-              </div>
+      {/* MODAL AÑADIR REGLAS */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '20px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#0f172a' }}>Añadir Filtro Personalizado</h3>
+            <input type="text" placeholder="Identificador (ej: SECRETO_EMPRESARIAL)" value={newRule.label} onChange={(e) => setNewRule({...newRule, label: e.target.value})} style={{ width: '100%', padding: '8px 10px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px' }} />
+            <input type="text" placeholder="Patrón Regex (ej: /confidencial/i)" value={newRule.pattern} onChange={(e) => setNewRule({...newRule, pattern: e.target.value})} style={{ width: '100%', padding: '8px 10px', marginBottom: '16px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setShowAddModal(false)} style={{ padding: '6px 12px', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Cancelar</button>
+              <button onClick={addCustomRule} style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Guardar</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </main>
+      {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
+      {confirmModal.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#ffffff', border: '1px solid #ef4444', borderRadius: '6px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', marginBottom: '8px' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#b91c1c' }}>
+              Advertencia de Desactivación
+            </h3>
+            <p style={{ fontSize: '11.5px', color: '#475569', margin: '0 0 16px 0', lineHeight: 1.4 }}>
+              Estás a punto de suspender la directiva:<br />
+              <strong style={{ color: '#0f172a', display: 'block', marginTop: '4px' }}>
+                {masterScenariosConfig[confirmModal.directiveKey]?.name}
+              </strong>
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+              <button onClick={() => setConfirmModal({ isOpen: false, directiveKey: null })} style={{ padding: '6px 14px', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>Cancelar</button>
+              <button onClick={confirmDeactivation} style={{ padding: '6px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>Sí, desactivar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
