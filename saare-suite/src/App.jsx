@@ -9,37 +9,14 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
 const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
 const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
-const AUDIT_PILLARS = [
-  {
-    num: "01",
-    title: "Runtime Native",
-    desc: "Opera durante la ejecución, no únicamente después del incidente. Intercepción en Capa 7 con latencia determinista.",
-    color: "#0284c7"
-  },
-  {
-    num: "02",
-    title: "Control Native",
-    desc: "Aplica decisiones de política activas sobre la interacción (Interception, Redaction, Block, Escalate) en tiempo real.",
-    color: "#16a34a"
-  },
-  {
-    num: "03",
-    title: "Evidence Native",
-    desc: "Genera evidencia inmutable y estructurada como parte intrínseca y simultánea de la misma ejecución.",
-    color: "#9333ea"
-  },
-  {
-    num: "04",
-    title: "Model Agnostic",
-    desc: "Infraestructura desacoplada. Compatible con OpenAI, Anthropic, Llama, Azure AI y modelos on-premise.",
-    color: "#ea580c"
-  },
-  {
-    num: "05",
-    title: "Cryptographically Verifiable",
-    desc: "Garantiza la integridad mediante firmas asimétricas Ed25519 y sellado temporal cualificado RFC 3161 eIDAS.",
-    color: "#ca8a04"
-  }
+const DOCTRINE_PRINCIPLES = [
+  { num: "01", title: "Execution Boundary", desc: "La gobernanza técnica se ejecuta en el tránsito del runtime, no ex-post." },
+  { num: "02", title: "No Verdict, No Run", desc: "Ninguna acción de IA gobernada se ejecuta sin veredicto previo del Judge." },
+  { num: "03", title: "Decision Taxonomy", desc: "Veredictos matizados: ALLOW, REDACT, BLOCK, ESCALATE, QUARANTINE, REVIEW." },
+  { num: "04", title: "Simultaneous Evidence", desc: "Cada veredicto material produce un Proof Bundle criptográfico simultáneo." },
+  { num: "05", title: "Human Override Audit", desc: "Toda excepción humana queda firmada, justificada e imputada inmutablemente." },
+  { num: "06", title: "Model-Agnostic", desc: "Desacople total de proveedores externos (OpenAI, Anthropic, Llama, on-prem)." },
+  { num: "07", title: "Independent Verification", desc: "La prueba no depende de la UI: verificable vía API pública y RFC 3161." }
 ];
 
 const CONTROL_LAYERS = [
@@ -48,8 +25,8 @@ const CONTROL_LAYERS = [
     code: "PRIVACY",
     title: "01. Privacy & Sensitive Data Control",
     frameworks: "RGPD (Art. 5.2, 9, 32) · Ley 1/2019 Secretos · EHDS",
-    summary: "Evita que datos confidenciales o regulados salgan hacia modelos externos de IA.",
-    desc: "Aislamiento e inspección determinista en memoria volátil (RAM) con purga SYS_madvise. Neutraliza la exposición de identidades, numeraciones bancarias, registros médicos y propiedad intelectual sin persistencia en disco físico.",
+    summary: "Evaluación ex-ante de flujos de datos confidenciales hacia modelos externos.",
+    desc: "Aislamiento e inspección determinista en memoria volátil (RAM) con purga atómica SYS_madvise. Neutraliza la exposición de identidades, numeraciones bancarias, registros médicos y secretos corporativos sin persistencia en disco.",
     pipeline: ["DETECT", "REDACT", "BLOCK"],
     color: "#0284c7",
     image: "/1.jfif"
@@ -59,8 +36,8 @@ const CONTROL_LAYERS = [
     code: "SECURITY",
     title: "02. L7 Runtime Security & Robustness",
     frameworks: "EU AI Act (Art. 15) · NIS 2 · Cyber Resilience Act (CRA)",
-    summary: "Mitiga manipulaciones adversarias y optimiza el consumo computacional.",
-    desc: "Contención perimetral de inyecciones de comandos (Prompt Injection), intentos de evasión de guardrails (Jailbreaks) y desvíos lógicos antes de la ejecución de inferencia.",
+    summary: "Mitigación activa de manipulaciones adversarias e inyecciones de directivas.",
+    desc: "Contención perimetral de Prompt Injection, Jailbreaks y desvíos lógicos en agentes y aplicaciones LLM antes de la ejecución del modelo.",
     pipeline: ["INSPECT", "MITIGATE", "RECORD"],
     color: "#16a34a",
     image: "/3.jfif"
@@ -70,8 +47,8 @@ const CONTROL_LAYERS = [
     code: "VERIFICATION",
     title: "03. Veracity & Factuality Assurance",
     frameworks: "Ley Orgánica del Honor 2026 · AI Act (Art. 13) · Data Act",
-    summary: "Impide decisiones operativas basadas en afirmaciones no respaldadas o identidades no consentidas.",
-    desc: "Inspección causal y rechazo estricto ante generación no autorizada de voz/imagen sintética. Validación de consistencia fáctica documental para evitar alucinaciones en flujos de decisión críticos.",
+    summary: "Contención de alucinaciones críticas y bloqueo de clonación sintética no consentida.",
+    desc: "Inspección causal y rechazo estricto ante generación no autorizada de voz/imagen sintética. Validación de consistencia fáctica documental previa a la toma de decisiones.",
     pipeline: ["CHECK", "VERIFY", "FLAG"],
     color: "#ea580c",
     image: "/4.jfif"
@@ -81,8 +58,8 @@ const CONTROL_LAYERS = [
     code: "EVIDENCE",
     title: "04. Evidence Capture & Forensic Sealing",
     frameworks: "ISO/IEC 27037:2012 · eIDAS (RFC 3161) · AI Liability Directive",
-    summary: "Convierte cada ejecución relevante en un expediente probatorio estructurado.",
-    desc: "Generación automatizada de Proof Bundles forenses sellados con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 para acreditación formal de diligencia técnica.",
+    summary: "Generación automatizada de expedientes probatorios inmutables.",
+    desc: "Generación estructurada de Proof Bundles sellados con firma asimétrica Ed25519 y estampación temporal cualificada RFC 3161 para acreditar diligencia debida ante jueces e inspectores.",
     pipeline: ["CAPTURE", "SEAL", "ATTEST"],
     color: "#9333ea",
     image: "/2.jfif"
@@ -92,8 +69,8 @@ const CONTROL_LAYERS = [
     code: "TRACEABILITY",
     title: "05. Fiduciary Traceability & Audit Trail",
     frameworks: "Ley General de Subvenciones · PRTR · NextGenEU / OLAF / IGAE",
-    summary: "Trazabilidad verificable para auditorías continuas y justificación de fondos públicos.",
-    desc: "Control de unicidad documental por Hash SHA-256, verificación del principio DNSH y generación de memorias técnicas estructuradas para comités de auditoría interna y organismos públicos.",
+    summary: "Trazabilidad fiduciaria continua para auditorías y justificación de fondos públicos.",
+    desc: "Control de unicidad documental por Hash SHA-256, verificación del principio DNSH y generación de memorias técnicas estructuradas para comités de control y autoridades públicas.",
     pipeline: ["TRACE", "AUDIT", "EXPORT"],
     color: "#ca8a04",
     image: "/5.jfif"
@@ -101,7 +78,7 @@ const CONTROL_LAYERS = [
 ];
 
 const CONTROL_MATRIX = [
-  { framework: "EU AI Act (2024/1689)", risk: "Falta de gobernanza y registros no auditables (Art. 12/15)", policy: "Runtime Policy Enforcement", control: "L7 Execution Gate & Cerebro Witness", evidence: "Proof Bundle estructurado" },
+  { framework: "EU AI Act (2024/1689)", risk: "Falta de gobernanza técnica y registros no auditables (Art. 12/15)", policy: "Runtime Policy Enforcement", control: "L7 Execution Gate & Cerebro Witness", evidence: "Proof Bundle estructurado" },
   { framework: "RGPD & LOPDGDD", risk: "Fuga ex-ante de PII / Datos Sanitarios (Art. 9/32)", policy: "Zero-Disk RAM Isolation", control: "Purga SYS_madvise en memoria volátil", evidence: "Certificado de Redacción / Bloqueo" },
   { framework: "Ley Orgánica del Honor 2026", risk: "Clonación sintética no consentida (Deepfakes)", policy: "Non-Consensual Synthetic Identity Ban", control: "Filtro Causal de Identidad y Audio", evidence: "Registro de Intercepción Pericial" },
   { framework: "NIS 2 & CRA (2024/2847)", risk: "Vulnerabilidades en la cadena de inferencia TIC", policy: "In-Process Security by Design", control: "Mitigación determinista de Prompt Injection", evidence: "Log Inmutable de Telemetría" },
@@ -125,34 +102,41 @@ export default function App() {
   const [error, setError] = useState('');
   const [showDiploma, setShowDiploma] = useState(false);
 
-  // Verificador Interactivo sincronizado con el evento real
+  // Verificador Interactivo de Veredictos (SAARE VERDICT™)
   const [verifySearchId, setVerifySearchId] = useState("EV-CED48F1600");
-  const [verifiedRecord, setVerifiedRecord] = useState({
-    id: "EV-CED48F1600",
+  const [activeVerdict, setActiveVerdict] = useState({
+    verdictId: "VERDICT-2026-CED48F1600",
+    evidenceId: "EV-CED48F1600",
     bundleId: "PB-1788223380902-A494A163",
-    status: "VERIFIED",
-    policy: "PCI-DSS / RGPD (TARJETA_CREDITO)",
-    action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+    system: "Banking-AI-Assistant",
+    actor: "agent-742",
+    model: "openai/gpt-4o",
+    decision: "BLOCK",
+    enforcement: "BLOCK_AND_PURGE_RAM",
+    policy: "PII-FIN-04 (PCI-DSS / RGPD Art. 32)",
+    policyVersion: "4.2.1",
+    riskLevel: "HIGH",
+    reason: "Detección de numeración de tarjeta bancaria no anonimizada en memoria RAM L7.",
     timestamp: "2026-08-28 13:42:54.583 UTC",
     inputHash: "ced48f16002bd1da6c45ed431b396950191af853357f6f91d61098f9c63f72b5",
     signature: "Ed25519 (Valid)",
     tsa: "RFC 3161 / ETSI EN 319 422 Qualified Authority",
-    frameworkMapping: ["AESIA", "RGPD", "EU AI Act", "Ley Honor 2026"]
+    overrideStatus: "NONE (Autonomous Adjudication)"
   });
 
-  // Simulación del Live Runtime
-  const [runtimeStep, setRuntimeStep] = useState(0);
-  const [isRunningSim, setIsRunningSim] = useState(false);
+  // Simulación del Live Runtime / Judge Flow
+  const [judgeStep, setJudgeStep] = useState(0);
+  const [isRunningJudge, setIsRunningJudge] = useState(false);
 
-  const runRuntimeSimulation = () => {
-    setIsRunningSim(true);
-    setRuntimeStep(1);
-    setTimeout(() => setRuntimeStep(2), 600);
-    setTimeout(() => setRuntimeStep(3), 1200);
-    setTimeout(() => setRuntimeStep(4), 1800);
+  const runJudgeSimulation = () => {
+    setIsRunningJudge(true);
+    setJudgeStep(1);
+    setTimeout(() => setJudgeStep(2), 600);
+    setTimeout(() => setJudgeStep(3), 1200);
+    setTimeout(() => setJudgeStep(4), 1800);
     setTimeout(() => {
-      setRuntimeStep(5);
-      setIsRunningSim(false);
+      setJudgeStep(5);
+      setIsRunningJudge(false);
     }, 2400);
   };
 
@@ -161,43 +145,64 @@ export default function App() {
     const query = verifySearchId.trim().toLowerCase();
     
     if (query.includes("ced48f") || query.includes("1600") || query.includes("tarjeta") || query.includes("dni")) {
-      setVerifiedRecord({
-        id: "EV-CED48F1600",
+      setActiveVerdict({
+        verdictId: "VERDICT-2026-CED48F1600",
+        evidenceId: "EV-CED48F1600",
         bundleId: "PB-1788223380902-A494A163",
-        status: "VERIFIED",
-        policy: "PCI-DSS / RGPD (TARJETA_CREDITO)",
-        action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+        system: "Customer-Portal-LLM",
+        actor: "agent-742",
+        model: "openai/gpt-4o",
+        decision: "BLOCK",
+        enforcement: "BLOCK_AND_PURGE_RAM",
+        policy: "PII-FIN-04 (PCI-DSS / RGPD Art. 32)",
+        policyVersion: "4.2.1",
+        riskLevel: "HIGH",
+        reason: "Detección de numeración de tarjeta de crédito en memoria volátil RAM.",
         timestamp: "2026-08-28 13:42:54.583 UTC",
         inputHash: "ced48f16002bd1da6c45ed431b396950191af853357f6f91d61098f9c63f72b5",
         signature: "Ed25519 (Valid)",
         tsa: "RFC 3161 / ETSI EN 319 422 Qualified Authority",
-        frameworkMapping: ["AESIA", "RGPD", "EU AI Act", "Ley Honor 2026"]
+        overrideStatus: "NONE (Autonomous Adjudication)"
       });
     } else if (query.includes("deepfake") || query.includes("voz") || query.includes("avatar")) {
-      setVerifiedRecord({
-        id: "EV-HONOR-2026-DF09",
+      setActiveVerdict({
+        verdictId: "VERDICT-2026-HONOR-09",
+        evidenceId: "EV-HONOR-2026-DF09",
         bundleId: "PB-2026-0829-DF88B2",
-        status: "VERIFIED",
-        policy: "LEY_HONOR_2026 (CLONACION_NO_CONSENTIDA)",
-        action: "BLOCK_AND_PURGE_RAM (RECHAZADO)",
+        system: "Media-Synthesis-Agent",
+        actor: "marketing-bot-03",
+        model: "elevenlabs/speech-v2",
+        decision: "BLOCK",
+        enforcement: "BLOCK_AND_PURGE_RAM",
+        policy: "HONOR-EU-2026 (Ley Orgánica del Honor)",
+        policyVersion: "2.0.0",
+        riskLevel: "CRITICAL",
+        reason: "Intento de clonación sintética de voz directiva sin acreditación de consentimiento expreso.",
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + " UTC",
         inputHash: CANONICAL_HASH,
         signature: "Ed25519 (Valid)",
         tsa: "RFC 3161 Qualified Authority",
-        frameworkMapping: ["Ley Orgánica del Honor 2026", "EU AI Act Art. 13", "ISO 27037"]
+        overrideStatus: "NONE (Autonomous Adjudication)"
       });
     } else {
-      setVerifiedRecord({
-        id: verifySearchId.toUpperCase(),
+      setActiveVerdict({
+        verdictId: "VERDICT-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+        evidenceId: verifySearchId.toUpperCase(),
         bundleId: "PB-2026-LIVE-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: "VERIFIED",
-        policy: "ENTERPRISE_GOVERNANCE_CONTROL",
-        action: "ALLOW_AND_ATTEST (CONFORME)",
+        system: "Enterprise-Core-API",
+        actor: "human-operator-12",
+        model: "anthropic/claude-3-5-sonnet",
+        decision: "ALLOW",
+        enforcement: "ALLOW_AND_ATTEST",
+        policy: "CORP-GOV-01 (General Compliance)",
+        policyVersion: "1.0.4",
+        riskLevel: "LOW",
+        reason: "Inferencia validada bajo perímetro de gobernanza corporativa sin anomalías.",
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + " UTC",
         inputHash: CANONICAL_HASH,
         signature: "Ed25519 (Valid)",
         tsa: "RFC 3161 Qualified Authority",
-        frameworkMapping: ["EU AI Act Art. 15", "ISO 42001", "ISO 27037"]
+        overrideStatus: "NONE (Autonomous Adjudication)"
       });
     }
   };
@@ -270,15 +275,15 @@ export default function App() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('LANDING')}>
             <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2.5px', color: '#ffffff' }}>SAARE</span>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', letterSpacing: '0.8px' }}>AI-NATIVE AUDIT INFRASTRUCTURE</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', letterSpacing: '0.8px' }}>AI GOVERNANCE DECISION LAYER</span>
           </div>
 
           <nav style={{ display: 'flex', gap: '18px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
-            <button onClick={() => navigateToSection('native-audit')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>AI-Native Audit™</button>
+            <button onClick={() => navigateToSection('decision-layer')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>Governance Judge</button>
             <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Capas de Control</button>
             <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Live Runtime</button>
-            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>AI-Native Evidence™</button>
-            <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Control Matrix</button>
+            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>SAARE VERDICT™</button>
+            <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Policy Matrix</button>
             <button onClick={() => navigateToSection('pricing')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Planes</button>
 
             {sessionUser ? (
@@ -305,7 +310,7 @@ export default function App() {
             <h1 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '6px', color: '#ffffff' }}>
               {mode === 'login' ? 'Acceso a Consola GRC' : 'Aprovisionar Cuenta Enterprise'}
             </h1>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0' }}>Supervisión de políticas en tiempo real y descarga de Proof Bundles.</p>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0' }}>Supervisión de veredictos en tiempo real y descarga de Proof Bundles.</p>
             {error && <div style={{ color: '#ef4444', fontSize: '12.5px', marginBottom: '14px' }}>{error}</div>}
             <form onSubmit={handleSubmitAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {mode === 'register' && (
@@ -341,11 +346,11 @@ export default function App() {
           <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '12px', padding: '36px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
-                ● RUNTIME ENGINE ACTIVE (L7)
+                ● GOVERNANCE JUDGE ACTIVE (L7)
               </span>
               <span style={{ fontSize: '12px', color: '#9ca3af' }}>Registro AESIA: REGAGE26e00076675038</span>
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Consola de Gobierno y Evidencia</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Consola de Decisiones y Veredictos</h1>
             <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>Organización: <strong>{sessionUser.tenantName || 'Tenant Activo'}</strong> · Cuenta: {sessionUser.email}</p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ padding: '10px 20px', backgroundColor: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px' }}>
@@ -359,238 +364,313 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL (LANDING AI-NATIVE AUDIT) */}
+      {/* VISTA PRINCIPAL (LANDING THE GOVERNANCE JUDGE) */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
 
-          {/* 1. HERO PRINCIPAL: LA PRIMERA AUDITORÍA NATIVA */}
+          {/* 1. HERO PRINCIPAL */}
           <section style={{ textAlign: 'center', margin: '30px 0 60px 0' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(14, 165, 233, 0.1)', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '800', border: '1px solid rgba(14, 165, 233, 0.25)', marginBottom: '20px', letterSpacing: '0.5px' }}>
-              FIRST-OF-CATEGORY · AI-NATIVE AUDIT™
+              FIRST-OF-CATEGORY · AI-NATIVE AUDIT & DECISION LAYER
             </div>
             
             <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
-              La primera auditoría nativa <br />
-              <span style={{ color: '#38bdf8' }}>para Inteligencia Artificial.</span>
+              La capa de decisión soberana <br />
+              <span style={{ color: '#38bdf8' }}>para la gobernanza de IA.</span>
             </h1>
             
-            <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto 16px auto', lineHeight: 1.4, fontWeight: '600' }}>
-              Audita la IA durante su ejecución, no después.
+            <p style={{ fontSize: '19px', color: '#cbd5e1', maxWidth: '860px', margin: '0 auto 16px auto', lineHeight: 1.45, fontWeight: '600' }}>
+              SAARE actúa como el Governance Judge técnico que evalúa cada acción en tiempo real, emite un veredicto estructurado y genera evidencia criptográficamente verificable.
             </p>
 
-            <p style={{ fontSize: '15px', color: '#9ca3af', maxWidth: '780px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
-              SAARE introduce una nueva capa de infraestructura que intercepta, inspecciona y controla las interacciones con sistemas de IA en tiempo de ejecución, generando evidencia criptográficamente verificable de cada decisión relevante.
+            <p style={{ fontSize: '14.5px', color: '#9ca3af', maxWidth: '780px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
+              Intercepción en Capa 7 · Adjudicación de políticas ex-ante · SAARE VERDICT™ · Evidencia probatoria RFC 3161 / Ed25519
             </p>
 
-            {/* CONCEPT PIPELINE BADGE */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '11.5px', fontFamily: 'monospace', color: '#cbd5e1' }}>
-              <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>INTERCEPT</span>
+            {/* PIPELINE SOLEMNE */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '11.5px', fontFamily: 'monospace', color: '#cbd5e1', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>POLICY</span>
               <span>→</span>
-              <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>INSPECT</span>
+              <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>JUDGE</span>
               <span>→</span>
-              <span style={{ color: '#10b981', fontWeight: 'bold' }}>DECIDE</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>VERDICT</span>
               <span>→</span>
-              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>ENFORCE</span>
+              <span style={{ color: '#10b981', fontWeight: 'bold' }}>ENFORCEMENT</span>
               <span>→</span>
-              <span style={{ color: '#a855f7', fontWeight: 'bold' }}>PROVE</span>
+              <span style={{ color: '#a855f7', fontWeight: 'bold' }}>EVIDENCE</span>
               <span>→</span>
               <span style={{ color: '#34d399', fontWeight: 'bold' }}>VERIFY</span>
             </div>
 
             <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
-                Ver Auditoría en Runtime ↓
+                Evaluar con el Governance Judge ↓
               </button>
               <button onClick={() => navigateToSection('evidence-verifier')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                Verificar una Evidencia
+                Consultar un Veredicto
               </button>
             </div>
 
-            {/* FRASE DE POSICIONAMIENTO CLAVE */}
+            {/* FRASE DE DOCTRINA */}
             <div style={{ marginTop: '40px', padding: '18px 24px', background: 'rgba(3, 7, 18, 0.6)', border: '1px solid #1f2937', borderRadius: '10px', display: 'inline-block' }}>
               <span style={{ color: '#f3f4f6', fontSize: '15px', fontWeight: '700', fontStyle: 'italic' }}>
-                "La auditoría deja de ocurrir después de la IA. Ocurre dentro de su ejecución."
+                "No Verdict → No Governed Execution. La gobernanza técnica ocurre dentro de la ejecución."
               </span>
             </div>
           </section>
 
-          {/* 2. DEFINICIÓN OFICIAL DE LA CATEGORÍA: AI-NATIVE AUDIT™ */}
-          <section id="native-audit" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+          {/* 2. POSTURE SUMMARY: GOVERNANCE DASHBOARD */}
+          <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '30px', marginBottom: '70px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>GLOBAL GOVERNANCE POSTURE</span>
+                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Estado Operativo de Control en Ejecución</h3>
+              </div>
+              <span style={{ color: '#34d399', fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 'bold', background: 'rgba(52,211,153,0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(52,211,153,0.25)' }}>
+                ● LEDGER INMUTABLE SINCRONIZADO
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div style={{ background: '#030712', padding: '18px', borderRadius: '10px', border: '1px solid #1f2937' }}>
+                <div style={{ color: '#0ea5e9', fontSize: '11.5px', fontWeight: 'bold' }}>SYSTEMS GOVERNED</div>
+                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '4px 0' }}>231 / 247</div>
+                <div style={{ color: '#9ca3af', fontSize: '12px' }}>93.5% Cobertura Activa</div>
+              </div>
+              <div style={{ background: '#030712', padding: '18px', borderRadius: '10px', border: '1px solid #1f2937' }}>
+                <div style={{ color: '#f59e0b', fontSize: '11.5px', fontWeight: 'bold' }}>VERDICTS ADJUDICATED</div>
+                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '4px 0' }}>4,820,341</div>
+                <div style={{ color: '#9ca3af', fontSize: '12px' }}>13,842 Bloqueos · 2,109 Escalados</div>
+              </div>
+              <div style={{ background: '#030712', padding: '18px', borderRadius: '10px', border: '1px solid #1f2937' }}>
+                <div style={{ color: '#a855f7', fontSize: '11.5px', fontWeight: 'bold' }}>EVIDENCE GENERATED</div>
+                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '4px 0' }}>4,803,221</div>
+                <div style={{ color: '#9ca3af', fontSize: '12px' }}>100% Sellado RFC 3161</div>
+              </div>
+              <div style={{ background: '#030712', padding: '18px', borderRadius: '10px', border: '1px solid #1f2937' }}>
+                <div style={{ color: '#34d399', fontSize: '11.5px', fontWeight: 'bold' }}>HUMAN OVERRIDES</div>
+                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '4px 0' }}>82 / 82 Attributed</div>
+                <div style={{ color: '#9ca3af', fontSize: '12px' }}>Trazabilidad e Imputación Total</div>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. ARQUITECTURA: SAARE GOVERNANCE JUDGE & THE STACK */}
+          <section id="decision-layer" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CATEGORÍA OFICIAL</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>¿Qué es AI-Native Audit™?</h2>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE ADJUDICACIÓN</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>The AI Governance Decision Layer</h2>
               <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '800px', margin: '0 auto', lineHeight: 1.6 }}>
-                AI-Native Audit™ es una nueva categoría de infraestructura de auditoría diseñada específicamente para sistemas de Inteligencia Artificial. A diferencia de la auditoría tradicional, que reconstruye lo ocurrido después de la ejecución, una arquitectura <strong>AI-Native Audit</strong> observa la ejecución en tiempo real, aplica controles directamente sobre la interacción y genera evidencia verificable como parte del propio proceso.
+                SAARE no es un simple interceptor pasivo ni un panel de auditoría ex-post. Es el motor técnico que evalúa el contexto, adjudica políticas y determina qué acciones están autorizadas a ejecutarse.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '36px' }}>
-              {AUDIT_PILLARS.map((p) => (
-                <div key={p.num} style={{ background: '#030712', border: `1px solid ${p.color}44`, borderRadius: '10px', padding: '20px' }}>
-                  <div style={{ fontSize: '11px', color: p.color, fontWeight: '900', marginBottom: '6px' }}>{p.num} — {p.title.toUpperCase()}</div>
-                  <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', margin: '0 0 8px 0' }}>{p.title}</h3>
-                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>{p.desc}</p>
+            {/* DIAGRAMA DE DECISIÓN SOBERANA */}
+            <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', fontFamily: 'monospace', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>
+                ORGANIZATIONAL GOVERNANCE (Board · CISO · DPO · Legal Frameworks)
+              </div>
+              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼ (Policies & Rules)</div>
+              <div style={{ background: 'rgba(2, 132, 199, 0.12)', border: '1.5px solid #0284c7', padding: '20px', borderRadius: '8px' }}>
+                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '15px', marginBottom: '6px' }}>
+                  SAARE GOVERNANCE JUDGE (L7 RUNTIME ENGINE)
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#9ca3af', marginBottom: '12px' }}>
+                  Context Evaluation · Risk Classification · Policy Compilation → SAARE VERDICT™
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#e2e8f0', fontWeight: 'bold' }}>
+                  <span style={{ background: '#064e3b', color: '#34d399', padding: '3px 8px', borderRadius: '4px' }}>ALLOW</span>
+                  <span style={{ background: '#1e3a8a', color: '#38bdf8', padding: '3px 8px', borderRadius: '4px' }}>REDACT</span>
+                  <span style={{ background: '#7f1d1d', color: '#f87171', padding: '3px 8px', borderRadius: '4px' }}>BLOCK</span>
+                  <span style={{ background: '#78350f', color: '#fde047', padding: '3px 8px', borderRadius: '4px' }}>ESCALATE</span>
+                  <span style={{ background: '#374151', color: '#cbd5e1', padding: '3px 8px', borderRadius: '4px' }}>QUARANTINE</span>
+                  <span style={{ background: '#581c87', color: '#c084fc', padding: '3px 8px', borderRadius: '4px' }}>REVIEW</span>
+                </div>
+              </div>
+              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼ (Adjudicated Action)</div>
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
+                AI EXECUTION & AI-NATIVE EVIDENCE (Proof Bundle · Ed25519 · RFC 3161)
+              </div>
+            </div>
+
+            {/* DOS MODOS DE INTEGRACIÓN */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '36px' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '22px', borderRadius: '10px' }}>
+                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO A — INLINE GATEWAY</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Intercepción de Tráfico L7</h4>
+                <p style={{ color: '#9ca3af', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+                  Redirección vía proxy inverso (`baseURL`) sin tocar código interno. Ideal para supervisar llamadas de modelos de lenguaje, flujos de agentes y consumo de APIs de terceros.
+                </p>
+              </div>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '22px', borderRadius: '10px' }}>
+                <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>MODO B — JUDGE API ("ASK THE JUDGE")</span>
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '6px 0 8px 0', fontWeight: '800' }}>Gobernanza de Acciones y Tool Calling</h4>
+                <p style={{ color: '#9ca3af', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+                  Consulta programática previa a la ejecución (`POST /v1/judge`). Imprescindible para agentes autónomos que ejecutan operaciones financieras, envíos de correo o mutaciones en BBDD.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. DOCTRINA: THE AI-NATIVE AUDIT DOCTRINE */}
+          <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PRINCIPIOS ESTRUCTURALES</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>The AI-Native Audit Doctrine</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '750px', margin: '0 auto' }}>
+                Siete postulados técnicos que delimitan cómo debe operar una infraestructura de gobernanza ejecutable:
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              {DOCTRINE_PRINCIPLES.map((d) => (
+                <div key={d.num} style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '8px', padding: '18px' }}>
+                  <div style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>DOCTRINA {d.num}</div>
+                  <h4 style={{ color: '#fff', fontSize: '14.5px', margin: '0 0 6px 0', fontWeight: '800' }}>{d.title}</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>{d.desc}</p>
                 </div>
               ))}
             </div>
-
-            {/* KILLER VISUAL: THE AI-NATIVE AUDIT STACK™ */}
-            <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', fontFamily: 'monospace', maxWidth: '780px', margin: '0 auto', textAlign: 'center' }}>
-              <div style={{ textTransform: 'uppercase', color: '#6b7280', fontSize: '11px', marginBottom: '14px', fontWeight: 'bold' }}>
-                THE AI-NATIVE AUDIT STACK™
-              </div>
-              
-              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#38bdf8', fontWeight: 'bold', fontSize: '13px' }}>
-                AI APPLICATIONS (Agents · RAG · LLM Apps · APIs)
-              </div>
-              
-              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼</div>
-              
-              <div style={{ background: 'rgba(2, 132, 199, 0.12)', border: '1.5px solid #0284c7', padding: '20px', borderRadius: '8px' }}>
-                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '15px', marginBottom: '12px' }}>
-                  AI-NATIVE AUDIT™ (SAARE L7 ENGINE)
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#e2e8f0', fontWeight: 'bold' }}>
-                  <span>INTERCEPT</span> <span>↓</span>
-                  <span>INSPECT</span> <span>↓</span>
-                  <span>DECIDE</span> <span>↓</span>
-                  <span>ENFORCE</span> <span>↓</span>
-                  <span>PROVE</span> <span>↓</span>
-                  <span>VERIFY</span>
-                </div>
-              </div>
-              
-              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼</div>
-              
-              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
-                ANY AI MODEL / PROVIDER (OpenAI · Anthropic · Llama · Azure · Custom)
-              </div>
-
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1f2937' }}>
-                <span style={{ fontSize: '16px', fontWeight: '900', color: '#ffffff', letterSpacing: '1px' }}>
-                  ANY MODEL. ONE AUDIT LAYER.
-                </span>
-              </div>
-            </div>
           </section>
 
-          {/* 3. COMPARATIVA: AUDITORÍA TRADICIONAL VS AI-NATIVE AUDIT */}
-          <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CAMBIO DE PARADIGMA</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Auditoría Tradicional vs. AI-Native Audit</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>From Audit After AI → Audit Inside AI</p>
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
-                    <th style={{ padding: '12px 16px', width: '30%' }}>DIMENSIÓN DE CONTROL</th>
-                    <th style={{ padding: '12px 16px', color: '#ef4444', width: '35%' }}>AUDITORÍA TRADICIONAL (GRC / LOGS)</th>
-                    <th style={{ padding: '12px 16px', color: '#38bdf8', width: '35%' }}>AI-NATIVE AUDIT™ (SAARE)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Momento de inspección</td>
-                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Revisa después del incidente</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Observa durante la ejecución (Runtime)</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Generación de prueba</td>
-                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Evidencia posterior recopilada a mano</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Evidencia generada en runtime</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Validez de registro</td>
-                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Logs planos alterables</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Eventos criptográficos inmutables</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Frecuencia y alcance</td>
-                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Muestreo y auditorías periódicas</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Control y auditabilidad continua</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Respuesta operativa</td>
-                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Documentación ex-post</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Decisión activa + Evidencia simultánea</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Principio de confianza</td>
-                    <td style={{ padding: '14px 16px', color: '#ef4444' }}>"Trust me" (Declarativo)</td>
-                    <td style={{ padding: '14px 16px', color: '#38bdf8', fontWeight: 'bold' }}>"Verify it" (Demostrable)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* 4. SECCIÓN LIVE RUNTIME INTERACTIVO */}
+          {/* 5. SECCIÓN LIVE RUNTIME / JUDGE EN VIVO */}
           <section id="live-runtime" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>INTERCEPCIÓN DETERMINISTA L7</span>
-                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0' }}>Demostración de Auditoría Runtime en Vivo</h2>
+                <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>EVALUACIÓN EN RUNTIME</span>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0' }}>Adjudicación de Veredicto en Vivo</h2>
               </div>
               <button 
-                onClick={runRuntimeSimulation} 
-                disabled={isRunningSim}
-                style={{ padding: '10px 22px', backgroundColor: isRunningSim ? '#374151' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: isRunningSim ? 'default' : 'pointer' }}
+                onClick={runJudgeSimulation} 
+                disabled={isRunningJudge}
+                style={{ padding: '10px 22px', backgroundColor: isRunningJudge ? '#374151' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: isRunningJudge ? 'default' : 'pointer' }}
               >
-                {isRunningSim ? 'Evaluando Execution...' : '▶ Simular Auditoría en Runtime'}
+                {isRunningJudge ? 'Evaluando...' : '▶ Evaluar con Governance Judge'}
               </button>
             </div>
 
             {/* DIAGRAMA DE FLUJO EN VIVO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ background: runtimeStep >= 1 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 1 ? '#0ea5e9' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ background: judgeStep >= 1 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 1 ? '#0ea5e9' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 1</div>
-                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Inbound Request</strong>
-                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Payload con datos sensibles</span>
+                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Context Intake</strong>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Who / What / Which AI</span>
               </div>
-              <div style={{ background: runtimeStep >= 2 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 2 ? '#38bdf8' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ background: judgeStep >= 2 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 2 ? '#38bdf8' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 2</div>
-                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>L7 RAM Buffer</strong>
-                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Aislamiento sin persistencia</span>
+                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>RAM Buffer L7</strong>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Aislamiento volátil (&lt;0.017 ms)</span>
               </div>
-              <div style={{ background: runtimeStep >= 3 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 3 ? '#ea580c' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ background: judgeStep >= 3 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 3 ? '#f59e0b' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 3</div>
                 <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Policy Match</strong>
-                <span style={{ fontSize: '11px', color: '#f97316' }}>PII detectada (DNI / IBAN)</span>
+                <span style={{ fontSize: '11px', color: '#f59e0b' }}>PII-FIN-04 Activada</span>
               </div>
-              <div style={{ background: runtimeStep >= 4 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 4 ? '#ef4444' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ background: judgeStep >= 4 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 4 ? '#ef4444' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 4</div>
-                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Enforcement</strong>
-                <span style={{ fontSize: '11px', color: '#ef4444' }}>Bloqueo y purga `SYS_madvise`</span>
+                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>VERDICT: BLOCK</strong>
+                <span style={{ fontSize: '11px', color: '#ef4444' }}>Purga atómica en RAM</span>
               </div>
-              <div style={{ background: runtimeStep >= 5 ? '#030712' : '#070a12', border: `1px solid ${runtimeStep >= 5 ? '#10b981' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ background: judgeStep >= 5 ? '#030712' : '#070a12', border: `1px solid ${judgeStep >= 5 ? '#10b981' : '#1f2937'}`, padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>PASO 5</div>
-                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Proof Bundle</strong>
-                <span style={{ fontSize: '11px', color: '#34d399' }}>Sellado Ed25519 + RFC 3161</span>
+                <strong style={{ color: '#fff', fontSize: '13px', display: 'block', margin: '4px 0' }}>Evidence Ledger</strong>
+                <span style={{ fontSize: '11px', color: '#34d399' }}>Proof Bundle sellado eIDAS</span>
               </div>
             </div>
 
             <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '14px 18px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '12px', color: runtimeStep === 5 ? '#34d399' : '#9ca3af' }}>
-                {runtimeStep === 0 && "Estado: Esperando evento para evaluación en tiempo real..."}
-                {runtimeStep === 1 && "Estado: Interceptando llamada a modelo AI en Capa 7..."}
-                {runtimeStep === 2 && "Estado: Buffer volátil reservado en RAM (<0.017 ms)..."}
-                {runtimeStep === 3 && "Estado: Evaluando políticas activas de privacidad y seguridad..."}
-                {runtimeStep === 4 && "Estado: Política PII activada -> Acción: BLOCK ejecutada."}
-                {runtimeStep === 5 && "Estado: Evento consolidado. Proof Bundle emitido con hash SHA-256."}
+              <span style={{ fontFamily: 'monospace', fontSize: '12px', color: judgeStep === 5 ? '#34d399' : '#9ca3af' }}>
+                {judgeStep === 0 && "Estado: Esperando evento de IA para evaluación pericial..."}
+                {judgeStep === 1 && "Estado: Interceptando acción del agente en Capa 7..."}
+                {judgeStep === 2 && "Estado: Búfer volátil reservado en RAM sin persistencia en disco..."}
+                {judgeStep === 3 && "Estado: Evaluando contra catálogo de políticas corporativas..."}
+                {judgeStep === 4 && "Estado: Política PII-FIN-04 positiva -> Veredicto: BLOCK emitido."}
+                {judgeStep === 5 && "Estado: Veredicto consolidado. Proof Bundle emitido con firma Ed25519."}
               </span>
-              <span style={{ fontSize: '11.5px', color: '#6b7280', fontFamily: 'monospace' }}>LATENCY_BENCHMARK: 0.017 ms</span>
+              <span style={{ fontSize: '11.5px', color: '#6b7280', fontFamily: 'monospace' }}>JUDGE_LATENCY: 0.017 ms</span>
             </div>
           </section>
 
-          {/* 5. LAS 5 CAPAS DE CONTROL */}
+          {/* 6. SAARE VERDICT™ (EL OBJETO FUNDAMENTAL) */}
+          <section id="evidence-verifier" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>EL OBJETO FUNDAMENTAL</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>SAARE VERDICT™ Ledger</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '650px', margin: '0 auto 12px auto' }}>
+                Cada interacción gobernada produce un veredicto firmado, verificable e inmutable:
+              </p>
+            </div>
+
+            {/* FORMULARIO DE CONSULTA DE VEREDICTO */}
+            <form onSubmit={handleVerifyLookup} style={{ display: 'flex', gap: '10px', maxWidth: '650px', margin: '0 auto 28px auto', flexWrap: 'wrap' }}>
+              <input 
+                type="text" 
+                value={verifySearchId} 
+                onChange={(e) => setVerifySearchId(e.target.value)}
+                placeholder="Introduce ID de Evidencia o Hash (ej: EV-CED48F1600)"
+                style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }}
+              />
+              <button type="submit" style={{ padding: '11px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                Consultar Veredicto
+              </button>
+            </form>
+
+            {/* TARJETA VISUAL DEL SAARE VERDICT™ */}
+            <div style={{ maxWidth: '780px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
+                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // ADJUDICATION RECORD</span>
+                <span style={{ color: activeVerdict.decision === 'BLOCK' ? '#f87171' : '#34d399', fontWeight: 'bold', fontSize: '12px', background: activeVerdict.decision === 'BLOCK' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(52, 211, 153, 0.1)', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${activeVerdict.decision === 'BLOCK' ? '#ef4444' : '#34d399'}` }}>
+                  DECISION: {activeVerdict.decision}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '8px', fontSize: '12px' }}>
+                <span style={{ color: '#6b7280' }}>VERDICT ID:</span>
+                <span style={{ color: '#38bdf8' }}>{activeVerdict.verdictId}</span>
+
+                <span style={{ color: '#6b7280' }}>SYSTEM & ACTOR:</span>
+                <span style={{ color: '#f3f4f6' }}>{activeVerdict.system} ({activeVerdict.actor}) → {activeVerdict.model}</span>
+
+                <span style={{ color: '#6b7280' }}>POLICY EVALUATED:</span>
+                <span style={{ color: '#e5e7eb' }}>{activeVerdict.policy} [v{activeVerdict.policyVersion}]</span>
+
+                <span style={{ color: '#6b7280' }}>RISK RATIONALE:</span>
+                <span style={{ color: '#fb923c' }}>[{activeVerdict.riskLevel}] {activeVerdict.reason}</span>
+
+                <span style={{ color: '#6b7280' }}>ENFORCEMENT:</span>
+                <span style={{ color: '#f87171' }}>{activeVerdict.enforcement}</span>
+
+                <span style={{ color: '#6b7280' }}>TIMESTAMP:</span>
+                <span style={{ color: '#e5e7eb' }}>{activeVerdict.timestamp}</span>
+
+                <span style={{ color: '#6b7280' }}>INPUT DIGEST:</span>
+                <span style={{ color: '#9ca3af', wordBreak: 'break-all' }}>{activeVerdict.inputHash}</span>
+
+                <span style={{ color: '#6b7280' }}>SIGNATURE (Ed25519):</span>
+                <span style={{ color: '#34d399' }}>{activeVerdict.signature}</span>
+
+                <span style={{ color: '#6b7280' }}>TIME STAMP AUTH:</span>
+                <span style={{ color: '#34d399' }}>{activeVerdict.tsa}</span>
+
+                <span style={{ color: '#6b7280' }}>HUMAN OVERRIDE:</span>
+                <span style={{ color: '#9ca3af' }}>{activeVerdict.overrideStatus}</span>
+              </div>
+
+              <div style={{ marginTop: '20px', borderTop: '1px solid #1f2937', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>Certificación conforme a ISO/IEC 27037:2012 & UNE-ISO/IEC 42001</span>
+                <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#0ea5e9', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Verificar Integridad en API Pública ↗
+                </a>
+              </div>
+            </div>
+          </section>
+
+          {/* 7. LAS 5 CAPAS DE CONTROL */}
           <section id="control-layers" style={{ marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE CINCO NIVELES</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>Cinco Capas de Control para IA Corporativa</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14.5px', margin: 0 }}>Controles específicos desacoplados aplicables sobre cualquier infraestructura de modelos.</p>
+              <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CAPAS DE CONTROL TÉCNICO</span>
+              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>Cinco Dominios de Ejecución de Políticas</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14.5px', margin: 0 }}>Políticas operacionales compiladas directamente sobre el perímetro L7.</p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -636,84 +716,12 @@ export default function App() {
             </div>
           </section>
 
-          {/* 6. AI-NATIVE EVIDENCE: LA PRUEBA DE QUE EL CONTROL OCURRIÓ */}
-          <section id="evidence-verifier" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>AI-NATIVE EVIDENCE™</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Evidencia generada en tiempo de ejecución</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '650px', margin: '0 auto 12px auto' }}>
-                La evidencia se genera en el mismo momento en que ocurre la decisión de control: <br />
-                <span style={{ fontFamily: 'monospace', color: '#cbd5e1', fontSize: '12px' }}>EVENT → POLICY → DECISION → HASH → SIGNATURE → TIMESTAMP → VERIFY</span>
-              </p>
-            </div>
-
-            {/* FORMULARIO DE CONSULTA DE EVIDENCIA */}
-            <form onSubmit={handleVerifyLookup} style={{ display: 'flex', gap: '10px', maxWidth: '650px', margin: '0 auto 28px auto', flexWrap: 'wrap' }}>
-              <input 
-                type="text" 
-                value={verifySearchId} 
-                onChange={(e) => setVerifySearchId(e.target.value)}
-                placeholder="Introduce Proof ID o Hash (ej: EV-CED48F1600)"
-                style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }}
-              />
-              <button type="submit" style={{ padding: '11px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                Verificar Evidencia
-              </button>
-            </form>
-
-            {/* TARJETA VISUAL DEL PROOF BUNDLE */}
-            <div style={{ maxWidth: '750px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
-                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE PROOF BUNDLE (NATIVE EVIDENCE)</span>
-                <span style={{ color: '#34d399', fontWeight: 'bold', fontSize: '12px', background: 'rgba(52, 211, 153, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
-                  ✓ {verifiedRecord.status}
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '10px', fontSize: '12px' }}>
-                <span style={{ color: '#6b7280' }}>EVENT IDENTIFIER:</span>
-                <span style={{ color: '#38bdf8' }}>{verifiedRecord.id}</span>
-
-                <span style={{ color: '#6b7280' }}>BUNDLE ID:</span>
-                <span style={{ color: '#c084fc' }}>{verifiedRecord.bundleId}</span>
-
-                <span style={{ color: '#6b7280' }}>POLICY APPLIED:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifiedRecord.policy}</span>
-
-                <span style={{ color: '#6b7280' }}>ENFORCEMENT:</span>
-                <span style={{ color: '#f87171' }}>{verifiedRecord.action}</span>
-
-                <span style={{ color: '#6b7280' }}>TIMESTAMP:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifiedRecord.timestamp}</span>
-
-                <span style={{ color: '#6b7280' }}>INPUT DIGEST:</span>
-                <span style={{ color: '#9ca3af', wordBreak: 'break-all' }}>{verifiedRecord.inputHash}</span>
-
-                <span style={{ color: '#6b7280' }}>SIGNATURE:</span>
-                <span style={{ color: '#34d399' }}>{verifiedRecord.signature}</span>
-
-                <span style={{ color: '#6b7280' }}>TIME STAMP AUTH:</span>
-                <span style={{ color: '#34d399' }}>{verifiedRecord.tsa}</span>
-
-                <span style={{ color: '#6b7280' }}>MAPPED FRAMEWORKS:</span>
-                <span style={{ color: '#a855f7' }}>{verifiedRecord.frameworkMapping.join(" · ")}</span>
-              </div>
-
-              <div style={{ marginTop: '20px', borderTop: '1px solid #1f2937', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <span style={{ fontSize: '11px', color: '#6b7280' }}>Certificación conforme a ISO/IEC 27037:2012</span>
-                <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#0ea5e9', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}>
-                  Consultar Registro de Integridad en API ↗
-                </a>
-              </div>
-            </div>
-          </section>
-
-          {/* 7. CONTROL MATRIX */}
+          {/* 8. POLICY MATRIX (REGULATION-TO-POLICY COMPILER) */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MATRIZ DE CONTROL TÉCNICO</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Control Matrix Regulatoria</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>De la obligación legal al control técnico verificable.</p>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>POLICY COMPILER</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Policy-as-Code Governance Matrix</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>De la obligación regulatoria a la regla ejecutable en runtime.</p>
             </div>
 
             <div style={{ overflowX: 'auto' }}>
@@ -721,10 +729,10 @@ export default function App() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
                     <th style={{ padding: '12px 14px' }}>MARCO LEGAL</th>
-                    <th style={{ padding: '12px 14px' }}>RIESGO ASOCIADO</th>
-                    <th style={{ padding: '12px 14px' }}>POLÍTICA</th>
-                    <th style={{ padding: '12px 14px' }}>CONTROL SAARE</th>
-                    <th style={{ padding: '12px 14px' }}>EVIDENCIA</th>
+                    <th style={{ padding: '12px 14px' }}>RIESGO EVALUADO</th>
+                    <th style={{ padding: '12px 14px' }}>POLÍTICA SAARE</th>
+                    <th style={{ padding: '12px 14px' }}>CONTROL ADJUDICADO</th>
+                    <th style={{ padding: '12px 14px' }}>EVIDENCIA EMITIDA</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -742,17 +750,17 @@ export default function App() {
             </div>
           </section>
 
-          {/* 8. SECCIÓN DE PRECIOS Y DESPLIEGUE */}
+          {/* 9. PRICING Y ADOPCIÓN */}
           <section id="pricing" style={{ backgroundColor: '#0b0f19', border: '1px solid #0284c7', borderRadius: '16px', padding: '40px 30px', textAlign: 'center', marginBottom: '60px' }}>
             <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>DESPLIEGUE OPERATIVO</span>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0 10px 0' }}>
-              AI-Native Audit Infrastructure
+              AI Governance Decision Layer
             </h2>
             <div style={{ fontSize: '26px', fontWeight: '900', color: '#38bdf8', marginBottom: '12px' }}>
               Desde 149 € / mes
             </div>
             <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '640px', margin: '0 auto 28px auto', lineHeight: 1.6 }}>
-              Para organizaciones y consultoras que requieren control continuo, trazabilidad determinista y expedientes de evidencia digital verificables bajo ISO 27037 y AI Act.
+              Para organizaciones que necesitan adjudicación de políticas en runtime, trazabilidad de acciones de agentes y expedientes de evidencia digital verificables.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -769,14 +777,14 @@ export default function App() {
             </div>
           </section>
 
-          {/* 9. FOOTER INSTITUCIONAL Y DECLARACIÓN DE CATEGORÍA */}
+          {/* 10. FOOTER INSTITUCIONAL */}
           <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '32px', fontSize: '12px', color: '#6b7280' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
-              <div style={{ maxWidth: '600px' }}>
-                <strong style={{ color: '#f3f4f6', fontSize: '13px' }}>SAARE — AI-Native Audit Infrastructure</strong>
+              <div style={{ maxWidth: '620px' }}>
+                <strong style={{ color: '#f3f4f6', fontSize: '13px' }}>SAARE — AI Governance Decision Layer</strong>
                 <p style={{ margin: '6px 0 0 0', color: '#9ca3af', lineHeight: 1.5 }}>
-                  La capa de infraestructura que permite observar, controlar y demostrar lo que ocurre durante la ejecución de sistemas de inteligencia artificial. <br />
-                  <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>AI executes. SAARE audits. Evidence proves.</span>
+                  La capa de infraestructura que evalúa, adjudica y demuestra lo que ocurre durante la ejecución de sistemas de IA. <br />
+                  <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>AI executes. SAARE judges. Evidence proves.</span>
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '18px', fontSize: '12px' }}>
