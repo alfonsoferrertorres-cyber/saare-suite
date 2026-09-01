@@ -6,16 +6,7 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
   : 'https://saare-console.pages.dev';
 
 const DEMO_VERDICT_ID = "VRD-2026-0941A";
-
-const DOCTRINE_PRINCIPLES = [
-  { num: "01", title: "Execution Boundary", desc: "La evaluación de autorización se ejecuta en la frontera del runtime antes del dispatch, nunca ex-post." },
-  { num: "02", title: "No Verdict, No Run", desc: "Ninguna acción de IA, llamada a herramienta o mutación crítica se ejecuta sin un veredicto previo y un Execution Permit firmado." },
-  { num: "03", title: "Deterministic Taxonomy", desc: "Decisiones estructuradas (ALLOW, DENY, ESCALATE) con acciones de enforcement asociadas (PASS, BLOCK, HOLD)." },
-  { num: "04", title: "Simultaneous Evidence", desc: "Cada decisión material produce un registro de autorización firmado criptográficamente de manera simultánea." },
-  { num: "05", title: "Human Override Inmutability", desc: "Toda excepción humana queda firmada e imputada sin sobreescribir ni destruir el veredicto original." },
-  { num: "06", title: "Model-Agnostic Core", desc: "Desacople total de modelos y proveedores subyacentes de inferencia." },
-  { num: "07", title: "Independent Verification", desc: "La integridad probatoria no depende de la interfaz: es verificable de forma independiente vía API pública y RFC 3161." }
-];
+const DEMO_ACTION_DIGEST = "sha256:4a8b29e01824d55f9e8a719c82301982bca192739812903847921a9823749812";
 
 const TARGET_SEGMENTS = [
   {
@@ -24,7 +15,7 @@ const TARGET_SEGMENTS = [
     title: "01. Fábricas de Agentes y Orquestadores Autónomos",
     who: "Plataformas y desarrolladores que orquestan agentes autónomos con acceso a APIs, pagos y bases de datos.",
     pain: "Un agente inducido o alucinado ejecuta herramientas sensibles produciendo efectos reales no deseados.",
-    embed: "SDK / Nodo HTTP 'Ask the Judge' (POST /api/v1/judge) como aduana determinista previa a la ejecución.",
+    embed: "SDK / Workflow Interceptor (POST /api/v1/judge) como aduana determinista previa a la ejecución.",
     pricing: "Tarificación por volumen de decisiones adjudicadas.",
     color: "#16a34a"
   },
@@ -77,7 +68,7 @@ const INTEGRATION_TIERS = [
       "Extra: 0,0015 € por veredicto adicional"
     ],
     highlight: false,
-    cta: "Integrar Nivel Developer",
+    cta: "Solicitar Acceso Developer",
     action: "lead_dev"
   },
   {
@@ -96,7 +87,7 @@ const INTEGRATION_TIERS = [
       "Extra: 0,0008 € por veredicto adicional"
     ],
     highlight: true,
-    cta: "Integrar Nivel Scale",
+    cta: "Solicitar Integración Scale",
     action: "lead_scale"
   },
   {
@@ -132,14 +123,11 @@ const CONTROL_MATRIX = [
 export default function App() {
   const [activeCodeTab, setActiveCodeTab] = useState('sdk');
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
-  const [showDossierModal, setShowDossierModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState(null);
 
   const [b2bFormData, setB2bFormData] = useState({
-    expediente: '',
-    tipoNorma: 'REGULATORIO_GENERAL',
     emailContacto: '',
-    vpcCloud: 'SOBERANA_EUROPEA',
+    vpcCloud: 'ORCHESTRATOR_FLOWS',
     tokenVolume: '1M_10M'
   });
   const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
@@ -160,7 +148,8 @@ export default function App() {
           amount_eur: 18420.00,
           destination_iban: "[REDACTED]",
           currency: "EUR"
-        }
+        },
+        payloadDigest: DEMO_ACTION_DIGEST
       };
 
       const res = await fetch(`${API_BASE}/judge`, {
@@ -232,8 +221,6 @@ export default function App() {
       const payload = {
         formType,
         email: b2bFormData.emailContacto,
-        expediente: b2bFormData.expediente || "NO_ESPECIFICADO",
-        tipoNorma: b2bFormData.tipoNorma || "REGULATORIO_GENERAL",
         vpcCloud: b2bFormData.vpcCloud || "SOBERANA_EUROPEA",
         tokenVolume: b2bFormData.tokenVolume || "1M_10M",
         source: "saare-public-landing"
@@ -247,17 +234,14 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.status === "SUCCESS") {
-        setB2bSuccessMsg(`Solicitud registrada (Ref: ${data.leadId}). Un arquitecto de SAARE se pondrá en contacto.`);
+        setB2bSuccessMsg(`Solicitud de integración registrada (Ref: ${data.leadId}). El equipo de arquitectura se pondrá en contacto.`);
         setTimeout(() => {
-          setShowDossierModal(false);
           setShowEnterpriseModal(false);
           setSelectedTier(null);
           setB2bSuccessMsg('');
           setB2bFormData({
-            expediente: '',
-            tipoNorma: 'REGULATORIO_GENERAL',
             emailContacto: '',
-            vpcCloud: 'SOBERANA_EUROPEA',
+            vpcCloud: 'ORCHESTRATOR_FLOWS',
             tokenVolume: '1M_10M'
           });
         }, 3000);
@@ -282,7 +266,8 @@ const result = await judge.authorize({
   subject: "payment-agent-742",
   action: "send_wire_transfer",
   resource: "core-banking-api://transfers/sepa",
-  context: { amount_eur: 18420.00, destination_iban: "[REDACTED]" }
+  context: { amount_eur: 18420.00, destination_iban: "[REDACTED]" },
+  payloadDigest: "${DEMO_ACTION_DIGEST}"
 });
 
 if (result.decision === "ALLOW") {
@@ -305,7 +290,8 @@ const saareResponse = await fetch('https://saare-api.alfonsoferrertorres.workers
     subject: event.agentId || "agent-runtime-worker",
     action: event.intendedToolCall,
     resource: event.targetApiEndpoint,
-    context: event.parameters
+    context: event.parameters,
+    payloadDigest: event.calculatedActionDigest
   })
 }).then(r => r.json());
 
@@ -339,21 +325,21 @@ services:
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif' }}>
       
-      {/* MODAL SOLICITUD DE PLAN / TIER */}
+      {/* MODAL SOLICITUD DE INTEGRACIÓN POR PLAN */}
       {selectedTier && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setSelectedTier(null)}>
           <div style={{ maxWidth: '500px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #0284c7', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
             <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>PLAN: {selectedTier.name} ({selectedTier.price} {selectedTier.period})</span>
-            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Aprovisionar Claves de Acceso API</h3>
+            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Solicitar Acceso de Integración</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Introduce el correo de tu equipo técnico para generar tu Tenant ID y habilitar la cuota correspondiente.
+              Introduce el correo de tu equipo técnico para registrar la solicitud de acceso a la API y el aprovisionamiento de Tenant.
             </p>
             {b2bSuccessMsg ? (
               <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
                 {b2bSuccessMsg}
               </div>
             ) : (
-              <form onSubmit={(e) => handleSendB2BForm(e, `Integración Plan ${selectedTier.name}`)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <form onSubmit={(e) => handleSendB2BForm(e, `Solicitud Plan ${selectedTier.name}`)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO / RESPONSABLE TÉCNICO</label>
                   <input type="email" required placeholder="responsable@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
@@ -369,54 +355,9 @@ services:
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button type="submit" disabled={loadingLead} style={{ flex: 1, padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: loadingLead ? 'default' : 'pointer' }}>
-                    {loadingLead ? 'Aprovisionando...' : 'Confirmar y Recibir Credenciales'}
+                    {loadingLead ? 'Transmitiendo...' : 'Enviar Solicitud de Integración'}
                   </button>
                   <button type="button" onClick={() => setSelectedTier(null)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DICTAMEN PERICIAL */}
-      {showDossierModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDossierModal(false)}>
-          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #9333ea', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
-            <span style={{ color: '#c084fc', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>SERVICIOS PERICIALES</span>
-            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Solicitud de Dictamen Pericial / Auditoría</h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Generación de informe técnico con cadena de custodia (ISO/IEC 27037) y trazabilidad forense.
-            </p>
-            {b2bSuccessMsg ? (
-              <div style={{ padding: '16px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
-                {b2bSuccessMsg}
-              </div>
-            ) : (
-              <form onSubmit={(e) => handleSendB2BForm(e, 'Dictamen Pericial')} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="auditor@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>TIPO DE EXPEDIENTE</label>
-                  <select value={b2bFormData.tipoNorma} onChange={(e) => setB2bFormData({...b2bFormData, tipoNorma: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }}>
-                    <option value="REGULATORIO_GENERAL">Auditoría de Conformidad Regulatoria (AI Act / RGPD)</option>
-                    <option value="PERITAJE_JUDICIAL">Dictamen Pericial Judicial (ISO/IEC 27037 / DES)</option>
-                    <option value="AUDITORIA_TRAZABILIDAD">Auditoría de Trazabilidad y Seguridad en Ejecución</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>REFERENCIA DE EXPEDIENTE / PROYECTO</label>
-                  <input type="text" required placeholder="Ej: EXP-AUDIT-2026-01" value={b2bFormData.expediente} onChange={(e) => setB2bFormData({...b2bFormData, expediente: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button type="submit" disabled={loadingLead} style={{ flex: 1, padding: '12px', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: loadingLead ? 'default' : 'pointer' }}>
-                    {loadingLead ? 'Transmitiendo...' : 'Tramitar Solicitud de Dictamen'}
-                  </button>
-                  <button type="button" onClick={() => setShowDossierModal(false)} style={{ padding: '12px 18px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
                     Cancelar
                   </button>
                 </div>
@@ -587,7 +528,33 @@ services:
         </div>
       </section>
 
-      {/* SECCIÓN PLANES DE INTEGRACIÓN TÉCNICA */}
+      {/* 02 · EL NÚCLEO */}
+      <section id="core-decision" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>02 · EL NÚCLEO</span>
+          <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>One Decision Core. Any Runtime.</h2>
+          <p style={{ color: '#9ca3af', fontSize: '14.5px' }}>SAARE opera como un motor determinista de autorización técnica.</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+          {[
+            { tag: "IDENTITY", title: "¿Quién solicita?", desc: "Identidad verificada del agente, principal y entorno operativo." },
+            { tag: "ACTION", title: "¿Qué intenta hacer?", desc: "Intención tipificada: send_wire_transfer, delete_customer, query_sql." },
+            { tag: "RESOURCE", title: "¿Sobre qué recurso?", desc: "API de destino, base de datos o microservicio sensible." },
+            { tag: "CONTEXT", title: "¿En qué condiciones?", desc: "Importe, parámetros canónicos, límites y estado del sistema." },
+            { tag: "POLICY", title: "¿Qué regla aplica?", desc: "Versión exacta de la política declarativa compilada y firmada." },
+            { tag: "VERDICT", title: "SAARE VERDICT™", desc: "ALLOW · DENY · ESCALATE con registro probatorio simultáneo." }
+          ].map((c, i) => (
+            <div key={i} style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '18px', borderRadius: '10px' }}>
+              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', fontFamily: 'monospace' }}>{c.tag}</span>
+              <h4 style={{ color: '#fff', fontSize: '14px', margin: '6px 0 6px 0' }}>{c.title}</h4>
+              <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>{c.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 03 · PLANES DE INTEGRACIÓN TÉCNICA */}
       <section id="pricing" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <span style={{ color: '#10b981', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PLANES DE INTEGRACIÓN Y LICENCIAMIENTO</span>
@@ -669,7 +636,7 @@ services:
         </div>
       </section>
 
-      {/* 06 · EMBED SAARE */}
+      {/* 04 · EMBED SAARE */}
       <section id="embed-studio" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #10b981', borderRadius: '16px', padding: '36px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
@@ -705,7 +672,7 @@ services:
         </div>
       </section>
 
-      {/* 07 · RUNTIME CONTROL & LIVE EVALUATION */}
+      {/* 05 · RUNTIME CONTROL & LIVE EVALUATION */}
       <section id="live-runtime" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
@@ -723,9 +690,10 @@ services:
           </div>
 
           <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '20px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '12.5px' }}>
-            <div style={{ color: '#6b7280', marginBottom: '8px' }}>// ENTRADA: Acción sensible de agente enviada al Decision Core</div>
+            <div style={{ color: '#6b7280', marginBottom: '8px' }}>// ENTRADA: Acción sensible de agente enviada al Decision Core con digest canónico</div>
             <div style={{ color: '#e5e7eb' }}>
               agent-742 solicita: <code>send_wire_transfer</code> de <strong>€18,420.00 EUR</strong> a IBAN <code>[REDACTED]</code>
+              <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '4px' }}>action.digest: {DEMO_ACTION_DIGEST}</div>
             </div>
 
             {liveJudgeResult && liveJudgeResult.verdictId && (
@@ -738,14 +706,53 @@ services:
                     Latencia Core: {liveJudgeResult.latencyMicros != null ? `${liveJudgeResult.latencyMicros} μs` : "not reported"}
                   </span>
                 </div>
-                <div style={{ color: '#fb923c' }}>Motivo: {liveJudgeResult.reason ?? "—"}</div>
-                <div style={{ color: '#64748b', fontSize: '11px', marginTop: '6px' }}>
-                  Firma Ed25519: <code>{liveJudgeResult.signature?.value ?? "—"}</code>
+
+                <div style={{ color: '#fb923c', marginBottom: '6px' }}>Motivo: {liveJudgeResult.reason ?? "—"}</div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '8px', fontSize: '11px', color: '#9ca3af', margin: '10px 0' }}>
+                  <div>Verdict ID: <strong style={{ color: '#38bdf8' }}>{liveJudgeResult.verdictId ?? "—"}</strong></div>
+                  <div>Action Digest: <strong style={{ color: '#cbd5e1' }}>{liveJudgeResult.action?.digest ?? liveJudgeResult.actionDigest ?? "—"}</strong></div>
+                  <div>
+                    Reason Codes: <strong style={{ color: '#cbd5e1' }}>
+                      {Array.isArray(liveJudgeResult.reasonCodes) ? liveJudgeResult.reasonCodes.join(" · ") : "—"}
+                    </strong>
+                  </div>
+                  <div>
+                    Firma Asimétrica: <strong style={{ color: liveJudgeResult.signature?.valid ? '#34d399' : '#f87171' }}>
+                      {liveJudgeResult.signature?.algorithm ?? "—"} · {liveJudgeResult.signature?.valid === true ? "VALID" : "NOT VERIFIED"}
+                    </strong>
+                  </div>
+                  <div>
+                    Sellado Temporal: <strong style={{ color: liveJudgeResult.timestamp?.valid ? '#34d399' : '#f87171' }}>
+                      {liveJudgeResult.timestamp?.protocol ?? "—"} · {liveJudgeResult.timestamp?.valid === true ? "VALID" : "NOT VERIFIED"}
+                    </strong>
+                  </div>
+                  <div>
+                    Integridad Canónica: <strong style={{ color: liveJudgeResult.integrity?.digestValid ? '#34d399' : '#f87171' }}>
+                      {liveJudgeResult.integrity?.digestValid === true ? "MATCH" : "UNVERIFIED"}
+                    </strong>
+                  </div>
                 </div>
-                <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
-                  Execution Permit: <strong style={{ color: liveJudgeResult.executionPermit ? '#34d399' : '#f87171' }}>
-                    {liveJudgeResult.executionPermit ? "ISSUED" : "NONE ISSUED (FAIL-CLOSED)"}
-                  </strong>
+
+                {/* DESGLOSE DEL PERMIT SEGÚN ESTADO */}
+                <div style={{ borderTop: '1px dashed #374151', paddingTop: '10px', marginTop: '10px' }}>
+                  <span style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Estado del Execution Permit:
+                  </span>
+                  {liveJudgeResult.executionPermit ? (
+                    <div style={{ background: '#0b0f19', border: '1px solid #10b981', borderRadius: '6px', padding: '12px', fontSize: '11px', color: '#34d399' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>✓ ISSUED · ACTION & RESOURCE BOUND</div>
+                      <div style={{ color: '#cbd5e1' }}>JTI: {liveJudgeResult.executionPermit.jti}</div>
+                      <div style={{ color: '#cbd5e1' }}>Sujeto: {liveJudgeResult.executionPermit.subject}</div>
+                      <div style={{ color: '#cbd5e1' }}>Acción: {liveJudgeResult.executionPermit.action} → {liveJudgeResult.executionPermit.resource}</div>
+                      <div style={{ color: '#cbd5e1' }}>Digest Vinculado: {liveJudgeResult.executionPermit.actionDigest}</div>
+                      <div style={{ color: '#cbd5e1' }}>Expira en: {liveJudgeResult.executionPermit.expiresAt}</div>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#0b0f19', border: '1px solid #ef4444', borderRadius: '6px', padding: '10px', fontSize: '11px', color: '#f87171', fontWeight: 'bold' }}>
+                      ✕ NONE ISSUED · FAIL-CLOSED (Sin permiso de ejecución para el Tool Gateway)
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -766,11 +773,11 @@ services:
         </div>
       </section>
 
-      {/* 08 · BENCHMARKS DE RENDIMIENTO */}
+      {/* 06 · BENCHMARKS DE RENDIMIENTO */}
       <section id="benchmarks" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ background: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '32px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>08 · LATENCY BENCHMARK</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LATENCY BENCHMARK</span>
             <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#fff', margin: '4px 0 0 0' }}>Especificación Científica de Rendimiento</h2>
             <p style={{ color: '#9ca3af', fontSize: '13.5px', margin: '4px 0 0 0' }}>Métricas desagregadas según el componente de la arquitectura.</p>
           </div>
@@ -797,7 +804,7 @@ services:
         </div>
       </section>
 
-      {/* 09 · PROOF & INDEPENDENT VERIFIER */}
+      {/* 07 · PROOF & INDEPENDENT VERIFIER */}
       <section id="evidence-verifier" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -826,7 +833,7 @@ services:
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '14px', marginBottom: '18px' }}>
                 <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE VERDICT™ // CRYPTOGRAPHICALLY VERIFIED RECORD</span>
                 <span style={{ color: '#34d399', fontWeight: 'bold', fontSize: '11px', background: 'rgba(52,211,153,0.1)', padding: '3px 10px', borderRadius: '4px', border: '1px solid #10b981' }}>
-                  STATUS: VALID
+                  STATUS: {verifyResult.status ?? "—"}
                 </span>
               </div>
 
@@ -844,30 +851,64 @@ services:
                   {verifyResult.executionPermit ? "ISSUED (ACTION BOUND)" : "NONE ISSUED (FAIL-CLOSED)"}
                 </span>
 
-                <span style={{ color: '#6b7280' }}>SUBJECT:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.subject?.id ?? "—"}</span>
+                <span style={{ color: '#6b7280' }}>REASON CODES:</span>
+                <span style={{ color: '#cbd5e1' }}>
+                  {Array.isArray(verifyResult.reasonCodes) ? verifyResult.reasonCodes.join(" · ") : "—"}
+                </span>
+
+                <span style={{ color: '#6b7280' }}>SUBJECT (AGENT):</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.subject?.id ?? "—"} {verifyResult.subject?.principal ? `(Principal: ${verifyResult.subject.principal})` : ""}
+                </span>
 
                 <span style={{ color: '#6b7280' }}>ACTION & RESOURCE:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.action?.type ?? "—"} → {verifyResult.action?.resource ?? "—"}</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.action?.type ?? "—"} → {verifyResult.action?.resource ?? "—"}
+                </span>
+
+                <span style={{ color: '#6b7280' }}>ACTION DIGEST:</span>
+                <span style={{ color: '#38bdf8', wordBreak: 'break-all' }}>{verifyResult.action?.digest ?? "—"}</span>
 
                 <span style={{ color: '#6b7280' }}>POLICY APPLIED:</span>
-                <span style={{ color: '#e5e7eb' }}>{verifyResult.policy?.id ? `${verifyResult.policy.id} [v${verifyResult.policy.version ?? "1.0.0"}]` : "—"}</span>
+                <span style={{ color: '#e5e7eb' }}>
+                  {verifyResult.policy?.id ? `${verifyResult.policy.id} [v${verifyResult.policy.version ?? "1.0.0"}]` : "—"}
+                </span>
+
+                <span style={{ color: '#6b7280' }}>CANONICAL RECORD HASH:</span>
+                <span style={{ color: '#f59e0b', wordBreak: 'break-all' }}>
+                  {verifyResult.integrity?.canonicalHash ?? "—"}
+                </span>
 
                 <span style={{ color: '#6b7280' }}>SIGNATURE (ASYMMETRIC):</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.signature?.algorithm ?? "Ed25519"} · VALID</span>
+                <span style={{ color: verifyResult.signature?.valid ? '#34d399' : '#f87171' }}>
+                  {verifyResult.signature?.algorithm ?? "—"} · {verifyResult.signature?.valid === true ? "VALID" : "NOT VERIFIED"}
+                </span>
 
                 <span style={{ color: '#6b7280' }}>TIMESTAMP (QUALIFIED):</span>
-                <span style={{ color: '#34d399' }}>{verifyResult.timestamp?.protocol ?? "RFC3161"} · VALID ({verifyResult.issuedAt ?? "—"})</span>
+                <span style={{ color: verifyResult.timestamp?.valid ? '#34d399' : '#f87171' }}>
+                  {verifyResult.timestamp?.protocol ?? "—"} · {verifyResult.timestamp?.valid === true ? "VALID" : "NOT VERIFIED"} ({verifyResult.issuedAt ?? "—"})
+                </span>
+
+                <span style={{ color: '#6b7280' }}>INTEGRITY VERIFICATION:</span>
+                <span style={{ color: verifyResult.integrity?.digestValid ? '#34d399' : '#f87171' }}>
+                  {verifyResult.integrity?.digestValid === true ? "CANONICAL HASH VERIFIED" : "DIGEST MISMATCH"}
+                </span>
               </div>
+            </div>
+          )}
+
+          {verifyResult && (verifyResult.status === 'NOT_FOUND' || verifyResult.status === 'ERROR') && (
+            <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #ef4444', borderRadius: '10px', padding: '20px', color: '#f87171', textAlign: 'center', fontSize: '13px' }}>
+              <strong>{verifyResult.status}:</strong> {verifyResult.message}
             </div>
           )}
         </div>
       </section>
 
-      {/* 10 · THREE-PLANE ARCHITECTURE */}
+      {/* 08 · THREE-PLANE ARCHITECTURE */}
       <section style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>10 · THREE-PLANE ARCHITECTURE</span>
+          <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>THREE-PLANE ARCHITECTURE</span>
           <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>One Architecture. Three Separated Planes.</h2>
         </div>
 
@@ -893,7 +934,7 @@ services:
         </div>
       </section>
 
-      {/* 11 · TARGET SEGMENTS */}
+      {/* 09 · MODELOS DE INTEGRACIÓN */}
       <section id="target-segments" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MODELOS DE INTEGRACIÓN</span>
@@ -931,11 +972,11 @@ services:
         </div>
       </section>
 
-      {/* 12 · MATRIZ DE CONTROL A VEREDICTO */}
+      {/* 10 · MATRIZ DE CONTROL A VEREDICTO */}
       <section id="control-matrix" style={{ maxWidth: '1160px', margin: '0 auto 80px auto', padding: '0 24px' }}>
         <div style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>12 · CONTROL-TO-VERDICT MATRIX</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CONTROL-TO-VERDICT MATRIX</span>
             <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Technical Control-to-Verdict Matrix</h2>
             <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Technical controls mapped to applicable regulatory requirements.</p>
           </div>
