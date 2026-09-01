@@ -5,8 +5,18 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferr
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
+// Perfil de seguridad corporativo neutral y anónimo
+const DEFAULT_ANONYMOUS_USER = {
+  email: "security.officer@enterprise.internal",
+  tenantName: "CORPORATE WORKLOAD NODE",
+  tenantId: "tenant_corp_01",
+  apiKey: "sk_saare_live_master_kv_session",
+  role: "CISO / Global Admin",
+  licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
+};
+
 function resolveInitialUser() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return DEFAULT_ANONYMOUS_USER;
 
   const urlParams = new URLSearchParams(window.location.search);
   const tokenParam = urlParams.get('token');
@@ -16,8 +26,8 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'alfon test',
-      tenantId: 'tenant_admin_01',
+      tenantName: tenantParam || 'CORPORATE WORKLOAD NODE',
+      tenantId: 'tenant_corp_01',
       apiKey: tokenParam,
       role: urlParams.get('role') || 'CISO / Global Admin',
       licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
@@ -29,26 +39,36 @@ function resolveInitialUser() {
     return fromUrlUser;
   }
 
+  // Purgar credenciales y nombres de depuración previos en localStorage
   const consoleSaved = localStorage.getItem('saare_user');
   const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
 
   if (consoleSaved) {
-    try { return JSON.parse(consoleSaved); } catch {}
+    try {
+      const parsed = JSON.parse(consoleSaved);
+      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
+        localStorage.removeItem('saare_user');
+        localStorage.removeItem('saare_suite_user');
+        localStorage.removeItem('saare_vault_session');
+        return DEFAULT_ANONYMOUS_USER;
+      }
+      return parsed;
+    } catch {}
   }
   if (suiteSaved) {
     try {
       const parsed = JSON.parse(suiteSaved);
+      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
+        localStorage.removeItem('saare_user');
+        localStorage.removeItem('saare_suite_user');
+        localStorage.removeItem('saare_vault_session');
+        return DEFAULT_ANONYMOUS_USER;
+      }
       localStorage.setItem('saare_user', JSON.stringify(parsed));
       return parsed;
     } catch {}
   }
-  return {
-    email: "el.abuelo.del.punk@gmail.com",
-    tenantName: "alfon test",
-    role: "CISO / Global Admin",
-    apiKey: "sk_saare_live_master_kv_session",
-    licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
-  };
+  return DEFAULT_ANONYMOUS_USER;
 }
 
 export default function App() {
@@ -75,7 +95,7 @@ export default function App() {
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
 
-  // CATÁLOGO DE DIRECTIVAS
+  // Catálogo de directivas técnicas neutrales
   const masterDirectives = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -168,7 +188,7 @@ export default function App() {
       });
       setKvStatus(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString() }));
     } catch (err) {
-      console.error("Fallo al sincronizar directivas con Decision Store", err);
+      console.error("Fallo al sincronizar directivas", err);
     } finally {
       setSyncingKv(false);
     }
@@ -254,7 +274,7 @@ export default function App() {
     localStorage.removeItem('saare_user');
     localStorage.removeItem('saare_suite_user');
     localStorage.removeItem('saare_vault_session');
-    setSessionUser(null);
+    setSessionUser(DEFAULT_ANONYMOUS_USER);
     setEvents([]);
   };
 
@@ -331,14 +351,14 @@ export default function App() {
     }
   };
 
-  // DESCARGA DE EXTENSIÓN TOKENIZADA AUTÓNOMA CON JSZIP
+  // Descarga de extensión con configuración corporativa y neutral
   const handleDownloadTokenizedExtension = async () => {
     try {
       setDownloadingAgentZip(true);
       const zip = new JSZip();
 
-      const tTenant = sessionUser?.tenantName || "alfon test";
-      const tEmail = sessionUser?.email || "el.abuelo.del.punk@gmail.com";
+      const tTenant = sessionUser?.tenantName || "CORPORATE WORKLOAD NODE";
+      const tEmail = sessionUser?.email || "security.officer@enterprise.internal";
       const tToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session_token";
 
       const tokenizedConfig = {
@@ -353,7 +373,7 @@ export default function App() {
 
       const manifest = {
         manifest_version: 3,
-        name: `SAARE L7 Extension — ${tTenant}`,
+        name: `SAARE L7 Extension — Corporate Node`,
         version: "1.0.4",
         description: "Sensor perimetral L7 de ejecución determinista y trazabilidad forense SAARE SGP 1.0",
         permissions: ["storage", "activeTab", "scripting"],
@@ -364,13 +384,11 @@ export default function App() {
 
       const backgroundJs = `// SAARE L7 Sensor Runtime v10.0.4 (SGP 1.0)
 const SAARE_CONFIG = ${JSON.stringify(tokenizedConfig, null, 2)};
-console.log("[SAARE] Sensor L7 activado para Tenant:", SAARE_CONFIG.saare_tenant_domain.Value);
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ saare_config: SAARE_CONFIG });
 });
 `;
 
-      // Intentar cargar la plantilla base si existe, o generar en memoria
       try {
         const response = await fetch('/saare-extension.zip');
         if (response.ok) {
@@ -387,7 +405,7 @@ chrome.runtime.onInstalled.addListener(() => {
       const blob = await zip.generateAsync({ type: "blob" });
       const dl = document.createElement("a");
       dl.href = URL.createObjectURL(blob);
-      dl.download = `saare-extension-${tTenant.toLowerCase().replace(/[^a-z0-9]/g, '_')}.zip`;
+      dl.download = `saare-extension-corporate-node.zip`;
       document.body.appendChild(dl);
       dl.click();
       document.body.removeChild(dl);
@@ -419,28 +437,10 @@ chrome.runtime.onInstalled.addListener(() => {
     return matchesWitness && matchesSearch;
   });
 
-  if (!sessionUser) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ maxWidth: '400px', width: '100%', background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', textAlign: 'center', margin: '0 0 16px 0' }}>SAARE GRC Console</h1>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Email Corporativo" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
-            <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
-            {loginError && <div style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center' }}>{loginError}</div>}
-            <button type="submit" disabled={loadingLogin} style={{ padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {loadingLogin ? 'Accediendo...' : 'Iniciar Sesión'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#64748b', fontFamily: 'Arial, sans-serif', paddingBottom: '40px' }}>
       
-      {/* 1. CABECERA INSTITUCIONAL */}
+      {/* 1. Cabecera institucional */}
       <div style={{ width: '100%', background: '#eae4d9', borderBottom: '2px solid #cbd5e1', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <img 
           src={HEADER_BANNER_SRC} 
@@ -454,7 +454,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
       <div style={{ maxWidth: '1280px', margin: '16px auto 0 auto', padding: '0 16px' }}>
         
-        {/* 2. CARD DE CONTROL CON BOTÓN DE DESCARGA DE EXTENSIÓN */}
+        {/* 2. Barra de control superior */}
         <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
           
           <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', marginBottom: '4px' }}>
@@ -462,7 +462,7 @@ chrome.runtime.onInstalled.addListener(() => {
           </div>
           
           <div style={{ fontSize: '11.5px', color: '#475569', fontWeight: 'bold', marginBottom: '16px' }}>
-            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName || 'alfon test'}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
+            ORGANIZACIÓN: <span style={{ color: '#0f172a' }}>{sessionUser.tenantName}</span> | USUARIO: <span style={{ color: '#0284c7' }}>{sessionUser.email}</span> | DIRECTIVAS: <span style={{ color: '#16a34a' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#ef4444' }}>-{disabledDirectivesCount} DESHABILITADAS</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
@@ -486,7 +486,7 @@ chrome.runtime.onInstalled.addListener(() => {
               </button>
             </div>
 
-            {/* BOTÓN DE DESCARGA DE EXTENSIÓN TOKENIZADA */}
+            {/* Descarga de Extensión Tokenizada */}
             <div>
               <button
                 onClick={handleDownloadTokenizedExtension}
@@ -512,7 +512,7 @@ chrome.runtime.onInstalled.addListener(() => {
             </div>
           </div>
 
-          {/* Carrusel de Testigos L7 */}
+          {/* Testigos L7 */}
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '11px', fontWeight: '900', color: '#475569', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
               TESTIGOS L7 EN TIEMPO REAL:
@@ -551,7 +551,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
         </div>
 
-        {/* 3. PESTAÑAS PRINCIPALES */}
+        {/* 3. Pestañas de Navegación */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <button
             onClick={() => setActiveTab('GLOBAL')}
@@ -603,10 +603,9 @@ chrome.runtime.onInstalled.addListener(() => {
           </button>
         </div>
 
-        {/* CONTENIDO TAB: CONFIGURACIÓN */}
+        {/* TAB: CONFIGURACIÓN */}
         {activeTab === 'CONFIG' && (
           <div>
-            {/* CONFIGURADOR DE SINTAXIS */}
             <div style={{ background: '#ffffff', borderRadius: '14px', padding: '20px 24px', marginBottom: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <h3 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
@@ -642,7 +641,6 @@ chrome.runtime.onInstalled.addListener(() => {
               )}
             </div>
 
-            {/* GRID DE CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '16px' }}>
               {Object.entries(masterDirectives).map(([key, scn]) => {
                 const isEnabled = directivesState[key] === true;
@@ -717,7 +715,7 @@ chrome.runtime.onInstalled.addListener(() => {
           </div>
         )}
 
-        {/* CONTENIDO TAB: RUNLIVE */}
+        {/* TAB: RUNLIVE */}
         {activeTab === 'RUNLIVE' && (
           <div style={{ background: '#ffffff', borderRadius: '14px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
@@ -766,7 +764,7 @@ chrome.runtime.onInstalled.addListener(() => {
           </div>
         )}
 
-        {/* CONTENIDO TAB: REGISTRO GLOBAL */}
+        {/* TAB: REGISTRO GLOBAL */}
         {activeTab === 'GLOBAL' && (
           <div style={{ background: '#ffffff', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', background: '#f8fafc' }}>
@@ -834,7 +832,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
       </div>
 
-      {/* MODAL JSON SAARE VERDICT™ */}
+      {/* Modal JSON */}
       {selectedJson && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedJson(null)}>
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px', maxWidth: '680px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
@@ -854,7 +852,7 @@ chrome.runtime.onInstalled.addListener(() => {
         </div>
       )}
 
-      {/* MODAL AÑADIR BLOQUEO */}
+      {/* Modal Añadir Bloqueo */}
       {showAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%' }}>
@@ -869,7 +867,7 @@ chrome.runtime.onInstalled.addListener(() => {
         </div>
       )}
 
-      {/* MODAL ADVERTENCIA DE DESACTIVACIÓN */}
+      {/* Modal Advertencia de Desactivación */}
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
