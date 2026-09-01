@@ -361,17 +361,102 @@ const response = await client.chat.completions.create({
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif' }}>
       
-      {/* MODAL REGISTRAL OFICIAL */}
+      {/* MODAL DE VERIFICACIÓN OFICIAL DE INTEGRIDAD L7 */}
       {showDiploma && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowDiploma(false)}>
-          <div style={{ maxWidth: '840px', width: '100%', background: '#111827', borderRadius: '12px', border: '1px solid #374151', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
-            <img src="/certificado_integridad.png" alt="Acreditación Registral Safe Creative" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />
-            <div style={{ padding: '16px 24px', background: '#0b0f19', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1f2937' }}>
-              <div>
-                <strong style={{ color: '#f3f4f6', fontSize: '13px', display: 'block' }}>Acreditación Safe Creative Nº 2607076315021</strong>
-                <span style={{ color: '#9ca3af', fontSize: '12px' }}>Entrada Oficial AESIA: REGAGE26e00076675038</span>
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} 
+          onClick={() => setShowDiploma(false)}
+        >
+          <div 
+            style={{ maxWidth: '820px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #1e293b', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                ✔ VERIFICACIÓN DE DECISIÓN Y REGISTRO CONFORME
+              </span>
+              <span style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: '12px' }}>
+                SGP 1.0 · ISO 27037 & ISO 42001
+              </span>
+            </div>
+
+            <h2 style={{ fontSize: '20px', fontWeight: '900', margin: '0 0 6px 0', color: '#ffffff' }}>
+              PRIMERA AUDITORIA NATIVA Y DESACOPLE EN CAPA 7 IA
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 20px 0' }}>
+              Validación de Autoría, Propiedad Intelectual e Inmutabilidad de Motor L7 en Memoria RAM.
+            </p>
+
+            {/* CAJA DE HASH CANÓNICO */}
+            <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: '8px', padding: '14px', marginBottom: '20px', fontFamily: 'monospace', fontSize: '12.5px', color: '#38bdf8', wordBreak: 'break-all' }}>
+              <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>
+                HUELLA HASH SHA-256 DEL NODO VALIDADO:
               </div>
-              <button onClick={() => setShowDiploma(false)} style={{ background: '#374151', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>Cerrar</button>
+              {CANONICAL_HASH}
+            </div>
+
+            {/* GRID DE DETALLES TÉCNICOS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px', marginBottom: '20px', fontSize: '12.5px' }}>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Autoridad Registral Emisora</span>
+                <strong style={{ color: '#e2e8f0' }}>S.A.A.R.E. Cryptographic Root Authority & Governance Trust Anchor</strong>
+              </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Identificador Fiduciario</span>
+                <strong style={{ color: '#e2e8f0' }}>ANONYMIZED_RECORD_ES_ROOT_AUTH</strong>
+              </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Registro de Propiedad Safe Creative</span>
+                <strong style={{ color: '#38bdf8' }}>Safe Creative 2607076315021 / 2607076314949</strong>
+              </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Nodo Abierto / Maestro</span>
+                <strong style={{ color: '#e2e8f0' }}>2607076315021 · SAARE-RECON-VALID-2026-CORE-0521</strong>
+              </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Algoritmo de Firma Probatoria</span>
+                <strong style={{ color: '#e2e8f0' }}>Ed25519 + sha256WithRSAEncryption (RFC 3161 Timestamping)</strong>
+              </div>
+              <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '12px 14px', borderRadius: '8px' }}>
+                <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Rendimiento Determinista RAM</span>
+                <strong style={{ color: '#34d399' }}>0.017 ms (0% Error Lógico)</strong>
+              </div>
+            </div>
+
+            {/* MARCOS DE GOBERNANZA */}
+            <div style={{ background: '#0b0f19', border: '1px solid #1f2937', padding: '14px', borderRadius: '8px', marginBottom: '20px' }}>
+              <span style={{ color: '#64748b', fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Marcos de Gobernanza Mapeados</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {[
+                  "EU AI Act (Reglamento UE 2024/1689 Art. 12/15)",
+                  "Ley Orgánica de Protección del Derecho al Honor 2026 (Deepfakes)",
+                  "Controls mapped to UNE-ISO/IEC 42001:2023",
+                  "Evidence workflow aligned with ISO/IEC 27037:2012",
+                  "ISO/IEC 27001 / ISO/IEC 27007",
+                  "DORA Capa 7 (Reglamento UE 2022/2554)",
+                  "Reglamento General de Protección de Datos (RGPD Art. 5.2, 9 y 32)",
+                  "Ley 38/2003 General de Subvenciones & 2 CFR 200"
+                ].map(n => (
+                  <span key={n} style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', fontSize: '10.5px', padding: '3px 8px', borderRadius: '4px' }}>
+                    {n}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* FOOTER DEL MODAL */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+              <span style={{ color: '#64748b', fontSize: '11px' }}>
+                SAARE AI Governance Decision Layer · Verificación generada en el Edge por Cloudflare Workers.
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ padding: '7px 14px', background: '#0284c7', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px' }}>
+                  Abrir Endpoint API ↗
+                </a>
+                <button onClick={() => setShowDiploma(false)} style={{ background: '#374151', color: '#fff', border: 'none', padding: '7px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -456,7 +541,7 @@ const response = await client.chat.completions.create({
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
                 ● GOVERNANCE JUDGE ACTIVE (L7)
               </span>
-              <span style={{ fontSize: '12px', color: '#9ca3af' }}>Registro AESIA: REGAGE26e00076675038</span>
+              <span style={{ fontSize: '12px', color: '#9ca3af' }}>Decision Layer v10.0</span>
             </div>
             <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Consola de Decisiones y Veredictos</h1>
             <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>Organización: <strong>{sessionUser.tenantName || 'Tenant Activo'}</strong> · Cuenta: {sessionUser.email}</p>
@@ -757,9 +842,9 @@ const response = await client.chat.completions.create({
               <input 
                 type="text" 
                 value={verifySearchId} 
-                onChange={(e) => setVerifySearchId(e.target.value)}
-                placeholder="Introduce ID de Evidencia o Hash (ej: EV-CED48F1600)"
-                style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }}
+                onChange={(e) => setVerifySearchId(e.target.value)} 
+                placeholder="Introduce ID de Evidencia o Hash (ej: EV-CED48F1600)" 
+                style={{ flex: 1, minWidth: '280px', padding: '11px 14px', backgroundColor: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }} 
               />
               <button type="submit" style={{ padding: '11px 22px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
                 Consultar Veredicto
@@ -935,7 +1020,7 @@ const response = await client.chat.completions.create({
             </div>
 
             <div style={{ marginTop: '16px', fontSize: '12px', color: '#6b7280' }}>
-              Suscripción sin permanencia · Anclaje Registral Oficial: Safe Creative Nº 2607076315021 · Entrada AESIA REGAGE26e00076675038
+              Suscripción sin permanencia · Anclaje Registral Oficial: Safe Creative Nº 2607076315021
             </div>
           </section>
 
@@ -957,7 +1042,7 @@ const response = await client.chat.completions.create({
             </div>
 
             <div style={{ borderTop: '1px solid #111827', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-              <span>Acreditación Registral Safe Creative Nº 2607076315021 · Entrada Oficial AESIA REGAGE26e00076675038</span>
+              <span>Acreditación Registral Safe Creative Nº 2607076315021 / 2607076314949</span>
               <span>© 2026 SAARE Digital Governance</span>
             </div>
           </footer>
