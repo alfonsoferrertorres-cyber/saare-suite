@@ -9,6 +9,39 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
 const CANONICAL_HASH = "128fa8c937f946a010588def204bd0a8a4e7b6c2a1279937a48f195f82c79a07";
 const VERIFY_URL = `${API_BASE}/verify/${CANONICAL_HASH}`;
 
+const AUDIT_PILLARS = [
+  {
+    num: "01",
+    title: "Runtime Native",
+    desc: "Opera durante la ejecución, no únicamente después del incidente. Intercepción en Capa 7 con latencia determinista.",
+    color: "#0284c7"
+  },
+  {
+    num: "02",
+    title: "Control Native",
+    desc: "Aplica decisiones de política activas sobre la interacción (Interception, Redaction, Block) en tiempo real.",
+    color: "#16a34a"
+  },
+  {
+    num: "03",
+    title: "Evidence Native",
+    desc: "Genera evidencia inmutable y estructurada como parte intrínseca de la misma ejecución del modelo.",
+    color: "#9333ea"
+  },
+  {
+    num: "04",
+    title: "Model Agnostic",
+    desc: "Infraestructura desacoplada. Compatible con OpenAI, Anthropic, Llama, Azure AI y modelos custom vía proxy inverso.",
+    color: "#ea580c"
+  },
+  {
+    num: "05",
+    title: "Cryptographically Verifiable",
+    desc: "Garantiza la integridad de la prueba mediante firmas asimétricas Ed25519 y sellado temporal RFC 3161 eIDAS.",
+    color: "#ca8a04"
+  }
+];
+
 const CONTROL_LAYERS = [
   {
     id: "01",
@@ -92,7 +125,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [showDiploma, setShowDiploma] = useState(false);
 
-  // Verificador Interactivo sincronizado con el evento real
+  // Verificador Interactivo
   const [verifySearchId, setVerifySearchId] = useState("EV-CED48F1600");
   const [verifiedRecord, setVerifiedRecord] = useState({
     id: "EV-CED48F1600",
@@ -237,13 +270,14 @@ export default function App() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('LANDING')}>
             <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2.5px', color: '#ffffff' }}>SAARE</span>
-            <span style={{ color: '#0ea5e9', fontSize: '11px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '700', letterSpacing: '0.5px' }}>AI RUNTIME GOVERNANCE & EVIDENCE</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', letterSpacing: '0.8px' }}>AI-NATIVE AUDIT INFRASTRUCTURE</span>
           </div>
 
-          <nav style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
+          <nav style={{ display: 'flex', gap: '18px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
+            <button onClick={() => navigateToSection('native-audit')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>AI-Native Audit™</button>
             <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Capas de Control</button>
             <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Live Runtime</button>
-            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Verificar Evidencia</button>
+            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>AI-Native Evidence</button>
             <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Control Matrix</button>
             <button onClick={() => navigateToSection('pricing')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Planes</button>
 
@@ -325,77 +359,163 @@ export default function App() {
         </main>
       )}
 
-      {/* VISTA PRINCIPAL (LANDING V2 ENTERPRISE) */}
+      {/* VISTA PRINCIPAL (LANDING AI-NATIVE AUDIT) */}
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
 
-          {/* 1. HERO PRINCIPAL: DE LA POLÍTICA AL CONTROL */}
-          <section style={{ textAlign: 'center', margin: '40px 0 60px 0' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(14, 165, 233, 0.1)', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', border: '1px solid rgba(14, 165, 233, 0.25)', marginBottom: '24px' }}>
-              <span>⚙️</span> ENTERPRISE AI GOVERNANCE & RUNTIME CONTROL
+          {/* 1. HERO PRINCIPAL: INFRAESTRUCTURA DE AUDITORÍA NATIVA DE IA */}
+          <section style={{ textAlign: 'center', margin: '30px 0 60px 0' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(14, 165, 233, 0.1)', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '800', border: '1px solid rgba(14, 165, 233, 0.25)', marginBottom: '20px', letterSpacing: '0.5px' }}>
+              FIRST-OF-CATEGORY · AI-NATIVE AUDIT™
             </div>
-            <h1 style={{ fontSize: '52px', fontWeight: '900', color: '#ffffff', margin: '0 0 20px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
-              De la política de IA <br />
-              <span style={{ color: '#38bdf8' }}>al control ejecutable en tiempo real.</span>
+            
+            <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
+              INFRAESTRUCTURA DE AUDITORÍA <br />
+              <span style={{ color: '#38bdf8' }}>NATIVA DE IA</span>
             </h1>
-            <p style={{ fontSize: '19px', color: '#9ca3af', maxWidth: '820px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
-              SAARE actúa como una pasarela técnica en Capa 7 que inspecciona interacciones en memoria RAM, aplica directivas de seguridad ex-ante y genera expedientes de evidencia digital verificables bajo estándares internacionales.
+            
+            <p style={{ fontSize: '18.5px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto 20px auto', lineHeight: 1.5, fontWeight: '500' }}>
+              La primera plataforma de auditoría nativa diseñada para controlar, registrar y demostrar lo que ocurre durante la ejecución de sistemas de inteligencia artificial.
+            </p>
+
+            <p style={{ fontSize: '14.5px', color: '#9ca3af', maxWidth: '720px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
+              Intercepción en Capa 7 · Enforcement en tiempo de ejecución · Evidencia criptográfica · Verificación independiente
             </p>
 
             {/* CONCEPT PIPELINE BADGE */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '12.5px', fontFamily: 'monospace', color: '#cbd5e1' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '12px', fontFamily: 'monospace', color: '#cbd5e1' }}>
               <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>POLICY</span>
               <span>→</span>
               <span style={{ color: '#10b981', fontWeight: 'bold' }}>CONTROL</span>
               <span>→</span>
               <span style={{ color: '#a855f7', fontWeight: 'bold' }}>PROOF</span>
+              <span>→</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>VERIFY</span>
             </div>
 
             <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
-                Ver Runtime en Acción ↓
+              <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
+                Ver Auditoría en Tiempo Real ↓
               </button>
-              <button onClick={() => navigateToSection('pricing')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
-                Planes de Despliegue (Desde 149 €/mes)
+              <button onClick={() => navigateToSection('evidence-verifier')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                Explorar Proof Bundle
               </button>
+            </div>
+
+            {/* FRASE DE POSICIONAMIENTO CLAVE */}
+            <div style={{ marginTop: '40px', padding: '18px', background: 'rgba(3, 7, 18, 0.6)', border: '1px solid #1f2937', borderRadius: '10px', display: 'inline-block' }}>
+              <span style={{ color: '#f3f4f6', fontSize: '15px', fontWeight: '700', fontStyle: 'italic' }}>
+                "La auditoría deja de ocurrir después de la IA. Ocurre dentro de su ejecución."
+              </span>
             </div>
           </section>
 
-          {/* 2. FRANJA "BUILT FOR..." */}
-          <section style={{ borderTop: '1px solid #1f2937', borderBottom: '1px solid #1f2937', padding: '30px 0', margin: '40px 0 70px 0' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '20px', textAlign: 'center' }}>
-              <div>
-                <strong style={{ color: '#38bdf8', fontSize: '13px', display: 'block', marginBottom: '4px' }}>CISO</strong>
-                <span style={{ color: '#9ca3af', fontSize: '12.5px' }}>Control de ejecución en tiempo real y mitigación L7.</span>
+          {/* 2. DEFINICIÓN: AI-NATIVE AUDIT STACK™ */}
+          <section id="native-audit" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CATEGORÍA PROPIETARIA</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>The AI-Native Audit Stack™</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '750px', margin: '0 auto' }}>
+                El cumplimiento es un resultado. La auditabilidad es la infraestructura. Para ser considerada <i>AI-Native Audit</i>, una solución debe cumplir con 5 principios fundamentales:
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+              {AUDIT_PILLARS.map((p) => (
+                <div key={p.num} style={{ background: '#030712', border: `1px solid ${p.color}44`, borderRadius: '10px', padding: '20px' }}>
+                  <div style={{ fontSize: '11px', color: p.color, fontWeight: '900', marginBottom: '6px' }}>{p.num} — {p.title.toUpperCase()}</div>
+                  <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', margin: '0 0 8px 0' }}>{p.title}</h3>
+                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>{p.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ESQUEMA ARQUITECTÓNICO DEL STACK */}
+            <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace', maxWidth: '800px', margin: '0 auto' }}>
+              <div style={{ textTransform: 'uppercase', color: '#6b7280', fontSize: '11px', textAlign: 'center', marginBottom: '12px', fontWeight: 'bold' }}>ARQUITECTURA DE CAPA AUDITABLE</div>
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '10px', borderRadius: '6px', textAlign: 'center', color: '#38bdf8', fontWeight: 'bold', fontSize: '13px' }}>
+                AI APPLICATIONS (Agentes, RAG, LLM Apps, Endpoints)
               </div>
-              <div>
-                <strong style={{ color: '#34d399', fontSize: '13px', display: 'block', marginBottom: '4px' }}>DPO / Compliance</strong>
-                <span style={{ color: '#9ca3af', fontSize: '12.5px' }}>Prevención de fugas en memoria RAM sin persistencia.</span>
+              <div style={{ textAlign: 'center', color: '#0ea5e9', margin: '6px 0', fontSize: '14px' }}>↓</div>
+              <div style={{ background: 'rgba(2, 132, 199, 0.15)', border: '1px solid #0284c7', padding: '16px', borderRadius: '6px', textAlign: 'center' }}>
+                <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>AI-NATIVE AUDIT LAYER (SAARE L7 ENGINE)</div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '11px', color: '#cbd5e1' }}>
+                  <span>01 INTERCEPT</span> · <span>02 INSPECT</span> · <span>03 DECIDE</span> · <span>04 ENFORCE</span> · <span>05 EVIDENCE</span> · <span>06 VERIFY</span>
+                </div>
               </div>
-              <div>
-                <strong style={{ color: '#a855f7', fontSize: '13px', display: 'block', marginBottom: '4px' }}>CTO / Arquitectura</strong>
-                <span style={{ color: '#9ca3af', fontSize: '12.5px' }}>Integración sin fricción vía proxy inverso (`baseURL`).</span>
-              </div>
-              <div>
-                <strong style={{ color: '#fb923c', fontSize: '13px', display: 'block', marginBottom: '4px' }}>Legal & Auditoría</strong>
-                <span style={{ color: '#9ca3af', fontSize: '12.5px' }}>Proof Bundles inmutables con firma Ed25519 y sellado eIDAS.</span>
+              <div style={{ textAlign: 'center', color: '#0ea5e9', margin: '6px 0', fontSize: '14px' }}>↓</div>
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '10px', borderRadius: '6px', textAlign: 'center', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
+                AI MODELS / PROVIDERS (OpenAI, Anthropic, Llama, Azure, Internal)
               </div>
             </div>
           </section>
 
-          {/* 3. SECCIÓN LIVE RUNTIME INTERACTIVO */}
+          {/* 3. COMPARATIVA VENTAJA FRENTE A GRC TRADICIONAL */}
+          <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+              <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CAMBIO DE PARADIGMA</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Auditoría Tradicional vs. AI-Native Audit</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>From Audit After AI → Audit Inside AI</p>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
+                    <th style={{ padding: '12px 16px', width: '30%' }}>DIMENSIÓN DE CONTROL</th>
+                    <th style={{ padding: '12px 16px', color: '#ef4444', width: '35%' }}>AUDITORÍA TRADICIONAL (GRC / LOGS)</th>
+                    <th style={{ padding: '12px 16px', color: '#38bdf8', width: '35%' }}>AI-NATIVE AUDIT™ (SAARE)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Momento de inspección</td>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Revisa después del incidente</td>
+                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Observa durante la ejecución (Runtime)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Generación de prueba</td>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Evidencia posterior recopilada a mano</td>
+                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Evidencia generada en runtime</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Validez de registro</td>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Logs planos alterables</td>
+                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Eventos criptográficos inmutables</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Frecuencia y alcance</td>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Muestreo y auditorías periódicas</td>
+                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Control y auditabilidad continua</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Respuesta operativa</td>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>Documentación ex-post</td>
+                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 'bold' }}>Decisión activa + Evidencia simultánea</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ padding: '14px 16px', color: '#f3f4f6', fontWeight: 'bold' }}>Principio de confianza</td>
+                    <td style={{ padding: '14px 16px', color: '#ef4444' }}>"Trust me" (Declarativo)</td>
+                    <td style={{ padding: '14px 16px', color: '#38bdf8', fontWeight: 'bold' }}>"Verify it" (Demostrable)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* 4. SECCIÓN LIVE RUNTIME INTERACTIVO */}
           <section id="live-runtime" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>INTERCEPCIÓN DETERMINISTA L7</span>
-                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0' }}>Demostración de Ejecución en Vivo</h2>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0' }}>Demostración de Auditoría Runtime en Vivo</h2>
               </div>
               <button 
                 onClick={runRuntimeSimulation} 
                 disabled={isRunningSim}
                 style={{ padding: '10px 22px', backgroundColor: isRunningSim ? '#374151' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '13px', cursor: isRunningSim ? 'default' : 'pointer' }}
               >
-                {isRunningSim ? 'Evaluando...' : '▶ Simular Ejecución'}
+                {isRunningSim ? 'Evaluando Execution...' : '▶ Simular Auditoría en Runtime'}
               </button>
             </div>
 
@@ -430,8 +550,8 @@ export default function App() {
 
             <div style={{ background: '#030712', border: '1px solid #1f2937', padding: '14px 18px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <span style={{ fontFamily: 'monospace', fontSize: '12px', color: runtimeStep === 5 ? '#34d399' : '#9ca3af' }}>
-                {runtimeStep === 0 && "Estado: Esperando evento para evaluación..."}
-                {runtimeStep === 1 && "Estado: Interceptando llamada a modelo..."}
+                {runtimeStep === 0 && "Estado: Esperando evento para evaluación en tiempo real..."}
+                {runtimeStep === 1 && "Estado: Interceptando llamada a modelo AI en Capa 7..."}
                 {runtimeStep === 2 && "Estado: Buffer volátil reservado en RAM (<0.017 ms)..."}
                 {runtimeStep === 3 && "Estado: Evaluando políticas activas de privacidad y seguridad..."}
                 {runtimeStep === 4 && "Estado: Política PII activada -> Acción: BLOCK ejecutada."}
@@ -441,42 +561,10 @@ export default function App() {
             </div>
           </section>
 
-          {/* 4. ANTES Y DESPUÉS DE SAARE */}
-          <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>GESTIÓN DE RIESGO OPERACIONAL</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Antes y después de SAARE</h2>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-              <div style={{ background: '#030712', padding: '24px', borderRadius: '10px', border: '1px solid #374151' }}>
-                <h3 style={{ color: '#ef4444', fontWeight: '800', fontSize: '15px', margin: '0 0 14px 0' }}>SIN CONTROL RUNTIME</h3>
-                <ul style={{ paddingLeft: '18px', color: '#9ca3af', fontSize: '13px', lineHeight: 1.8, margin: 0 }}>
-                  <li>Usuario o agente envía PII al modelo sin filtro.</li>
-                  <li>Logs dispersos y sin estructura probatoria.</li>
-                  <li>Decisión algorítmica difícil de reconstruir ante inspección.</li>
-                  <li>Evidencia recopilada a posteriori de incidentes.</li>
-                  <li>Auditoría manual de elevado coste y fricción.</li>
-                </ul>
-              </div>
-
-              <div style={{ background: '#030712', padding: '24px', borderRadius: '10px', border: '1px solid #0284c7' }}>
-                <h3 style={{ color: '#38bdf8', fontWeight: '800', fontSize: '15px', margin: '0 0 14px 0' }}>CON SAARE RUNTIME CONTROL</h3>
-                <ul style={{ paddingLeft: '18px', color: '#e5e7eb', fontSize: '13px', lineHeight: 1.8, margin: 0 }}>
-                  <li>La política detecta, redacta o bloquea la carga en RAM.</li>
-                  <li>Eventos estructurados con contexto criptográfico.</li>
-                  <li>Trazabilidad determinista de prompts e inferencias.</li>
-                  <li>Evidencia generada durante el ciclo de ejecución.</li>
-                  <li>Proof Bundle inmutable exportable en 1 solo clic.</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
           {/* 5. LAS 5 CAPAS DE CONTROL */}
           <section id="control-layers" style={{ marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <span style={{ color: '#34d399', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE CINCO NIVELES</span>
+              <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>ARQUITECTURA DE CINCO NIVELES</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>Cinco Capas de Control para IA Corporativa</h2>
               <p style={{ color: '#9ca3af', fontSize: '14.5px', margin: 0 }}>Controles específicos desacoplados aplicables sobre cualquier infraestructura de modelos.</p>
             </div>
@@ -524,12 +612,15 @@ export default function App() {
             </div>
           </section>
 
-          {/* 6. PROOF BUNDLE: LA PRUEBA DE QUE EL CONTROL OCURRIÓ */}
+          {/* 6. AI-NATIVE EVIDENCE: LA PRUEBA DE QUE EL CONTROL OCURRIÓ */}
           <section id="evidence-verifier" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <span style={{ color: '#a855f7', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>EVIDENCIA FORENSE INMUTABLE</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>La prueba de que el control ocurrió</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Consulta el identificador de un expediente para verificar su estado de firma y sellado de tiempo.</p>
+              <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>AI-NATIVE EVIDENCE™</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 8px 0' }}>Evidencia generada en tiempo de ejecución</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '650px', margin: '0 auto 12px auto' }}>
+                La evidencia se genera en el mismo momento en que ocurre la decisión de control: <br />
+                <span style={{ fontFamily: 'monospace', color: '#cbd5e1', fontSize: '12px' }}>EVENT → POLICY → DECISION → HASH → SIGNATURE → TIMESTAMP → VERIFY</span>
+              </p>
             </div>
 
             {/* FORMULARIO DE CONSULTA DE EVIDENCIA */}
@@ -549,7 +640,7 @@ export default function App() {
             {/* TARJETA VISUAL DEL PROOF BUNDLE */}
             <div style={{ maxWidth: '750px', margin: '0 auto', backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '12px', marginBottom: '16px' }}>
-                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE PROOF BUNDLE</span>
+                <span style={{ color: '#f3f4f6', fontWeight: 'bold', fontSize: '13px' }}>SAARE PROOF BUNDLE (NATIVE EVIDENCE)</span>
                 <span style={{ color: '#34d399', fontWeight: 'bold', fontSize: '12px', background: 'rgba(52, 211, 153, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
                   ✓ {verifiedRecord.status}
                 </span>
@@ -596,7 +687,7 @@ export default function App() {
           {/* 7. CONTROL MATRIX */}
           <section id="control-matrix" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11.5px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MATRIZ DE CONTROL TÉCNICO</span>
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MATRIZ DE CONTROL TÉCNICO</span>
               <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0' }}>Control Matrix Regulatoria</h2>
               <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>De la obligación legal al control técnico verificable.</p>
             </div>
@@ -629,9 +720,9 @@ export default function App() {
 
           {/* 8. SECCIÓN DE PRECIOS Y DESPLIEGUE */}
           <section id="pricing" style={{ backgroundColor: '#0b0f19', border: '1px solid #0284c7', borderRadius: '16px', padding: '40px 30px', textAlign: 'center', marginBottom: '60px' }}>
-            <span style={{ color: '#0ea5e9', fontSize: '11.5px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>DESPLIEGUE OPERATIVO</span>
+            <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>DESPLIEGUE OPERATIVO</span>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '8px 0 10px 0' }}>
-              Enterprise AI Governance Runtime
+              AI-Native Audit Infrastructure
             </h2>
             <div style={{ fontSize: '26px', fontWeight: '900', color: '#38bdf8', marginBottom: '12px' }}>
               Desde 149 € / mes
@@ -654,18 +745,26 @@ export default function App() {
             </div>
           </section>
 
-          {/* 9. FOOTER INSTITUCIONAL */}
+          {/* 9. FOOTER INSTITUCIONAL Y DECLARACIÓN DE CATEGORÍA */}
           <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '32px', fontSize: '12px', color: '#6b7280' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <strong style={{ color: '#f3f4f6' }}>SAARE Platform</strong> · Capa 7 de Seguridad, Evidencia y Gobierno en Inteligencia Artificial
-                <div style={{ marginTop: '4px' }}>Acreditación Registral Safe Creative Nº 2607076315021 · Entrada Oficial AESIA REGAGE26e00076675038</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ maxWidth: '600px' }}>
+                <strong style={{ color: '#f3f4f6', fontSize: '13px' }}>SAARE — AI-Native Audit Infrastructure</strong>
+                <p style={{ margin: '6px 0 0 0', color: '#9ca3af', lineHeight: 1.5 }}>
+                  La capa de infraestructura que permite observar, controlar y demostrar lo que ocurre durante la ejecución de sistemas de inteligencia artificial. <br />
+                  <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>AI executes. SAARE audits. Evidence proves.</span>
+                </p>
               </div>
-              <div style={{ display: 'flex', gap: '18px' }}>
+              <div style={{ display: 'flex', gap: '18px', fontSize: '12px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
                 <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Consola GRC</a>
-                <a href="mailto:enterprise@saare.es" style={{ color: '#94a3af', textDecoration: 'none' }}>Contacto</a>
+                <a href="mailto:enterprise@saare.es" style={{ color: '#9ca3af', textDecoration: 'none' }}>Contacto</a>
               </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #111827', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <span>Acreditación Registral Safe Creative Nº 2607076315021 · Entrada Oficial AESIA REGAGE26e00076675038</span>
+              <span>© 2026 SAARE Digital Governance</span>
             </div>
           </footer>
 
