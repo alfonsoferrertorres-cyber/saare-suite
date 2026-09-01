@@ -5,17 +5,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferr
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
-// Perfil de seguridad corporativo neutral de fallback
-const DEFAULT_ANONYMOUS_USER = {
-  email: "security.officer@enterprise.internal",
-  tenantName: "CORPORATE ENTERPRISE NODE",
-  role: "CISO / Global Admin",
-  apiKey: "sk_saare_live_master_kv_session",
-  licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
-};
-
 function resolveInitialUser() {
-  if (typeof window === "undefined") return DEFAULT_ANONYMOUS_USER;
+  if (typeof window === "undefined") return null;
 
   const urlParams = new URLSearchParams(window.location.search);
   const tokenParam = urlParams.get('token');
@@ -25,7 +16,8 @@ function resolveInitialUser() {
   if (tokenParam && emailParam) {
     const fromUrlUser = {
       email: emailParam,
-      tenantName: tenantParam || 'CORPORATE ENTERPRISE NODE',
+      tenantName: tenantParam || 'Corporate Workload Node',
+      tenantId: 'tenant_admin_01',
       apiKey: tokenParam,
       role: urlParams.get('role') || 'CISO / Global Admin',
       licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
@@ -41,31 +33,22 @@ function resolveInitialUser() {
   const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
 
   if (consoleSaved) {
-    try {
-      const parsed = JSON.parse(consoleSaved);
-      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
-        localStorage.removeItem('saare_user');
-        localStorage.removeItem('saare_suite_user');
-        localStorage.removeItem('saare_vault_session');
-        return DEFAULT_ANONYMOUS_USER;
-      }
-      return parsed;
-    } catch {}
+    try { return JSON.parse(consoleSaved); } catch {}
   }
   if (suiteSaved) {
     try {
       const parsed = JSON.parse(suiteSaved);
-      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
-        localStorage.removeItem('saare_user');
-        localStorage.removeItem('saare_suite_user');
-        localStorage.removeItem('saare_vault_session');
-        return DEFAULT_ANONYMOUS_USER;
-      }
       localStorage.setItem('saare_user', JSON.stringify(parsed));
       return parsed;
     } catch {}
   }
-  return DEFAULT_ANONYMOUS_USER;
+  return {
+    email: "admin.seguridad@empresa.com",
+    tenantName: "Corporate Enterprise Node",
+    role: "CISO / Global Admin",
+    apiKey: "sk_saare_live_master_kv_session",
+    licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
+  };
 }
 
 export default function App() {
@@ -92,7 +75,7 @@ export default function App() {
 
   const [activeWitnessFilter, setActiveWitnessFilter] = useState('TODOS');
 
-  // Catálogo de directivas técnicas neutrales
+  // Catálogo canónico de directivas
   const masterDirectives = {
     cumplimiento_corporativo_integral: {
       tag: "PRIVACIDAD ES",
@@ -195,46 +178,14 @@ export default function App() {
     if (!sessionUser?.email) return;
     const startTime = performance.now();
     try {
-      // Consultar la telemetría del usuario logueado en sesión activa
-      const currentEmail = sessionUser.email;
-      const fallbackList = [currentEmail, "workload-operator@empresa.com", "el.abuelo.del.punk@gmail.com"];
-      
-      const runResponses = await Promise.all(
-        fallbackList.map(u =>
-          fetch(`${API_BASE}/runs?user=${encodeURIComponent(u)}`)
-            .then(r => r.ok ? r.json() : [])
-            .catch(() => [])
-        )
-      );
-
-      const [resRules, resSettings] = await Promise.all([
-        fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(currentEmail)}`).catch(() => null),
-        fetch(`${API_BASE}/settings?user=${encodeURIComponent(currentEmail)}`).catch(() => null)
+      const userParam = encodeURIComponent(sessionUser.email);
+      const [resRuns, resRules, resSettings] = await Promise.all([
+        fetch(`${API_BASE}/runs?user=${userParam}`).catch(() => null),
+        fetch(`${API_BASE}/custom-rules?user=${userParam}`).catch(() => null),
+        fetch(`${API_BASE}/settings?user=${userParam}`).catch(() => null)
       ]);
 
       const elapsed = Math.round(performance.now() - startTime);
-
-      const allRawRuns = runResponses.flat();
-      const runMap = new Map();
-      allRawRuns.forEach(item => {
-        if (!item) return;
-        const id = item.verdictId || item.runId || item.evidence_id || item.evidenceId;
-        if (id && !runMap.has(id)) {
-          const cleanItem = { ...item };
-          // Presentación neutral y unificada
-          cleanItem.user = sessionUser.email;
-          cleanItem.tenant = sessionUser.tenantName;
-          runMap.set(id, cleanItem);
-        }
-      });
-
-      const runsList = Array.from(runMap.values());
-      runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
-
-      if (runsList.length > 0) {
-        setEvents(runsList);
-        setLastEvent(runsList[0]);
-      }
 
       if (resSettings && resSettings.ok) {
         const settingsData = await resSettings.json();
@@ -243,13 +194,21 @@ export default function App() {
         }
       }
 
+      if (resRuns && resRuns.ok) {
+        const dataRuns = await resRuns.json();
+        const runsList = Array.isArray(dataRuns) ? dataRuns : (dataRuns.events || dataRuns.logs || dataRuns.runs || []);
+        runsList.sort((a, b) => new Date(b.issuedAt || b.timestamp || b.created_at || 0) - new Date(a.issuedAt || a.timestamp || a.created_at || 0));
+        setEvents(runsList);
+        if (runsList.length > 0) setLastEvent(runsList[0]);
+        setConnected(true);
+      }
+
       if (resRules && resRules.ok) {
         const dataRules = await resRules.json();
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
 
       setKvStatus({ online: true, latencyMs: elapsed || 35, lastSync: new Date().toLocaleTimeString() });
-      setConnected(true);
     } catch {
       setConnected(false);
       setKvStatus(prev => ({ ...prev, online: false }));
@@ -278,9 +237,10 @@ export default function App() {
       if (res.ok && data.status === 'SUCCESS') {
         const loggedUser = {
           email: data.user?.email || emailInput,
-          tenantName: data.user?.tenantName || "CORPORATE ENTERPRISE NODE",
+          tenantName: data.user?.tenantName || 'Corporate Workload Node',
+          tenantId: data.user?.tenantId || 'tenant_admin_01',
+          apiKey: data.token || data.user?.apiKey || data.user?.token || "sk_saare_live_master_kv_session",
           role: data.user?.role || "CISO / Global Admin",
-          apiKey: data.token || data.user?.apiKey || data.user?.token || "sk_saare_live_session_token",
           licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
         };
         localStorage.setItem('saare_user', JSON.stringify(loggedUser));
@@ -298,8 +258,10 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    setSessionUser(DEFAULT_ANONYMOUS_USER);
+    localStorage.removeItem('saare_user');
+    localStorage.removeItem('saare_suite_user');
+    localStorage.removeItem('saare_vault_session');
+    setSessionUser(null);
     setEvents([]);
   };
 
@@ -376,7 +338,7 @@ export default function App() {
     }
   };
 
-  // DESCARGA DINÁMICA: Inyecta el token real del usuario en sesión en saare_config.json
+  // DESCARGA DINÁMICA: Inyecta credenciales y token de la sesión activa en saare_config.json
   const handleDownloadTokenizedExtension = async () => {
     try {
       setDownloadingAgentZip(true);
@@ -386,29 +348,28 @@ export default function App() {
       const zipArrayBuffer = await response.arrayBuffer();
       const zip = await JSZip.loadAsync(zipArrayBuffer);
 
-      // Usar los datos y token del login del usuario activo
-      const dynamicTenant = sessionUser?.tenantName || "CORPORATE ENTERPRISE NODE";
-      const dynamicEmail = sessionUser?.email || "security.officer@enterprise.internal";
-      const dynamicToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session_token";
+      const userTenant = sessionUser?.tenantName || "Corporate Workload Node";
+      const userEmail = sessionUser?.email || "ciso@empresa.com";
+      const userToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_master_kv_session";
 
       const runtimeConfig = {
-        tenantDomain: dynamicTenant,
-        userEmail: dynamicEmail,
+        tenantDomain: userTenant,
+        userEmail: userEmail,
         protocol: "SGP_1.0",
         enforcementMode: "FAIL_CLOSED",
         memoryMode: "EPHEMERAL",
-        apiKey: dynamicToken,
+        apiKey: userToken,
         endpoint: API_BASE,
         provisionedAt: new Date().toISOString()
       };
 
-      // Inyección exclusiva en saare_config.json sin alterar los 9 elementos originales
+      // Modificación exclusiva de saare_config.json conservando los 9 elementos originales
       zip.file("saare_config.json", JSON.stringify(runtimeConfig, null, 2));
 
       const blob = await zip.generateAsync({ type: "blob" });
       const dl = document.createElement("a");
       dl.href = URL.createObjectURL(blob);
-      const fileSlug = dynamicTenant.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const fileSlug = userTenant.toLowerCase().replace(/[^a-z0-9]/g, '_');
       dl.download = `saare-extension-${fileSlug}.zip`;
       document.body.appendChild(dl);
       dl.click();
@@ -440,6 +401,24 @@ export default function App() {
     const matchesSearch = !searchQuery || JSON.stringify(ev).toLowerCase().includes(searchQuery.toLowerCase());
     return matchesWitness && matchesSearch;
   });
+
+  if (!sessionUser) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ maxWidth: '400px', width: '100%', background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', textAlign: 'center', margin: '0 0 16px 0' }}>SAARE GRC Console</h1>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Email Corporativo" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+            <input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Contraseña" style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+            {loginError && <div style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center' }}>{loginError}</div>}
+            <button type="submit" disabled={loadingLogin} style={{ padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+              {loadingLogin ? 'Accediendo...' : 'Iniciar Sesión'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#64748b', fontFamily: 'Arial, sans-serif', paddingBottom: '40px' }}>
@@ -490,7 +469,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Descarga de Extensión Tokenizada Dinámica */}
+            {/* Descarga de Extensión Tokenizada */}
             <div>
               <button
                 onClick={handleDownloadTokenizedExtension}
