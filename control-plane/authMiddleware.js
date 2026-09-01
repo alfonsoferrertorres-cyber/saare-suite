@@ -1,21 +1,25 @@
 /**
- * S.A.A.R.E. OIDC & JWT Authentication Middleware v10.0 (SGP 1.0)
- * Edge-Native Web Crypto Token Verification for Cloudflare Workers
+ * SAARE Workload Identity & OIDC Authentication Middleware v10.0 (SGP 1.0)
+ * Edge-Native Web Crypto Verification for Cloudflare Workers & Runtime Plane
  */
 
 export class AuthMiddleware {
-  constructor(jwtSecret = "enterprise_oidc_secret_key_v3") {
-    this.jwtSecret = jwtSecret;
+  constructor(jwtSecret, kvBinding = null) {
+    if (!jwtSecret && !kvBinding) {
+      throw new Error("[AUTH_INIT_ERROR] Se requiere jwtSecret o kvBinding para inicializar AuthMiddleware.");
+    }
+    this.jwtSecret = jwtSecret || "";
+    this.kv = kvBinding;
     this.roleMapping = {
       "saare-ciso-group": "CISO",
-      "saare-auditor-group": "AUDITOR",
-      "saare-ops-group": "OPERATOR",
-      "saare-admin-group": "SECURITY_ADMIN"
+      "saare-policy-admin-group": "POLICY_ADMIN",
+      "saare-operator-group": "OPERATOR",
+      "saare-workload-agent": "WORKLOAD_AGENT"
     };
   }
 
   /**
-   * Decodifica Base64URL en entornos Edge sin dependencias de Node.js
+   * Decodifica Base64URL en entornos Edge sin dependencias externas
    */
   base64UrlDecode(str) {
     let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
@@ -34,6 +38,7 @@ export class AuthMiddleware {
    * Valida la firma criptográfica HMAC-SHA256 del JWT
    */
   async verifySignature(headerB64, payloadB64, signatureB64) {
+    if (!this.jwtSecret) return false;
     try {
       const enc = new TextEncoder();
       const key = await crypto.subtle.importKey(
@@ -49,8 +54,8 @@ export class AuthMiddleware {
         sigBase64 += "=";
       }
       const sigBytes = Uint8Array.from(atob(sigBase64), c => c.charCodeAt(0));
-
       const dataToVerify = enc.encode(`${headerB64}.${payloadB64}`);
+
       return await crypto.subtle.verify("HMAC", key, sigBytes, dataToVerify);
     } catch {
       return false;
@@ -58,55 +63,62 @@ export class AuthMiddleware {
   }
 
   /**
-   * Extrae, valida y mapea las credenciales del token Bearer OIDC
+   * Extrae, valida y mapea las credenciales del token Bearer OIDC o API Key contra KV
    */
-  async verifyAndDecodeToken(authHeader, requireSignatureCheck = false) {
+  async verifyAndDecodeToken(authHeader) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new Error("[AUTH_ERROR] Token OIDC no proporcionado o malformado");
+      throw new Error("[AUTH_ERROR] Token no proporcionado o cabecera Authorization malformada.");
     }
 
     const rawToken = authHeader.replace("Bearer ", "").trim();
 
-    // Soporte para tokens de API estáticos (sk_live_...)
+    // 1. Validación de API Keys de Runtime (@saare/judge) contra el almacén KV
     if (rawToken.startsWith("sk_saare_live_") || rawToken.startsWith("sk_live_")) {
-      return {
-        sub: "api-key-operator",
-        email: "node-agent@saare.es",
-        tenantId: "ORGANIZACION_ENTERPRISE",
-        role: "AUDITOR",
-        authType: "API_KEY"
-      };
+      if (this.kv) {
+        const tenantDataRaw = await this.kv.get(`apikey:${rawToken}`);
+        if (tenantDataRaw) {
+          const tenant = JSON.parse(tenantDataRaw);
+          return {
+            sub: tenant.agentId || "workload-agent",
+            email: tenant.ownerEmail || "agent-runtime@saare.es",
+            tenantId: tenant.tenantId || "ORGANIZACION_ENTERPRISE",
+            role: "WORKLOAD_AGENT",
+            authType: "API_KEY_VERIFIED"
+          };
+        }
+      }
+
+      // Si no existe en KV, rechazar de forma estricta (sin fallbacks)
+      throw new Error("[AUTH_ERROR] API Key de autorización inválida o no provisionada.");
     }
 
+    // 2. Validación de Tokens JWT / OIDC
     const parts = rawToken.split(".");
     if (parts.length !== 3) {
-      throw new Error("[AUTH_ERROR] Formato JWT inválido");
+      throw new Error("[AUTH_ERROR] Formato JWT inválido.");
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
 
-    // Validación de firma criptográfica
-    if (requireSignatureCheck) {
-      const isValid = await this.verifySignature(headerB64, payloadB64, signatureB64);
-      if (!isValid) {
-        throw new Error("[AUTH_ERROR] Firma JWT no válida");
-      }
+    const isSignatureValid = await this.verifySignature(headerB64, payloadB64, signatureB64);
+    if (!isSignatureValid) {
+      throw new Error("[AUTH_ERROR] Firma JWT no válida o clave de verificación incorrecta.");
     }
 
     let payload;
     try {
       payload = JSON.parse(this.base64UrlDecode(payloadB64));
     } catch {
-      throw new Error("[AUTH_ERROR] Payload JWT corrupto");
+      throw new Error("[AUTH_ERROR] Payload JWT corrupto.");
     }
 
     if (payload.exp && Date.now() >= payload.exp * 1000) {
-      throw new Error("[AUTH_ERROR] Token JWT expirado");
+      throw new Error("[AUTH_ERROR] Token JWT expirado.");
     }
 
-    // Mapeo de grupos corporativos a roles
+    // Mapeo estricto de roles corporativos
     const userGroups = payload.groups || payload.roles || [];
-    let assignedRole = "AUDITOR"; // Rol base de mínimo privilegio
+    let assignedRole = "OPERATOR"; // Rol base de mínimo privilegio
 
     for (const group of userGroups) {
       if (this.roleMapping[group]) {
@@ -117,11 +129,11 @@ export class AuthMiddleware {
 
     return {
       sub: payload.sub || "unknown_subject",
-      email: payload.email || payload.user || "auditor@empresa.es",
+      email: payload.email || payload.user || "operator@empresa.com",
       tenantId: payload.tenant_id || payload.tenant || "SAARE_ENTERPRISE_ORG",
       role: assignedRole,
       groups: userGroups,
-      authType: "OIDC_JWT"
+      authType: "OIDC_JWT_VERIFIED"
     };
   }
 }

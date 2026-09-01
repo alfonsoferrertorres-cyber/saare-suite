@@ -1,6 +1,6 @@
 /**
- * S.A.A.R.E. Multi-Tenant Isolation & Quota Controller v10.0 (SGP 1.0)
- * Persistent KV Management & Policy Scenarios Isolation
+ * SAARE Multi-Tenant Isolation & Quota Controller v10.0 (SGP 1.0)
+ * Persistent KV Management & Execution Authorization Tenant Isolation
  */
 
 export class TenantManager {
@@ -18,10 +18,10 @@ export class TenantManager {
       name,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
-      quota: config.quota || 100000,
+      quota: config.quota || 1000000,
       usedQuota: 0,
       protocol: "SGP_1.0",
-      licenseType: config.licenseType || "TIER_ENTERPRISE_AUDITOR",
+      licenseType: config.licenseType || "ENTERPRISE_EXECUTION_RUNTIME",
       activeScenarios: config.scenarios || [
         "cumplimiento_corporativo_integral",
         "razonamiento_activo_l7",
@@ -41,7 +41,7 @@ export class TenantManager {
   }
 
   /**
-   * Obtiene los metadatos del inquilino con fallback de memoria
+   * Obtiene los metadatos del inquilino con fallback en memoria
    */
   async getTenant(tenantId) {
     if (this.memoryCache.has(tenantId)) {
@@ -57,13 +57,14 @@ export class TenantManager {
       }
     }
 
-    // Default Fallback para entornos en caliente
+    // Default Fallback
     const defaultTenant = {
       tenantId: tenantId || "tenant_default",
-      name: "Entidad Corporativa Auditada",
+      name: "Corporate Enterprise Tenant",
       status: "ACTIVE",
-      quota: 100000,
+      quota: 1000000,
       usedQuota: 0,
+      licenseType: "ENTERPRISE_EXECUTION_RUNTIME",
       activeScenarios: [
         "cumplimiento_corporativo_integral",
         "razonamiento_activo_l7",
@@ -78,7 +79,7 @@ export class TenantManager {
   }
 
   /**
-   * Valida permisos de ejecución del Governance Judge para el tenant
+   * Valida permisos de ejecución del SAARE Judge para el tenant
    */
   async validateAccess(tenantId, scenarioId) {
     const tenant = await this.getTenant(tenantId);
@@ -86,7 +87,8 @@ export class TenantManager {
     if (tenant.status !== "ACTIVE") {
       return {
         allowed: false,
-        decision: "BLOCK",
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
         reason: `Acceso denegado: El inquilino [${tenantId}] se encuentra suspendido.`
       };
     }
@@ -99,14 +101,16 @@ export class TenantManager {
     if (!isScenarioActive) {
       return {
         allowed: false,
-        decision: "BLOCK",
-        reason: `Directiva [${scenarioId}] no habilitada en la suscripción del inquilino [${tenantId}].`
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
+        reason: `Directiva de autorización [${scenarioId}] no habilitada en el plan del inquilino [${tenantId}].`
       };
     }
 
     return {
       allowed: true,
       decision: "ALLOW",
+      enforcement: { action: "PASS" },
       tenantName: tenant.name
     };
   }

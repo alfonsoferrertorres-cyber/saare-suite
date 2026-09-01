@@ -1,27 +1,34 @@
 /**
- * S.A.A.R.E. Distributed Edge Rate Limiter v10.0 (SGP 1.0)
- * Global Sliding Window & Cloudflare KV Integration for Multi-Tenant Throttling
+ * SAARE Distributed Edge Rate Limiter v10.0 (SGP 1.0)
+ * Tier-Aware Sliding Window & Multi-Tenant Throttling for Cloudflare Workers
  */
 
 export class DistributedRateLimiter {
-  constructor(kvBinding = null, windowSec = 60, defaultMaxRequests = 60) {
+  constructor(kvBinding = null, windowSec = 60) {
     this.kv = kvBinding;
     this.windowSec = windowSec;
-    this.defaultMaxRequests = defaultMaxRequests;
+    this.tierLimits = {
+      ANONYMOUS: 60,            // 60 req/min para IPs sin autenticar
+      DEVELOPER: 600,           // 600 req/min (Judge API Developer)
+      ENTERPRISE_AGENT: 60000,  // 60.000 req/min (High-Throughput Workload Agent)
+      CONTROL_PLANE_ADMIN: 300  // 300 req/min para operaciones de consola
+    };
     this.memoryFallback = new Map();
   }
 
   /**
-   * Evalúa si una petición está dentro de la cuota del tenant o IP
-   * @param {string} identifier - Tenant ID, API Key o IP
-   * @param {number} maxRequests - Límite de peticiones por ventana
-   * @returns {Promise<object>} Estado de admisión y cabeceras de rate limit
+   * Evalúa si una petición está dentro de la cuota autorizada según su nivel
+   * @param {string} identifier - Tenant ID, API Key o IP de origen
+   * @param {string} tier - 'ANONYMOUS' | 'DEVELOPER' | 'ENTERPRISE_AGENT' | 'CONTROL_PLANE_ADMIN'
+   * @returns {Promise<object>} Estado de admisión y cabeceras estándar
    */
-  async isAllowed(identifier, maxRequests = this.defaultMaxRequests) {
+  async isAllowed(identifier, tier = "ANONYMOUS") {
     const cleanId = String(identifier || "anonymous").trim().toLowerCase();
-    const currentWindowKey = `ratelimit:${cleanId}:${Math.floor(Date.now() / (this.windowSec * 1000))}`;
+    const maxRequests = this.tierLimits[tier] || this.tierLimits.ANONYMOUS;
+    const windowSlot = Math.floor(Date.now() / (this.windowSec * 1000));
+    const currentWindowKey = `ratelimit:${cleanId}:${windowSlot}`;
 
-    // 1. Camino A: Almacén Distribuido Cloudflare KV
+    // 1. Almacén Distribuido KV
     if (this.kv) {
       try {
         const rawCount = await this.kv.get(currentWindowKey);
@@ -33,7 +40,8 @@ export class DistributedRateLimiter {
             remaining: 0,
             limit: maxRequests,
             resetInSec: this.windowSec,
-            reason: "429 Too Many Requests: Cuota excedida (Noisy Neighbor Protection)"
+            code: "RATE_LIMIT_EXCEEDED",
+            reason: `Cuota de peticiones excedida para el nivel [${tier}].`
           };
         }
 
@@ -49,11 +57,11 @@ export class DistributedRateLimiter {
           resetInSec: this.windowSec
         };
       } catch {
-        // Fallback al camino B si hay microcorte en KV
+        // Fallback a memoria local si KV experimenta latencia
       }
     }
 
-    // 2. Camino B: Memoria local de respaldo
+    // 2. Memoria Local In-Process
     const now = Date.now();
     const windowMs = this.windowSec * 1000;
 
@@ -71,7 +79,8 @@ export class DistributedRateLimiter {
         remaining: 0,
         limit: maxRequests,
         resetInSec: Math.ceil((windowMs - (now - validTimestamps[0])) / 1000),
-        reason: "429 Too Many Requests: Cuota de Tenant excedida (Local Protection)"
+        code: "RATE_LIMIT_EXCEEDED",
+        reason: `Límite de ejecución alcanzado en nodo local para [${cleanId}].`
       };
     }
 
