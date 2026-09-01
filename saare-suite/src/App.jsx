@@ -19,25 +19,25 @@ const AUDIT_PILLARS = [
   {
     num: "02",
     title: "Control Native",
-    desc: "Aplica decisiones de política activas sobre la interacción (Interception, Redaction, Block) en tiempo real.",
+    desc: "Aplica decisiones de política activas sobre la interacción (Interception, Redaction, Block, Escalate) en tiempo real.",
     color: "#16a34a"
   },
   {
     num: "03",
     title: "Evidence Native",
-    desc: "Genera evidencia inmutable y estructurada como parte intrínseca de la misma ejecución del modelo.",
+    desc: "Genera evidencia inmutable y estructurada como parte intrínseca y simultánea de la misma ejecución.",
     color: "#9333ea"
   },
   {
     num: "04",
     title: "Model Agnostic",
-    desc: "Infraestructura desacoplada. Compatible con OpenAI, Anthropic, Llama, Azure AI y modelos custom vía proxy inverso.",
+    desc: "Infraestructura desacoplada. Compatible con OpenAI, Anthropic, Llama, Azure AI y modelos on-premise.",
     color: "#ea580c"
   },
   {
     num: "05",
     title: "Cryptographically Verifiable",
-    desc: "Garantiza la integridad de la prueba mediante firmas asimétricas Ed25519 y sellado temporal RFC 3161 eIDAS.",
+    desc: "Garantiza la integridad mediante firmas asimétricas Ed25519 y sellado temporal cualificado RFC 3161 eIDAS.",
     color: "#ca8a04"
   }
 ];
@@ -125,7 +125,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [showDiploma, setShowDiploma] = useState(false);
 
-  // Verificador Interactivo
+  // Verificador Interactivo sincronizado con el evento real
   const [verifySearchId, setVerifySearchId] = useState("EV-CED48F1600");
   const [verifiedRecord, setVerifiedRecord] = useState({
     id: "EV-CED48F1600",
@@ -147,13 +147,13 @@ export default function App() {
   const runRuntimeSimulation = () => {
     setIsRunningSim(true);
     setRuntimeStep(1);
-    setTimeout(() => setRuntimeStep(2), 700);
-    setTimeout(() => setRuntimeStep(3), 1400);
-    setTimeout(() => setRuntimeStep(4), 2100);
+    setTimeout(() => setRuntimeStep(2), 600);
+    setTimeout(() => setRuntimeStep(3), 1200);
+    setTimeout(() => setRuntimeStep(4), 1800);
     setTimeout(() => {
       setRuntimeStep(5);
       setIsRunningSim(false);
-    }, 2800);
+    }, 2400);
   };
 
   const handleVerifyLookup = (e) => {
@@ -277,7 +277,7 @@ export default function App() {
             <button onClick={() => navigateToSection('native-audit')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>AI-Native Audit™</button>
             <button onClick={() => navigateToSection('control-layers')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Capas de Control</button>
             <button onClick={() => navigateToSection('live-runtime')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Live Runtime</button>
-            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>AI-Native Evidence</button>
+            <button onClick={() => navigateToSection('evidence-verifier')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>AI-Native Evidence™</button>
             <button onClick={() => navigateToSection('control-matrix')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Control Matrix</button>
             <button onClick={() => navigateToSection('pricing')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Planes</button>
 
@@ -363,64 +363,68 @@ export default function App() {
       {currentView === 'LANDING' && (
         <main style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
 
-          {/* 1. HERO PRINCIPAL: INFRAESTRUCTURA DE AUDITORÍA NATIVA DE IA */}
+          {/* 1. HERO PRINCIPAL: LA PRIMERA AUDITORÍA NATIVA */}
           <section style={{ textAlign: 'center', margin: '30px 0 60px 0' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(14, 165, 233, 0.1)', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '800', border: '1px solid rgba(14, 165, 233, 0.25)', marginBottom: '20px', letterSpacing: '0.5px' }}>
               FIRST-OF-CATEGORY · AI-NATIVE AUDIT™
             </div>
             
             <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '-1.5px', lineHeight: 1.15 }}>
-              INFRAESTRUCTURA DE AUDITORÍA <br />
-              <span style={{ color: '#38bdf8' }}>NATIVA DE IA</span>
+              La primera auditoría nativa <br />
+              <span style={{ color: '#38bdf8' }}>para Inteligencia Artificial.</span>
             </h1>
             
-            <p style={{ fontSize: '18.5px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto 20px auto', lineHeight: 1.5, fontWeight: '500' }}>
-              La primera plataforma de auditoría nativa diseñada para controlar, registrar y demostrar lo que ocurre durante la ejecución de sistemas de inteligencia artificial.
+            <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto 16px auto', lineHeight: 1.4, fontWeight: '600' }}>
+              Audita la IA durante su ejecución, no después.
             </p>
 
-            <p style={{ fontSize: '14.5px', color: '#9ca3af', maxWidth: '720px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
-              Intercepción en Capa 7 · Enforcement en tiempo de ejecución · Evidencia criptográfica · Verificación independiente
+            <p style={{ fontSize: '15px', color: '#9ca3af', maxWidth: '780px', margin: '0 auto 32px auto', lineHeight: 1.6 }}>
+              SAARE introduce una nueva capa de infraestructura que intercepta, inspecciona y controla las interacciones con sistemas de IA en tiempo de ejecución, generando evidencia criptográficamente verificable de cada decisión relevante.
             </p>
 
             {/* CONCEPT PIPELINE BADGE */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '12px', fontFamily: 'monospace', color: '#cbd5e1' }}>
-              <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>POLICY</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#0b0f19', border: '1px solid #1f2937', padding: '10px 24px', borderRadius: '30px', marginBottom: '36px', fontSize: '11.5px', fontFamily: 'monospace', color: '#cbd5e1' }}>
+              <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>INTERCEPT</span>
               <span>→</span>
-              <span style={{ color: '#10b981', fontWeight: 'bold' }}>CONTROL</span>
+              <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>INSPECT</span>
               <span>→</span>
-              <span style={{ color: '#a855f7', fontWeight: 'bold' }}>PROOF</span>
+              <span style={{ color: '#10b981', fontWeight: 'bold' }}>DECIDE</span>
               <span>→</span>
-              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>VERIFY</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>ENFORCE</span>
+              <span>→</span>
+              <span style={{ color: '#a855f7', fontWeight: 'bold' }}>PROVE</span>
+              <span>→</span>
+              <span style={{ color: '#34d399', fontWeight: 'bold' }}>VERIFY</span>
             </div>
 
             <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => navigateToSection('live-runtime')} style={{ padding: '14px 30px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(2,132,199,0.35)' }}>
-                Ver Auditoría en Tiempo Real ↓
+                Ver Auditoría en Runtime ↓
               </button>
               <button onClick={() => navigateToSection('evidence-verifier')} style={{ padding: '14px 28px', backgroundColor: '#111827', color: '#e5e7eb', border: '1px solid #374151', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                Explorar Proof Bundle
+                Verificar una Evidencia
               </button>
             </div>
 
             {/* FRASE DE POSICIONAMIENTO CLAVE */}
-            <div style={{ marginTop: '40px', padding: '18px', background: 'rgba(3, 7, 18, 0.6)', border: '1px solid #1f2937', borderRadius: '10px', display: 'inline-block' }}>
+            <div style={{ marginTop: '40px', padding: '18px 24px', background: 'rgba(3, 7, 18, 0.6)', border: '1px solid #1f2937', borderRadius: '10px', display: 'inline-block' }}>
               <span style={{ color: '#f3f4f6', fontSize: '15px', fontWeight: '700', fontStyle: 'italic' }}>
                 "La auditoría deja de ocurrir después de la IA. Ocurre dentro de su ejecución."
               </span>
             </div>
           </section>
 
-          {/* 2. DEFINICIÓN: AI-NATIVE AUDIT STACK™ */}
+          {/* 2. DEFINICIÓN OFICIAL DE LA CATEGORÍA: AI-NATIVE AUDIT™ */}
           <section id="native-audit" style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CATEGORÍA PROPIETARIA</span>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>The AI-Native Audit Stack™</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '750px', margin: '0 auto' }}>
-                El cumplimiento es un resultado. La auditabilidad es la infraestructura. Para ser considerada <i>AI-Native Audit</i>, una solución debe cumplir con 5 principios fundamentales:
+              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CATEGORÍA OFICIAL</span>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>¿Qué es AI-Native Audit™?</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14.5px', maxWidth: '800px', margin: '0 auto', lineHeight: 1.6 }}>
+                AI-Native Audit™ es una nueva categoría de infraestructura de auditoría diseñada específicamente para sistemas de Inteligencia Artificial. A diferencia de la auditoría tradicional, que reconstruye lo ocurrido después de la ejecución, una arquitectura <strong>AI-Native Audit</strong> observa la ejecución en tiempo real, aplica controles directamente sobre la interacción y genera evidencia verificable como parte del propio proceso.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '36px' }}>
               {AUDIT_PILLARS.map((p) => (
                 <div key={p.num} style={{ background: '#030712', border: `1px solid ${p.color}44`, borderRadius: '10px', padding: '20px' }}>
                   <div style={{ fontSize: '11px', color: p.color, fontWeight: '900', marginBottom: '6px' }}>{p.num} — {p.title.toUpperCase()}</div>
@@ -430,27 +434,47 @@ export default function App() {
               ))}
             </div>
 
-            {/* ESQUEMA ARQUITECTÓNICO DEL STACK */}
-            <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '24px', fontFamily: 'monospace', maxWidth: '800px', margin: '0 auto' }}>
-              <div style={{ textTransform: 'uppercase', color: '#6b7280', fontSize: '11px', textAlign: 'center', marginBottom: '12px', fontWeight: 'bold' }}>ARQUITECTURA DE CAPA AUDITABLE</div>
-              <div style={{ background: '#111827', border: '1px solid #374151', padding: '10px', borderRadius: '6px', textAlign: 'center', color: '#38bdf8', fontWeight: 'bold', fontSize: '13px' }}>
-                AI APPLICATIONS (Agentes, RAG, LLM Apps, Endpoints)
+            {/* KILLER VISUAL: THE AI-NATIVE AUDIT STACK™ */}
+            <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', fontFamily: 'monospace', maxWidth: '780px', margin: '0 auto', textAlign: 'center' }}>
+              <div style={{ textTransform: 'uppercase', color: '#6b7280', fontSize: '11px', marginBottom: '14px', fontWeight: 'bold' }}>
+                THE AI-NATIVE AUDIT STACK™
               </div>
-              <div style={{ textAlign: 'center', color: '#0ea5e9', margin: '6px 0', fontSize: '14px' }}>↓</div>
-              <div style={{ background: 'rgba(2, 132, 199, 0.15)', border: '1px solid #0284c7', padding: '16px', borderRadius: '6px', textAlign: 'center' }}>
-                <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>AI-NATIVE AUDIT LAYER (SAARE L7 ENGINE)</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '11px', color: '#cbd5e1' }}>
-                  <span>01 INTERCEPT</span> · <span>02 INSPECT</span> · <span>03 DECIDE</span> · <span>04 ENFORCE</span> · <span>05 EVIDENCE</span> · <span>06 VERIFY</span>
+              
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#38bdf8', fontWeight: 'bold', fontSize: '13px' }}>
+                AI APPLICATIONS (Agents · RAG · LLM Apps · APIs)
+              </div>
+              
+              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼</div>
+              
+              <div style={{ background: 'rgba(2, 132, 199, 0.12)', border: '1.5px solid #0284c7', padding: '20px', borderRadius: '8px' }}>
+                <div style={{ color: '#38bdf8', fontWeight: '900', fontSize: '15px', marginBottom: '12px' }}>
+                  AI-NATIVE AUDIT™ (SAARE L7 ENGINE)
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#e2e8f0', fontWeight: 'bold' }}>
+                  <span>INTERCEPT</span> <span>↓</span>
+                  <span>INSPECT</span> <span>↓</span>
+                  <span>DECIDE</span> <span>↓</span>
+                  <span>ENFORCE</span> <span>↓</span>
+                  <span>PROVE</span> <span>↓</span>
+                  <span>VERIFY</span>
                 </div>
               </div>
-              <div style={{ textAlign: 'center', color: '#0ea5e9', margin: '6px 0', fontSize: '14px' }}>↓</div>
-              <div style={{ background: '#111827', border: '1px solid #374151', padding: '10px', borderRadius: '6px', textAlign: 'center', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
-                AI MODELS / PROVIDERS (OpenAI, Anthropic, Llama, Azure, Internal)
+              
+              <div style={{ color: '#0ea5e9', margin: '8px 0', fontSize: '16px' }}>│ ▼</div>
+              
+              <div style={{ background: '#111827', border: '1px solid #374151', padding: '12px', borderRadius: '6px', color: '#34d399', fontWeight: 'bold', fontSize: '13px' }}>
+                ANY AI MODEL / PROVIDER (OpenAI · Anthropic · Llama · Azure · Custom)
+              </div>
+
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1f2937' }}>
+                <span style={{ fontSize: '16px', fontWeight: '900', color: '#ffffff', letterSpacing: '1px' }}>
+                  ANY MODEL. ONE AUDIT LAYER.
+                </span>
               </div>
             </div>
           </section>
 
-          {/* 3. COMPARATIVA VENTAJA FRENTE A GRC TRADICIONAL */}
+          {/* 3. COMPARATIVA: AUDITORÍA TRADICIONAL VS AI-NATIVE AUDIT */}
           <section style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '16px', padding: '36px', marginBottom: '70px' }}>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <span style={{ color: '#34d399', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CAMBIO DE PARADIGMA</span>
@@ -758,7 +782,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '18px', fontSize: '12px' }}>
                 <a href={VERIFY_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Verificador API</a>
                 <a href={CONSOLE_URL} target="_blank" rel="noreferrer" style={{ color: '#9ca3af', textDecoration: 'none' }}>Consola GRC</a>
-                <a href="mailto:enterprise@saare.es" style={{ color: '#9ca3af', textDecoration: 'none' }}>Contacto</a>
+                <a href="mailto:enterprise@saare.es" style={{ color: '#94a3af', textDecoration: 'none' }}>Contacto</a>
               </div>
             </div>
 
