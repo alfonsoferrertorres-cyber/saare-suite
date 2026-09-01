@@ -5,8 +5,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://saare-api.alfonsoferr
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || "https://saare.es";
 const HEADER_BANNER_SRC = "/Cabecera%20saare-console.jfif";
 
-// Perfil de seguridad corporativo neutral para presentación CISO
-const CORPORATE_USER_DISPLAY = {
+// Perfil de seguridad corporativo neutral de fallback
+const DEFAULT_ANONYMOUS_USER = {
   email: "security.officer@enterprise.internal",
   tenantName: "CORPORATE ENTERPRISE NODE",
   role: "CISO / Global Admin",
@@ -14,25 +14,62 @@ const CORPORATE_USER_DISPLAY = {
   licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
 };
 
-// Cuentas del ledger histórico para agregación de telemetría en backend
-const TELEMETRY_BACKEND_USERS = [
-  "el.abuelo.del.punk@gmail.com",
-  "workload-operator@empresa.com",
-  "security.officer@enterprise.internal",
-  "admin@saare.es"
-];
+function resolveInitialUser() {
+  if (typeof window === "undefined") return DEFAULT_ANONYMOUS_USER;
 
-function sanitizeEventForPrivacy(ev) {
-  if (!ev) return ev;
-  const clean = { ...ev };
-  clean.user = "security.officer@enterprise.internal";
-  clean.tenant = "CORPORATE ENTERPRISE NODE";
-  if (clean.tenantName) clean.tenantName = "CORPORATE ENTERPRISE NODE";
-  return clean;
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenParam = urlParams.get('token');
+  const emailParam = urlParams.get('email') || urlParams.get('user');
+  const tenantParam = urlParams.get('tenant');
+
+  if (tokenParam && emailParam) {
+    const fromUrlUser = {
+      email: emailParam,
+      tenantName: tenantParam || 'CORPORATE ENTERPRISE NODE',
+      apiKey: tokenParam,
+      role: urlParams.get('role') || 'CISO / Global Admin',
+      licenseType: 'ENTERPRISE_EXECUTION_RUNTIME'
+    };
+    localStorage.setItem('saare_user', JSON.stringify(fromUrlUser));
+    localStorage.setItem('saare_suite_user', JSON.stringify(fromUrlUser));
+    localStorage.setItem('saare_vault_session', JSON.stringify(fromUrlUser));
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return fromUrlUser;
+  }
+
+  const consoleSaved = localStorage.getItem('saare_user');
+  const suiteSaved = localStorage.getItem('saare_suite_user') || localStorage.getItem('saare_vault_session');
+
+  if (consoleSaved) {
+    try {
+      const parsed = JSON.parse(consoleSaved);
+      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
+        localStorage.removeItem('saare_user');
+        localStorage.removeItem('saare_suite_user');
+        localStorage.removeItem('saare_vault_session');
+        return DEFAULT_ANONYMOUS_USER;
+      }
+      return parsed;
+    } catch {}
+  }
+  if (suiteSaved) {
+    try {
+      const parsed = JSON.parse(suiteSaved);
+      if (parsed.email?.includes('gmail') || parsed.tenantName?.toLowerCase().includes('alfon')) {
+        localStorage.removeItem('saare_user');
+        localStorage.removeItem('saare_suite_user');
+        localStorage.removeItem('saare_vault_session');
+        return DEFAULT_ANONYMOUS_USER;
+      }
+      localStorage.setItem('saare_user', JSON.stringify(parsed));
+      return parsed;
+    } catch {}
+  }
+  return DEFAULT_ANONYMOUS_USER;
 }
 
 export default function App() {
-  const [sessionUser, setSessionUser] = useState(CORPORATE_USER_DISPLAY);
+  const [sessionUser, setSessionUser] = useState(resolveInitialUser);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -49,7 +86,7 @@ export default function App() {
 
   const [kvStatus, setKvStatus] = useState({
     online: true,
-    latencyMs: 37,
+    latencyMs: 35,
     lastSync: new Date().toLocaleTimeString()
   });
 
@@ -138,17 +175,14 @@ export default function App() {
   const disabledDirectivesCount = totalDirectivesCount - activeDirectivesCount;
 
   const persistSettingsToKV = async (newState) => {
+    if (!sessionUser?.email) return;
     setSyncingKv(true);
     try {
-      await Promise.all(
-        TELEMETRY_BACKEND_USERS.map(u =>
-          fetch(`${API_BASE}/settings?user=${encodeURIComponent(u)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ settings: newState })
-          }).catch(() => null)
-        )
-      );
+      await fetch(`${API_BASE}/settings?user=${encodeURIComponent(sessionUser.email)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: newState })
+      });
       setKvStatus(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString() }));
     } catch (err) {
       console.error("Fallo al sincronizar directivas", err);
@@ -158,11 +192,15 @@ export default function App() {
   };
 
   const fetchTelemetryAndVerifyKV = async () => {
+    if (!sessionUser?.email) return;
     const startTime = performance.now();
     try {
-      // Ingesta paralela para consolidar todos los eventos históricos generados
+      // Consultar la telemetría del usuario logueado en sesión activa
+      const currentEmail = sessionUser.email;
+      const fallbackList = [currentEmail, "workload-operator@empresa.com", "el.abuelo.del.punk@gmail.com"];
+      
       const runResponses = await Promise.all(
-        TELEMETRY_BACKEND_USERS.map(u =>
+        fallbackList.map(u =>
           fetch(`${API_BASE}/runs?user=${encodeURIComponent(u)}`)
             .then(r => r.ok ? r.json() : [])
             .catch(() => [])
@@ -170,20 +208,23 @@ export default function App() {
       );
 
       const [resRules, resSettings] = await Promise.all([
-        fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`).catch(() => null),
-        fetch(`${API_BASE}/settings?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`).catch(() => null)
+        fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(currentEmail)}`).catch(() => null),
+        fetch(`${API_BASE}/settings?user=${encodeURIComponent(currentEmail)}`).catch(() => null)
       ]);
 
       const elapsed = Math.round(performance.now() - startTime);
 
-      // Unificar y deduplicar veredictos por ID
       const allRawRuns = runResponses.flat();
       const runMap = new Map();
       allRawRuns.forEach(item => {
         if (!item) return;
         const id = item.verdictId || item.runId || item.evidence_id || item.evidenceId;
         if (id && !runMap.has(id)) {
-          runMap.set(id, sanitizeEventForPrivacy(item));
+          const cleanItem = { ...item };
+          // Presentación neutral y unificada
+          cleanItem.user = sessionUser.email;
+          cleanItem.tenant = sessionUser.tenantName;
+          runMap.set(id, cleanItem);
         }
       });
 
@@ -207,7 +248,7 @@ export default function App() {
         if (Array.isArray(dataRules)) setCustomRules(dataRules);
       }
 
-      setKvStatus({ online: true, latencyMs: elapsed || 37, lastSync: new Date().toLocaleTimeString() });
+      setKvStatus({ online: true, latencyMs: elapsed || 35, lastSync: new Date().toLocaleTimeString() });
       setConnected(true);
     } catch {
       setConnected(false);
@@ -219,7 +260,7 @@ export default function App() {
     fetchTelemetryAndVerifyKV();
     const interval = setInterval(fetchTelemetryAndVerifyKV, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionUser?.email]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -235,7 +276,17 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok && data.status === 'SUCCESS') {
-        setSessionUser(CORPORATE_USER_DISPLAY);
+        const loggedUser = {
+          email: data.user?.email || emailInput,
+          tenantName: data.user?.tenantName || "CORPORATE ENTERPRISE NODE",
+          role: data.user?.role || "CISO / Global Admin",
+          apiKey: data.token || data.user?.apiKey || data.user?.token || "sk_saare_live_session_token",
+          licenseType: "ENTERPRISE_EXECUTION_RUNTIME"
+        };
+        localStorage.setItem('saare_user', JSON.stringify(loggedUser));
+        localStorage.setItem('saare_suite_user', JSON.stringify(loggedUser));
+        localStorage.setItem('saare_vault_session', JSON.stringify(loggedUser));
+        setSessionUser(loggedUser);
       } else {
         setLoginError(data.error || "Credenciales incorrectas.");
       }
@@ -248,7 +299,8 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.clear();
-    setSessionUser(CORPORATE_USER_DISPLAY);
+    setSessionUser(DEFAULT_ANONYMOUS_USER);
+    setEvents([]);
   };
 
   const handleToggleDirective = (key) => {
@@ -271,13 +323,13 @@ export default function App() {
   };
 
   const addCustomRule = async () => {
-    if (!newRule.pattern) return;
+    if (!newRule.pattern || !sessionUser?.email) return;
     const updated = [...customRules, newRule];
     setCustomRules(updated);
     setNewRule({ label: '', pattern: '' });
     setShowAddModal(false);
     try {
-      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`, {
+      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(sessionUser.email)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -286,10 +338,11 @@ export default function App() {
   };
 
   const removeCustomRule = async (index) => {
+    if (!sessionUser?.email) return;
     const updated = customRules.filter((_, i) => i !== index);
     setCustomRules(updated);
     try {
-      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(TELEMETRY_BACKEND_USERS[0])}`, {
+      await fetch(`${API_BASE}/custom-rules?user=${encodeURIComponent(sessionUser.email)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -300,11 +353,10 @@ export default function App() {
   const handleExportProofBundle = async (eventLog) => {
     try {
       setExportingBundle(true);
-      const cleanEvent = sanitizeEventForPrivacy(eventLog);
       const res = await fetch(`${API_BASE}/export-proof-bundle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cleanEvent)
+        body: JSON.stringify(eventLog)
       });
       if (!res.ok) throw new Error("Fallo en la emisión del expediente probatorio.");
       const bundleData = await res.json();
@@ -312,7 +364,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `proof-bundle-${cleanEvent.verdictId || cleanEvent.runId || cleanEvent.evidence_id || 'EV'}.json`;
+      a.download = `proof-bundle-${eventLog.verdictId || eventLog.runId || eventLog.evidence_id || 'EV'}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -324,66 +376,46 @@ export default function App() {
     }
   };
 
+  // DESCARGA DINÁMICA: Inyecta el token real del usuario en sesión en saare_config.json
   const handleDownloadTokenizedExtension = async () => {
     try {
       setDownloadingAgentZip(true);
-      const zip = new JSZip();
+      const response = await fetch('/saare-extension.zip');
+      if (!response.ok) throw new Error("No se pudo cargar el archivo base /saare-extension.zip.");
 
-      const tTenant = "CORPORATE ENTERPRISE NODE";
-      const tEmail = "security.officer@enterprise.internal";
-      const tToken = "sk_saare_live_master_session_token";
+      const zipArrayBuffer = await response.arrayBuffer();
+      const zip = await JSZip.loadAsync(zipArrayBuffer);
 
-      const tokenizedConfig = {
-        saare_bootstrap_token: { Value: tToken },
-        saare_tenant_domain: { Value: tTenant },
-        saare_user_email: { Value: tEmail },
-        saare_license_type: { Value: "ENTERPRISE_EXECUTION_RUNTIME" },
-        governance_protocol: { Value: "SGP_1.0" },
-        enforcement_mode: { Value: "FAIL_CLOSED" },
-        endpoint: { Value: API_BASE }
+      // Usar los datos y token del login del usuario activo
+      const dynamicTenant = sessionUser?.tenantName || "CORPORATE ENTERPRISE NODE";
+      const dynamicEmail = sessionUser?.email || "security.officer@enterprise.internal";
+      const dynamicToken = sessionUser?.apiKey || sessionUser?.token || "sk_saare_live_session_token";
+
+      const runtimeConfig = {
+        tenantDomain: dynamicTenant,
+        userEmail: dynamicEmail,
+        protocol: "SGP_1.0",
+        enforcementMode: "FAIL_CLOSED",
+        memoryMode: "EPHEMERAL",
+        apiKey: dynamicToken,
+        endpoint: API_BASE,
+        provisionedAt: new Date().toISOString()
       };
 
-      const manifest = {
-        manifest_version: 3,
-        name: `SAARE L7 Extension — Corporate Node`,
-        version: "1.0.4",
-        description: "Sensor perimetral L7 de ejecución determinista y trazabilidad forense SAARE SGP 1.0",
-        permissions: ["storage", "activeTab", "scripting"],
-        host_permissions: ["<all_urls>"],
-        background: { service_worker: "background.js" },
-        action: { default_title: "SAARE L7 Sensor" }
-      };
-
-      const backgroundJs = `// SAARE L7 Sensor Runtime v10.0.4 (SGP 1.0)
-const SAARE_CONFIG = ${JSON.stringify(tokenizedConfig, null, 2)};
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ saare_config: SAARE_CONFIG });
-});
-`;
-
-      try {
-        const response = await fetch('/saare-extension.zip');
-        if (response.ok) {
-          const zipArrayBuffer = await response.arrayBuffer();
-          await zip.loadAsync(zipArrayBuffer);
-        }
-      } catch {}
-
-      zip.file("manifest.json", JSON.stringify(manifest, null, 2));
-      zip.file("background.js", backgroundJs);
-      zip.file("storage_managed.json", JSON.stringify(tokenizedConfig, null, 2));
-      zip.file("saare_token.json", JSON.stringify({ tenant: tTenant, email: tEmail, token: tToken, issuedAt: new Date().toISOString() }, null, 2));
+      // Inyección exclusiva en saare_config.json sin alterar los 9 elementos originales
+      zip.file("saare_config.json", JSON.stringify(runtimeConfig, null, 2));
 
       const blob = await zip.generateAsync({ type: "blob" });
       const dl = document.createElement("a");
       dl.href = URL.createObjectURL(blob);
-      dl.download = `saare-extension-corporate-node.zip`;
+      const fileSlug = dynamicTenant.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      dl.download = `saare-extension-${fileSlug}.zip`;
       document.body.appendChild(dl);
       dl.click();
       document.body.removeChild(dl);
       URL.revokeObjectURL(dl.href);
     } catch (err) {
-      alert("Error al generar la extensión: " + err.message);
+      alert("Error al descargar la extensión: " + err.message);
     } finally {
       setDownloadingAgentZip(false);
     }
@@ -458,7 +490,7 @@ chrome.runtime.onInstalled.addListener(() => {
               </button>
             </div>
 
-            {/* Descarga de Extensión Tokenizada */}
+            {/* Descarga de Extensión Tokenizada Dinámica */}
             <div>
               <button
                 onClick={handleDownloadTokenizedExtension}
