@@ -1,69 +1,91 @@
-const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
+// SAARE L7 Background Service Worker (SGP 1.0) - Production Runtime
 
-// Resuelve la identidad corporativa de forma dinámica (GPO -> Storage Local -> No asignado)
-async function resolveIdentity(payloadUser) {
+/**
+ * Resuelve la identidad y credenciales activas del sensor desde Managed o Local Storage
+ */
+async function getActiveIdentity(providedUser) {
   return new Promise((resolve) => {
-    // 1. Prioridad: GPO corporativa / Managed Storage
-    if (chrome.storage?.managed) {
-      chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
-        if (managed?.saare_user_email) {
-          return resolve({
-            user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "EMPRESA"
-          });
-        }
-        fallbackLocal();
-      });
-    } else {
-      fallbackLocal();
-    }
+    chrome.storage.managed.get(
+      ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+      (managed) => {
+        chrome.storage.local.get(
+          ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+          (local) => {
+            const user = providedUser || managed?.saare_user_email || local?.saare_user_email || "auditor@tenant.local";
+            const tenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "SAARE_CORP_ADMIN";
+            const apiKey = managed?.saare_bootstrap_token || local?.saare_bootstrap_token || "sk_saare_live_master_kv_session";
+            const endpoint = managed?.endpoint || local?.endpoint || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
 
-    // 2. Fallback: Local Storage o usuario detectado en el DOM
-    function fallbackLocal() {
-      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = local?.saare_user_email || payloadUser || "usuario_anonimo@tenant.es";
-        const finalTenant = local?.saare_tenant_domain || "ORGANIZACION";
-        resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
-      });
-    }
+            resolve({ user, tenant, apiKey, endpoint });
+          }
+        );
+      }
+    );
   });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "SAARE_LOG_EVENT") {
-    resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
-      const enrichedPayload = {
-        ...message.payload,
-        user: user,
-        tenant: tenant
-      };
+/**
+ * Transmite los Proof Bundles y evidencias hacia la API/Worker de Cloudflare
+ */
+async function uploadEvidenceToCloud(payload, identity) {
+  if (!identity?.endpoint) {
+    console.warn("[SAARE Cloud KV] Endpoint no definido. Omitiendo envío.");
+    return false;
+  }
 
-      // Almacenamiento local en el navegador del usuario
-      chrome.storage.local.get({ saare_logs: [] }, (result) => {
-        const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-        chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
-      });
+  const targetUrl = `${identity.endpoint}/runs?user=${encodeURIComponent(identity.user)}`;
 
-      // Envío dinámico al Worker KV
-      fetch(`${WORKER_URL}/runs?user=${encodeURIComponent(user)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(enrichedPayload)
-      })
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, error: err.message }));
+  try {
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${identity.apiKey}`,
+        "X-Saare-Client": "L7-Browser-Sensor-V10"
+      },
+      body: JSON.stringify(payload)
     });
 
-    return true;
+    if (response?.ok) {
+      const result = await response.json();
+      console.log("[SAARE Cloud KV] Evidencia almacenada correctamente:", result);
+      return true;
+    } else {
+      console.error("[SAARE Cloud KV] Error del servidor. Código HTTP:", response?.status);
+      return false;
+    }
+  } catch (error) {
+    console.error("[SAARE Cloud KV] Fallo de red al conectar con Cloudflare Worker:", error);
+    return false;
   }
+}
 
-  if (message?.type === "SAARE_GET_RULES") {
-    fetch(`${WORKER_URL}/custom-rules`)
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, data: [] }));
+/**
+ * Escuchador global de mensajes en tiempo real (Intercepción desde content.js e inject.js)
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "SAARE_LOG_EVENT" || message?.type === "SAARE_EVIDENCE_RECORD") {
+    const rawPayload = message?.payload || {};
 
-    return true;
+    getActiveIdentity(rawPayload?.user).then(async (identity) => {
+      const enrichedPayload = {
+        ...rawPayload,
+        user: identity.user,
+        tenant: identity.tenant,
+        cloudSyncTimestamp: new Date().toISOString()
+      };
+
+      const isSuccess = await uploadEvidenceToCloud(enrichedPayload, identity);
+      sendResponse({ 
+        status: isSuccess ? "ACK_CLOUD_DISPATCHED" : "ACK_CLOUD_FAILED",
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    return true; 
   }
+});
+
+self.addEventListener("error", (event) => {
+  console.warn("[SAARE Protection Guard] Excepción no capturada neutralizada:", event?.message);
 });

@@ -1,0 +1,33 @@
+﻿{
+    "verdict_schema":  "SGP_1.0",
+    "verdictId":  "VRD-2026-0CUF4",
+    "evidence_id":  "EV-ALLOW-254X6W4X",
+    "status":  "VALID",
+    "system_id":  "L7-BROWSER-SENSOR",
+    "timestamp":  "2026-09-01T18:26:36.514Z",
+    "issuedAt":  "2026-09-01T18:26:36.514Z",
+    "user":  "el.abuelo.del.punk@gmail.com",
+    "tenant":  "alfon test",
+    "subject":  {
+                    "type":  "workload_agent",
+                    "id":  "el.abuelo.del.punk@gmail.com"
+                },
+    "action":  {
+                   "type":  "generic_inference",
+                   "resource":  "browser-llm-endpoint",
+                   "digest":  "sha256:06dbc4cf503c04e62ac9d0edf731d4f8195a86415cddeca1a63d8f9393389343"
+               },
+    "policy":  {
+                   "id":  "POL-CORP-GOVERNANCE-01",
+                   "version":  "1.0.0"
+               },
+    "decision":  "ALLOW",
+    "enforcement":  {
+                        "action":  "PASS"
+                    },
+    "signature":  {
+                      "algorithm":  "Ed25519",
+                      "value":  "c5f85bd34050c3dd664b0d17b4bd4e0c2c365c63ce18039ea544082dd701ffc7bce3217bf481b84e57a29a142a8cae4818d34cbe532934166b388558eff55624",
+                      "valid":  true
+                  }
+}

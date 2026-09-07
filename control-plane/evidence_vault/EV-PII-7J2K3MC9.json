@@ -1,0 +1,36 @@
+﻿{
+    "verdict_schema":  "SGP_1.0",
+    "verdictId":  "VRD-2026-5U56M",
+    "evidence_id":  "EV-PII-7J2K3MC9",
+    "status":  "VALID",
+    "system_id":  "L7-BROWSER-SENSOR",
+    "timestamp":  "2026-09-01T19:18:58.849Z",
+    "issuedAt":  "2026-09-01T19:18:58.849Z",
+    "user":  "el.abuelo.del.punk@gmail.com",
+    "tenant":  "alfon test",
+    "subject":  {
+                    "type":  "workload_agent",
+                    "id":  "el.abuelo.del.punk@gmail.com"
+                },
+    "action":  {
+                   "type":  "generic_inference",
+                   "resource":  "browser-llm-endpoint",
+                   "digest":  "sha256:06dbc4cf503c04e62ac9d0edf731d4f8195a86415cddeca1a63d8f9393389343"
+               },
+    "policy":  {
+                   "id":  "POL-PCI-DSS-PAN",
+                   "version":  "4.2.1"
+               },
+    "decision":  "DENY",
+    "enforcement":  {
+                        "action":  "BLOCK"
+                    },
+    "saareDigitalIdentity":  null,
+    "signature":  {
+                      "algorithm":  "Ed25519",
+                      "value":  "31dfee09060e70beab9c8e47890fc5f98e10523faaa28cf3ac01662eac3365dbfa62a44bc84cf2a6b63f95488b6813804a0593dc5aefb0f016f7a434f132884e",
+                      "rootMerkleBound":  null,
+                      "rfc3161Token":  null,
+                      "valid":  true
+                  }
+}

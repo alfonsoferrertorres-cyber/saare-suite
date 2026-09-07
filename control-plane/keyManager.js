@@ -1,6 +1,18 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+
+export const CANONICAL_HASH = "SHA-256";
+export const CANONICAL_SIG = "Ed25519";
+
+export function computeSha256(data) {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+
+export function deriveEd25519Signature(data, privateKey) {
+  return crypto.sign(null, Buffer.from(data), privateKey).toString("hex");
+}
+
 export class EnterpriseKeyManager {
   constructor(keysDir = "./evidence/keys") {
     this.keysDir = path.resolve(keysDir);
@@ -12,7 +24,6 @@ export class EnterpriseKeyManager {
     if (!fs.existsSync(this.keysDir)) {
       fs.mkdirSync(this.keysDir, { recursive: true });
     }
-    // Cargar clave primaria por defecto
     const pubPath = path.join(this.keysDir, "ed25519_public.pem");
     const privPath = path.join(this.keysDir, "ed25519_private.pem");
     if (fs.existsSync(pubPath) && fs.existsSync(privPath)) {
@@ -28,11 +39,9 @@ export class EnterpriseKeyManager {
       privateKeyEncoding: { type: "pkcs8", format: "pem" }
     });
     const newKeyId = "ed25519_pub_v3_" + crypto.randomBytes(3).toString("hex");
-    // Marcar clave actual como ROTATED
     if (this.activeKeyId && this.keyStore.has(this.activeKeyId)) {
       this.keyStore.get(this.activeKeyId).status = "ROTATED";
     }
-    // Registrar nueva clave activa
     this.keyStore.set(newKeyId, { pubKey: publicKey, privKey: privateKey, status: "ACTIVE" });
     this.activeKeyId = newKeyId;
     return { activeKeyId: newKeyId, previousKeyStatus: "ROTATED" };
@@ -44,7 +53,7 @@ export class EnterpriseKeyManager {
   }
   getPublicKey(keyId) {
     const key = this.keyStore.get(keyId);
-    if (!key) throw new Error("[CRYPTO_ERROR] Key ID no encontrado en KeyStore: " + keyId);
+    if (!key) throw new Error("[CRYPTO_ERROR] Key ID no encontrado: " + keyId);
     return key.pubKey;
   }
 }

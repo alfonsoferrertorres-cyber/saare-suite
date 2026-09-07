@@ -1,0 +1,33 @@
+﻿{
+    "verdict_schema":  "SGP_1.0",
+    "verdictId":  "VRD-2026-SNTTV",
+    "evidence_id":  "EV-PII-HT23LSTR",
+    "status":  "VALID",
+    "system_id":  "L7-BROWSER-SENSOR",
+    "timestamp":  "2026-09-01T18:20:28.754Z",
+    "issuedAt":  "2026-09-01T18:20:28.754Z",
+    "user":  "el.abuelo.del.punk@gmail.com",
+    "tenant":  "alfon test",
+    "subject":  {
+                    "type":  "workload_agent",
+                    "id":  "el.abuelo.del.punk@gmail.com"
+                },
+    "action":  {
+                   "type":  "generic_inference",
+                   "resource":  "browser-llm-endpoint",
+                   "digest":  "sha256:06dbc4cf503c04e62ac9d0edf731d4f8195a86415cddeca1a63d8f9393389343"
+               },
+    "policy":  {
+                   "id":  "POL-PCI-DSS-PAN",
+                   "version":  "4.2.1"
+               },
+    "decision":  "DENY",
+    "enforcement":  {
+                        "action":  "BLOCK"
+                    },
+    "signature":  {
+                      "algorithm":  "Ed25519",
+                      "value":  "e7898285297bd194cafd2a215802853c57c2c293ae33330c9d5566df5053ff6349c6fb87a20a39e2775cf9002b1e8b1e552457bc2aa71d306a067d240c5ffcf1",
+                      "valid":  true
+                  }
+}

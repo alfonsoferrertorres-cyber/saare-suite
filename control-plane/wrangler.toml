@@ -1,6 +1,7 @@
 name = "saare-api"
 main = "server.js"
-compatibility_date = "2026-08-11"
+compatibility_date = "2026-09-07"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"

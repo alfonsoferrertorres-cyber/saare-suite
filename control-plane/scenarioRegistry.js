@@ -1,8 +1,8 @@
 export const ScenarioRegistry = [
   {
     id: "cumplimiento_corporativo_es",
-    title: "Cumplimiento Corporativo ES (Máxima Seguridad)",
-    description: "Protección integral L7 con bloqueo de PII y Prompt Injection",
+    title: "Cumplimiento Corporativo ES (MÃ¡xima Seguridad)",
+    description: "ProtecciÃ³n integral L7 con bloqueo de PII y Prompt Injection",
     version: "2.0.0",
     compliance_mapping: {
       dora: ["Art. 9(2) - Proteccion de sistemas TIC", "Art. 10 - Deteccion de actividades anomalas"],
@@ -23,3 +23,9 @@ export const ScenarioRegistry = [
   }
 ];
 
+export function getLiveRegulatoryMatrix() {
+  return ScenarioRegistry.map(scenario => ({
+    id: scenario.id,
+    compliance: scenario.compliance_mapping
+  }));
+}

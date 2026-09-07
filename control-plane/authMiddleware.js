@@ -1,4 +1,9 @@
 import crypto from "crypto";
+
+export function sanitizeEmail(email) {
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
 export class AuthMiddleware {
   constructor(jwtSecret = "enterprise_oidc_secret_key_v3") {
     this.jwtSecret = jwtSecret;
@@ -8,7 +13,7 @@ export class AuthMiddleware {
       "saare-eng-group": "Engineer"
     };
   }
-  // Simulaci�n de validaci�n de firma y decodificaci�n de Claims JWT
+
   verifyAndDecodeToken(token) {
     if (!token || !token.startsWith("Bearer ")) {
       throw new Error("[AUTH_ERROR] Token OIDC no proporcionado o malformado");
@@ -16,15 +21,15 @@ export class AuthMiddleware {
     const rawToken = token.replace("Bearer ", "");
     const parts = rawToken.split(".");
     if (parts.length !== 3) {
-      throw new Error("[AUTH_ERROR] Firma JWT no v�lida");
+      throw new Error("[AUTH_ERROR] Firma JWT no válida");
     }
     const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
     }
-    // Mapeo de Claims de Grupos Corporativos a Roles Internos
+
     const userGroups = payload.groups || [];
-    let assignedRole = "Business"; // Rol por defecto (m�nimo privilegio)
+    let assignedRole = "Business"; 
     for (const group of userGroups) {
       if (this.roleMapping[group]) {
         assignedRole = this.roleMapping[group];

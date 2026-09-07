@@ -18,3 +18,6 @@ export class ComplianceEngine {
   }
 }
 
+export function evaluateComplianceDirectives(scenarioId, verdict, reason) {
+  return ComplianceEngine.mapExecutionToCompliance(scenarioId, verdict, reason);
+}

@@ -2,3 +2,5 @@
   - 'saare-suite'
   - 'saare-console'
   - 'control-plane'
+allowBuilds:
+  esbuild: true

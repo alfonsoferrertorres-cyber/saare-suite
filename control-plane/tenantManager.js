@@ -1,4 +1,5 @@
 import crypto from "crypto";
+
 export class TenantManager {
   constructor() {
     this.tenants = new Map();
@@ -30,4 +31,3 @@ export class TenantManager {
     return { allowed: true };
   }
 }
-
