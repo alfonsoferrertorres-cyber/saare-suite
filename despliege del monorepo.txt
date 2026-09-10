@@ -1,0 +1,35 @@
+Al ver tu estructura con `pnpm-workspace.yaml` en la raíz, tu proyecto es un **monorepo gestionado con pnpm**. Esto significa que puedes ejecutar comandos para cada subproyecto directamente desde la carpeta raíz (`CLOUD_ISV_DESARROLLO_AGOSTO`) sin necesidad de entrar con `cd` a cada capeta.
+
+Aquí tienes los comandos listos para copiar y usar en tu PowerShell desde la raíz:
+
+### 📦 1. Instalar o actualizar dependencias globales del monorepo
+
+```bash
+pnpm install
+
+```
+
+### 💻 2. Compilar el Frontend (`saare-console`)
+
+```bash
+pnpm --filter saare-console run build
+
+```
+
+### 🚀 3. Desplegar el Frontend a Cloudflare Pages
+
+```bash
+pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console
+
+```
+
+### ☁️ 4. Desplegar el Backend (`control-plane` / Worker)
+
+```bash
+pnpm --filter control-plane exec wrangler deploy
+
+```
+
+---
+
+¿Prefieres utilizar estos filtros desde la raíz o prefieres seguir entrando a cada carpeta de forma individual?

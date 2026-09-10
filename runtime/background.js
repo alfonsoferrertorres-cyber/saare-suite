@@ -5,22 +5,42 @@
  */
 async function getActiveIdentity(providedUser) {
   return new Promise((resolve) => {
-    chrome.storage.managed.get(
-      ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
-      (managed) => {
-        chrome.storage.local.get(
-          ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
-          (local) => {
-            const user = providedUser || managed?.saare_user_email || local?.saare_user_email || "auditor@tenant.local";
-            const tenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "SAARE_CORP_ADMIN";
-            const apiKey = managed?.saare_bootstrap_token || local?.saare_bootstrap_token || "sk_saare_live_master_kv_session";
-            const endpoint = managed?.endpoint || local?.endpoint || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
-
-            resolve({ user, tenant, apiKey, endpoint });
-          }
-        );
+    // Función defensiva para consultar managed storage sin lanzar excepciones si no está configurado (GPO/Enterprise)
+    const getManagedStorage = (callback) => {
+      try {
+        if (chrome.storage && chrome.storage.managed) {
+          chrome.storage.managed.get(
+            ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+            (managedData) => {
+              // Si falla (p. ej. sin políticas GPO activas), chrome.runtime.lastError contendrá el motivo
+              if (chrome.runtime.lastError) {
+                callback({});
+              } else {
+                callback(managedData || {});
+              }
+            }
+          );
+        } else {
+          callback({});
+        }
+      } catch (e) {
+        callback({});
       }
-    );
+    };
+
+    getManagedStorage((managed) => {
+      chrome.storage.local.get(
+        ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+        (local) => {
+          const user = providedUser || managed?.saare_user_email || local?.saare_user_email || "auditor@tenant.local";
+          const tenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "SAARE_CORP_ADMIN";
+          const apiKey = managed?.saare_bootstrap_token || local?.saare_bootstrap_token || "sk_saare_live_master_kv_session";
+          const endpoint = managed?.endpoint || local?.endpoint || "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
+
+          resolve({ user, tenant, apiKey, endpoint });
+        }
+      );
+    });
   });
 }
 
@@ -67,22 +87,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT" || message?.type === "SAARE_EVIDENCE_RECORD") {
     const rawPayload = message?.payload || {};
 
-    getActiveIdentity(rawPayload?.user).then(async (identity) => {
-      const enrichedPayload = {
-        ...rawPayload,
-        user: identity.user,
-        tenant: identity.tenant,
-        cloudSyncTimestamp: new Date().toISOString()
-      };
+    getActiveIdentity(rawPayload?.user)
+      .then(async (identity) => {
+        const enrichedPayload = {
+          ...rawPayload,
+          user: identity.user,
+          tenant: identity.tenant,
+          cloudSyncTimestamp: new Date().toISOString()
+        };
 
-      const isSuccess = await uploadEvidenceToCloud(enrichedPayload, identity);
-      sendResponse({ 
-        status: isSuccess ? "ACK_CLOUD_DISPATCHED" : "ACK_CLOUD_FAILED",
-        timestamp: new Date().toISOString()
+        const isSuccess = await uploadEvidenceToCloud(enrichedPayload, identity);
+        
+        sendResponse({ 
+          status: isSuccess ? "ACK_CLOUD_DISPATCHED" : "ACK_CLOUD_FAILED",
+          timestamp: new Date().toISOString()
+        });
+      })
+      .catch((err) => {
+        console.error("[SAARE Background] Error en la resolución del mensaje:", err);
+        sendResponse({ 
+          status: "ACK_CLOUD_FAILED", 
+          error: err?.message || "Internal Service Worker Error",
+          timestamp: new Date().toISOString() 
+        });
       });
-    });
 
-    return true; 
+    return true; // Mantiene el canal de comunicación abierto para responder asíncronamente
   }
 });
 
