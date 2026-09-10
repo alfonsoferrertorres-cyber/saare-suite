@@ -89,20 +89,19 @@ export default function App() {
     setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
-  // Handler para empaquetar y descargar el ZIP con el token configurado (Corregido: 'action' removido de permissions)
+  // Handler para empaquetar y descargar el ZIP corregido (Manifest V3 100% compatible)
   const handleDownloadExtension = async () => {
     try {
       const zip = new JSZip();
 
-      // 1. Manifest V3
+      // 1. Manifest V3 Corregido (Sin "type": "module" ni "action" en permissions)
       const manifest = {
         "manifest_version": 3,
         "name": "SAARE Execution Authorization Sensor",
         "version": "10.0.5",
         "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
         "background": {
-          "service_worker": "background.js",
-          "type": "module"
+          "service_worker": "background.js"
         },
         "action": {
           "default_title": "SAARE Execution Guard Node (Bóveda KV Active)",
@@ -144,18 +143,66 @@ export default function App() {
         ]
       };
 
-      // 2. Definición del Config con las variables dinámicas
-      const configJs = `// SAARE Token & User Configuration\nwindow.SAARE_CONFIG = {\n  TOKEN: "${extensionToken}",\n  USER_EMAIL: "${userEmail}",\n  ENDPOINT: "https://api.saare.es/v1/telemetry"\n};`;
+      // 2. Storage Managed con los tokens del usuario
+      const storageManaged = {
+        "saare_bootstrap_token": {
+          "Value": extensionToken,
+          "Description": "Token fiduciario de sesión emitido por la Bóveda KL."
+        },
+        "saare_tenant_domain": {
+          "Value": "GMAIL",
+          "Description": "Identificador canónico del inquilino corporativo."
+        },
+        "saare_user_email": {
+          "Value": userEmail,
+          "Description": "Email del operador autorizado en la estación de trabajo."
+        },
+        "endpoint": {
+          "Value": "https://api.saare.es/v1",
+          "Description": "Endpoint de ingesta y evaluación del Control Plane."
+        }
+      };
 
-      const backgroundJs = `importScripts('config.js');\nconsole.log('[SAARE Sensor] Initialized with token:', window.SAARE_CONFIG?.TOKEN || '${extensionToken}');`;
+      // 3. Background Service Worker
+      const backgroundJs = `// SAARE L7 Background Service Worker (SGP 1.0)
+const SAARE_CONFIG = {
+  TOKEN: "${extensionToken}",
+  USER_EMAIL: "${userEmail}",
+  ENDPOINT: "https://api.saare.es/v1/telemetry"
+};
 
-      const contentJs = `console.log('[SAARE L7 Hook] Extension active for user:', '${userEmail}');`;
+console.log('[SAARE Sensor] Background activo con Token:', SAARE_CONFIG.TOKEN);
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "SAARE_LOG_EVENT") {
+    console.log("[SAARE Event Captured]", message.payload);
+    sendResponse({ status: "ACK_RECEIVED", timestamp: new Date().toISOString() });
+  }
+});`;
+
+      const contentJs = `console.log('[SAARE L7 Hook] Extensión activa para el usuario:', '${userEmail}');`;
       
-      const popupHtml = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <style>\n    body { font-family: sans-serif; background: #030712; color: #fff; width: 280px; padding: 12px; }\n    .status { color: #10b981; font-weight: bold; }\n    .token { font-family: monospace; color: #38bdf8; word-break: break-all; }\n  </style>\n</head>\n<body>\n  <h3>SAARE Execution Guard</h3>\n  <p>Estado: <span class="status">PROTEGIDO</span></p>\n  <p>Token: <br><span class="token">${extensionToken}</span></p>\n  <p>Usuario: <br><span>${userEmail}</span></p>\n</body>\n</html>`;
+      const popupHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; background: #030712; color: #fff; width: 280px; padding: 12px; margin: 0; }
+    .status { color: #10b981; font-weight: bold; }
+    .token { font-family: monospace; color: #38bdf8; word-break: break-all; background: #0f172a; padding: 4px; border-radius: 4px; display: block; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h3 style="margin-top: 0; color: #38bdf8;">SAARE Execution Guard</h3>
+  <p>Estado: <span class="status">PROTEGIDO</span></p>
+  <p>Token: <span class="token">${extensionToken}</span></p>
+  <p>Usuario: <br><strong style="color: #f8fafc;">${userEmail}</strong></p>
+</body>
+</html>`;
 
       // Agregar los archivos al ZIP
       zip.file("manifest.json", JSON.stringify(manifest, null, 2));
-      zip.file("config.js", configJs);
+      zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
       zip.file("background.js", backgroundJs);
       zip.file("content.js", contentJs);
       zip.file("inject.js", "// SAARE Inject L7 Hook Script\n");
