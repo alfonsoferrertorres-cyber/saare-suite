@@ -125,7 +125,7 @@ export default {
       return new Response(JSON.stringify(statusResponse), { headers: corsHeaders });
     }
 
-    // 4. Descarga del paquete de la extensión (Código Completo e Íntegro)
+    // 4. Descarga del paquete de la extensión (Corregido para compatibilidad Manifest V3)
     if (
       url.pathname.startsWith('/api/v1/download-extension') || 
       url.pathname.startsWith('/v1/download-extension') || 
@@ -139,14 +139,14 @@ export default {
 
         const zip = new JSZip();
 
+        // Manifest V3 Estándar
         const manifest = {
           "manifest_version": 3,
           "name": "SAARE Execution Authorization Sensor",
           "version": "10.0.5",
           "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
           "background": {
-            "service_worker": "background.js",
-            "type": "module"
+            "service_worker": "background.js"
           },
           "action": {
             "default_title": "SAARE Execution Guard Node (Bóveda KV Active)",
@@ -213,22 +213,26 @@ export default {
 
 async function getActiveIdentity(providedUser) {
   return new Promise((resolve) => {
-    chrome.storage.managed.get(
-      ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
-      (managed) => {
-        chrome.storage.local.get(
-          ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
-          (local) => {
-            const user = providedUser || managed?.saare_user_email || local?.saare_user_email || "${userEmail}";
-            const tenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "${tenant}";
-            const apiKey = managed?.saare_bootstrap_token || local?.saare_bootstrap_token || "${bootstrapToken}";
-            const endpoint = managed?.endpoint || local?.endpoint || "${targetEndpoint}";
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.managed) {
+      chrome.storage.managed.get(
+        ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+        (managed) => {
+          chrome.storage.local.get(
+            ["saare_user_email", "saare_tenant_domain", "saare_bootstrap_token", "endpoint"],
+            (local) => {
+              const user = providedUser || managed?.saare_user_email || local?.saare_user_email || "${userEmail}";
+              const tenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "${tenant}";
+              const apiKey = managed?.saare_bootstrap_token || local?.saare_bootstrap_token || "${bootstrapToken}";
+              const endpoint = managed?.endpoint || local?.endpoint || "${targetEndpoint}";
 
-            resolve({ user, tenant, apiKey, endpoint });
-          }
-        );
-      }
-    );
+              resolve({ user, tenant, apiKey, endpoint });
+            }
+          );
+        }
+      );
+    } else {
+      resolve({ user: "${userEmail}", tenant: "${tenant}", apiKey: "${bootstrapToken}", endpoint: "${targetEndpoint}" });
+    }
   });
 }
 
@@ -535,10 +539,12 @@ window.addEventListener("message", (event) => {
   </a>
 
   <script>
-    chrome.storage.local.get(['saare_tenant_domain', 'saare_user_email'], (res) => {
-      if(res.saare_tenant_domain) document.getElementById('disp-tenant').innerText = res.saare_tenant_domain;
-      if(res.saare_user_email) document.getElementById('disp-user').innerText = res.saare_user_email;
-    });
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['saare_tenant_domain', 'saare_user_email'], (res) => {
+        if(res.saare_tenant_domain) document.getElementById('disp-tenant').innerText = res.saare_tenant_domain;
+        if(res.saare_user_email) document.getElementById('disp-user').innerText = res.saare_user_email;
+      });
+    }
   </script>
 </body>
 </html>`;
@@ -549,7 +555,7 @@ chcp 65001 >nul
 title SAARE AI Execution Authorization Node - Enterprise Installer (SGP 1.0)
 
 echo ==============================================================================
-echo    Despliegue de Sensor L7 + Evidence Vault Local (v10.0.5) - Bóveda KL
+echo     Despliegue de Sensor L7 + Evidence Vault Local (v10.0.5) - Bóveda KL
 echo ==============================================================================
 
 set "EXTENSION_ID=ppegejdfiohebfhpjbppkdjjllopnamj"
