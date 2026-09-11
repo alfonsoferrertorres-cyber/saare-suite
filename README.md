@@ -16,3 +16,9 @@ Este repositorio actúa como plugin oficial de seguridad para agentes de DeepSee
 
 ```bash
 dsh plugin add @saare/dsh-governance-plugin
+## Autoría, Propiedad Intelectual y Trazabilidad Oficial
+- **Titular de la Solución:** Alfonso Ferrer Torres
+- **NIF:** 48553065L
+- **Gabinete Técnico Comercial:** MS3V
+- **Identificador Maestro de Validación:** MS3V-RECON-VALID-2026-ALF-0521
+- **Arquitectura:** SAARE v7 PRO (Desacople en Capa 7 / LOCAL_LOOPBACK_BIND)

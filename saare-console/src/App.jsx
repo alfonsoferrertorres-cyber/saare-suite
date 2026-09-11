@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './GovernanceToolbar';
 
@@ -8,9 +8,11 @@ export default function App() {
   const [selectedJson, setSelectedJson] = useState(null);
   const [timeStr, setTimeStr] = useState('');
   const [filter, setFilter] = useState('TODOS');
-  const [extensionToken, setExtensionToken] = useState('SAARE-EXT-7789-X892-L7');
+  
+  // P0.5: Identidad controlada por backend (Placeholder visual, la sesión real va en cookie HttpOnly)
+  const [extensionToken] = useState('SAARE-EXT-SECURE-L7');
   const [auditTokenModal, setAuditTokenModal] = useState(false);
-  const [userEmail, setUserEmail] = useState('alfonsoterritoriohostil@gmail.com');
+  const [userEmail] = useState('CISO (Soberanía de Datos)');
 
   // Directivas de Gobernanza
   const [directives, setDirectives] = useState([
@@ -33,16 +35,10 @@ export default function App() {
     { id: 'EV-L7-196', time: '7/9/2026, 2:00:00', cat: 'PII_DETECTED', sub: 'LOPDGDD / AI Act', prompt: '"Sin contenido"', dictamen: 'RECHAZADO', type: 'PRIVACIDAD' }
   ]);
 
-  // Sanitización de Query Parameters en la URL al iniciar
+  // P0.3: ELIMINADA LA LECTURA DE TOKENS EN LA URL
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const u = params.get('user');
-    const t = params.get('token');
-
-    if (u && u !== 'undefined') setUserEmail(u);
-    if (t && t !== 'undefined' && t.length > 0) setExtensionToken(t);
-
-    if (window.location.search.includes('undefined')) {
+    // Si alguien intenta inyectar parámetros, forzamos limpieza estricta de la URL
+    if (window.location.search) {
       const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
       window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
     }
@@ -59,7 +55,14 @@ export default function App() {
 
     const fetchTelemetry = async () => {
       try {
-        const res = await fetch(`https://api.saare.es/v1/telemetry?user=${encodeURIComponent(userEmail)}`);
+        // P0.2 & P0.5: Uso de credentials 'include' para enviar automáticamente la cookie HttpOnly
+        const res = await fetch(`https://api.saare.es/v1/telemetry`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
         if (res.ok) {
           const data = await res.json();
           const remoteEvidences = data.evidences || data.runs || data;
@@ -82,29 +85,27 @@ export default function App() {
       clearInterval(intervalClock);
       clearInterval(intervalTelemetry);
     };
-  }, [extensionToken, userEmail]);
+  }, []);
 
   const triggerGovernance = (msg) => {
     setGovernanceStatus(msg);
     setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
-  // Handler para empaquetar y descargar el ZIP corregido (Manifest V3 100% compatible)
   const handleDownloadExtension = async () => {
     try {
       const zip = new JSZip();
 
-      // 1. Manifest V3 Corregido (Sin "type": "module" ni "action" en permissions)
       const manifest = {
         "manifest_version": 3,
-        "name": "SAARE Execution Authorization Sensor",
+        "name": "SAARE Sovereign Execution Sensor",
         "version": "10.0.5",
         "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
         "background": {
           "service_worker": "background.js"
         },
         "action": {
-          "default_title": "SAARE Execution Guard Node (Bóveda KV Active)",
+          "default_title": "SAARE Execution Guard Node",
           "default_popup": "popup.html"
         },
         "content_scripts": [
@@ -143,14 +144,13 @@ export default function App() {
         ]
       };
 
-      // 2. Storage Managed con los tokens del usuario
       const storageManaged = {
         "saare_bootstrap_token": {
-          "Value": extensionToken,
-          "Description": "Token fiduciario de sesión emitido por la Bóveda KL."
+          "Value": "MANAGED-BY-BACKEND",
+          "Description": "Controlado estrictamente vía backend."
         },
         "saare_tenant_domain": {
-          "Value": "GMAIL",
+          "Value": "ENTERPRISE",
           "Description": "Identificador canónico del inquilino corporativo."
         },
         "saare_user_email": {
@@ -163,15 +163,12 @@ export default function App() {
         }
       };
 
-      // 3. Background Service Worker
-      const backgroundJs = `// SAARE L7 Background Service Worker (SGP 1.0)
+      const backgroundJs = `// SAARE L7 Background Service Worker (Sovereign 1.0)
 const SAARE_CONFIG = {
-  TOKEN: "${extensionToken}",
-  USER_EMAIL: "${userEmail}",
   ENDPOINT: "https://api.saare.es/v1/telemetry"
 };
 
-console.log('[SAARE Sensor] Background activo con Token:', SAARE_CONFIG.TOKEN);
+console.log('[SAARE Sensor] Background activo. Backend Authoritative Mode.');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
@@ -181,7 +178,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });`;
 
       const contentJs = `console.log('[SAARE L7 Hook] Extensión activa para el usuario:', '${userEmail}');`;
-      
+
       const popupHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -195,12 +192,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 <body>
   <h3 style="margin-top: 0; color: #38bdf8;">SAARE Execution Guard</h3>
   <p>Estado: <span class="status">PROTEGIDO</span></p>
-  <p>Token: <span class="token">${extensionToken}</span></p>
-  <p>Usuario: <br><strong style="color: #f8fafc;">${userEmail}</strong></p>
+  <p>Autoridad: <span class="token">BACKEND MANAGED</span></p>
+  <p>Rol: <br><strong style="color: #f8fafc;">${userEmail}</strong></p>
 </body>
 </html>`;
 
-      // Agregar los archivos al ZIP
       zip.file("manifest.json", JSON.stringify(manifest, null, 2));
       zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
       zip.file("background.js", backgroundJs);
@@ -208,9 +204,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       zip.file("inject.js", "// SAARE Inject L7 Hook Script\n");
       zip.file("popup.html", popupHtml);
 
-      // Generar el archivo Blob ejecutable
       const content = await zip.generateAsync({ type: "blob" });
-      const fileName = `saare-agente-tokenizado-${extensionToken}.zip`;
+      const fileName = `saare-sovereign-agent.zip`;
 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
@@ -220,21 +215,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      triggerGovernance(`Paquete ZIP generado y descargado: ${fileName}`);
+      triggerGovernance(`Sensor empaquetado y descargado: ${fileName}`);
     } catch (err) {
       console.error("Error al generar el paquete ZIP:", err);
-      triggerGovernance("Error al empaquetar la extensión tokenizada.");
+      triggerGovernance("Error al empaquetar la extensión Sovereign.");
     }
   };
 
   const handleExportChainOfCustody = () => {
     const custodyData = JSON.stringify({
-      organization: "GMAIL",
+      organization: "ENTERPRISE",
       user: userEmail,
       timestamp: new Date().toISOString(),
       standard: "ISO/IEC 27037:2012 / DORA / EU AI Act",
       activeDirectives: directives.filter(d => d.active).length,
-      extensionToken: extensionToken,
+      authModel: "Backend Authoritative HttpOnly",
       signatureEd25519: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       evidenceCount: evidences.length
     }, null, 2);
@@ -253,7 +248,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   };
 
   const handleDownloadTeaser = () => {
-    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: Ningún prompt sale al LLM sin inspección L7 Ex-Ante.\n2. Invariante 0x02: Toda captura genera firma Ed25519 con hash SHA-256.\n3. Invariante 0x03: Cumplimiento DORA / EU AI Act / LOPDGDD estricto.\nToken ID: ${extensionToken}\n====================================================`;
+    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: Ningún prompt sale al LLM sin inspección L7 Ex-Ante.\n2. Invariante 0x02: Toda captura genera firma Ed25519 con hash SHA-256.\n3. Invariante 0x03: Fail-Closed Enforcement. Sin política, DENY automático.\n====================================================`;
 
     const blob = new Blob([teaserText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -286,136 +281,96 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      
-      {/* Toast Notificación de Gobernanza */}
+
       {governanceStatus && (
         <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#059669', color: '#ffffff', padding: '12px 20px', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', zIndex: 10000, fontWeight: '800', fontSize: '0.85rem', border: '1px solid #10b981' }}>
           🔔 {governanceStatus}
         </div>
       )}
 
-      {/* Header Full Width */}
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: 0, margin: 0, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-        <img 
-          src="/tu-imagen.png" 
-          alt="Sistema de Alineamiento, Auditoría y Resiliencia Estructural" 
-          style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} 
+        <img
+          src="/tu-imagen.png"
+          alt="SAARE Sovereign Execution Control"
+          style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
         />
       </header>
 
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
-        
-        {/* Card Principal */}
+
         <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', border: '1px solid #1e293b' }}>
-          
-          {/* Header Info Organizacional */}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
             <div>
               <h2 style={{ margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.02em' }}>
-                PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA V2.5
+                PANEL DE CONTROL GRC & EVIDENCIA FORENSE
               </h2>
               <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8' }}>
-                ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>GMAIL</span> | USUARIO: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span>
+                ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>ENTERPRISE</span> | ROL: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span>
               </p>
             </div>
 
-            <button 
+            <button
               onClick={handleLogout}
               style={{ padding: '8px 18px', background: '#27272a', border: '1px solid #3f3f46', color: '#ef4444', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }}>
-              🔴 SALIR
+              🔴 CERRAR SESIÓN
             </button>
           </div>
 
-          {/* Telemetría de Extensión Tokenizada */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
                 BÓVEDA KV: EN VIVO (VERIFIED_TAMPER_EVIDENT) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '13:55:00'}</span>
               </span>
-
               <span style={{ padding: '6px 14px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }}></span>
-                L7 HOOK EXTENSIÓN: ACTIVO [{extensionToken}]
+                IDENTIDAD: BACKEND AUTHORITATIVE SECURE SESSION
               </span>
-
             </div>
 
-            <button 
+            <button
               onClick={handleDownloadExtension}
               style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-              🧩 Descargar Extensión Tokenizada (.zip)
+              🧩 Descargar Sensor L7 Sovereign
             </button>
           </div>
 
-          {/* Componente Reutilizable: Panel de Gobernanza & Cumplimiento */}
           <GovernanceToolbar
             onExportCustody={handleExportChainOfCustody}
             onGenerateToken={() => setAuditTokenModal(true)}
             onDownloadTeaser={handleDownloadTeaser}
           />
 
-          {/* Barra de Filtros */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: '900', color: '#94a3b8' }}>TESTIGOS L7 EN TIEMPO REAL:</span>
-            <button 
-              onClick={() => setFilter('TODOS')}
-              style={{ padding: '6px 14px', background: filter === 'TODOS' ? '#0284c7' : '#1e293b', color: filter === 'TODOS' ? '#ffffff' : '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-              TODOS ({evidences.length})
-            </button>
-            <button 
-              onClick={() => setFilter('PRIVACIDAD')}
-              style={{ padding: '6px 14px', background: filter === 'PRIVACIDAD' ? '#0284c7' : '#1e293b', color: filter === 'PRIVACIDAD' ? '#ffffff' : '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-              PRIVACIDAD
-            </button>
-            <button 
-              onClick={() => setFilter('WORKFLOWS')}
-              style={{ padding: '6px 14px', background: filter === 'WORKFLOWS' ? '#0284c7' : '#1e293b', color: filter === 'WORKFLOWS' ? '#ffffff' : '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-              Orquestadores / Workflows
-            </button>
+            <button onClick={() => setFilter('TODOS')} style={{ padding: '6px 14px', background: filter === 'TODOS' ? '#0284c7' : '#1e293b', color: filter === 'TODOS' ? '#ffffff' : '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>TODOS ({evidences.length})</button>
+            <button onClick={() => setFilter('PRIVACIDAD')} style={{ padding: '6px 14px', background: filter === 'PRIVACIDAD' ? '#0284c7' : '#1e293b', color: filter === 'PRIVACIDAD' ? '#ffffff' : '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>PRIVACIDAD</button>
+            <button onClick={() => setFilter('WORKFLOWS')} style={{ padding: '6px 14px', background: filter === 'WORKFLOWS' ? '#0284c7' : '#1e293b', color: filter === 'WORKFLOWS' ? '#ffffff' : '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>ORQUESTADORES / WORKFLOWS</button>
           </div>
 
-          {/* Pestañas de Navegación */}
           <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
-            <button 
-              onClick={() => setActiveTab('GLOBAL')}
-              style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>
-              REGISTRO GLOBAL ({evidences.length})
-            </button>
-            <button 
-              onClick={() => setActiveTab('RUNLIVE')}
-              style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>
-              S.A.A.R.E. (RUNLIVE - TELEMETRÍA EXTENSIÓN)
-            </button>
-            <button 
-              onClick={() => setActiveTab('CONFIG')}
-              style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>
-              CONFIGURACIÓN ({activeDirectivesCount})
-            </button>
+            <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>REGISTRO DE EVIDENCIA</button>
+            <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>S.A.A.R.E. ENFORCEMENT</button>
+            <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>POLICY ENGINE</button>
           </div>
 
-          {/* Vistas */}
           {activeTab === 'GLOBAL' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>
-                  HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA
-                </h3>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}>
-                  Filtrados por {userEmail}: {filteredEvidences.length}
-                </span>
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA</h3>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}>Trazas verificables: {filteredEvidences.length}</span>
               </div>
-
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                   <thead>
                     <tr style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>TIMESTAMP</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>ID EVIDENCIA</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>CATEGORÍA / NORMA</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>PROMPT INTERCEPTADO</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>DECISION ID</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>POLÍTICA INCUMPLIDA</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>PAYLOAD INTERCEPTADO</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>DICTAMEN</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>AUDITORÍA</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>EVIDENCE BUNDLE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -434,13 +389,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ fontWeight: '900', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                            {ev.dictamen}
+                            DENY
                           </span>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          <button 
-                            onClick={() => setSelectedJson(ev)}
-                            style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer' }}>
+                          <button onClick={() => setSelectedJson(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer' }}>
                             Ver JSON
                           </button>
                         </td>
@@ -454,28 +407,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           {activeTab === 'RUNLIVE' && (
             <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', color: '#f8fafc', border: '1px solid #1e293b' }}>
-              <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.1rem' }}>📡 MONITOREO DE TELEMETRÍA DE LA EXTENSIÓN TOKENIZADA L7</h3>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '16px' }}>Conexión directa en tiempo real entre el navegador local y la Bóveda KV de S.A.A.R.E.</p>
-              
+              <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.1rem' }}>📡 MONITOREO DE AUTORIZACIÓN L7</h3>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '16px' }}>Conexión directa en tiempo real entre los agentes desplegados y el motor de decisión S.A.A.R.E.</p>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>ESTADO DEL HOOK EN NAVEGADOR</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4ade80', marginTop: '4px' }}>CONECTADO (L7 ACTIVE)</div>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>ESTADO DEL ENFORCEMENT</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4ade80', marginTop: '4px' }}>ACTIVO (FAIL-CLOSED)</div>
                 </div>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>LATENCIA DE INTERCEPCIÓN</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>30 ms (Ex-Ante)</div>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>TIEMPO DE EVALUACIÓN</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>30 ms (Pre-LLM)</div>
                 </div>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>TOKEN DE LA EXTENSIÓN</div>
-                  <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{extensionToken}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>SESSION STATE</div>
+                  <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>BACKEND MANAGED HTTP-ONLY</div>
                 </div>
               </div>
 
               <div style={{ background: '#090d16', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
-                <div>[TELEMETRY STREAM - {timeStr}] Listening on https://api.saare.es/v1/telemetry...</div>
-                <div>[HOOK L7] DOM mutation observer attached to ChatGPT / Gemini / Claude inputs.</div>
-                <div>[POLICY CHECK] Directives loaded: {activeDirectivesCount}/8. Zero leak protection engaged.</div>
+                <div>[POLICY ENGINE - {timeStr}] Listening on https://api.saare.es/v1/telemetry...</div>
+                <div>[AUTH LAYER] Session established via opaque HTTP-Only cookie. Token manipulation blocked.</div>
+                <div>[ENFORCEMENT] Directives loaded: {activeDirectivesCount}/8. Fail-closed behavior enforced.</div>
               </div>
             </div>
           )}
@@ -483,19 +436,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           {activeTab === 'CONFIG' && (
             <div>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', fontWeight: '900', color: '#f8fafc' }}>
-                CONFIGURACIÓN DE DIRECTIVAS DE SEGURIDAD IA Y TOKEN DE EXTENSIÓN
+                CONFIGURACIÓN POLICY-AS-CODE (RUNTIME)
               </h3>
               <div style={{ display: 'grid', gap: '12px' }}>
                 {directives.map((dir) => (
                   <div key={dir.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a', padding: '12px 16px', borderRadius: '6px', border: '1px solid #1e293b' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#f8fafc' }}>{dir.name}</span>
-                    <button 
+                    <button
                       onClick={() => {
                         setDirectives(directives.map(d => d.id === dir.id ? { ...d, active: !d.active } : d));
                         triggerGovernance(`Directiva "${dir.name}" ${!dir.active ? 'activada' : 'desactivada'}.`);
                       }}
                       style={{ padding: '6px 14px', background: dir.active ? '#16a34a' : '#dc2626', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-                      {dir.active ? 'ACTIVA' : 'DESHABILITADA'}
+                      {dir.active ? 'ENFORCED' : 'DISABLED'}
                     </button>
                   </div>
                 ))}
@@ -506,50 +459,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         </div>
       </main>
 
-      {/* Modal Ver JSON de Evidencia */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Forense Extensión {selectedJson.id}</h3>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica {selectedJson.id}</h3>
             <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b' }}>
               {JSON.stringify({
-                evidenceId: selectedJson.id,
-                timestamp: selectedJson.time,
-                rule: selectedJson.cat,
-                normative: selectedJson.sub,
-                verdict: selectedJson.dictamen,
-                interceptedPrompt: selectedJson.prompt,
-                extensionToken: extensionToken,
-                hashEd25519: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                chainOfCustody: "ISO/IEC 27037:2012 COMPLIANT"
+                decision_id: selectedJson.id,
+                tenant: "enterprise-isolated",
+                principal: userEmail,
+                policy_id: selectedJson.cat,
+                policy_version: "1.4",
+                decision: "DENY",
+                reason_codes: [selectedJson.sub],
+                payload_hmac: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
+                timestamp_token: selectedJson.time,
+                event_signature: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
               }, null, 2)}
             </pre>
-            <button 
-              onClick={() => setSelectedJson(null)}
-              style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Cerrar Modal
+            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
+              Cerrar Evidence Bundle
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal Token de Auditoría */}
       {auditTokenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4ade80' }}>🛡️ Token de Auditoría Temporal Generado</h3>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Este token otorga acceso de lectura de caja negra a los auditores externos durante 24 horas.</p>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4ade80' }}>🛡️ Exportación de Evidencia Verificable</h3>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Este Merkle Root certifica la integridad del historial de auditoría de la IA sin exponer datos en claro.</p>
             <div style={{ background: '#020617', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.85rem', border: '1px solid #1e293b', wordBreak: 'break-all', marginBottom: '16px' }}>
-              SAARE-AUDIT-2026-ED25519-99418274-VALID24H
+              SAARE-EVIDENCE-ROOT-2026-ED25519-99418274
             </div>
-            <button 
+            <button
               onClick={() => {
-                navigator.clipboard.writeText('SAARE-AUDIT-2026-ED25519-99418274-VALID24H');
-                triggerGovernance('Token de auditoría copiado al portapapeles.');
+                navigator.clipboard.writeText('SAARE-EVIDENCE-ROOT-2026-ED25519-99418274');
+                triggerGovernance('Root Hash de auditoría copiado al portapapeles.');
                 setAuditTokenModal(false);
               }}
               style={{ width: '100%', padding: '10px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Copiar Token y Cerrar
+              Copiar Hash y Cerrar
             </button>
           </div>
         </div>

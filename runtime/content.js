@@ -21,18 +21,16 @@ function updateDomContext(settings, userEmail, tenantDomain) {
 
 function syncStorageAndContext() {
   if (typeof chrome !== "undefined" && chrome.storage) {
-    // Primero intentamos leer de storage.managed (Políticas de empresa del .bat)
     if (chrome.storage.managed) {
       chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
         const managedUser = managed?.saare_user_email;
         const managedTenant = managed?.saare_tenant_domain;
         
-        // Si no hay managed, leemos de local
         chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
           updateDomContext(
             local?.saare_settings || DEFAULT_SETTINGS_V10,
-            managedUser || local?.saare_user_email || "operator@corporate.local",
-            managedTenant || local?.saare_tenant_domain || "CORPORATE_TENANT"
+            managedUser || local?.saare_user_email || "el.abuelo.del.punk@gmail.com",
+            managedTenant || local?.saare_tenant_domain || "ALFON TEST"
           );
         });
       });

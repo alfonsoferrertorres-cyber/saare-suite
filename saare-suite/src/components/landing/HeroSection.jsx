@@ -1,35 +1,63 @@
 ﻿import React from 'react';
-import HeroBackground from './canvas/HeroBackground';
 
-export default function HeroSection() {
+export default function HeroSection({ onOpenSandbox, onViewArchitecture, onOpenEnterprise }) {
   return (
-    <section className="relative pt-24 pb-6 px-4 sm:px-6 bg-[#050811] text-white overflow-hidden flex flex-col items-center justify-center">
-      {/* Fondo interactivo Canvas */}
-      <HeroBackground />
+    <section style={{ position: 'relative', overflow: 'hidden', padding: '80px 20px 60px', background: '#030712', color: '#f8fafc', textAlign: 'center', borderBottom: '1px solid #1e293b' }}>
+      
+      {/* Elementos de diseño perimetral de fondo */}
+      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '1000px', height: '400px', background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, rgba(3,7,18,0) 70%]', pointerEvents: 'none', zIndex: 0 }}></div>
 
-      {/* Resplandor ambiental de fondo */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#C5A059]/10 blur-[140px] pointer-events-none rounded-full" />
-
-      <div className="relative z-10 max-w-6xl w-full mx-auto text-center flex flex-col items-center space-y-3">
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* NOMBRE COMPLETO ESTILO FIRMA EN ORO FINO */}
-        <div className="font-serif italic font-light text-xs sm:text-sm md:text-base text-[#C5A059] tracking-widest uppercase opacity-90 select-none">
-          Sistema Avanzado de Análisis y Resguardo Estructurado
+        {/* Badges de Vanguardia */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <span style={{ padding: '6px 12px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '800', letterSpacing: '0.05em' }}>
+            MODEL AGNOSTIC
+          </span>
+          <span style={{ padding: '6px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '800', letterSpacing: '0.05em' }}>
+            SOVEREIGN DEPLOYMENT
+          </span>
+          <span style={{ padding: '6px 12px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid #d97706', color: '#fbbf24', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '800', letterSpacing: '0.05em' }}>
+            CRYPTOGRAPHIC EVIDENCE
+          </span>
         </div>
 
-        {/* ESCUDO / BANNER PRINCIPAL */}
-        <div className="relative group w-full overflow-hidden rounded-2xl border border-[#C5A059]/30 bg-[#050811]">
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#C5A059] via-[#E5C158] to-[#C5A059] rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-          
-          <img 
-            src="/Gemini_Generated_Image_ddbiwaddbiwaddbi.png" 
-            alt="S.A.A.R.E." 
-            className="relative w-full h-auto object-cover rounded-2xl block"
-          />
+        {/* Título Principal */}
+        <h1 style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)', fontWeight: '900', lineHeight: '1.1', marginBottom: '20px', letterSpacing: '-0.03em' }}>
+          La capa de autorización para la <span style={{ background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>IA empresarial</span>
+        </h1>
+
+        {/* Subtítulo de Posicionamiento */}
+        <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.2rem)', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px', maxWidth: '760px', marginInline: 'auto' }}>
+          SAARE intercepta decisiones de agentes, LLM y herramientas, aplica políticas en tiempo real y genera evidencia verificable antes de que una acción afecte a tus datos o sistemas.
+        </p>
+
+        {/* Frase Diferencial de Mercado */}
+        <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderLeft: '4px solid #38bdf8', padding: '14px 20px', borderRadius: '6px', maxWidth: '640px', margin: '0 auto 36px', textAlign: 'left', fontSize: '0.85rem', color: '#e2e8f0', fontFamily: 'monospace' }}>
+          <span style={{ color: '#94a3b8' }}># Security axiom:</span><br/>
+          &quot;Security products inspect AI. SAARE decides whether AI is authorized to execute.&quot;
+        </div>
+
+        {/* CTAs Principales */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={onOpenSandbox}
+            style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(2,132,199,0.4)', transition: 'transform 0.2s' }}>
+            Probar Sandbox Técnico
+          </button>
+          <button 
+            onClick={onViewArchitecture}
+            style={{ padding: '12px 24px', background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer', transition: 'background 0.2s' }}>
+            Ver Arquitectura L7
+          </button>
+          <button 
+            onClick={onOpenEnterprise}
+            style={{ padding: '12px 24px', background: 'transparent', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '8px', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer' }}>
+            Enterprise & Soberanía
+          </button>
         </div>
 
       </div>
     </section>
   );
 }
-

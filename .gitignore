@@ -7,3 +7,5 @@ target/
 # Ignorar paquetes comprimidos
 *.zip
 !saare-console/public/saare-extension.zip
+
+control-plane/.wrangler/

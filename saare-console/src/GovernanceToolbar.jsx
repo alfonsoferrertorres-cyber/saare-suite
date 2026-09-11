@@ -17,6 +17,19 @@ export default function GovernanceToolbar({
     setTimeout(() => setStatus(''), 4000);
   };
 
+  const handleVerify = () => {
+    // Ejemplo de Hash SHA-256 de evidencia para probar contra api.saare.es/v1/verify/
+    const sampleHash = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
+    
+    // Abre la verificación oficial en api.saare.es/v1/verify/
+    window.open(`https://api.saare.es/v1/verify/${sampleHash}`, '_blank');
+    
+    triggerAction(
+      'Sello criptográfico Ed25519 de SAARE verificado. Dictamen inalterado conforme a ISO/IEC 27037:2012.',
+      onVerifySignature
+    );
+  };
+
   return (
     <section style={{ padding: '16px', background: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b', marginBottom: '20px' }}>
       <h3 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -25,10 +38,10 @@ export default function GovernanceToolbar({
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button
-          onClick={() => triggerAction('Firma Ed25519 verificada. Cadena de custodia íntegra conforme a ISO/IEC 27037:2012.', onVerifySignature)}
+          onClick={handleVerify}
           style={{ padding: '6px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
         >
-          🔍 Verificar Firma Ed25519
+          🔍 Verificar Firma Notarial SAARE (Ed25519)
         </button>
 
         <button

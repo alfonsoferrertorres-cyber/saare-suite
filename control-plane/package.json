@@ -3,6 +3,8 @@
   "version": "1.5.0",
   "type": "module",
   "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
     "deploy": "wrangler deploy",
     "test:fuzz": "node resilienceGate.js",
     "test:replay": "node resilienceGate.js",
@@ -14,7 +16,7 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "jszip": "^3.10.1",
+    "jszip": "^3.10.2",
     "stripe": "^22.6.1"
   }
 }

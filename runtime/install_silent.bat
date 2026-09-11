@@ -39,8 +39,8 @@ if defined SAARE_BOOTSTRAP_TOKEN set "SAARE_BOOTSTRAP_TOKEN=%SAARE_BOOTSTRAP_TOK
 if defined TENANT_DOMAIN set "TENANT_DOMAIN=%TENANT_DOMAIN:"=%"
 if defined USER_EMAIL set "USER_EMAIL=%USER_EMAIL:"=%"
 
-if "%TENANT_DOMAIN%"=="" set "TENANT_DOMAIN=SAARE_CORP_ADMIN"
-if "%USER_EMAIL%"=="" set "USER_EMAIL=alfonel.abuelo.del.punk@gmail.com"
+if "%TENANT_DOMAIN%"=="" set "TENANT_DOMAIN=ALFON TEST"
+if "%USER_EMAIL%"=="" set "USER_EMAIL=el.abuelo.del.punk@gmail.com"
 if "%SAARE_BOOTSTRAP_TOKEN%"=="" set "SAARE_BOOTSTRAP_TOKEN=sk_saare_live_master_kv_session"
 
 echo [INFO] Inquilino: %TENANT_DOMAIN%

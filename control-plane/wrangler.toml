@@ -1,5 +1,5 @@
-name = "saare-api"
-main = "server.js"
+name = "control-plane"
+main = "src/index.js"
 compatibility_date = "2026-09-07"
 compatibility_flags = ["nodejs_compat"]
 
@@ -9,3 +9,8 @@ ENVIRONMENT = "production"
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "13d8703a3b374170a24d4c994e5779fa"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "saare-db"
+database_id = "85108385-a75a-4764-a9e8-973bfb83d899"
