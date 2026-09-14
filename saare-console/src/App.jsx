@@ -55,7 +55,8 @@ export default function App() {
 
     const fetchTelemetry = async () => {
       try {
-        const res = await saareFetch(`/api/v1/runs?t=${Date.now()}`, {
+        // CORREGIDO: /runs en lugar de /api/v1/runs para no duplicar la base del endpoint
+        const res = await saareFetch(`/runs?t=${Date.now()}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('saare_token') || ''}`,
@@ -626,7 +627,8 @@ window.addEventListener("message", (event) => {
               </div>
 
               <div style={{ background: '#090d16', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
-                <div>[POLICY ENGINE - {timeStr}] Listening on {API_BASE_URL}/api/v1/runs...</div>
+                {/* CORREGIDO: {API_BASE_URL}/runs renderiza limpia y exactamente la URL del endpoint sin duplicar /api/v1 */}
+                <div>[POLICY ENGINE - {timeStr}] Listening on {API_BASE_URL}/runs...</div>
                 <div>[AUTH LAYER] Credenciales vinculadas para: {userEmail}.</div>
                 <div>[ENFORCEMENT] Directivas cargadas: {activeDirectivesCount}/8. Zero-Noise Guard Enforcement.</div>
               </div>
