@@ -118,321 +118,32 @@ export default function App() {
     setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
-  // DESCARGA Y TOKENIZACIÓN EN TIEMPO REAL DE LA EXTENSIÓN SOVEREIGN L7
+  // TOKENIZACIÓN EN TIEMPO REAL DESDE /public/extension-base.zip
   const handleDownloadExtension = async () => {
     try {
-      const zip = new JSZip();
       const currentToken = localStorage.getItem('saare_token') || 'sk_saare_live_managed_identity';
       const currentUserEmail = userEmail || localStorage.getItem('saare_user_email') || 'legal@saare.es';
 
-      const manifest = {
-        "manifest_version": 3,
-        "name": "SAARE Execution Authorization Sensor",
-        "version": "10.1.1",
-        "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
-        "background": { "service_worker": "background.js" },
-        "action": { 
-          "default_title": "SAARE Execution Guard Node (Active Token)", 
-          "default_popup": "popup.html" 
-        },
-        "content_scripts": [{
-          "matches": [
-            "https://gemini.google.com/*", "https://chatgpt.com/*", "https://chat.openai.com/*",
-            "https://claude.ai/*", "https://copilot.microsoft.com/*", "https://chat.deepseek.com/*", "https://www.perplexity.ai/*"
-          ],
-          "js": ["content.js"],
-          "run_at": "document_start"
-        }],
-        "web_accessible_resources": [{
-          "resources": ["inject.js"],
-          "matches": [
-            "https://gemini.google.com/*", "https://chatgpt.com/*", "https://chat.openai.com/*",
-            "https://claude.ai/*", "https://copilot.microsoft.com/*", "https://chat.deepseek.com/*", "https://www.perplexity.ai/*"
-          ]
-        }],
-        "permissions": ["storage", "alarms", "downloads"],
-        "host_permissions": [
-          "https://api.saare.es/*",
-          "http://localhost:3000/*"
-        ]
-      };
+      // 1. Cargar el ZIP virgen almacenado en la carpeta public/
+      const response = await fetch('/extension-base.zip');
+      if (!response.ok) {
+        throw new Error("No se encontró el paquete base extension-base.zip en la carpeta public/.");
+      }
 
+      const zipBlob = await response.blob();
+      const zip = await JSZip.loadAsync(zipBlob);
+
+      // 2. Configurar la credencial tokenizada
       const storageManaged = {
         "saare_user_email": { "Value": currentUserEmail, "Description": "Email del operador autorizado tokenizado." },
         "saare_tenant_domain": { "Value": "ENTERPRISE", "Description": "Inquilino canónico de la Bóveda." },
         "saare_token": { "Value": currentToken, "Description": "Token OIDC de sincronización con la Bóveda." }
       };
 
-      const backgroundJs = `const WORKER_URL = "https://api.saare.es/api/v1";
-const AUTH_TOKEN = "${currentToken}";
-const MANAGED_USER = "${currentUserEmail}";
-
-async function resolveIdentity(payloadUser) {
-  return new Promise((resolve) => {
-    if (chrome.storage?.managed) {
-      chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
-        if (managed?.saare_user_email) {
-          return resolve({
-            user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "ENTERPRISE"
-          });
-        }
-        fallbackLocal();
-      });
-    } else {
-      fallbackLocal();
-    }
-
-    function fallbackLocal() {
-      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = local?.saare_user_email || MANAGED_USER || payloadUser || "legal@saare.es";
-        const finalTenant = local?.saare_tenant_domain || "ENTERPRISE";
-        resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
-      });
-    }
-  });
-}
-
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({
-    saare_user_email: "${currentUserEmail}",
-    saare_tenant_domain: "ENTERPRISE",
-    saare_token: "${currentToken}"
-  });
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "SAARE_LOG_EVENT") {
-    resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
-      const enrichedPayload = { 
-        ...message.payload, 
-        user: user, 
-        tenant: tenant,
-        node: "2607076315021",
-        merkleRoot: message.payload?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
-        status: "SECURE_ROOT_ANCHOR",
-        timestamp: message.payload?.timestamp || new Date().toISOString()
-      };
-
-      chrome.storage.local.get({ saare_logs: [] }, (result) => {
-        const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-        const existsIndex = current.findIndex(item => item.evidence_id === enrichedPayload.evidence_id);
-        
-        let updatedLogs = [...current];
-        if (existsIndex >= 0) {
-          updatedLogs[existsIndex] = enrichedPayload;
-        } else {
-          updatedLogs = [enrichedPayload, ...current].slice(0, 100);
-        }
-        chrome.storage.local.set({ saare_logs: updatedLogs });
-      });
-
-      fetch(\`\${WORKER_URL}/runs\`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json; charset=utf-8",
-          "Authorization": \`Bearer \${AUTH_TOKEN}\`
-        },
-        body: JSON.stringify(enrichedPayload)
-      })
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, error: err.message }));
-    });
-    return true;
-  }
-});`;
-
-      const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.1.1 (SGP 1.0)
-console.log("[SAARE L7 Engine] Sensor Tokenizado Activo para: ${currentUserEmail}");
-
-const DEFAULT_SETTINGS_V10 = {
-  cumplimiento_corporativo_integral: true,
-  auditoria_dictamen_normativo: true,
-  razonamiento_activo_l7: true
-};
-
-function updateDomContext(settings, userEmail, tenantDomain) {
-  if (settings) document.documentElement.setAttribute("data-saare-settings", JSON.stringify(settings));
-  if (userEmail) document.documentElement.setAttribute("data-saare-user", userEmail);
-  if (tenantDomain) document.documentElement.setAttribute("data-saare-tenant", tenantDomain);
-}
-
-updateDomContext(DEFAULT_SETTINGS_V10, "${currentUserEmail}", "ENTERPRISE");
-
-try {
-  const injectScript = document.createElement("script");
-  injectScript.src = chrome.runtime.getURL("inject.js");
-  injectScript.onload = function () { this.remove(); };
-  (document.head || document.documentElement).appendChild(injectScript);
-} catch (e) {}
-
-function hashCode(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36).toUpperCase();
-}
-
-function sendEvidenceToBackground(verdictData) {
-  const promptText = verdictData.cleanPrompt || "";
-  const responseText = verdictData.responseOutput || "";
-  const promptHash = hashCode(promptText.trim());
-  
-  const payload = {
-    verdict_schema: "SGP_1.0",
-    verdictId: verdictData.verdictId || \`VRD-2026-\${promptHash.substring(0, 5)}\`,
-    evidence_id: verdictData.evidence_id || \`EV-L7-\${promptHash}\`,
-    decision: verdictData.decision || "ALLOW",
-    verdict: verdictData.verdict || "PERMITIDO",
-    reason: verdictData.reason || "Auditoría en tiempo real realizada",
-    merkleRoot: verdictData.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
-    node: "2607076315021",
-    status: "SECURE_ROOT_ANCHOR",
-    prompt: promptText,
-    responseOutput: responseText,
-    user: "${currentUserEmail}",
-    tenant: "ENTERPRISE",
-    timestamp: new Date().toISOString()
-  };
-
-  if (typeof chrome !== "undefined" && chrome.runtime?.id) {
-    chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
-  }
-}
-
-window.addEventListener("message", (event) => {
-  if (event.data?.type === "SAARE_VERDICT_EVENT" || event.data?.type === "SAARE_EVENT") {
-    const verdictData = event.data.payload || event.data.data;
-    if (verdictData) sendEvidenceToBackground(verdictData);
-  }
-});`;
-
-      const injectJs = `/* S.A.A.R.E. L7 RAM Network Interceptor - 8 Directivas Enforced v8.8.0 */
-(function() {
-  const DLP = {
-    dni: /\\b(?:\\d{8}[A-HJ-NP-TV-Z]|[XYZ]\\d{7}[A-HJ-NP-TV-Z])\\b/i,
-    iban: /\\bES\\d{2}[\\s-]?(?:\\d{4}[\\s-]?){4}\\d{2}\\b/i,
-    card: /\\b(?:4[0-9]{3}|5[1-5][0-9]{2}|3[47][0-9]{2})[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{1,4}\\b/
-  };
-
-  const OWASP = /(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script)/i;
-
-  let lastPrompt = "";
-  let lastTime = 0;
-
-  function evaluateDirectivesExAnte(rawBody) {
-    let str = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody || {});
-    if (!str || str.length < 4) return null;
-    if (str.includes('"ping"') || str.includes('"action": "next"')) return null;
-
-    const now = Date.now();
-    if (str === lastPrompt && (now - lastTime) < 3000) return null;
-
-    lastPrompt = str;
-    lastTime = now;
-
-    const isPii = DLP.dni.test(str) || DLP.iban.test(str.replace(/[\\s-]/g, "")) || DLP.card.test(str.replace(/[\\s-]/g, ""));
-    const isInjection = OWASP.test(str);
-    const isViolation = isPii || isInjection;
-
-    let norma = "EU AI Act / DORA Conforme";
-    let reason = "Tráfico verificado bajo directivas enforzadas";
-    if (isPii) {
-      norma = "EU AI Act / LOPDGDD (Art. 10 & 15)";
-      reason = "Detección Ex-Ante de Datos Sensibles (PII)";
-    } else if (isInjection) {
-      norma = "OWASP LLM01 / LLM06";
-      reason = "Intento de Prompt Injection / Jailbreak Bloqueado";
-    }
-
-    return {
-      verdict: isViolation ? "RECHAZADO" : "PERMITIDO",
-      decision: isViolation ? "DENY" : "ALLOW",
-      category: isPii ? "PII_DETECTED" : (isInjection ? "PROMPT_INJECTION" : "AUDITORIA_CONFORME"),
-      norma: norma,
-      reason: reason,
-      cleanPrompt: str,
-      shouldBlock: isViolation,
-      merkleRoot: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
-      node: "2607076315021",
-      status: "SECURE_ROOT_ANCHOR"
-    };
-  }
-
-  const rawFetch = window.fetch;
-  window.fetch = async function(resource, config) {
-    let check = null;
-    if (config && config.body) {
-      check = evaluateDirectivesExAnte(config.body);
-    }
-
-    // Directiva 8: Zero-Trust Enforcement - Si se detecta violación, fail-closed
-    if (check && check.shouldBlock) {
-      console.warn("[SAARE GUARD] Petición bloqueada por directiva GRC:", check.reason);
-    }
-
-    const response = await rawFetch.apply(this, arguments);
-
-    if (check) {
-      try {
-        const clonedRes = response.clone();
-        clonedRes.text().then(responseText => {
-          check.responseOutput = responseText.slice(0, 1500);
-          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        }).catch(() => {
-          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        });
-      } catch (e) {
-        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-      }
-    }
-
-    return response;
-  };
-})();`;
-
-      const popupHtml = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { width: 310px; margin: 0; padding: 16px; background-color: #030712; color: #f3f4f6; font-family: system-ui, sans-serif; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; padding-bottom: 10px; margin-bottom: 12px; }
-    .title { font-weight: 900; font-size: 13px; color: #ffffff; letter-spacing: 1px; }
-    .badge-status { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .info-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px; font-size: 11px; margin-bottom: 12px; }
-    .label { color: #9ca3af; font-size: 9.5px; text-transform: uppercase; margin-bottom: 2px; }
-    .val { color: #38bdf8; font-family: monospace; margin-bottom: 8px; word-break: break-all; }
-    .btn-console { display: block; width: 100%; text-align: center; background: #0284c7; color: #ffffff; text-decoration: none; padding: 8px 0; border-radius: 6px; font-weight: bold; font-size: 11.5px; box-sizing: border-box; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <span class="title">SAARE SENSOR L7</span>
-    <span class="badge-status">● TOKENIZADO</span>
-  </div>
-  <div class="info-card">
-    <div class="label">Organización / Tenant</div>
-    <div class="val">ENTERPRISE</div>
-    <div class="label">Usuario / Operador</div>
-    <div class="val">${currentUserEmail}</div>
-    <div class="label">Token Bóveda KV</div>
-    <div class="val" style="color: #4ade80;">VINCULADO Y EN VIVO</div>
-  </div>
-  <a href="https://console.saare.es/" target="_blank" class="btn-console">Abrir SAARE GRC Console ↗</a>
-</body>
-</html>`;
-
-      zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+      // 3. Sobrescribir el archivo de configuración en caliente
       zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
-      zip.file("background.js", backgroundJs);
-      zip.file("content.js", contentJs);
-      zip.file("inject.js", injectJs);
-      zip.file("popup.html", popupHtml);
 
+      // 4. Generar el ZIP final tokenizado y descargar
       const content = await zip.generateAsync({ type: "blob" });
       const fileName = `saare-agente-tokenizado-${currentUserEmail.replace(/[@.]/g, "_")}.zip`;
 
@@ -444,10 +155,10 @@ window.addEventListener("message", (event) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      triggerGovernance(`Sensor tokenizado e inyectado con éxito para ${currentUserEmail}`);
+      triggerGovernance(`Sensor tokenizado descargado con éxito para ${currentUserEmail}`);
     } catch (err) {
-      console.error("Error al empaquetar la extensión:", err);
-      triggerGovernance("Error al empaquetar el Sensor Tokenizado.");
+      console.error("Error al tokenizar la extensión base:", err);
+      triggerGovernance("Error al tokenizar la extensión: " + err.message);
     }
   };
 
