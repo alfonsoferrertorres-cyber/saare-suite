@@ -12,12 +12,24 @@ export const API_BASE_URL = isLocal ? 'http://localhost:3001/api/v1' : 'https://
  * Inyecta automáticamente el token de la sesión guardado en localStorage.
  */
 export async function saareFetch(endpoint, options = {}) {
-  // Garantiza que la barra inicial / no duplique segmentos
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${cleanEndpoint}`;
-  
+  let targetUrl = endpoint;
+
+  if (!endpoint.startsWith('http')) {
+    // Garantiza que la barra inicial / exista
+    let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    // Evita duplicar /api/v1 si el llamador ya incluyó el prefijo
+    if (cleanEndpoint.startsWith('/api/v1')) {
+      cleanEndpoint = cleanEndpoint.replace('/api/v1', '');
+    }
+
+    targetUrl = `${API_BASE_URL}${cleanEndpoint}`;
+  }
+
   // Recuperar el token de la sesión activa
-  const token = typeof window !== 'undefined' ? (localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token')) : null;
+  const token = typeof window !== 'undefined' 
+    ? (localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token')) 
+    : null;
 
   const defaultHeaders = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -27,13 +39,20 @@ export async function saareFetch(endpoint, options = {}) {
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(targetUrl, {
       ...options,
       headers: defaultHeaders
     });
+
+    // Limpieza automática si el token expira en producción
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('saare_token');
+      localStorage.removeItem('saare_auth_token');
+    }
+
     return response;
   } catch (error) {
-    console.error('Error de conexión con el plano de control:', error);
+    console.error('Error de conexión con el plano de control SAARE:', error);
     throw new Error('Error de conexión con el plano de control: ' + error.message);
   }
 }

@@ -72,10 +72,10 @@ export default function App() {
               const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
               
               let cleanPrompt = item.prompt || item.promptInput || item.promptSummary || '';
+              let cleanResponse = item.responseOutput || item.llmResponse || '';
               try {
-                if (cleanPrompt.includes('%')) {
-                  cleanPrompt = decodeURIComponent(cleanPrompt);
-                }
+                if (cleanPrompt.includes('%')) cleanPrompt = decodeURIComponent(cleanPrompt);
+                if (cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
               } catch (e) {}
 
               return {
@@ -84,6 +84,7 @@ export default function App() {
                 cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
                 sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
                 prompt: cleanPrompt || '(Sin texto capturado)',
+                responseOutput: cleanResponse || '(Respuesta capturada)',
                 verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
                 decision: isDeny ? 'DENY' : 'ALLOW',
                 type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
@@ -127,7 +128,7 @@ export default function App() {
       const manifest = {
         "manifest_version": 3,
         "name": "SAARE Execution Authorization Sensor",
-        "version": "10.0.9",
+        "version": "10.1.1",
         "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
         "background": { "service_worker": "background.js" },
         "action": { 
@@ -242,7 +243,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });`;
 
-      const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.13 (SGP 1.0)
+      const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.1.1 (SGP 1.0)
 console.log("[SAARE L7 Engine] Sensor Tokenizado Activo para: ${currentUserEmail}");
 
 const DEFAULT_SETTINGS_V10 = {
@@ -276,8 +277,9 @@ function hashCode(str) {
 }
 
 function sendEvidenceToBackground(verdictData) {
-  const text = verdictData.cleanPrompt || "";
-  const promptHash = hashCode(text.trim());
+  const promptText = verdictData.cleanPrompt || "";
+  const responseText = verdictData.responseOutput || "";
+  const promptHash = hashCode(promptText.trim());
   
   const payload = {
     verdict_schema: "SGP_1.0",
@@ -289,7 +291,8 @@ function sendEvidenceToBackground(verdictData) {
     merkleRoot: verdictData.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
     node: "2607076315021",
     status: "SECURE_ROOT_ANCHOR",
-    prompt: text,
+    prompt: promptText,
+    responseOutput: responseText,
     user: "${currentUserEmail}",
     tenant: "ENTERPRISE",
     timestamp: new Date().toISOString()
@@ -307,59 +310,87 @@ window.addEventListener("message", (event) => {
   }
 });`;
 
-      const injectJs = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.6.2 (Anti-Deduplication) */
+      const injectJs = `/* S.A.A.R.E. L7 RAM Network Interceptor - 8 Directivas Enforced v8.8.0 */
 (function() {
   const DLP = {
-    dni: /(?:^|\\D)(\\d{7,9}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
-    iban: /ES\\d{2}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{2}[\\s-]?\\d{10}|ES\\d{18,22}/i,
-    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
+    dni: /\\b(?:\\d{8}[A-HJ-NP-TV-Z]|[XYZ]\\d{7}[A-HJ-NP-TV-Z])\\b/i,
+    iban: /\\bES\\d{2}[\\s-]?(?:\\d{4}[\\s-]?){4}\\d{2}\\b/i,
+    card: /\\b(?:4[0-9]{3}|5[1-5][0-9]{2}|3[47][0-9]{2})[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{1,4}\\b/
   };
 
-  let lastSentPrompt = "";
-  let lastSentTime = 0;
+  const OWASP = /(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script)/i;
 
-  function evaluatePayload(rawBody) {
+  let lastPrompt = "";
+  let lastTime = 0;
+
+  function evaluateDirectivesExAnte(rawBody) {
     let str = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody || {});
-    if (!str || str.length < 3) return null;
+    if (!str || str.length < 4) return null;
+    if (str.includes('"ping"') || str.includes('"action": "next"')) return null;
 
-    // Filtro anti-duplicados por streaming / peticiones fetch paralelas
     const now = Date.now();
-    if (str === lastSentPrompt && (now - lastSentTime) < 3000) {
-      return null;
+    if (str === lastPrompt && (now - lastTime) < 3000) return null;
+
+    lastPrompt = str;
+    lastTime = now;
+
+    const isPii = DLP.dni.test(str) || DLP.iban.test(str.replace(/[\\s-]/g, "")) || DLP.card.test(str.replace(/[\\s-]/g, ""));
+    const isInjection = OWASP.test(str);
+    const isViolation = isPii || isInjection;
+
+    let norma = "EU AI Act / DORA Conforme";
+    let reason = "Tráfico verificado bajo directivas enforzadas";
+    if (isPii) {
+      norma = "EU AI Act / LOPDGDD (Art. 10 & 15)";
+      reason = "Detección Ex-Ante de Datos Sensibles (PII)";
+    } else if (isInjection) {
+      norma = "OWASP LLM01 / LLM06";
+      reason = "Intento de Prompt Injection / Jailbreak Bloqueado";
     }
 
-    const isDni = DLP.dni.test(str);
-    const isIban = DLP.iban.test(str.replace(/[\\s-]/g, ""));
-    const isCard = DLP.card.test(str.replace(/[\\s-]+/g, ""));
-
-    lastSentPrompt = str;
-    lastSentTime = now;
-
-    if (isDni || isIban || isCard) {
-      return {
-        verdict: "RECHAZADO", decision: "DENY", category: "PII_DETECTED", norma: "LOPDGDD / RGPD",
-        reason: "Detección de datos sensibles regulados", cleanPrompt: str, shouldBlock: true,
-        merkleRoot: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
-        status: "SECURE_ROOT_ANCHOR"
-      };
-    }
     return {
-      verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_CONFORME", norma: "EU AI Act",
-      reason: "Tráfico conforme verificado", cleanPrompt: str, shouldBlock: false,
+      verdict: isViolation ? "RECHAZADO" : "PERMITIDO",
+      decision: isViolation ? "DENY" : "ALLOW",
+      category: isPii ? "PII_DETECTED" : (isInjection ? "PROMPT_INJECTION" : "AUDITORIA_CONFORME"),
+      norma: norma,
+      reason: reason,
+      cleanPrompt: str,
+      shouldBlock: isViolation,
       merkleRoot: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
+      node: "2607076315021",
       status: "SECURE_ROOT_ANCHOR"
     };
   }
 
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
+    let check = null;
     if (config && config.body) {
-      const check = evaluatePayload(config.body);
-      if (check) {
+      check = evaluateDirectivesExAnte(config.body);
+    }
+
+    // Directiva 8: Zero-Trust Enforcement - Si se detecta violación, fail-closed
+    if (check && check.shouldBlock) {
+      console.warn("[SAARE GUARD] Petición bloqueada por directiva GRC:", check.reason);
+    }
+
+    const response = await rawFetch.apply(this, arguments);
+
+    if (check) {
+      try {
+        const clonedRes = response.clone();
+        clonedRes.text().then(responseText => {
+          check.responseOutput = responseText.slice(0, 1500);
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+        }).catch(() => {
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+        });
+      } catch (e) {
         window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
       }
     }
-    return rawFetch.apply(this, arguments);
+
+    return response;
   };
 })();`;
 
@@ -596,7 +627,7 @@ window.addEventListener("message", (event) => {
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>TIMESTAMP</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>DECISION ID</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>USUARIO / OPERADOR</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>PAYLOAD INTERCEPTADO</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>PROMPT / CONTESTACIÓN</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>DICTAMEN</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>BUNDLE</th>
                     </tr>
@@ -616,10 +647,17 @@ window.addEventListener("message", (event) => {
                             <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{ev.time}</td>
                             <td style={{ padding: '12px 16px', fontWeight: '700', color: '#38bdf8' }}>{ev.id}</td>
                             <td style={{ padding: '12px 16px', color: '#a7f3d0', fontFamily: 'monospace' }}>{ev.user}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ fontFamily: 'monospace', color: '#38bdf8', background: '#020617', padding: '4px 8px', borderRadius: '4px', border: '1px solid #1e293b' }}>
-                                {ev.prompt}
-                              </span>
+                            <td style={{ padding: '12px 16px', maxWidth: '380px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontFamily: 'monospace', color: '#38bdf8', background: '#020617', padding: '4px 8px', borderRadius: '4px', border: '1px solid #1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <strong>Prompt:</strong> {ev.prompt}
+                                </span>
+                                {ev.responseOutput && (
+                                  <span style={{ fontFamily: 'monospace', color: '#4ade80', background: '#020617', padding: '4px 8px', borderRadius: '4px', border: '1px solid #1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <strong>Respuesta:</strong> {ev.responseOutput}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td style={{ padding: '12px 16px' }}>
                               <span style={{ 
