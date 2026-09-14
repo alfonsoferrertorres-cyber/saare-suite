@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-
-const API_BASE = 'https://api.saare.es/v1';
+import { API_BASE_URL } from './utils/api';
 
 export default function Login({ onLoginSuccess }) {
   const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'
@@ -16,6 +15,16 @@ export default function Login({ onLoginSuccess }) {
   const clearMessages = () => {
     setErrorMsg('');
     setSuccessMsg('');
+  };
+
+  const saveSessionAndProceed = (user, token) => {
+    localStorage.setItem('saare_token', token);
+    localStorage.setItem('saare_auth_token', token);
+    localStorage.setItem('saare_user_email', user.email);
+    localStorage.setItem('saare_tenant_domain', user.tenantName || 'ENTERPRISE');
+    localStorage.setItem('saare_session_user', JSON.stringify(user));
+    setLoading(false);
+    onLoginSuccess(user);
   };
 
   // 1. Lógica de Inicio de Sesión
@@ -41,15 +50,18 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
       });
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        saveSessionAndProceed(data.user, data.token);
+      if (res.ok && (data.success || data.token)) {
+        saveSessionAndProceed(data.user || { email: cleanEmail, tenantName: 'ENTERPRISE' }, data.token || data.apiKey);
       } else {
         setErrorMsg(data.error || 'Credenciales de custodio inválidas o usuario no registrado.');
       }
@@ -84,9 +96,12 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ 
           email: cleanEmail, 
           password: password.trim(), 
@@ -96,8 +111,8 @@ export default function Login({ onLoginSuccess }) {
       });
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        saveSessionAndProceed(data.user, data.token);
+      if (res.ok && (data.success || data.token)) {
+        saveSessionAndProceed(data.user || { email: cleanEmail, tenantName: tenantName }, data.token || data.apiKey);
       } else {
         setErrorMsg(data.error || 'No se pudo aprovisionar la cuenta en el sistema.');
       }
@@ -115,9 +130,12 @@ export default function Login({ onLoginSuccess }) {
     clearMessages();
 
     try {
-      const res = await fetch(`${API_BASE}/auth/reset-password-request`, {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ email: email.trim().toLowerCase() })
       });
       const data = await res.json();
@@ -148,15 +166,6 @@ export default function Login({ onLoginSuccess }) {
       setErrorMsg('Código de verificación inválido.');
       setLoading(false);
     }
-  };
-
-  const saveSessionAndProceed = (user, token) => {
-    localStorage.setItem('saare_token', token);
-    localStorage.setItem('saare_auth_token', token);
-    localStorage.setItem('saare_user_email', user.email);
-    localStorage.setItem('saare_session_user', JSON.stringify(user));
-    setLoading(false);
-    onLoginSuccess(user);
   };
 
   return (

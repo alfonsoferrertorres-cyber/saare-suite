@@ -1,6 +1,9 @@
 ﻿import React from 'react';
 
 export default function OfficialReportModal({ onClose }) {
+  const userEmail = localStorage.getItem('saare_user_email') || 'legal@saare.es';
+  const tenantDomain = localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+
   const handlePrint = () => {
     window.print();
   };
@@ -22,7 +25,8 @@ export default function OfficialReportModal({ onClose }) {
             </p>
           </div>
           <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <strong>Clasificación:</strong> Confidencial / CISO<br/>
+            <strong>Organización:</strong> {tenantDomain}<br/>
+            <strong>Operador:</strong> {userEmail}<br/>
             <strong>Fecha:</strong> {new Date().toLocaleDateString()} • {new Date().toLocaleTimeString()}<br/>
             <strong>Frameworks:</strong> NIST CSF 2.0 • OWASP LLM Top 10 • DORA
           </div>
@@ -75,7 +79,7 @@ export default function OfficialReportModal({ onClose }) {
           </div>
         </div>
 
-        {/* Botones de Acción (Ocultos al imprimir en PDF) */}
+        {/* Botones de Acción */}
         <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }} className="no-print">
           <button 
             onClick={onClose}

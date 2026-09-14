@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { API_BASE_URL } from './utils/api';
 
 export default function GovernanceToolbar({
   onVerifySignature,
@@ -18,11 +19,11 @@ export default function GovernanceToolbar({
   };
 
   const handleVerify = () => {
-    // Ejemplo de Hash SHA-256 de evidencia para probar contra api.saare.es/v1/verify/
+    // Ejemplo de Hash SHA-256 de evidencia para probar contra la API unificada
     const sampleHash = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    // Abre la verificación oficial en api.saare.es/v1/verify/
-    window.open(`https://api.saare.es/v1/verify/${sampleHash}`, '_blank');
+    // Abre la verificación oficial respetando el API_BASE_URL (/api/v1/verify/)
+    window.open(`${API_BASE_URL}/verify/${sampleHash}`, '_blank');
     
     triggerAction(
       'Sello criptográfico Ed25519 de SAARE verificado. Dictamen inalterado conforme a ISO/IEC 27037:2012.',
