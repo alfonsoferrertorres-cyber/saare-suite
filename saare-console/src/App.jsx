@@ -10,7 +10,7 @@ export default function App() {
     return localStorage.getItem('saare_token') !== null;
   });
   const [userEmail, setUserEmail] = useState(() => {
-    return localStorage.getItem('saare_user_email') || 'auditor.compliance@evaluacion-ia.es';
+    return localStorage.getItem('saare_user_email') || 'legal@saare.es';
   });
 
   const [activeTab, setActiveTab] = useState('GLOBAL');
@@ -33,12 +33,7 @@ export default function App() {
     { id: 8, name: 'Análisis de Intención Ex-Ante (IA Sentinel)', active: true, standard: 'Deterministic Zero-Trust' },
   ]);
 
-  const [evidences, setEvidences] = useState([
-    { id: 'EV-L7-200', time: 'En vivo', cat: 'PII_DETECTED', sub: 'LOPDGDD / AI Act', prompt: '"wrangler 3.114.17 (update available 4.129.0) -------------------..."', verdict: 'RECHAZADO', type: 'PRIVACIDAD' },
-    { id: 'EV-L7-199', time: 'En vivo', cat: 'AUDITORIA_CONFORME', sub: 'EU AI Act', prompt: '"Hola, buenos días para todos..."', verdict: 'PERMITIDO', type: 'PRIVACIDAD' },
-    { id: 'EV-L7-198', time: 'En vivo', cat: 'PII_DETECTED', sub: 'LOPDGDD / AI Act', prompt: '"dame un comando para buscarlo"', verdict: 'RECHAZADO', type: 'PRIVACIDAD' },
-    { id: 'EV-L7-197', time: '7/9/2026, 2:00:00', cat: 'WORKFLOW_RULE', sub: 'Orquestadores / Workflows', prompt: '"si no hay wrangler"', verdict: 'RECHAZADO', type: 'WORKFLOWS' }
-  ]);
+  const [evidences, setEvidences] = useState([]);
 
   useEffect(() => {
     if (window.location.search) {
@@ -47,6 +42,7 @@ export default function App() {
     }
   }, []);
 
+  // SINCRONIZACIÓN Y TELEMETRÍA EN TIEMPO REAL DESDE D1 / BÓVEDA
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -59,23 +55,50 @@ export default function App() {
 
     const fetchTelemetry = async () => {
       try {
-        const res = await saareFetch(`/api/v1/runs`, {
+        const res = await saareFetch(`/api/v1/runs?t=${Date.now()}`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('saare_token') || ''}`
+            'Authorization': `Bearer ${localStorage.getItem('saare_token') || ''}`,
+            'Accept': 'application/json'
           }
         });
+
         if (res.ok) {
           const data = await res.json();
           const remoteEvidences = data.evidences || data.runs || data;
+          
           if (Array.isArray(remoteEvidences)) {
-            setEvidences(prev => {
-              const combined = [...remoteEvidences, ...prev];
-              return Array.from(new Map(combined.map(item => [item.id, item])).values());
+            const mappedEvidences = remoteEvidences.map((item, idx) => {
+              const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
+              
+              let cleanPrompt = item.prompt || item.promptInput || item.promptSummary || '';
+              try {
+                if (cleanPrompt.includes('%')) {
+                  cleanPrompt = decodeURIComponent(cleanPrompt);
+                }
+              } catch (e) {}
+
+              return {
+                id: item.evidence_id || item.id || `EV-L7-${100 + idx}`,
+                time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'En vivo',
+                cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
+                sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
+                prompt: cleanPrompt || '(Sin texto capturado)',
+                verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
+                decision: isDeny ? 'DENY' : 'ALLOW',
+                type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
+                user: item.user || userEmail,
+                tenant: item.tenant || 'ENTERPRISE',
+                rawJson: item
+              };
             });
+
+            setEvidences(mappedEvidences);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Error al sincronizar evidencias en vivo:", e);
+      }
     };
 
     fetchTelemetry();
@@ -85,25 +108,28 @@ export default function App() {
       clearInterval(intervalClock);
       clearInterval(intervalTelemetry);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userEmail]);
 
   const triggerGovernance = (msg) => {
     setGovernanceStatus(msg);
     setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
+  // DESCARGA Y TOKENIZACIÓN EN TIEMPO REAL DE LA EXTENSIÓN SOVEREIGN L7
   const handleDownloadExtension = async () => {
     try {
       const zip = new JSZip();
+      const currentToken = localStorage.getItem('saare_token') || 'sk_saare_live_managed_identity';
+      const currentUserEmail = userEmail || localStorage.getItem('saare_user_email') || 'legal@saare.es';
 
       const manifest = {
         "manifest_version": 3,
         "name": "SAARE Execution Authorization Sensor",
-        "version": "10.0.7",
+        "version": "10.0.8",
         "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
         "background": { "service_worker": "background.js" },
         "action": { 
-          "default_title": "SAARE Execution Guard Node (Bóveda KV Active)", 
+          "default_title": "SAARE Execution Guard Node (Active Token)", 
           "default_popup": "popup.html" 
         },
         "content_scripts": [{
@@ -124,17 +150,19 @@ export default function App() {
         "permissions": ["storage", "alarms", "downloads"],
         "host_permissions": [
           "https://api.saare.es/*",
-          "http://localhost:3001/*"
+          "http://localhost:3000/*"
         ]
       };
 
       const storageManaged = {
-        "saare_user_email": { "Value": userEmail, "Description": "Email del operador autorizado." },
-        "saare_tenant_domain": { "Value": "ENTERPRISE", "Description": "Dominio o identificador canónico del inquilino." },
-        "saare_token": { "Value": "sk_live_managed_identity", "Description": "Token de sincronización con la Bóveda KV." }
+        "saare_user_email": { "Value": currentUserEmail, "Description": "Email del operador autorizado tokenizado." },
+        "saare_tenant_domain": { "Value": "ENTERPRISE", "Description": "Inquilino canónico de la Bóveda." },
+        "saare_token": { "Value": currentToken, "Description": "Token OIDC de sincronización con la Bóveda." }
       };
 
-      const backgroundJs = `const WORKER_URL = "${API_BASE_URL}/api/v1";
+      const backgroundJs = `const WORKER_URL = "https://api.saare.es/api/v1";
+const AUTH_TOKEN = "${currentToken}";
+const MANAGED_USER = "${currentUserEmail}";
 
 async function resolveIdentity(payloadUser) {
   return new Promise((resolve) => {
@@ -143,7 +171,7 @@ async function resolveIdentity(payloadUser) {
         if (managed?.saare_user_email) {
           return resolve({
             user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "EMPRESA"
+            tenant: managed.saare_tenant_domain || "ENTERPRISE"
           });
         }
         fallbackLocal();
@@ -154,27 +182,43 @@ async function resolveIdentity(payloadUser) {
 
     function fallbackLocal() {
       chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = local?.saare_user_email || payloadUser || "usuario_anonimo@tenant.es";
-        const finalTenant = local?.saare_tenant_domain || "ORGANIZACION";
+        const finalUser = local?.saare_user_email || MANAGED_USER || payloadUser || "legal@saare.es";
+        const finalTenant = local?.saare_tenant_domain || "ENTERPRISE";
         resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
       });
     }
   });
 }
 
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.set({
+    saare_user_email: "${currentUserEmail}",
+    saare_tenant_domain: "ENTERPRISE",
+    saare_token: "${currentToken}"
+  });
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
-      const enrichedPayload = { ...message.payload, user: user, tenant: tenant };
+      const enrichedPayload = { 
+        ...message.payload, 
+        user: user, 
+        tenant: tenant,
+        timestamp: new Date().toISOString()
+      };
 
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
       });
 
-      fetch(\`\${WORKER_URL}/runs?user=\${encodeURIComponent(user)}\`, {
+      fetch(\`\${WORKER_URL}/runs\`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json; charset=utf-8",
+          "Authorization": \`Bearer \${AUTH_TOKEN}\`
+        },
         body: JSON.stringify(enrichedPayload)
       })
       .then(res => res.json())
@@ -183,18 +227,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
-
-  if (message?.type === "SAARE_GET_RULES") {
-    fetch(\`\${WORKER_URL}/custom-rules\`)
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, data: [] }));
-    return true;
-  }
 });`;
 
       const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.12 (SGP 1.0)
-console.log("[SAARE L7 Engine] Puente DOM & SAARE Execution Guard Activo (Bóveda KV)");
+console.log("[SAARE L7 Engine] Sensor Tokenizado Activo para: ${currentUserEmail}");
 
 const DEFAULT_SETTINGS_V10 = {
   cumplimiento_corporativo_integral: true,
@@ -208,37 +244,7 @@ function updateDomContext(settings, userEmail, tenantDomain) {
   if (tenantDomain) document.documentElement.setAttribute("data-saare-tenant", tenantDomain);
 }
 
-function syncStorageAndContext() {
-  if (typeof chrome !== "undefined" && chrome.storage) {
-    const fetchManaged = (callback) => {
-      if (chrome.storage.managed) {
-        chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
-          callback(managed || {});
-        });
-      } else {
-        callback({});
-      }
-    };
-
-    fetchManaged((managed) => {
-      chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = managed?.saare_user_email || local?.saare_user_email || "${userEmail}";
-        const finalTenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "ENTERPRISE";
-        const finalSettings = local?.saare_settings || DEFAULT_SETTINGS_V10;
-
-        updateDomContext(finalSettings, finalUser, finalTenant);
-      });
-    });
-  } else {
-    updateDomContext(DEFAULT_SETTINGS_V10, "${userEmail}", "ENTERPRISE");
-  }
-}
-
-syncStorageAndContext();
-
-if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
-  chrome.storage.onChanged.addListener(() => { syncStorageAndContext(); });
-}
+updateDomContext(DEFAULT_SETTINGS_V10, "${currentUserEmail}", "ENTERPRISE");
 
 try {
   const injectScript = document.createElement("script");
@@ -254,22 +260,12 @@ function sendEvidenceToBackground(verdictData) {
     verdictId: verdictData.verdictId || \`VRD-2026-\${Math.floor(Math.random() * 90000) + 10000}\`,
     evidence_id: verdictData.evidence_id || \`EV-L7-\${Math.floor(Math.random() * 90000) + 10000}\`,
     decision: verdictData.decision || "ALLOW",
-    enforcement: verdictData.enforcement || { action: "PASS" },
-    status: "VALID",
-    system_id: "L7-BROWSER-SENSOR",
-    policy: { id: "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
-    reason: verdictData.reason || "Tráfico conforme verificado en memoria",
-    promptInput: text ? '"' + (text.length > 50 ? text.slice(0, 50) + "..." : text) + '"' : "",
-    user: verdictData.user || "${userEmail}",
-    tenant: verdictData.tenant || "ENTERPRISE",
-    timestamp: verdictData.timestamp || new Date().toISOString(),
-    cryptoSeal: verdictData.cryptoSeal || "L7-SEAL:ACTIVE",
     verdict: verdictData.verdict || "PERMITIDO",
-    type: "PRIVACIDAD",
-    cat: verdictData.category || "AUDITORIA_CONFORME",
-    sub: verdictData.norma || "EU AI Act",
-    prompt: '"' + (text.length > 50 ? text.slice(0, 50) + "..." : text) + '"',
-    time: "En vivo"
+    reason: verdictData.reason || "Auditoría en tiempo real realizada",
+    prompt: text,
+    user: "${currentUserEmail}",
+    tenant: "ENTERPRISE",
+    timestamp: new Date().toISOString()
   };
 
   if (typeof chrome !== "undefined" && chrome.runtime?.id) {
@@ -292,166 +288,32 @@ window.addEventListener("message", (event) => {
     card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
   };
 
-  function computeL7Seal(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return \`L7-SEAL:\${Math.abs(hash).toString(16).toUpperCase().padStart(8, "0")}\`;
-  }
+  function evaluatePayload(rawBody) {
+    let str = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody || {});
+    if (!str || str.length < 3) return null;
 
-  function showSaareBanner(check, onSanitizeAndContinue, onBlock) {
-    try {
-      let existing = document.getElementById('saare-violation-banner');
-      if (existing) existing.remove();
-
-      const banner = document.createElement('div');
-      banner.id = 'saare-violation-banner';
-      banner.style.cssText = \`
-        position: fixed; top: 20px; right: 20px; z-index: 999999; width: 410px;
-        background: #0b0f19; border: 2px solid #ef4444; border-radius: 10px; padding: 16px;
-        color: #f8fafc; font-family: system-ui, -apple-system, sans-serif;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(239, 68, 68, 0.4);
-      \`;
-
-      banner.innerHTML = \`
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 18px;">🛡️</span>
-            <span style="font-weight: 900; font-size: 11.5px; color: #ef4444; letter-spacing: 0.5px;">S.A.A.R.E. SENSOR L7 · BLOQUEO EX-ANTE</span>
-          </div>
-          <button id="saare-close-banner" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; font-weight: bold;">✕</button>
-        </div>
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">NORMATIVA: <strong style="color: #38bdf8;">\${check.norma}</strong></div>
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">DICTAMEN: <strong style="color: #ef4444;">\${check.verdict} (\${check.category})</strong></div>
-        <div style="background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; font-family: monospace; font-size: 11px; color: #34d399; margin-bottom: 10px; word-break: break-all; max-height: 90px; overflow-y: auto;">
-          \${check.cleanPrompt}
-        </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-          <button id="saare-btn-sanitize" style="flex: 1; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer;">✨ Sanitizar y Continuar</button>
-          <button id="saare-btn-block" style="background: #334155; color: #f8fafc; border: none; border-radius: 6px; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer;">Bloquear</button>
-        </div>
-      \`;
-
-      document.body.appendChild(banner);
-      document.getElementById('saare-close-banner').onclick = () => { banner.remove(); if (onBlock) onBlock(); };
-      document.getElementById('saare-btn-block').onclick = () => { banner.remove(); if (onBlock) onBlock(); };
-      document.getElementById('saare-btn-sanitize').onclick = () => { banner.remove(); if (onSanitizeAndContinue) onSanitizeAndContinue(); };
-      setTimeout(() => { if (banner.parentNode) { banner.remove(); if (onBlock) onBlock(); } }, 20000);
-    } catch (e) { if (onBlock) onBlock(); }
-  }
-
-  function isIgnoredRequest(url, bodyStr, method) {
-    if (url) {
-      const u = String(url).toLowerCase();
-      if (u.includes("/log?") || u.includes("google-analytics") || u.includes("gen_204") || u.includes("favicon")) {
-        return true;
-      }
-    }
-    if (!bodyStr || bodyStr.length < 3) return true;
-    return false;
-  }
-
-  function parseBody(body) {
-    if (!body) return "";
-    if (typeof body === "string") return body;
-    try { return JSON.stringify(body); } catch { return String(body); }
-  }
-
-  function extractCleanPrompt(rawText) {
-    if (!rawText) return "";
-    if (rawText.includes("f.req")) {
-      let fReqValue = "";
-      try {
-        const params = new URLSearchParams(rawText);
-        fReqValue = params.get("f.req") || "";
-      } catch {}
-      if (fReqValue) {
-        try {
-          const outer = JSON.parse(fReqValue);
-          if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
-            const inner = JSON.parse(outer[1]);
-            if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
-              const prompt = inner[0][0];
-              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) return prompt.trim();
-            }
-          }
-        } catch {}
-      }
-    }
-    try {
-      const json = JSON.parse(rawText);
-      if (json.prompt) return json.prompt;
-      if (json.input) return json.input;
-    } catch {}
-    return decodeURIComponent(rawText.replace(/\\+/g, " "));
-  }
-
-  function sanitize(text) {
-    if (!text) return "";
-    return text
-      .replace(/(?:^|\\D)(\\d{7,9}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/gi, (m, dni) => m.replace(dni, \`[DNI_REDACTED_***\${dni.slice(-4)}]\`))
-      .replace(/ES\\d{2}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{2}[\\s-]?\\d{10}|ES\\d{18,22}/gi, (m) => \`[IBAN_REDACTED_***\${m.slice(-4)}]\`);
-  }
-
-  function evaluatePayload(rawBody, url, method) {
-    const str = parseBody(rawBody);
-    if (isIgnoredRequest(url, str, method)) return null;
-
-    const cleanPrompt = extractCleanPrompt(str) || str;
-    if (!cleanPrompt || cleanPrompt.length < 2) return null;
-
-    const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
-    const isIban = DLP.iban.test(cleanPrompt.replace(/[\\s-]/g, "")) || DLP.iban.test(str.replace(/[\\s-]/g, ""));
-    const isCard = DLP.card.test(cleanPrompt.replace(/[\\s-]+/g, "")) || DLP.card.test(str.replace(/[\\s-]+/g, ""));
+    const isDni = DLP.dni.test(str);
+    const isIban = DLP.iban.test(str.replace(/[\\s-]/g, ""));
+    const isCard = DLP.card.test(str.replace(/[\\s-]+/g, ""));
 
     if (isDni || isIban || isCard) {
-      let category = "PII_DNI";
-      let norma = "España - LOPDGDD & AEPD";
-      if (isIban) { category = "DATOS_BANCARIOS"; norma = "RGPD Art. 5, 32 / LOPDGDD"; }
-      else if (isCard) { category = "TARJETA_CREDITO"; norma = "PCI-DSS / RGPD"; }
-
       return {
-        verdict: "RECHAZADO", decision: "DENY", category, norma,
-        reason: "Detección de datos regulados en RAM L7",
-        cleanPrompt: sanitize(cleanPrompt), cryptoSeal: computeL7Seal(cleanPrompt), shouldBlock: true
-      };
-    } else {
-      return {
-        verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_CONFORME",
-        norma: "EU AI Act - Tráfico Conforme", reason: "Prompt verificado sin PII en RAM",
-        cleanPrompt: cleanPrompt, cryptoSeal: computeL7Seal(cleanPrompt), shouldBlock: false
+        verdict: "RECHAZADO", decision: "DENY", category: "PII_DETECTED", norma: "LOPDGDD / RGPD",
+        reason: "Detección de datos sensibles regulados", cleanPrompt: str, shouldBlock: true
       };
     }
+    return {
+      verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_CONFORME", norma: "EU AI Act",
+      reason: "Tráfico conforme verificado", cleanPrompt: str, shouldBlock: false
+    };
   }
 
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
-    const url = typeof resource === "string" ? resource : (resource?.url || "");
-    const method = (config?.method || "GET").toUpperCase();
-
     if (config && config.body) {
-      const check = evaluatePayload(config.body, url, method);
+      const check = evaluatePayload(config.body);
       if (check) {
         window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
-        if (check.shouldBlock) {
-          return new Promise((resolve, reject) => {
-            showSaareBanner(check,
-              () => {
-                try {
-                  if (typeof config.body === "string") {
-                    config.body = config.body.replace(/(?:\\d{7,9}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])/gi, check.cleanPrompt);
-                  }
-                } catch {}
-                resolve(rawFetch.apply(this, [resource, config]));
-              },
-              () => {
-                reject(new Error("[S.A.A.R.E. L7] Transmisión abortada por normativa LOPDGDD / EU AI Act."));
-              }
-            );
-          });
-        }
       }
     }
     return rawFetch.apply(this, arguments);
@@ -463,62 +325,32 @@ window.addEventListener("message", (event) => {
 <head>
   <meta charset="UTF-8">
   <style>
-    body { width: 300px; margin: 0; padding: 16px; background-color: #030712; color: #f3f4f6; font-family: system-ui, sans-serif; }
+    body { width: 310px; margin: 0; padding: 16px; background-color: #030712; color: #f3f4f6; font-family: system-ui, sans-serif; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; padding-bottom: 10px; margin-bottom: 12px; }
-    .title { font-weight: 900; font-size: 14px; color: #ffffff; letter-spacing: 1px; }
+    .title { font-weight: 900; font-size: 13px; color: #ffffff; letter-spacing: 1px; }
     .badge-status { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .info-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px; font-size: 11px; margin-bottom: 12px; }
     .label { color: #9ca3af; font-size: 9.5px; text-transform: uppercase; margin-bottom: 2px; }
     .val { color: #38bdf8; font-family: monospace; margin-bottom: 8px; word-break: break-all; }
     .btn-console { display: block; width: 100%; text-align: center; background: #0284c7; color: #ffffff; text-decoration: none; padding: 8px 0; border-radius: 6px; font-weight: bold; font-size: 11.5px; box-sizing: border-box; }
-    .btn-console:hover { background: #0369a1; }
   </style>
 </head>
 <body>
   <div class="header">
     <span class="title">SAARE SENSOR L7</span>
-    <span class="badge-status">● ACTIVO</span>
+    <span class="badge-status">● TOKENIZADO</span>
   </div>
   <div class="info-card">
     <div class="label">Organización / Tenant</div>
-    <div class="val" id="disp-tenant">ENTERPRISE</div>
+    <div class="val">ENTERPRISE</div>
     <div class="label">Usuario / Operador</div>
-    <div class="val" id="disp-user">${userEmail}</div>
-    <div class="label">Protocolo de Custodia</div>
-    <div class="val" style="color: #4ade80;">SGP 1.0 (Fail-Closed)</div>
+    <div class="val">${currentUserEmail}</div>
+    <div class="label">Token Bóveda KV</div>
+    <div class="val" style="color: #4ade80;">VINCULADO Y EN VIVO</div>
   </div>
   <a href="https://console.saare.es/" target="_blank" class="btn-console">Abrir SAARE GRC Console ↗</a>
-  <script src="popup.js"></script>
 </body>
 </html>`;
-
-      const popupJs = `if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-  chrome.storage.local.get(['saare_tenant_domain', 'saare_user_email'], (res) => {
-    if(res?.saare_tenant_domain) document.getElementById('disp-tenant').innerText = res.saare_tenant_domain;
-    if(res?.saare_user_email) document.getElementById('disp-user').innerText = res.saare_user_email;
-  });
-}`;
-
-      const installBat = `@echo off
-title SAARE Sovereign Sensor - Instalador Automatico
-color 0B
-echo ========================================================
-echo   S.A.A.R.E. L7 EX-ANTE EXECUTION GUARD - INSTALADOR
-echo ========================================================
-echo.
-echo [INFO] Este directorio contiene los artefactos certificados del sensor.
-echo [PASO 1] Abra Google Chrome o Microsoft Edge.
-echo [PASO 2] Escriba en la barra de direcciones: chrome://extensions/
-echo [PASO 3] Active la casilla "Modo de desarrollador" (arriba a la derecha).
-echo [PASO 4] Haga clic en "Cargar descomprimida" y seleccione esta carpeta.
-echo.
-echo ========================================================
-pause`;
-
-      const readmeMd = `# SAARE Sovereign Execution Sensor (SGP 1.0)
-- **Autoridad Pericial:** MS3V / Gabinete Tecnológico
-- **Estándar:** L7 Runtime Enforcement & ISO/IEC 27037
-- **Uso:** Descomprima este directorio y cárguelo en su navegador corporativo bajo el modo de desarrollador.`;
 
       zip.file("manifest.json", JSON.stringify(manifest, null, 2));
       zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
@@ -526,12 +358,9 @@ pause`;
       zip.file("content.js", contentJs);
       zip.file("inject.js", injectJs);
       zip.file("popup.html", popupHtml);
-      zip.file("popup.js", popupJs);
-      zip.file("install.bat", installBat);
-      zip.file("README.md", readmeMd);
 
       const content = await zip.generateAsync({ type: "blob" });
-      const fileName = `saare-agente-tokenizado-${userEmail.replace(/[@.]/g, "_")}.zip`;
+      const fileName = `saare-agente-tokenizado-${currentUserEmail.replace(/[@.]/g, "_")}.zip`;
 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
@@ -541,10 +370,10 @@ pause`;
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      triggerGovernance(`Sensor tokenizado y empaquetado con éxito: ${fileName}`);
+      triggerGovernance(`Sensor tokenizado e inyectado con éxito para ${currentUserEmail}`);
     } catch (err) {
-      console.error("Error al generar el paquete ZIP:", err);
-      triggerGovernance("Error al empaquetar la extensión Sovereign.");
+      console.error("Error al empaquetar la extensión:", err);
+      triggerGovernance("Error al empaquetar el Sensor Tokenizado.");
     }
   };
 
@@ -556,25 +385,25 @@ pause`;
       standard: "ISO/IEC 27037:2012 / DORA / EU AI Act",
       activeDirectives: directives.filter(d => d.active).length,
       authModel: "Backend Authoritative HttpOnly",
-      signatureEd25519: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      evidenceCount: evidences.length
+      evidenceCount: evidences.length,
+      evidences: evidences
     }, null, 2);
 
     const blob = new Blob([custodyData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'cadena_custodia_saare_iso27037.json';
+    a.download = `cadena_custodia_saare_${userEmail.replace(/[@.]/g, '_')}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    triggerGovernance('Cadena de Custodia exportada correctamente en JSON firmado Ed25519.');
+    triggerGovernance('Cadena de Custodia exportada correctamente.');
   };
 
   const handleDownloadTeaser = () => {
-    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: Ningún prompt sale al LLM sin inspección L7 Ex-Ante.\n2. Invariante 0x02: Toda captura genera firma Ed25519 con hash SHA-256.\n3. Invariante 0x03: Fail-Closed Enforcement. Sin política, DENY automático.\n====================================================`;
+    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: Inspección L7 Ex-Ante obligatoria.\n2. Invariante 0x02: Firma e inmutabilidad en D1 / Bóveda.\n3. Invariante 0x03: Operaciones protegidas sin cuota KV.\n====================================================`;
 
     const blob = new Blob([teaserText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -586,7 +415,7 @@ pause`;
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    triggerGovernance('Teaser Técnico y Matriz de Invariantes descargado.');
+    triggerGovernance('Matriz de Invariantes descargada.');
   };
 
   const handleLogout = () => {
@@ -652,7 +481,7 @@ pause`;
                 PANEL DE CONTROL GRC & EVIDENCIA FORENSE
               </h2>
               <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8' }}>
-                ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>ENTERPRISE</span> | ROL: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span>
+                ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>ENTERPRISE</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span>
               </p>
             </div>
 
@@ -675,20 +504,19 @@ pause`;
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-                BÓVEDA KV: EN VIVO | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '13:55:00'}</span>
+                BÓVEDA EN VIVO (D1) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '13:55:00'}</span>
               </span>
 
               <span style={{ padding: '6px 14px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }}></span>
-                IDENTIDAD: BACKEND AUTHORITATIVE SECURE SESSION
+                SESIÓN VINCULADA: {userEmail}
               </span>
-
             </div>
 
             <button
               onClick={handleDownloadExtension}
               style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-              🧩 Descargar Sensor L7 Sovereign
+              🧩 Descargar Sensor L7 Sovereign Tokenizado
             </button>
           </div>
 
@@ -724,48 +552,53 @@ pause`;
                     <tr style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>TIMESTAMP</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>DECISION ID</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>POLÍTICA / ESTADO</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>USUARIO / OPERADOR</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>PAYLOAD INTERCEPTADO</th>
                       <th style={{ padding: '12px 16px', fontWeight: '800' }}>DICTAMEN</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>EVIDENCE BUNDLE</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '800' }}>BUNDLE</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEvidences.map((ev, index) => {
-                      const isRejected = ev.verdict === 'RECHAZADO' || ev.decision === 'DENY';
-                      return (
-                        <tr key={ev.id || index} style={{ borderBottom: '1px solid #1e293b', background: index % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
-                          <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{ev.time}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#38bdf8' }}>{ev.id}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <div style={{ fontWeight: '800', color: '#f8fafc' }}>{ev.cat}</div>
-                            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{ev.sub}</div>
-                          </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ fontFamily: 'monospace', color: '#38bdf8', background: '#020617', padding: '4px 8px', borderRadius: '4px', border: '1px solid #1e293b' }}>
-                              {ev.promptSummary || ev.promptInput || ev.prompt || '(Sin texto capturado)'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ 
-                              fontWeight: '900', 
-                              color: isRejected ? '#ef4444' : '#10b981', 
-                              background: isRejected ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
-                              padding: '4px 8px', 
-                              borderRadius: '4px', 
-                              border: `1px solid ${isRejected ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}` 
-                            }}>
-                              {isRejected ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <button onClick={() => setSelectedJson(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer' }}>
-                              Ver JSON
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredEvidences.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                          No hay evidencias registradas en la Bóveda D1 para esta vista.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredEvidences.map((ev, index) => {
+                        const isRejected = ev.verdict === 'RECHAZADO' || ev.decision === 'DENY';
+                        return (
+                          <tr key={ev.id || index} style={{ borderBottom: '1px solid #1e293b', background: index % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
+                            <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{ev.time}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: '700', color: '#38bdf8' }}>{ev.id}</td>
+                            <td style={{ padding: '12px 16px', color: '#a7f3d0', fontFamily: 'monospace' }}>{ev.user}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ fontFamily: 'monospace', color: '#38bdf8', background: '#020617', padding: '4px 8px', borderRadius: '4px', border: '1px solid #1e293b' }}>
+                                {ev.prompt}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ 
+                                fontWeight: '900', 
+                                color: isRejected ? '#ef4444' : '#10b981', 
+                                background: isRejected ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                                padding: '4px 8px', 
+                                borderRadius: '4px', 
+                                border: `1px solid ${isRejected ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}` 
+                              }}>
+                                {isRejected ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <button onClick={() => setSelectedJson(ev.rawJson || ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer' }}>
+                                Ver JSON
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -774,28 +607,28 @@ pause`;
 
           {activeTab === 'RUNLIVE' && (
             <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', color: '#f8fafc', border: '1px solid #1e293b' }}>
-              <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.1rem' }}>📡 MONITOREO DE AUTORIZACIÓN L7</h3>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '16px' }}>Conexión directa en tiempo real entre los agentes desplegados y el motor de decisión S.A.A.R.E.</p>
+              <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.1rem' }}>📡 MONITOREO DE AUTORIZACIÓN L7 EN TIEMPO REAL</h3>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '16px' }}>Conexión directa activa entre los sensores tokenizados y el motor D1 de S.A.A.R.E.</p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>ESTADO DEL ENFORCEMENT</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4ade80', marginTop: '4px' }}>ACTIVO (FAIL-CLOSED)</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4ade80', marginTop: '4px' }}>ACTIVO (D1 PERSISTENCE)</div>
                 </div>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>TIEMPO DE EVALUACIÓN</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>30 ms (Pre-LLM)</div>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>OPERADOR PRINCIPAL</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>{userEmail}</div>
                 </div>
                 <div style={{ background: '#0f172a', padding: '14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>SESSION STATE</div>
-                  <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>BACKEND MANAGED HTTP-ONLY</div>
+                  <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>BACKEND MANAGED D1 SYNC</div>
                 </div>
               </div>
 
               <div style={{ background: '#090d16', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
                 <div>[POLICY ENGINE - {timeStr}] Listening on {API_BASE_URL}/api/v1/runs...</div>
-                <div>[AUTH LAYER] Session established via opaque HTTP-Only cookie. Token manipulation blocked.</div>
-                <div>[ENFORCEMENT] Directives loaded: {activeDirectivesCount}/8. Fail-closed behavior enforced.</div>
+                <div>[AUTH LAYER] Credenciales vinculadas para: {userEmail}.</div>
+                <div>[ENFORCEMENT] Directivas cargadas: {activeDirectivesCount}/8. Zero-Noise Guard Enforcement.</div>
               </div>
             </div>
           )}
@@ -832,20 +665,9 @@ pause`;
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica {selectedJson.id}</h3>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica Bóveda</h3>
             <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b' }}>
-              {JSON.stringify({
-                decision_id: selectedJson.id,
-                tenant: "enterprise-isolated",
-                principal: userEmail,
-                policy_id: selectedJson.cat,
-                policy_version: "1.4",
-                decision: selectedJson.decision || (selectedJson.verdict === 'RECHAZADO' ? 'DENY' : 'ALLOW'),
-                reason_codes: [selectedJson.sub],
-                payload_hmac: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
-                timestamp_token: selectedJson.time,
-                event_signature: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-              }, null, 2)}
+              {JSON.stringify(selectedJson, null, 2)}
             </pre>
             <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
               Cerrar Evidence Bundle
@@ -857,7 +679,7 @@ pause`;
       {auditTokenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4ade80' }}>🛡️ Exportación de Evidencia Verificable</h3>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4ade80' }}>🛡️ Exportación de Evidencia Verificable D1</h3>
             <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Este Merkle Root certifica la integridad del historial de auditoría de la IA sin exponer datos en claro.</p>
             <div style={{ background: '#020617', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.85rem', border: '1px solid #1e293b', wordBreak: 'break-all', marginBottom: '16px' }}>
               SAARE-EVIDENCE-ROOT-2026-ED25519-99418274
