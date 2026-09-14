@@ -1,11 +1,17 @@
 node_modules/
 dist/
 .env
+.env.production
+.dev.vars
 target/
 *.log
+
+# Caché y entornos locales
+.turbo/
+control-plane-local/
+.wrangler/
+control-plane/.wrangler/
 
 # Ignorar paquetes comprimidos
 *.zip
 !saare-console/public/saare-extension.zip
-
-control-plane/.wrangler/
