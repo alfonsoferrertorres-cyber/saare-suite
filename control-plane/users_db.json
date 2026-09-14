@@ -1,0 +1,16 @@
+{
+  "alfonsosb1@gmail.com": {
+    "user": "ALFONSO-ADMIN",
+    "company": "S.A.A.R.E. Cloud ISV",
+    "plan": "ENTERPRISE PRO",
+    "token": "SAARE-TOKEN-ALFONSO-99",
+    "password": "demo"
+  },
+  "demo@saare.ai": {
+    "user": "OPERADOR-ENTERPRISE",
+    "company": "Banco Santander",
+    "plan": "ENTERPRISE REGULATED",
+    "token": "SAARE-TOKEN-882910-X92",
+    "password": "demo"
+  }
+}

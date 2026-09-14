@@ -1,24 +1,16 @@
-# S.A.A.R.E. Enterprise Suite - L7 AI Governance
+﻿# SAARE v8: Sovereign AI Governance & L7 Execution Authorization
 
-> **Control Perimetral, Redacción Determinista de PII y Evidencia Forense Criptográfica para ecosistemas LLM y DeepSeek Harness (dsh).**
+> **Registro Técnico:** MS3V-RECON-VALID-2026-ALF-0521  
+> **Titular:** Alfonso Ferrer Torres (MS3V)  
+> **Estándar:** SGP 1.0 (Secure Governance Protocol)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GRC: ISO 42001](https://img.shields.io/badge/GRC-ISO%2FIEC%2042001-green)](https://www.saare.es)
-[![Authority: MS3V](https://img.shields.io/badge/Forensic-Safe%20Creative%202607076315021-cyan)](https://www.saare.es)
+## ¿Qué es SAARE?
+Infraestructura de control perimetral y procesamiento volátil diseñada para eliminar los riesgos de retención de datos masivos en sistemas de Inteligencia Artificial, garantizando cumplimiento normativo (RGPD Art. 9 / EU AI Act) mediante aislamiento estricto de capas.
+
+### Pilares Arquitectónicos
+* **STAT_STATELESS_L7:** Filtrado determinista ex-ante de información sensible antes de cualquier interacción con LLMs externos.
+* **LOCAL_LOOPBACK_BIND:** Procesamiento volátil en memoria sin persistencia en texto plano (Zero-Disk).
+* **Trazabilidad Criptográfica:** Sellado asimétrico mediante Ed25519 y árboles de Merkle (SHA-256).
 
 ---
-
-## ⚡ Integración con DeepSeek Harness (DSH)
-
-Este repositorio actúa como plugin oficial de seguridad para agentes de DeepSeek Harness. Activa el sellado criptográfico HMAC-SHA256 y la redacción de datos sensibles antes del envío de tokens.
-
-### Instalación del plugin de Gobernanza
-
-```bash
-dsh plugin add @saare/dsh-governance-plugin
-## Autoría, Propiedad Intelectual y Trazabilidad Oficial
-- **Titular de la Solución:** Alfonso Ferrer Torres
-- **NIF:** 48553065L
-- **Gabinete Técnico Comercial:** MS3V
-- **Identificador Maestro de Validación:** MS3V-RECON-VALID-2026-ALF-0521
-- **Arquitectura:** SAARE v7 PRO (Desacople en Capa 7 / LOCAL_LOOPBACK_BIND)
+*Desplegado en el ecosistema soberano de [SAARE Console](https://console.saare.es).*

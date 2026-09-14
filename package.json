@@ -1,1 +1,13 @@
-{"name":"saare-ecosystem","version":"2.5.0","private":true}
+{
+  "name": "saare-monorepo-root",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "build:all": "pnpm --filter saare-console run build && pnpm --filter saare-suite run build",
+    "server:local": "pnpm --filter control-plane-local dev",
+    "deploy:prod": "pnpm --filter saare-console run build && pnpm --filter saare-suite run build && pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console && pnpm --filter saare-suite exec wrangler pages deploy dist --project-name=saare-suite && pnpm --filter control-plane exec wrangler deploy"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.12"
+  }
+}

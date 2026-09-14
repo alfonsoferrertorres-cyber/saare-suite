@@ -1,0 +1,22 @@
+[
+  {
+    "evidenceId": "EV-625434",
+    "id": "EV-729099",
+    "runId": "RUN-1786701010760",
+    "timestamp": "11:50:10",
+    "token": "SAARE-TOKEN-ENT-M57TOVV",
+    "user": "Alfonso Ferrer (Auditor SOC)",
+    "prompt": "\"Procesar nomina con DNI 12345678Z\"",
+    "promptSummary": "Procesar nomina con DNI 12345678Z",
+    "verdict": "RECHAZADO",
+    "scene": "España - LOPDGDD & AEPD",
+    "scenarioApplied": "España - LOPDGDD & AEPD",
+    "action": "PDF Sellado",
+    "cryptoSeal": "AES256-AEPD-ES-5721E75F",
+    "complianceTags": [
+      "EU-AI-ACT",
+      "ENS-ALTO",
+      "eIDAS"
+    ]
+  }
+]

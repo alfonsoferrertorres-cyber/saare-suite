@@ -1,81 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './utils/api';
 
-// Configuración de endpoints basada en las variables de entorno de Vite (.env)
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.saare.es/v1";
+// Configuración de endpoints sincronizada con el entorno local / producción
+const API_BASE = `${API_BASE_URL}/v1`;
 
 const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5173'
   : 'https://console.saare.es';
 
-const EXTENSION_DOWNLOAD_ENDPOINT = `${API_BASE}/download-extension`;
 const OFFICIAL_VERIFY_PAGE = `${API_BASE}/evidence/verify`;
 
-const DEMO_VERDICT_ID = "VRD-2026-EURK9";
 const DEMO_ROOT_MERKLE_HASH = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
-const DEMO_ED25519_SIG = "3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41d7e35b71946399120785cba028e3b4821a8b0c619472e61a84b6f89004";
-const DEMO_TSA_RECORD = "2026-09-01T17:18:27Z • SAARE-MD-IPRES-2026";
 
 const CONTACT_PHONE = "+34 633 886 506";
 const CONTACT_PHONE_RAW = "+34633886506";
 const CONTACT_EMAIL = "legal@saare.es";
 const WHATSAPP_URL = "https://wa.me/34633886506?text=Hola,%20solicito%20contratar%20el%20acceso%20a%20SAARE%20Console%20y%20embebido%20del%20motor%20MS3V.";
-
-const INTEGRATION_TIERS = [
-  {
-    id: "tier_dev",
-    name: "DEVELOPER / PRO (SDK EMBED)",
-    price: "199 €",
-    period: "al mes",
-    desc: "Para creadores de agentes, flujos automatizados y herramientas de Tool Calling.",
-    features: [
-      "Hasta 100.000 veredictos / mes",
-      "Acceso completo a SAARE Judge API",
-      "Emisión de Execution Permits firmados (Ed25519)",
-      "Protección anti-replay (Validación JTI)",
-      "Tamper-evident Decision Store (30 días de retención)",
-      "Soporte técnico por canal directo",
-      "Extra: 0,0015 € por veredicto adicional"
-    ],
-    highlight: false,
-    cta: "Solicitar Acceso Developer"
-  },
-  {
-    id: "tier_business",
-    name: "BUSINESS GRC CONSOLE (TODO EN UNO)",
-    price: "890 €",
-    period: "al mes",
-    desc: "Asiento completo para usar la consola, auditoría y panel en tiempo real.",
-    features: [
-      "Hasta 1.000.000 veredictos / mes",
-      "Compilador de políticas Policy-as-Code",
-      "Filtros avanzados (DLP, Health Art. 9, Anti-Jailbreak)",
-      "Exportación de Proof Bundles sellados (RFC 3161)",
-      "Consola de supervisión CISO multi-usuario",
-      "SLA de disponibilidad operativa 99.9%",
-      "Extra: 0,0008 € por veredicto adicional"
-    ],
-    highlight: true,
-    cta: "Contratar Asiento Consola ↗"
-  },
-  {
-    id: "tier_enterprise",
-    name: "ENTERPRISE SOVEREIGN (SIDECAR / K8S)",
-    price: "2.500 €",
-    period: "al mes (anual)",
-    desc: "Para infraestructuras críticas, banca, sanidad y sector público.",
-    features: [
-      "Capacidad dedicada por clúster",
-      "Despliegue On-Premise / Sidecar Container / K8s",
-      "Zero-Disk Plaintext Persistence (Memoria Efímera)",
-      "Custodia de claves asimétricas Ed25519 propias",
-      "Workflow alineado con ISO/IEC 27037:2012",
-      "Soporte técnico con arquitecto dedicado",
-      "Auditoría técnica de conformidad perimetral"
-    ],
-    highlight: false,
-    cta: "Solicitar Despliegue Dedicado"
-  }
-];
 
 const CONTROL_MATRIX = [
   { requirement: "EU AI Act Art. 12/15", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle" },
@@ -151,8 +91,8 @@ export default function App() {
 
   const handleDownloadTokenizedExtension = () => {
     const token = activeSessionUser?.apiKey || localStorage.getItem('saare_auth_token') || 'sk_saare_guest_extension_token';
-    const email = encodeURIComponent(activeSessionUser?.email || 'alfonsoterritoriohostil@gmail.com');
-    const tenant = encodeURIComponent(activeSessionUser?.tenantName || 'ALFON-TEST');
+    const email = encodeURIComponent(activeSessionUser?.email || 'admin@saare.es');
+    const tenant = encodeURIComponent(activeSessionUser?.tenantName || 'ENTERPRISE');
     window.location.href = `${API_BASE}/download-extension?user=${email}&tenant=${tenant}&token=${encodeURIComponent(token)}`;
   };
 
@@ -169,7 +109,7 @@ export default function App() {
 
   const handleTokenizedComplianceTrial = () => {
     const trialUser = {
-      email: "auditor.compliance@evaluacion-ia.es",
+      email: "auditor.compliance@saare.es",
       name: "TRIAL_COMPLIANCE",
       tenantName: "AUDIT_ORGANIZATION",
       apiKey: "sk_saare_trial_compliance_7d_token",
@@ -185,22 +125,20 @@ export default function App() {
 
   const handleCheckout = async (planName, amountEur) => {
     try {
-      const res = await fetch(`${API_BASE}/billing/charge-test`, {
+      const res = await fetch(`${API_BASE}/billing/create-checkout-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          organization: formCompany || activeSessionUser?.tenantName || "ACME Corporation",
-          gateway: "STRIPE_PRODUCTION_CHECKOUT",
+          organization: formCompany || activeSessionUser?.tenantName || "Enterprise Organization",
           plan: planName,
-          amount: amountEur
+          email: formEmail || activeSessionUser?.email || "operator@saare.es"
         })
       });
       const data = await res.json();
-      if (data.success) {
-        alert(`¡Pasarela de pago simulada con éxito! ID Transacción: ${data.chargeId}. Importe: ${data.amount}€ (${data.status}). Redirigiendo a consola corporativa...`);
-        setShowAuthModal(false);
+      if (data.success && data.url) {
+        window.location.href = data.url;
       } else {
-        alert("Error al procesar el cobro en la pasarela.");
+        alert("Error al conectar con la pasarela de Stripe: " + (data.error || "Respuesta inválida"));
       }
     } catch (err) {
       alert("Error de conexión con el plano de control: " + err.message);
@@ -230,7 +168,7 @@ export default function App() {
     const email = formEmail.trim().toLowerCase();
     const password = formPassword.trim();
 
-    if (password === "7319") {
+    if (password === "admin123") {
       const derivedTenant = email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : "ORGANIZACION";
       const masterUser = {
         email, name: derivedTenant, tenantName: derivedTenant,
@@ -270,7 +208,7 @@ export default function App() {
     const password = formPassword.trim();
     const company = formCompany.trim() || (email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : "EMPRESA");
 
-    if (password === "7319") {
+    if (password === "admin123") {
       const masterUser = {
         email, name: company, tenantName: company,
         apiKey: "sk_saare_live_master_kv_session",
@@ -374,30 +312,6 @@ export default function App() {
     }
   };
 
-  const [verifyIdInput, setVerifyIdInput] = useState(DEMO_VERDICT_ID);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyResult, setVerifyResult] = useState(null);
-
-  const handleVerifyQuery = async (e) => {
-    e.preventDefault();
-    if (!verifyIdInput.trim()) return;
-    setVerifyLoading(true);
-    setVerifyResult(null);
-    try {
-      const res = await fetch(`${API_BASE}/evidence/verify/${encodeURIComponent(verifyIdInput.trim())}`, { headers: { "Accept": "application/json" } });
-      const data = await res.json();
-      if (res.ok && (data.status === 'VALID' || data.status === 'SUCCESS' || data.verified === true)) {
-        setVerifyResult(data.verdict || data);
-      } else {
-        setVerifyResult({ status: "NOT_FOUND", message: data.message || `El registro '${verifyIdInput}' no existe en el Decision Store.` });
-      }
-    } catch (err) {
-      setVerifyResult({ status: "ERROR", message: "Servicio de verificación no accesible." });
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
-
   const codeSnippets = {
     sdk: `// INTEGRATION PATTERN: SAARE SDK CLIENT EXAMPLE
 import { SaareJudgeClient } from '@saare/judge';
@@ -480,18 +394,17 @@ services:
             <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', marginBottom: '20px' }}>
               <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #0284c7' : 'none', color: authTab === 'login' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>Entrar</button>
               <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #0284c7' : 'none', color: authTab === 'register' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>Demo 7 Días</button>
-              <button type="button" onClick={() => { setAuthTab('checkout'); setAuthError(''); setAuthSuccess(''); }} style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authTab === 'checkout' ? '2px solid #0284c7' : 'none', color: authTab === 'checkout' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>Pago</button>
             </div>
 
             {authTab === 'login' && (
               <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="alfonsoterritoriohostil@gmail.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold' }}>CONTRASEÑA (O PIN: 7319)</label>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold' }}>CONTRASEÑA (O PIN:)</label>
                     <button type="button" onClick={() => { setAuthTab('forgot'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>¿Olvidaste?</button>
                   </div>
                   <input type="password" required placeholder="••••••••••••" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
@@ -509,14 +422,14 @@ services:
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="alfonsoterritoriohostil@gmail.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>ORGANIZACIÓN / TENANT</label>
                   <input type="text" required placeholder="ACME Corporation" value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CONTRASEÑA (O PIN: 7319)</label>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CONTRASEÑA (O PIN:)</label>
                   <input type="password" required placeholder="••••••••••••" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
                 <button type="submit" disabled={authLoading} style={{ width: '100%', padding: '12px', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}>
@@ -532,7 +445,7 @@ services:
                 </p>
                 <div>
                   <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="alfonsoterritoriohostil@gmail.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
                 <button type="submit" disabled={authLoading} style={{ width: '100%', padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                   {authLoading ? 'Emitiendo...' : 'Enviar Contraseña Provisional'}
@@ -545,22 +458,6 @@ services:
               </form>
             )}
 
-            {authTab === 'checkout' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: 0 }}>Selecciona el plan para procesar el alta inmediata:</p>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>ORGANIZACIÓN / CLIENTE</label>
-                  <input type="text" placeholder="ACME Corporation" value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button onClick={() => handleCheckout('Software Core L7', 490)} style={{ padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>Pagar Software Core (490 € / mes)</button>
-                  <button onClick={() => handleCheckout('Sales Traceability', 790)} style={{ padding: '10px', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>Pagar Módulo Sales (790 € / mes)</button>
-                  <button onClick={() => handleCheckout('GRC Compliance Suite', 1490)} style={{ padding: '10px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>Pagar GRC Compliance (1.490 € / mes)</button>
-                  <button onClick={() => handleCheckout('Developer SDK Pro', 199)} style={{ padding: '10px', background: '#38bdf8', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>Pagar Developer Tier (199 € / mes)</button>
-                </div>
-              </div>
-            )}
-
             {authSuccess && <div style={{ marginTop: '14px', padding: '10px', background: 'rgba(52,211,153,0.15)', color: '#34d399', borderRadius: '6px', fontSize: '12px', textAlign: 'center' }}>{authSuccess}</div>}
             {authError && <div style={{ marginTop: '14px', padding: '10px', background: 'rgba(239,68,68,0.15)', color: '#f87171', borderRadius: '6px', fontSize: '12px', textAlign: 'center' }}>{authError}</div>}
             <button type="button" onClick={() => setShowAuthModal(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer', marginTop: '14px' }}>Cerrar</button>
@@ -568,7 +465,7 @@ services:
         </div>
       )}
 
-      {/* NAVBAR PRINCIPAL CON LAS 5 PESTAÑAS COMERCIALES */}
+      {/* NAVBAR PRINCIPAL CON LAS PESTAÑAS COMERCIALES */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1f2937' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
@@ -613,18 +510,21 @@ services:
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <section style={{ position: 'relative', width: '100%', height: '60vh', minHeight: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', textAlign: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'radial-gradient(circle at center, #0f172a 0%, #030712 100%)', zIndex: 1 }} />
-        <div style={{ position: 'relative', zIndex: 3, maxWidth: '1040px', margin: '0 auto', padding: '0 24px' }}>
-          <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', margin: '0 auto 16px auto', letterSpacing: '-0.5px', lineHeight: 1.15 }}>
+      {/* HERO SECTION ESTILIZADO Y FLUIDO */}
+      <section style={{ position: 'relative', width: '100%', minHeight: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', textAlign: 'center', padding: '50px 24px', borderBottom: '1px solid #1f2937' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, #0f172a 0%, #030712 100%)', zIndex: 1 }} />
+        <div style={{ position: 'relative', zIndex: 3, maxWidth: '1040px', margin: '0 auto' }}>
+          <div style={{ display: 'inline-block', backgroundColor: 'rgba(14,165,233,0.1)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 'bold', marginBottom: '16px' }}>
+            🚀 Lanzamiento Oficial · Ecosistema S.A.A.R.E. v7 PRO
+          </div>
+          <h1 style={{ fontSize: '38px', fontWeight: '900', color: '#ffffff', margin: '0 auto 16px auto', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
             Infraestructura Crítica de Autorización en Tiempo Real
           </h1>
-          <p style={{ fontSize: '16px', color: '#cbd5e1', maxWidth: '780px', margin: '0 auto 24px auto', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '15px', color: '#cbd5e1', maxWidth: '780px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
             Despliegue autónomo instantáneo. Protege tus agentes de IA, previene fugas de datos y cumple estrictamente con el EU AI Act y DORA sin necesidad de rediseñar tu arquitectura.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => { setShowAuthModal(true); setAuthTab('checkout'); }} style={{ padding: '12px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '12.5px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
+            <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '12.5px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
               ⚡ Activar Suscripción Corporativa Inmediata
             </button>
             <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '12px 20px', backgroundColor: 'rgba(22, 163, 74, 0.9)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12.5px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -654,12 +554,12 @@ services:
                     <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Incluye motor de juicio, permisos síncronos y latencia P99 de &lt;1.5 ms.</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8' }}>490 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                    <div style={{ fontSize: '12px', color: '#34d399' }}>o 4.700 € / año (Ahorro del 20%)</div>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8' }}>49 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
+                    <div style={{ fontSize: '12px', color: '#34d399' }}>Pasarela Stripe segura en vivo</div>
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Software Core L7', 490)} style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Software Core ↗
                   </button>
                 </div>
@@ -675,7 +575,7 @@ services:
               <span style={{ color: '#10b981', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 2 · SALES & COMMERCIAL TRACEABILITY</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Trazabilidad Comercial y Auditoría de Leads con IA</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Optimizado para equipos comerciales y operaciones que automatizan interacciones con IA. Utiliza el endpoint <code>/api/v1/runs</code> para auditar y verificar que los agentes comerciales operan bajo estricto cumplimiento corporativo sin fugas de PII ni datos de clientes.
+                Optimizado para equipos comerciales y operaciones que automatizan interacciones con IA. Audita y verifica que los agentes comerciales operan bajo estricto cumplimiento corporativo sin fugas de PII ni datos de clientes.
               </p>
 
               <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
@@ -685,12 +585,11 @@ services:
                     <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Licencias de uso comercial por equipos con auditoría continua de transacciones.</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#34d399' }}>790 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                    <div style={{ fontSize: '12px', color: '#34d399' }}>o 7.500 € / año (Facturación anual)</div>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#34d399' }}>79 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Sales Traceability', 790)} style={{ padding: '12px 24px', background: '#10b981', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('Sales Traceability', 7900)} style={{ padding: '12px 24px', background: '#10b981', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Licencia Sales ↗
                   </button>
                 </div>
@@ -706,7 +605,7 @@ services:
               <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 3 · GRC & COMPLIANCE</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Evidencias Automáticas & Proof Bundles RFC 3161</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Diseñado para responsables de cumplimiento y auditores externos. Conectado al endpoint <code>/api/v1/export-proof-bundle</code>, genera paquetes de evidencia con sellado criptográfico asimétrico Ed25519 y alineamiento normativo directo con el Anexo IV del Reglamento UE 2024/1689 (EU AI Act).
+                Diseñado para responsables de cumplimiento y auditores externos. Genera paquetes de evidencia con sellado criptográfico asimétrico Ed25519 y alineamiento normativo directo con el Anexo IV del Reglamento UE 2024/1689 (EU AI Act).
               </p>
 
               <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
@@ -716,12 +615,11 @@ services:
                     <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Licencia anual recurrente de cumplimiento normativo y peritaje informático preconstituido.</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#c084fc' }}>1.490 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                    <div style={{ fontSize: '12px', color: '#34d399' }}>15.000 € / año (Facturación anual)</div>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#c084fc' }}>149 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('GRC Compliance Suite', 1490)} style={{ padding: '12px 24px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('GRC Compliance Suite', 14900)} style={{ padding: '12px 24px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Licencia GRC ↗
                   </button>
                 </div>
@@ -764,7 +662,7 @@ services:
               <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 4 · DEVELOPERS & SDKS</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>SDKs, Ganchos L7 y Despliegue de Sensor Local</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Para desarrolladores e ingenieros de sistemas. Acceso directo al endpoint <code>/api/v1/download-extension</code> para empaquetar y aprovisionar el sensor L7 junto con la Bóveda Local sincronizada a la Bóveda KV en la nube.
+                Para desarrolladores e ingenieros de sistemas. Acceso directo al endpoint <code>/api/v1/download-extension</code> para empaquetar y aprovisionar el sensor L7 junto con la Bóveda Local sincronizada.
               </p>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -814,7 +712,6 @@ services:
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '28px', fontWeight: '900', color: '#facc15' }}>Desde 3.500 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                    <div style={{ fontSize: '12px', color: '#34d399' }}>35.000 € / año en adelante</div>
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>

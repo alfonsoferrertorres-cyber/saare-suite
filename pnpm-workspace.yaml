@@ -1,6 +1,8 @@
-﻿packages:
-  - 'saare-suite'
+packages:
   - 'saare-console'
+  - 'saare-suite'
   - 'control-plane'
+  - 'control-plane-local'
 allowBuilds:
   esbuild: true
+  workerd: true

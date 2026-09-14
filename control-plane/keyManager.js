@@ -1,59 +1,68 @@
-import crypto from "crypto";
-import fs from "fs";
-import path from "path";
-
+// Eliminamos las importaciones de "fs", "path" y el "crypto" de Node.js
 export const CANONICAL_HASH = "SHA-256";
 export const CANONICAL_SIG = "Ed25519";
 
-export function computeSha256(data) {
-  return crypto.createHash("sha256").update(data).digest("hex");
-}
-
-export function deriveEd25519Signature(data, privateKey) {
-  return crypto.sign(null, Buffer.from(data), privateKey).toString("hex");
+// 1. Hash con Web Crypto API
+export async function computeSha256(data) {
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export class EnterpriseKeyManager {
-  constructor(keysDir = "./evidence/keys") {
-    this.keysDir = path.resolve(keysDir);
-    this.keyStore = new Map();
-    this.activeKeyId = null;
-    this._initializeKeyStore();
+  // Pasamos 'env' al constructor para acceder a los secretos de Cloudflare
+  constructor(env) {
+    this.env = env;
   }
-  _initializeKeyStore() {
-    if (!fs.existsSync(this.keysDir)) {
-      fs.mkdirSync(this.keysDir, { recursive: true });
+
+  // 2. Obtención de claves desde el entorno en lugar del sistema de archivos
+  getActivePrivateKey() {
+    const privKey = this.env.ED25519_PRIVATE_KEY;
+    if (!privKey) {
+      throw new Error("[CRYPTO_ERROR] No hay clave privada activa configurada en el entorno.");
     }
-    const pubPath = path.join(this.keysDir, "ed25519_public.pem");
-    const privPath = path.join(this.keysDir, "ed25519_private.pem");
-    if (fs.existsSync(pubPath) && fs.existsSync(privPath)) {
-      const pubKey = fs.readFileSync(pubPath, "utf-8");
-      const privKey = fs.readFileSync(privPath, "utf-8");
-      this.keyStore.set("ed25519_pub_prod_01", { pubKey, privKey, status: "ACTIVE" });
-      this.activeKeyId = "ed25519_pub_prod_01";
+    return privKey;
+  }
+
+  // 3. Firma optimizada para Edge usando Web Crypto
+  async deriveEd25519Signature(data) {
+    const privateKeyRaw = this.getActivePrivateKey();
+    const encoder = new TextEncoder();
+    
+    try {
+      // Importación de clave en formato Web Crypto
+      const key = await crypto.subtle.importKey(
+        "pkcs8",
+        this.pemToArrayBuffer(privateKeyRaw),
+        { name: "Ed25519" },
+        false,
+        ["sign"]
+      );
+
+      const signatureBuffer = await crypto.subtle.sign(
+        "Ed25519",
+        key,
+        encoder.encode(data)
+      );
+
+      return Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    } catch (error) {
+      throw new Error(`[CRYPTO_ERROR] Fallo al generar firma: ${error.message}`);
     }
   }
-  rotateKey() {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519", {
-      publicKeyEncoding: { type: "spki", format: "pem" },
-      privateKeyEncoding: { type: "pkcs8", format: "pem" }
-    });
-    const newKeyId = "ed25519_pub_v3_" + crypto.randomBytes(3).toString("hex");
-    if (this.activeKeyId && this.keyStore.has(this.activeKeyId)) {
-      this.keyStore.get(this.activeKeyId).status = "ROTATED";
+
+  // Utilidad para convertir PEM (de las variables de entorno) a ArrayBuffer
+  pemToArrayBuffer(pem) {
+    const b64Lines = pem.replace(/(-----(BEGIN|END).*-----)/g, '').replace(/\s+/g, '');
+    const b64Decoded = atob(b64Lines);
+    const buffer = new Uint8Array(b64Decoded.length);
+    for (let i = 0; i < b64Decoded.length; i++) {
+      buffer[i] = b64Decoded.charCodeAt(i);
     }
-    this.keyStore.set(newKeyId, { pubKey: publicKey, privKey: privateKey, status: "ACTIVE" });
-    this.activeKeyId = newKeyId;
-    return { activeKeyId: newKeyId, previousKeyStatus: "ROTATED" };
-  }
-  getSigningKey() {
-    const active = this.keyStore.get(this.activeKeyId);
-    if (!active) throw new Error("[CRYPTO_ERROR] No hay clave activa configurada.");
-    return { keyId: this.activeKeyId, privKey: active.privKey };
-  }
-  getPublicKey(keyId) {
-    const key = this.keyStore.get(keyId);
-    if (!key) throw new Error("[CRYPTO_ERROR] Key ID no encontrado: " + keyId);
-    return key.pubKey;
+    return buffer.buffer;
   }
 }

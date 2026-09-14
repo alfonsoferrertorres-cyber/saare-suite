@@ -1,0 +1,14 @@
+{
+  "protocol": "SGP",
+  "version": "1.0",
+  "standard": "SAARE v8",
+  "registrationId": "MS3V-RECON-VALID-2026-ALF-0521",
+  "authority": "Alfonso Ferrer Torres (MS3V)",
+  "capabilities": [
+    "STAT_STATELESS_L7",
+    "LOCAL_LOOPBACK_BIND",
+    "ED25519_VERIFICATION",
+    "ZERO_PERSISTENCE"
+  ],
+  "verificationEndpoint": "https://api.saare.es/api/v1/verify"
+}
