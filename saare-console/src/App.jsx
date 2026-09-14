@@ -127,7 +127,7 @@ export default function App() {
       const manifest = {
         "manifest_version": 3,
         "name": "SAARE Execution Authorization Sensor",
-        "version": "10.0.8",
+        "version": "10.0.9",
         "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™ & Bóveda KV",
         "background": { "service_worker": "background.js" },
         "action": { 
@@ -210,12 +210,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         node: "2607076315021",
         merkleRoot: message.payload?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
         status: "SECURE_ROOT_ANCHOR",
-        timestamp: new Date().toISOString()
+        timestamp: message.payload?.timestamp || new Date().toISOString()
       };
 
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-        chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
+        const existsIndex = current.findIndex(item => item.evidence_id === enrichedPayload.evidence_id);
+        
+        let updatedLogs = [...current];
+        if (existsIndex >= 0) {
+          updatedLogs[existsIndex] = enrichedPayload;
+        } else {
+          updatedLogs = [enrichedPayload, ...current].slice(0, 100);
+        }
+        chrome.storage.local.set({ saare_logs: updatedLogs });
       });
 
       fetch(\`\${WORKER_URL}/runs\`, {
@@ -234,7 +242,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });`;
 
-      const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.12 (SGP 1.0)
+      const contentJs = `// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.13 (SGP 1.0)
 console.log("[SAARE L7 Engine] Sensor Tokenizado Activo para: ${currentUserEmail}");
 
 const DEFAULT_SETTINGS_V10 = {
@@ -258,12 +266,23 @@ try {
   (document.head || document.documentElement).appendChild(injectScript);
 } catch (e) {}
 
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36).toUpperCase();
+}
+
 function sendEvidenceToBackground(verdictData) {
   const text = verdictData.cleanPrompt || "";
+  const promptHash = hashCode(text.trim());
+  
   const payload = {
     verdict_schema: "SGP_1.0",
-    verdictId: verdictData.verdictId || \`VRD-2026-\${Math.random().toString(36).substring(2, 7).toUpperCase()}\`,
-    evidence_id: verdictData.evidence_id || \`EV-L7-\${Math.floor(Math.random() * 90000) + 10000}\`,
+    verdictId: verdictData.verdictId || \`VRD-2026-\${promptHash.substring(0, 5)}\`,
+    evidence_id: verdictData.evidence_id || \`EV-L7-\${promptHash}\`,
     decision: verdictData.decision || "ALLOW",
     verdict: verdictData.verdict || "PERMITIDO",
     reason: verdictData.reason || "Auditoría en tiempo real realizada",
@@ -288,7 +307,7 @@ window.addEventListener("message", (event) => {
   }
 });`;
 
-      const injectJs = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.6.1 */
+      const injectJs = `/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.6.2 (Anti-Deduplication) */
 (function() {
   const DLP = {
     dni: /(?:^|\\D)(\\d{7,9}[-\\s]?[A-Za-z]|[XYZ]\\d{7}[-\\s]?[A-Za-z])(?!\\w)/i,
@@ -296,13 +315,25 @@ window.addEventListener("message", (event) => {
     card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
   };
 
+  let lastSentPrompt = "";
+  let lastSentTime = 0;
+
   function evaluatePayload(rawBody) {
     let str = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody || {});
     if (!str || str.length < 3) return null;
 
+    // Filtro anti-duplicados por streaming / peticiones fetch paralelas
+    const now = Date.now();
+    if (str === lastSentPrompt && (now - lastSentTime) < 3000) {
+      return null;
+    }
+
     const isDni = DLP.dni.test(str);
     const isIban = DLP.iban.test(str.replace(/[\\s-]/g, ""));
     const isCard = DLP.card.test(str.replace(/[\\s-]+/g, ""));
+
+    lastSentPrompt = str;
+    lastSentTime = now;
 
     if (isDni || isIban || isCard) {
       return {
