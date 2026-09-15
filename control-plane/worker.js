@@ -8,6 +8,8 @@ import { runResilienceTests } from "./resilienceGate.js";
 
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const ramRunCache = [];
+// Cache en memoria para la configuración de Webhooks (fallback si no existe KV)
+const ramWebhookConfigCache = new Map();
 
 function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -59,6 +61,40 @@ function enrichEvidenceForGrant(rawEvidence) {
   };
 }
 
+// Función auxiliar para emitir eventos de notificación vía Webhook
+async function dispatchWebhookEvent(tenantId, payload, env) {
+  let config = null;
+
+  if (env.SAARE_VAULT_KV) {
+    try {
+      config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
+    } catch (e) {}
+  }
+  
+  if (!config) {
+    config = ramWebhookConfigCache.get(tenantId);
+  }
+
+  if (!config || !config.target_url) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
+
+  try {
+    const res = await fetch(config.target_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.secret_token || ''}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    return { success: res.ok, status_code: res.status };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -90,6 +126,56 @@ export default {
 
       if (authHeader) {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
+      }
+
+      // ==========================================
+      // RUTAS: CONFIGURACIÓN Y PRUEBA DE WEBHOOKS SUBVENCIONES
+      // ==========================================
+      if ((path === '/api/v1/subsidies/webhook/config' || path === '/api/v7/subsidies/webhook/config') && method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const targetTenant = body.tenant_id || identity?.tenantId || tenantId;
+
+        if (!body.target_url) {
+          return new Response(JSON.stringify({ error: 'Falta parámetro target_url' }), {
+            status: 400,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        const configData = {
+          target_url: body.target_url,
+          secret_token: body.secret_token || '',
+          updatedAt: new Date().toISOString()
+        };
+
+        // Guardar en KV si está disponible, sino en Map de RAM
+        if (env.SAARE_VAULT_KV) {
+          await env.SAARE_VAULT_KV.put(`webhook_config_${targetTenant}`, JSON.stringify(configData));
+        }
+        ramWebhookConfigCache.set(targetTenant, configData);
+
+        return new Response(JSON.stringify({ status: 'success', message: 'Webhook guardado correctamente', config: configData }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      if ((path === '/api/v1/subsidies/webhook/test' || path === '/api/v7/subsidies/webhook/test') && method === 'POST') {
+        const targetTenant = url.searchParams.get('tenant_id') || identity?.tenantId || tenantId;
+
+        const testPayload = {
+          event_type: "TEST_PING",
+          timestamp: new Date().toISOString(),
+          tenant_id: targetTenant,
+          status: "OPERATIONAL"
+        };
+
+        const result = await dispatchWebhookEvent(targetTenant, testPayload, env);
+
+        return new Response(JSON.stringify(result), {
+          status: result.success ? 200 : 400,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
       }
 
       // ==========================================
@@ -134,6 +220,31 @@ export default {
           ],
           downloadUrl: `https://api.saare.io/v7/exports/${complianceCode}.zip`
         };
+
+        // Emitir notificación por Webhook en segundo plano si está configurado
+        const webhookPayload = {
+          event_type: "SUBMISSION_DOSSIER_READY",
+          timestamp: new Date().toISOString(),
+          tenant_id: targetTenant,
+          operator: identity?.email || headerUser || "system",
+          dossier_data: {
+            dossier_id: complianceCode,
+            program: grantType,
+            status: "SIGNED_AND_VALIDATED",
+            cryptographic_proof: {
+              algorithm: "Ed25519",
+              merkle_root: packageMetadata.trustAnchor,
+              iso_27037_compliant: true
+            },
+            download_url: packageMetadata.downloadUrl
+          }
+        };
+
+        if (ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(dispatchWebhookEvent(targetTenant, webhookPayload, env));
+        } else {
+          await dispatchWebhookEvent(targetTenant, webhookPayload, env);
+        }
 
         return new Response(JSON.stringify(packageMetadata), {
           status: 200,
