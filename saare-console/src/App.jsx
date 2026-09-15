@@ -4,7 +4,7 @@ import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
 import OfficialReportModal from './components/OfficialReportModal';
 import FriaWizardModal from './components/FriaWizardModal';
-import { SubsidiesHub } from './components/SubsidiesHub'; // <-- INTEGRADO
+import { SubsidiesHub } from './components/SubsidiesHub';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
@@ -66,7 +66,7 @@ export default function App() {
     }
   }, []);
 
-  // SINCRONIZACIÓN Y TELEMETRÍA CON WORKERS Y KV/D1 (/api/v1/runs, /api/v1/custom-rules, /api/v1/vault/sync)
+  // SINCRONIZACIÓN Y TELEMETRÍA CON WORKERS Y KV/D1
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
 
@@ -216,7 +216,7 @@ export default function App() {
     triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) generado y sellado criptográficamente.");
   };
 
-  // VALIDACIÓN DE LICENCIA CORPORATIVA (/api/v1/auth/verifylicense)
+  // VALIDACIÓN DE LICENCIA CORPORATIVA
   const handleVerifyLicense = async () => {
     try {
       const token = localStorage.getItem('saare_token');
@@ -248,7 +248,7 @@ export default function App() {
     triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
-  // EJECUCIÓN DEL MOTOR EX-ANTE RAM EN VIVO CON CONEXIÓN A /api/v1/intercept Y /api/v1/runs
+  // EJECUCIÓN DEL MOTOR EX-ANTE RAM EN VIVO
   const handleExecuteTestExAnte = async () => {
     if (!testPrompt.trim()) {
       triggerGovernance("Escriba o seleccione un prompt para evaluar.");
@@ -343,7 +343,7 @@ export default function App() {
     }
   };
 
-  // NODO DE CUSTODIA Y VERIFICACIÓN EN VIVO (/api/v1/vault/sync & /api/v1/verify/:hash)
+  // NODO DE CUSTODIA Y VERIFICACIÓN EN VIVO
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
     try {
@@ -1079,17 +1079,38 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL EVIDENCIA JSON / FIRMA NOTARIAL */}
+      {/* MODAL EVIDENCIA JSON / FIRMA NOTARIAL CON BOTÓN DE COPIADO CORREGIDO */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica Bóveda</h3>
-            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '350px' }}>
+          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '650px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#38bdf8', fontWeight: '900' }}>
+                Evidencia Criptográfica Bóveda
+              </h3>
+              
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedJson, null, 2));
+                  triggerGovernance('Log JSON copiado al portapapeles correctamente.');
+                }}
+                style={{ padding: '6px 14px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(5, 150, 105, 0.4)' }}>
+                📋 Copiar JSON
+              </button>
+            </div>
+
+            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '380px', margin: 0 }}>
               {JSON.stringify(selectedJson, null, 2)}
             </pre>
-            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Cerrar Evidence Bundle
-            </button>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button 
+                onClick={() => setSelectedJson(null)} 
+                style={{ width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                Cerrar Evidence Bundle
+              </button>
+            </div>
+
           </div>
         </div>
       )}
