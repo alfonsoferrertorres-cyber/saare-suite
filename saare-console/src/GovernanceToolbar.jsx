@@ -6,7 +6,8 @@ export default function GovernanceToolbar({
   onExportCustody,
   onSimulateBlock,
   onGenerateToken,
-  onDownloadTeaser
+  onDownloadTeaser,
+  onExportGrantDossier
 }) {
   const [status, setStatus] = useState('');
 
@@ -19,11 +20,11 @@ export default function GovernanceToolbar({
   };
 
   const handleVerify = () => {
-    // Ejemplo de Hash SHA-256 de evidencia para probar contra la API unificada
+    // Hash SHA-256 de evidencia para probar contra la API unificada
     const sampleHash = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    // Abre la verificación oficial respetando el API_BASE_URL (/api/v1/verify/)
-    window.open(`${API_BASE_URL}/verify/${sampleHash}`, '_blank');
+    // Abre la verificación oficial respetando la API (/api/v1/verify/)
+    window.open(`${API_BASE_URL}/api/v1/verify/${sampleHash}`, '_blank');
     
     triggerAction(
       'Sello criptográfico Ed25519 de SAARE verificado. Dictamen inalterado conforme a ISO/IEC 27037:2012.',
@@ -50,6 +51,13 @@ export default function GovernanceToolbar({
           style={{ padding: '6px 12px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
         >
           📄 Exportar Cadena de Custodia
+        </button>
+
+        <button
+          onClick={() => triggerAction('Generando expediente de justificación para Red.es / INCIBE...', onExportGrantDossier)}
+          style={{ padding: '6px 12px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)' }}
+        >
+          💶 Dossier Subvenciones (Red.es / INCIBE)
         </button>
 
         <button
