@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SAARE Execution Authorization Sensor",
-  "version": "10.2.0",
+  "version": "10.2.2",
   "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™",
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "SAARE Guard Node",
+    "default_title": "SAARE Execution Guard Node",
     "default_popup": "popup.html"
   },
   "content_scripts": [
@@ -21,13 +21,18 @@
         "https://chat.deepseek.com/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["inject.js"],
+      "resources": [
+        "inject.js",
+        "storage_managed.json"
+      ],
       "matches": [
         "https://gemini.google.com/*",
         "https://chatgpt.com/*",
@@ -39,7 +44,11 @@
       ]
     }
   ],
-  "permissions": ["storage", "alarms", "downloads"],
+  "permissions": [
+    "storage",
+    "alarms",
+    "downloads"
+  ],
   "host_permissions": [
     "https://api.saare.es/*",
     "http://localhost:3000/*",

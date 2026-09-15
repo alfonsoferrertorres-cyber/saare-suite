@@ -1,11 +1,26 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.12 (SGP 1.0)
-console.log("[SAARE L7 Engine] Puente DOM & SAARE Execution Guard Activo (Bóveda KV)");
+// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.14 (SGP 1.0)
+console.log("[SAARE L7 Engine] DOM Bridge & Execution Guard Active");
 
 const DEFAULT_SETTINGS_V10 = {
   cumplimiento_corporativo_integral: true,
   auditoria_dictamen_normativo: true,
   razonamiento_activo_l7: true
 };
+
+/**
+ * Filtro de Ruido L7 para descartar telemetría de red interna de Gemini/Google
+ */
+function isNoisePayload(text) {
+  if (!text || typeof text !== "string") return true;
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("f.req=") ||
+    lower.includes("bard_activity") ||
+    lower.includes("generic") ||
+    lower.includes("at=aovx") ||
+    lower.startsWith("[[[\"")
+  );
+}
 
 function updateDomContext(settings, userEmail, tenantDomain) {
   if (settings) document.documentElement.setAttribute("data-saare-settings", JSON.stringify(settings));
@@ -15,27 +30,23 @@ function updateDomContext(settings, userEmail, tenantDomain) {
 
 function syncStorageAndContext() {
   if (typeof chrome !== "undefined" && chrome.storage) {
-    const fetchManaged = (callback) => {
-      if (chrome.storage.managed) {
+    // 1. Priorizar la lectura de local storage (tokenizado)
+    chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
+      if (local?.saare_user_email) {
+        updateDomContext(local.saare_settings || DEFAULT_SETTINGS_V10, local.saare_user_email, local.saare_tenant_domain || "ENTERPRISE");
+      } else if (chrome.storage.managed) {
+        // Fallback a Enterprise Managed (MDM)
         chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
-          callback(managed || {});
+          const finalUser = managed?.saare_user_email || "";
+          const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
+          updateDomContext(DEFAULT_SETTINGS_V10, finalUser, finalTenant);
         });
       } else {
-        callback({});
+        updateDomContext(DEFAULT_SETTINGS_V10, "", "ENTERPRISE");
       }
-    };
-
-    fetchManaged((managed) => {
-      chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = managed?.saare_user_email || local?.saare_user_email || "legal@saare.es";
-        const finalTenant = managed?.saare_tenant_domain || local?.saare_tenant_domain || "ENTERPRISE";
-        const finalSettings = local?.saare_settings || DEFAULT_SETTINGS_V10;
-
-        updateDomContext(finalSettings, finalUser, finalTenant);
-      });
     });
   } else {
-    updateDomContext(DEFAULT_SETTINGS_V10, "legal@saare.es", "ENTERPRISE");
+    updateDomContext(DEFAULT_SETTINGS_V10, "", "ENTERPRISE");
   }
 }
 
@@ -45,6 +56,7 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener(() => { syncStorageAndContext(); });
 }
 
+// Inyección limpia de inject.js en la RAM de la página
 try {
   const injectScript = document.createElement("script");
   injectScript.src = chrome.runtime.getURL("inject.js");
@@ -53,27 +65,37 @@ try {
 } catch (e) {}
 
 function sendEvidenceToBackground(verdictData) {
-  const text = verdictData.cleanPrompt || "";
+  const text = verdictData.cleanPrompt || verdictData.rawPrompt || verdictData.prompt || "";
+
+  // FILTRO EX-ANTE: Descartar telemetría interna o textos vacíos
+  if (isNoisePayload(text)) {
+    return;
+  }
+
+  // Resuelve la identidad en vivo directamente de las propiedades del DOM
+  const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "";
+  const currentDomTenant = document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE";
+
   const payload = {
     verdict_schema: "SGP_1.0",
     verdictId: verdictData.verdictId || `VRD-2026-${Math.floor(Math.random() * 90000) + 10000}`,
     evidence_id: verdictData.evidence_id || `EV-L7-${Math.floor(Math.random() * 90000) + 10000}`,
     decision: verdictData.decision || "ALLOW",
-    enforcement: verdictData.enforcement || { action: "PASS" },
+    enforcement: verdictData.enforcement || { action: verdictData.decision === "DENY" ? "BLOCK" : "PASS" },
     status: "VALID",
     system_id: "L7-BROWSER-SENSOR",
     policy: { id: "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
     reason: verdictData.reason || "Tráfico conforme verificado en memoria",
-    promptInput: text ? '"' + (text.length > 50 ? text.slice(0, 50) + "..." : text) + '"' : "",
-    user: verdictData.user || "legal@saare.es",
-    tenant: verdictData.tenant || "ENTERPRISE",
+    promptInput: text,
+    user: verdictData.user || currentDomUser,
+    tenant: verdictData.tenant || currentDomTenant,
     timestamp: verdictData.timestamp || new Date().toISOString(),
     cryptoSeal: verdictData.cryptoSeal || "L7-SEAL:ACTIVE",
     verdict: verdictData.verdict || "PERMITIDO",
     type: "PRIVACIDAD",
     cat: verdictData.category || "AUDITORIA_CONFORME",
     sub: verdictData.norma || "EU AI Act",
-    prompt: '"' + (text.length > 50 ? text.slice(0, 50) + "..." : text) + '"',
+    prompt: text,
     time: "En vivo"
   };
 
@@ -82,9 +104,14 @@ function sendEvidenceToBackground(verdictData) {
   }
 }
 
+// Escucha de eventos emitidos desde inject.js
 window.addEventListener("message", (event) => {
+  if (event.source !== window) return;
+
   if (event.data?.type === "SAARE_VERDICT_EVENT" || event.data?.type === "SAARE_EVENT") {
     const verdictData = event.data.payload || event.data.data;
-    if (verdictData) sendEvidenceToBackground(verdictData);
+    if (verdictData) {
+      sendEvidenceToBackground(verdictData);
+    }
   }
 });

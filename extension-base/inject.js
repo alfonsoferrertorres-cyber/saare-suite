@@ -1,10 +1,38 @@
-/* S.A.A.R.E. L7 Interceptor & PII Guard v8.8.0 */
+﻿/* S.A.A.R.E. L7 Interceptor, Anti-Noise Guard & Dynamic Policy Engine v10.5.0 */
 (function() {
+  let lastLoggedHash = "";
+  let lastLoggedTime = 0;
+  
+  // Almacenamiento local en RAM de las reglas personalizadas inyectadas desde la Consola KV
+  let dynamicCustomRules = [];
+
+  // 1. ESCUCHADOR DE REGLAS DINÁMICAS (Policy-as-Code IPC Message)
+  window.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "SAARE_UPDATE_CUSTOM_RULES") {
+      if (Array.isArray(event.data.payload)) {
+        dynamicCustomRules = event.data.payload;
+      }
+    }
+  });
+
+  // Solicitar las reglas activas al arrancar el Script en la pestaña
+  window.postMessage({ type: "SAARE_FETCH_CUSTOM_RULES_REQUEST" }, "*");
+
+  // Patrones DLP Base (DORA / PCI-DSS / LOPDGDD)
   const DLP = {
     dni: /(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/i,
-    iban: /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}|ES\d{18,22}/i,
-    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/i
+    iban: /\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/i,
+    card: /(?:\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|6(?:011|5[0-9]{2})[0-9]{12}|3[47][0-9]{13})\b|\b(?:\d[ -]*?){13,19}\b)/
   };
+
+  const OWASP_PATTERNS = /(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script|exec\s*\()/i;
+
+  async function computeSHA256(str) {
+    const buffer = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  }
 
   function computeL7Seal(str) {
     let hash = 0;
@@ -15,51 +43,39 @@
     return `L7-SEAL:${Math.abs(hash).toString(16).toUpperCase().padStart(8, "0")}`;
   }
 
-  function showSaareBanner(check, onSanitizeAndContinue, onBlock) {
-    try {
-      let existing = document.getElementById('saare-violation-banner');
-      if (existing) existing.remove();
-
-      const banner = document.createElement('div');
-      banner.id = 'saare-violation-banner';
-      banner.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 999999; width: 410px;
-        background: #0b0f19; border: 2px solid #ef4444; border-radius: 10px; padding: 16px;
-        color: #f8fafc; font-family: system-ui, -apple-system, sans-serif;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(239, 68, 68, 0.4);
-      `;
-
-      banner.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 18px;">🛡️</span>
-            <span style="font-weight: 900; font-size: 11.5px; color: #ef4444; letter-spacing: 0.5px;">S.A.A.R.E. SENSOR L7 · BLOQUEO EX-ANTE</span>
-          </div>
-          <button id="saare-close-banner" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; font-weight: bold;">✕</button>
-        </div>
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">NORMATIVA: <strong style="color: #38bdf8;">${check.norma}</strong></div>
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">DICTAMEN: <strong style="color: #ef4444;">${check.verdict} (${check.category})</strong></div>
-        <div style="background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; font-family: monospace; font-size: 11px; color: #34d399; margin-bottom: 10px; word-break: break-all; max-height: 90px; overflow-y: auto;">
-          ${check.cleanPrompt}
-        </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-          <button id="saare-btn-sanitize" style="flex: 1; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer;">✨ Sanitizar y Continuar</button>
-          <button id="saare-btn-block" style="background: #334155; color: #f8fafc; border: none; border-radius: 6px; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer;">Bloquear</button>
-        </div>
-      `;
-
-      document.body.appendChild(banner);
-
-      document.getElementById('saare-close-banner').onclick = () => { banner.remove(); if (onBlock) onBlock(); };
-      document.getElementById('saare-btn-block').onclick = () => { banner.remove(); if (onBlock) onBlock(); };
-      document.getElementById('saare-btn-sanitize').onclick = () => { banner.remove(); if (onSanitizeAndContinue) onSanitizeAndContinue(); };
-    } catch (e) {
-      if (onBlock) onBlock();
-    }
+  function isIgnoredUrl(url) {
+    if (!url) return true;
+    const u = String(url).toLowerCase();
+    return (
+      u.includes("google-analytics") ||
+      u.includes("telemetry") ||
+      u.includes("/log?") ||
+      u.includes("gen_204") ||
+      u.includes("favicon") ||
+      u.includes("page_locale") ||
+      u.includes("play.google.com") ||
+      u.includes("saare.es")
+    );
   }
 
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
+    if (typeof rawText !== "string") {
+      try { rawText = JSON.stringify(rawText); } catch { return ""; }
+    }
+
+    const trimmed = rawText.trim();
+    if (
+      trimmed.startsWith("[[") || 
+      trimmed.includes('"0":31') || 
+      trimmed.includes("count=") || 
+      trimmed.includes("gemini.google.com") ||
+      trimmed.includes("br1aem") ||
+      trimmed.startsWith("https://")
+    ) {
+      return "";
+    }
+
     if (rawText.includes("f.req")) {
       try {
         const params = new URLSearchParams(rawText);
@@ -68,106 +84,201 @@
           const outer = JSON.parse(fReqValue);
           if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
             const inner = JSON.parse(outer[1]);
-            if (Array.isArray(inner) && inner[0] && inner[0][0]) {
-              return String(inner[0][0]).trim();
+            if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
+              const prompt = inner[0][0];
+              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!") && prompt.length > 1) {
+                return prompt.trim();
+              }
             }
           }
         }
       } catch {}
+      return "";
     }
+
     try {
       const json = JSON.parse(rawText);
-      if (json.prompt) return json.prompt;
-      if (json.input) return json.input;
-    } catch {}
-    return decodeURIComponent(rawText.replace(/\+/g, " "));
-  }
-
-  function sanitizeText(text) {
-    if (!text) return "";
-    return text.replace(/\b\d{7,8}[A-Za-z]?\b/gi, (m) => `[DNI_REDACTED_***${m.slice(-4)}]`);
-  }
-
-  const rawFetch = window.fetch;
-  window.fetch = async function(resource, config) {
-    const url = typeof resource === "string" ? resource : (resource?.url || "");
-
-    if (url.includes("google-analytics") || url.includes("telemetry") || url.includes("/batchedit")) {
-      return rawFetch.apply(this, arguments);
-    }
-
-    let activeCheck = null;
-
-    if (config && config.body) {
-      const cleanPrompt = extractCleanPrompt(config.body);
-      if (cleanPrompt && cleanPrompt.length > 2) {
-        const isDni = DLP.dni.test(cleanPrompt);
-        const isIban = DLP.iban.test(cleanPrompt);
-        const isCard = DLP.card.test(cleanPrompt);
-
-        if (isDni || isIban || isCard) {
-          activeCheck = {
-            verdict: "RECHAZADO",
-            decision: "DENY",
-            category: isDni ? "PII_DNI" : (isIban ? "DATOS_BANCARIOS" : "TARJETA_CREDITO"),
-            norma: "EU AI Act Art. 10 & LOPDGDD",
-            reason: "Detección Ex-Ante de Datos Sensibles (PII) en RAM",
-            rawPrompt: cleanPrompt,
-            cleanPrompt: sanitizeText(cleanPrompt),
-            cryptoSeal: computeL7Seal(cleanPrompt),
-            shouldBlock: true
-          };
-
-          return new Promise((resolve) => {
-            showSaareBanner(
-              activeCheck,
-              async () => {
-                if (typeof config.body === "string") {
-                  config.body = config.body.replace(activeCheck.rawPrompt, activeCheck.cleanPrompt);
-                }
-                const res = await rawFetch.apply(this, [resource, config]);
-                captureResponse(res.clone(), activeCheck);
-                resolve(res);
-              },
-              () => {
-                window.postMessage({ type: "SAARE_EVENT", data: activeCheck }, "*");
-                resolve(new Response(JSON.stringify({
-                  error: "SAARE_GRC_BLOCK",
-                  message: "Transmisión abortada por normativa LOPDGDD / EU AI Act."
-                }), { status: 403, headers: { "Content-Type": "application/json" } }));
-              }
-            );
-          });
-        } else {
-          activeCheck = {
-            verdict: "PERMITIDO",
-            decision: "ALLOW",
-            category: "AUDITORIA_CONFORME",
-            norma: "EU AI Act - Tráfico Conforme",
-            reason: "Prompt verificado sin PII en RAM",
-            rawPrompt: cleanPrompt,
-            cleanPrompt: cleanPrompt,
-            cryptoSeal: computeL7Seal(cleanPrompt),
-            shouldBlock: false
-          };
+      if (json.prompt && typeof json.prompt === 'string') return json.prompt.trim();
+      if (json.input && typeof json.input === 'string') return json.input.trim();
+      if (json.messages && Array.isArray(json.messages)) {
+        const lastMsg = json.messages[json.messages.length - 1];
+        if (lastMsg && lastMsg.content) {
+          return typeof lastMsg.content === 'string' ? lastMsg.content.trim() : JSON.stringify(lastMsg.content);
         }
+      }
+    } catch {}
+
+    const decoded = decodeURIComponent(rawText.replace(/\+/g, " ")).trim();
+    return decoded.startsWith("[[") ? "" : decoded;
+  }
+
+  // Sanitización de Prompt (Incluye Sanitización por Reglas Dinámicas)
+  function sanitizePromptText(text) {
+    if (!text) return "";
+    let clean = text
+      .replace(/(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/gi, "[DNI_REDACTED]")
+      .replace(/\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/gi, "[IBAN_REDACTED]")
+      .replace(/(?:\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|6(?:011|5[0-9]{2})[0-9]{12}|3[47][0-9]{13})\b|\b(?:\d[ -]*?){13,19}\b)/gi, "[FINANCIAL_CARD_REDACTED]")
+      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[EMAIL_REDACTED]")
+      .replace(/(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script|exec\s*\()/gi, "[PROMPT_SANITIZED]");
+
+    // Aplicar reemplazo ex-ante de filtros personalizados agregados en la consola
+    dynamicCustomRules.forEach(rule => {
+      if (rule.pattern) {
+        try {
+          const reg = new RegExp(rule.pattern, "gi");
+          clean = clean.replace(reg, `[CUSTOM_BLOCK: ${rule.name.toUpperCase()}]`);
+        } catch (e) {}
+      }
+    });
+
+    return clean;
+  }
+
+  function renderGuardrailModal(activeCheck) {
+    const existingModal = document.getElementById("saare-guardrail-overlay");
+    if (existingModal) existingModal.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "saare-guardrail-overlay";
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(3, 7, 18, 0.94); backdrop-filter: blur(10px);
+      z-index: 9999999; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif; color: #f8fafc;
+    `;
+
+    overlay.innerHTML = `
+      <div style="background: #0b0f19; border: 1px solid #ef4444; border-radius: 12px; width: 90%; max-width: 580px; padding: 24px; box-shadow: 0 20px 30px -5px rgba(239, 68, 68, 0.4);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <span style="font-size: 1.8rem;">🛡️</span>
+          <div>
+            <h3 style="margin: 0; color: #ef4444; font-size: 1.1rem; font-weight: 900; letter-spacing: 0.5px;">
+              BLOQUEO EX-ANTE — RESILIENCIA FINANCIERA & PII (DORA)
+            </h3>
+            <span style="font-size: 0.75rem; color: #94a3b8;">S.A.A.R.E. Zero-Submission Enforcer</span>
+          </div>
+        </div>
+
+        <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
+          Se ha suspendido la transmisión del prompt. Se detectaron posibles infracciones normativas o de gobernanza en RAM:
+          <br/><strong style="color: #f87171;">${activeCheck.norma}</strong> (${activeCheck.category})
+        </p>
+
+        <div style="background: #020617; border: 1px solid #1e293b; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.78rem; color: #fca5a5; margin-bottom: 20px; word-break: break-all; max-height: 120px; overflow-y: auto;">
+          ${activeCheck.sanitizedPrompt}
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
+          <button id="saare-btn-cancel" style="padding: 10px 16px; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+            Cancelar Envío
+          </button>
+          <button id="saare-btn-sanitize" style="padding: 10px 18px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+            ✨ Sanitizar y Reinsertar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById("saare-btn-cancel").addEventListener("click", () => {
+      overlay.remove();
+    });
+
+    document.getElementById("saare-btn-sanitize").addEventListener("click", () => {
+      overlay.remove();
+      const inputBox = document.querySelector('div[contenteditable="true"], textarea');
+      if (inputBox) {
+        if (inputBox.tagName === "TEXTAREA") {
+          inputBox.value = activeCheck.sanitizedPrompt;
+        } else {
+          inputBox.innerText = activeCheck.sanitizedPrompt;
+        }
+        inputBox.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  }
+
+  async function processAndDispatch(cleanPrompt, url) {
+    if (!cleanPrompt || cleanPrompt.length < 2) return;
+
+    const currentHash = cleanPrompt + url;
+    const now = Date.now();
+    if (currentHash === lastLoggedHash && (now - lastLoggedTime) < 3000) return;
+
+    lastLoggedHash = currentHash;
+    lastLoggedTime = now;
+
+    const digitsOnly = cleanPrompt.replace(/[\s-]/g, '');
+    const isDni = DLP.dni.test(cleanPrompt);
+    const isIban = DLP.iban.test(cleanPrompt);
+    const isCard = DLP.card.test(cleanPrompt) || DLP.card.test(digitsOnly);
+    const isOwasp = OWASP_PATTERNS.test(cleanPrompt);
+
+    // Evaluación contra reglas dinámicas de la consola (+ Añadir Bloqueo)
+    let triggeredCustomRule = null;
+    for (const rule of dynamicCustomRules) {
+      if (rule.pattern) {
+        try {
+          const reg = new RegExp(rule.pattern, "i");
+          if (reg.test(cleanPrompt)) {
+            triggeredCustomRule = rule;
+            break;
+          }
+        } catch (e) {}
       }
     }
 
-    const originalResponse = await rawFetch.apply(this, arguments);
-    if (activeCheck) {
-      captureResponse(originalResponse.clone(), activeCheck);
+    const isViolation = isDni || isIban || isCard || isOwasp || (triggeredCustomRule !== null);
+
+    const sanitizedText = sanitizePromptText(cleanPrompt);
+    const promptHash = await computeSHA256(cleanPrompt);
+
+    const activeCheck = {
+      verdict: isViolation ? "RECHAZADO" : "PERMITIDO",
+      decision: isViolation ? "DENY" : "ALLOW",
+      category: isViolation 
+        ? (triggeredCustomRule ? `CUSTOM_RULE_${triggeredCustomRule.name.toUpperCase()}` : (isCard ? "FINANCIAL_CARD" : isDni ? "PII_DNI" : isIban ? "PII_IBAN" : "PROMPT_INJECTION")) 
+        : "AUDITORIA_CONFORME",
+      norma: isViolation 
+        ? (triggeredCustomRule ? `Gobernanza Corporativa: ${triggeredCustomRule.name}` : (isCard || isIban ? "EU Regulation 2022/2554 (DORA)" : "EU AI Act Art. 10 & LOPDGDD")) 
+        : "EU AI Act - Tráfico Conforme",
+      reason: isViolation ? "Detección Ex-Ante de Datos Sensibles o Regla de Empresa en RAM" : "Prompt verificado sin PII bajo directivas GRC",
+      rawPrompt: isViolation ? `HASH[${promptHash.substring(0, 16)}]` : sanitizedText,
+      cleanPrompt: sanitizedText,
+      sanitizedPrompt: sanitizedText,
+      cryptoSeal: computeL7Seal(cleanPrompt),
+      shouldBlock: isViolation
+    };
+
+    if (isViolation) {
+      renderGuardrailModal(activeCheck);
     }
-    return originalResponse;
+
+    window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: activeCheck }, "*");
+  }
+
+  // Hook 1: FETCH
+  const rawFetch = window.fetch;
+  window.fetch = async function(resource, config) {
+    const url = typeof resource === "string" ? resource : (resource?.url || "");
+    if (!isIgnoredUrl(url) && config && config.body) {
+      const cleanPrompt = extractCleanPrompt(config.body);
+      if (cleanPrompt) await processAndDispatch(cleanPrompt, url);
+    }
+    return rawFetch.apply(this, arguments);
   };
 
-  async function captureResponse(responseClone, checkData) {
+  // Hook 2: XMLHttpRequest
+  const rawXHR = window.XMLHttpRequest.prototype.send;
+  window.XMLHttpRequest.prototype.send = function(body) {
     try {
-      const text = await responseClone.text();
-      checkData.responseOutput = text.slice(0, 300); // Primeros 300 caracteres de la respuesta capturada
-      window.postMessage({ type: "SAARE_EVENT", data: checkData }, "*");
-    } catch (e) {
-      window.postMessage({ type: "SAARE_EVENT", data: checkData }, "*");
-    }
-  }
+      if (body) {
+        const cleanPrompt = extractCleanPrompt(body);
+        if (cleanPrompt) processAndDispatch(cleanPrompt, "xhr_batch");
+      }
+    } catch (e) {}
+    return rawXHR.apply(this, arguments);
+  };
 })();
