@@ -1,9 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
-import GovernanceToolbar from './GovernanceToolbar';
+import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
-import OfficialReportModal from './OfficialReportModal';
-import FriaWizardModal from './FriaWizardModal';
+import OfficialReportModal from './components/OfficialReportModal';
+import FriaWizardModal from './components/FriaWizardModal';
+import { SubsidiesHub } from './components/SubsidiesHub'; // <-- INTEGRADO
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
@@ -505,43 +506,62 @@ export default function App() {
     }
   };
 
-  // EXPORTAR DOSSIER TÉCNICO DE SUBVENCIONES (RED.ES / INCIBE / CDTI)
-  const handleExportGrantDossier = () => {
-    const grantReport = {
-      expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
-      tenantId: tenantId,
-      operatorEmail: userEmail,
-      timestamp: new Date().toISOString(),
-      dnshCompliance: {
-        status: "COMPLIANT_DNSH",
-        tokenSavingsPercentage: "45%",
-        ramComputeBytesWritten: 0,
-        description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
-      },
-      grantBreakdown: {
-        kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
-        kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
-        impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
-        incibeCdti: evidences.filter(e => e.merkleRoot)
-      },
-      evidenceSummary: {
-        totalEvidences: evidences.length,
-        cryptoAnchor: SAARE_CONFIG.TRUST_ANCHOR,
-        safeCreativeId: SAARE_CONFIG.SAFE_CREATIVE_ID
+  // EXPORTAR DOSSIER TÉCNICO DE SUBVENCIONES VÍA API WORKER CON FALLBACK A JSON
+  const handleExportGrantDossier = async () => {
+    try {
+      const res = await saareFetch('/api/v7/subsidies/export-package', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenantId,
+          grantType: 'KIT_CONSULTING',
+          complianceCode: `MS3V-GRANT-EVIDENCE-${Date.now()}`
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        triggerGovernance(`Expediente ${data.complianceCode} empaquetado y listo para Red.es.`);
+      } else {
+        throw new Error('Generando respaldo local JSON');
       }
-    };
+    } catch (e) {
+      const grantReport = {
+        expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
+        tenantId: tenantId,
+        operatorEmail: userEmail,
+        timestamp: new Date().toISOString(),
+        dnshCompliance: {
+          status: "COMPLIANT_DNSH",
+          tokenSavingsPercentage: "45%",
+          ramComputeBytesWritten: 0,
+          description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
+        },
+        grantBreakdown: {
+          kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
+          kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
+          impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
+          incibeCdti: evidences.filter(e => e.merkleRoot)
+        },
+        evidenceSummary: {
+          totalEvidences: evidences.length,
+          cryptoAnchor: SAARE_CONFIG.TRUST_ANCHOR,
+          safeCreativeId: SAARE_CONFIG.SAFE_CREATIVE_ID
+        }
+      };
 
-    const blob = new Blob([JSON.stringify(grantReport, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(grantReport, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
+      triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
+    }
   };
 
   const handleExportChainOfCustody = () => {
@@ -732,8 +752,14 @@ export default function App() {
           <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
             <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>REGISTRO DE EVIDENCIA</button>
             <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
+            <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '10px 20px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>🏛️ SUBSIDIES HUB</button>
             <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>POLICY ENGINE ({customFilters.length + activeDirectivesCount})</button>
           </div>
+
+          {/* TAB: SUBSIDIES HUB */}
+          {activeTab === 'SUBSIDIES' && (
+            <SubsidiesHub tenantId={tenantId} currentEvidences={evidences} />
+          )}
 
           {/* TAB: REGISTRO DE EVIDENCIA */}
           {activeTab === 'GLOBAL' && (
