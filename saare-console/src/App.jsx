@@ -8,6 +8,9 @@ import { SubsidiesHub } from './components/SubsidiesHub';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
+// OPCIÓN B: Importación explícita desde src/assets/cabecera.png
+import cabeceraImg from './assets/cabecera.png';
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('saare_token') !== null;
@@ -627,18 +630,19 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER INTEGRADO CON CABECERA / BANNER DE NAVEGADOR */}
-      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 24px 8px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+      {/* HEADER INTEGRADO CON CABECERA DESDE SRC/ASSETS Y METADATOS */}
+      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 24px 8px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
+        {/* BANNER DE CABECERA DESDE SRC/ASSETS */}
         <div style={{ width: '100%', maxWidth: '1280px', marginBottom: '12px', overflow: 'hidden', borderRadius: '8px', border: '1px solid #1e293b' }}>
           <img 
-            src="/cabecera.png" 
-            alt="SAARE Platform | GRC & AI Governance System" 
+            src={cabeceraImg} 
+            alt="S.A.A.R.E. Console Header" 
             style={{ width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'cover', display: 'block' }}
-            onError={(e) => { e.target.style.display = 'none'; }}
           />
         </div>
 
+        {/* BARRA DE METADATOS Y CONTROL */}
         <div style={{ width: '100%', maxWidth: '1280px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#94a3b8', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
@@ -650,6 +654,7 @@ export default function App() {
             <span>Forensic Custody & L7 Enforcement</span>
           </div>
         </div>
+
       </header>
 
       <main style={{ maxWidth: '1280px', margin: '20px auto', padding: '0 16px' }}>
