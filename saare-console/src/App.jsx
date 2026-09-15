@@ -8,7 +8,7 @@ import { SubsidiesHub } from './components/SubsidiesHub';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
-// OPCIÓN B: Importación explícita desde src/assets/cabecera.png
+// Importación explícita de la imagen de cabecera
 import cabeceraImg from './assets/cabecera.png';
 
 export default function App() {
@@ -630,20 +630,22 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER INTEGRADO CON CABECERA 15% MÁS GRANDE (maxHeight: 207px) */}
-      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '20px 24px 12px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* HEADER INTEGRADO Y CENTRADO CON MÁRGENES UNIFORMES */}
+      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '20px 0 16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* BANNER DE CABECERA DESDE SRC/ASSETS (15% AUMENTADO) */}
-        <div style={{ width: '100%', maxWidth: '1280px', marginBottom: '16px', overflow: 'hidden', borderRadius: '10px', border: '1px solid #1e293b', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)' }}>
-          <img 
-            src={cabeceraImg} 
-            alt="S.A.A.R.E. Console Header" 
-            style={{ width: '100%', height: 'auto', maxHeight: '207px', objectFit: 'cover', display: 'block' }}
-          />
+        {/* CONTENEDOR DEL BANNER DE CABECERA (ALINEADO A 1280PX Y CENTRADO) */}
+        <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', marginBottom: '16px' }}>
+          <div style={{ width: '100%', overflow: 'hidden', borderRadius: '10px', border: '1px solid #1e293b', background: '#020617', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img 
+              src={cabeceraImg} 
+              alt="S.A.A.R.E. Console Header" 
+              style={{ width: '100%', height: 'auto', maxHeight: '200px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+            />
+          </div>
         </div>
 
-        {/* BARRA DE METADATOS Y CONTROL */}
-        <div style={{ width: '100%', maxWidth: '1280px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#94a3b8', flexWrap: 'wrap', gap: '12px' }}>
+        {/* BARRA DE METADATOS ALINEADA CON LOS MISMOS MÁRGENES SIMÉTRICOS */}
+        <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#94a3b8', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px', fontSize: '0.9rem' }}>S.A.A.R.E. CONSOLE GRC</span>
             <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>v7 PRO</span>
