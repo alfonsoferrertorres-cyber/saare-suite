@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
-import GovernanceToolbar from './GovernanceToolbar';
+import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
 import OfficialReportModal from './OfficialReportModal';
 import FriaWizardModal from './FriaWizardModal';
