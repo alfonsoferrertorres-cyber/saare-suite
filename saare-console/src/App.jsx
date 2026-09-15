@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
-import OfficialReportModal from './OfficialReportModal';
-import FriaWizardModal from './FriaWizardModal';
+import OfficialReportModal from './components/OfficialReportModal';
+import FriaWizardModal from './components/FriaWizardModal';
+import { SubsidiesHub } from './components/SubsidiesHub';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
