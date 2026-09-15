@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export default function OfficialReportModal({ onClose }) {
   const userEmail = localStorage.getItem('saare_user_email') || 'legal@saare.es';

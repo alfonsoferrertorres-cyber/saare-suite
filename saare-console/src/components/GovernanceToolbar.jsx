@@ -20,22 +20,22 @@ export default function GovernanceToolbar({
   };
 
   const handleVerify = (customHash) => {
-    // Si se pasa un hash específico de la tabla se usa, si no, se usa el fallback por defecto
+    // Si se pasa un hash especï¿½fico de la tabla se usa, si no, se usa el fallback por defecto
     const targetHash = (typeof customHash === 'string' && customHash) 
       ? customHash 
       : "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    // Sanitización rigurosa de URL para evitar duplicación de slashes o prefijos /api/v1/
+    // Sanitizaciï¿½n rigurosa de URL para evitar duplicaciï¿½n de slashes o prefijos /api/v1/
     const cleanBase = (API_BASE_URL || '').replace(/\/$/, '');
     const verifyEndpoint = cleanBase.includes('/api/v1') 
       ? `${cleanBase}/verify/${targetHash}`
       : `${cleanBase}/api/v1/verify/${targetHash}`;
     
-    // Abre el certificado de la Bóveda en una nueva pestaña
+    // Abre el certificado de la Bï¿½veda en una nueva pestaï¿½a
     window.open(verifyEndpoint, '_blank');
     
     triggerAction(
-      `Sello criptográfico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
+      `Sello criptogrï¿½fico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
       () => {
         if (typeof onVerifySignature === 'function') {
           onVerifySignature(targetHash);
@@ -66,7 +66,7 @@ export default function GovernanceToolbar({
         </button>
 
         <button
-          onClick={() => triggerAction('Generando expediente de justificación para Red.es / INCIBE...', onExportGrantDossier)}
+          onClick={() => triggerAction('Generando expediente de justificaciï¿½n para Red.es / INCIBE...', onExportGrantDossier)}
           style={{ padding: '6px 12px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)' }}
         >
           ?? Dossier Subvenciones (Red.es / INCIBE)
@@ -80,17 +80,17 @@ export default function GovernanceToolbar({
         </button>
 
         <button
-          onClick={() => triggerAction('Token temporal de auditoría de caja negra generado (Validez: 24h).', onGenerateToken)}
+          onClick={() => triggerAction('Token temporal de auditorï¿½a de caja negra generado (Validez: 24h).', onGenerateToken)}
           style={{ padding: '6px 12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
         >
-          ??? Generar Token de Auditoría
+          ??? Generar Token de Auditorï¿½a
         </button>
 
         <button
-          onClick={() => triggerAction('Descargando Teaser Técnico y Matriz de Invariantes...', onDownloadTeaser)}
+          onClick={() => triggerAction('Descargando Teaser Tï¿½cnico y Matriz de Invariantes...', onDownloadTeaser)}
           style={{ padding: '6px 12px', background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
         >
-          ?? Descargar Teaser Técnico
+          ?? Descargar Teaser Tï¿½cnico
         </button>
       </div>
 
