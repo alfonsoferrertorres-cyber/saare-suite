@@ -1,10 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
-import GovernanceToolbar from './components/GovernanceToolbar';
+import GovernanceToolbar from './GovernanceToolbar';
 import Login from './Login';
-import OfficialReportModal from './components/OfficialReportModal';
-import FriaWizardModal from './components/FriaWizardModal';
-import { SubsidiesHub } from './components/SubsidiesHub';
+import OfficialReportModal from './OfficialReportModal';
+import FriaWizardModal from './FriaWizardModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 
@@ -66,7 +65,7 @@ export default function App() {
     }
   }, []);
 
-  // SINCRONIZACIÓN Y TELEMETRÍA CON WORKERS Y KV/D1
+  // SINCRONIZACIÓN Y TELEMETRÍA CON WORKERS Y KV/D1 (/api/v1/runs, /api/v1/custom-rules, /api/v1/vault/sync)
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
 
@@ -216,7 +215,7 @@ export default function App() {
     triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) generado y sellado criptográficamente.");
   };
 
-  // VALIDACIÓN DE LICENCIA CORPORATIVA
+  // VALIDACIÓN DE LICENCIA CORPORATIVA (/api/v1/auth/verifylicense)
   const handleVerifyLicense = async () => {
     try {
       const token = localStorage.getItem('saare_token');
@@ -248,7 +247,7 @@ export default function App() {
     triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
-  // EJECUCIÓN DEL MOTOR EX-ANTE RAM EN VIVO
+  // EJECUCIÓN DEL MOTOR EX-ANTE RAM EN VIVO CON CONEXIÓN A /api/v1/intercept Y /api/v1/runs
   const handleExecuteTestExAnte = async () => {
     if (!testPrompt.trim()) {
       triggerGovernance("Escriba o seleccione un prompt para evaluar.");
@@ -343,7 +342,7 @@ export default function App() {
     }
   };
 
-  // NODO DE CUSTODIA Y VERIFICACIÓN EN VIVO
+  // NODO DE CUSTODIA Y VERIFICACIÓN EN VIVO (/api/v1/vault/sync & /api/v1/verify/:hash)
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
     try {
@@ -506,62 +505,43 @@ export default function App() {
     }
   };
 
-  // EXPORTAR DOSSIER TÉCNICO DE SUBVENCIONES VÍA API WORKER CON FALLBACK A JSON
-  const handleExportGrantDossier = async () => {
-    try {
-      const res = await saareFetch('/api/v7/subsidies/export-package', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: tenantId,
-          grantType: 'KIT_CONSULTING',
-          complianceCode: `MS3V-GRANT-EVIDENCE-${Date.now()}`
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        triggerGovernance(`Expediente ${data.complianceCode} empaquetado y listo para Red.es.`);
-      } else {
-        throw new Error('Generando respaldo local JSON');
+  // EXPORTAR DOSSIER TÉCNICO DE SUBVENCIONES (RED.ES / INCIBE / CDTI)
+  const handleExportGrantDossier = () => {
+    const grantReport = {
+      expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
+      tenantId: tenantId,
+      operatorEmail: userEmail,
+      timestamp: new Date().toISOString(),
+      dnshCompliance: {
+        status: "COMPLIANT_DNSH",
+        tokenSavingsPercentage: "45%",
+        ramComputeBytesWritten: 0,
+        description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
+      },
+      grantBreakdown: {
+        kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
+        kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
+        impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
+        incibeCdti: evidences.filter(e => e.merkleRoot)
+      },
+      evidenceSummary: {
+        totalEvidences: evidences.length,
+        cryptoAnchor: SAARE_CONFIG.TRUST_ANCHOR,
+        safeCreativeId: SAARE_CONFIG.SAFE_CREATIVE_ID
       }
-    } catch (e) {
-      const grantReport = {
-        expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
-        tenantId: tenantId,
-        operatorEmail: userEmail,
-        timestamp: new Date().toISOString(),
-        dnshCompliance: {
-          status: "COMPLIANT_DNSH",
-          tokenSavingsPercentage: "45%",
-          ramComputeBytesWritten: 0,
-          description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
-        },
-        grantBreakdown: {
-          kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
-          kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
-          impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
-          incibeCdti: evidences.filter(e => e.merkleRoot)
-        },
-        evidenceSummary: {
-          totalEvidences: evidences.length,
-          cryptoAnchor: SAARE_CONFIG.TRUST_ANCHOR,
-          safeCreativeId: SAARE_CONFIG.SAFE_CREATIVE_ID
-        }
-      };
+    };
 
-      const blob = new Blob([JSON.stringify(grantReport, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    const blob = new Blob([JSON.stringify(grantReport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-      triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
-    }
+    triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
   };
 
   const handleExportChainOfCustody = () => {
@@ -752,14 +732,8 @@ export default function App() {
           <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
             <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>REGISTRO DE EVIDENCIA</button>
             <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
-            <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '10px 20px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>🏛️ SUBSIDIES HUB</button>
             <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>POLICY ENGINE ({customFilters.length + activeDirectivesCount})</button>
           </div>
-
-          {/* TAB: SUBSIDIES HUB */}
-          {activeTab === 'SUBSIDIES' && (
-            <SubsidiesHub tenantId={tenantId} currentEvidences={evidences} />
-          )}
 
           {/* TAB: REGISTRO DE EVIDENCIA */}
           {activeTab === 'GLOBAL' && (
@@ -1079,38 +1053,17 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL EVIDENCIA JSON / FIRMA NOTARIAL CON BOTÓN DE COPIADO CORREGIDO */}
+      {/* MODAL EVIDENCIA JSON / FIRMA NOTARIAL */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '650px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', color: '#38bdf8', fontWeight: '900' }}>
-                Evidencia Criptográfica Bóveda
-              </h3>
-              
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(JSON.stringify(selectedJson, null, 2));
-                  triggerGovernance('Log JSON copiado al portapapeles correctamente.');
-                }}
-                style={{ padding: '6px 14px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(5, 150, 105, 0.4)' }}>
-                📋 Copiar JSON
-              </button>
-            </div>
-
-            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '380px', margin: 0 }}>
+          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica Bóveda</h3>
+            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '350px' }}>
               {JSON.stringify(selectedJson, null, 2)}
             </pre>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <button 
-                onClick={() => setSelectedJson(null)} 
-                style={{ width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-                Cerrar Evidence Bundle
-              </button>
-            </div>
-
+            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
+              Cerrar Evidence Bundle
+            </button>
           </div>
         </div>
       )}
