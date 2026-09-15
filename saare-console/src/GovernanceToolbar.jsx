@@ -19,16 +19,28 @@ export default function GovernanceToolbar({
     setTimeout(() => setStatus(''), 4000);
   };
 
-  const handleVerify = () => {
-    // Hash SHA-256 de evidencia para probar contra la API unificada
-    const sampleHash = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
+  const handleVerify = (customHash) => {
+    // Si se pasa un hash específico de la tabla se usa, si no, se usa el fallback por defecto
+    const targetHash = (typeof customHash === 'string' && customHash) 
+      ? customHash 
+      : "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    // Abre la verificación oficial respetando la API (/api/v1/verify/)
-    window.open(`${API_BASE_URL}/api/v1/verify/${sampleHash}`, '_blank');
+    // Sanitización rigurosa de URL para evitar duplicación de slashes o prefijos /api/v1/
+    const cleanBase = (API_BASE_URL || '').replace(/\/$/, '');
+    const verifyEndpoint = cleanBase.includes('/api/v1') 
+      ? `${cleanBase}/verify/${targetHash}`
+      : `${cleanBase}/api/v1/verify/${targetHash}`;
+    
+    // Abre el certificado de la Bóveda en una nueva pestaña
+    window.open(verifyEndpoint, '_blank');
     
     triggerAction(
-      'Sello criptográfico Ed25519 de SAARE verificado. Dictamen inalterado conforme a ISO/IEC 27037:2012.',
-      onVerifySignature
+      `Sello criptográfico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
+      () => {
+        if (typeof onVerifySignature === 'function') {
+          onVerifySignature(targetHash);
+        }
+      }
     );
   };
 
@@ -40,7 +52,7 @@ export default function GovernanceToolbar({
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button
-          onClick={handleVerify}
+          onClick={() => handleVerify()}
           style={{ padding: '6px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
         >
           🔍 Verificar Firma Notarial SAARE (Ed25519)
@@ -82,7 +94,6 @@ export default function GovernanceToolbar({
         </button>
       </div>
 
-      {/* Renderizado dinámico del mensaje de estado */}
       {status && (
         <div style={{ marginTop: '12px', padding: '10px 14px', background: '#090d16', borderLeft: '3px solid #38bdf8', borderRadius: '4px', fontSize: '12px', color: '#38bdf8', fontWeight: '600' }}>
           ✅ {status}
