@@ -55,6 +55,7 @@ export default function App() {
 
     const fetchTelemetry = async () => {
       try {
+        // LLAMADA LIMPIA: Apunta directamente a /runs (saareFetch antepone API_BASE_URL)
         const res = await saareFetch(`/runs?t=${Date.now()}`, {
           method: 'GET',
           headers: {
@@ -71,7 +72,6 @@ export default function App() {
             const mappedEvidences = remoteEvidences.map((item, idx) => {
               const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
               
-              // Extracción tolerante de prompts y respuestas
               let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || item.promptSummary || '';
               let cleanResponse = item.responseOutput || item.llmResponse || item.response || '';
               
@@ -127,7 +127,7 @@ export default function App() {
 
       const response = await fetch('/extension-base.zip');
       if (!response.ok) {
-        throw new Error("No se encontró el paquete base extension-base.zip en la carpeta public/.");
+        throw new Error("No se encontró el paquete base extension-base.zip en public/.");
       }
 
       const zipBlob = await response.blob();
@@ -139,6 +139,7 @@ export default function App() {
         "saare_token": { "Value": currentToken, "Description": "Token OIDC de sincronización con la Bóveda." }
       };
 
+      // Inyección limpia en la raíz del ZIP
       zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
 
       const content = await zip.generateAsync({ type: "blob" });
