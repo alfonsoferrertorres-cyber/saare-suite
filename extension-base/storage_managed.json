@@ -1,0 +1,14 @@
+{
+  "saare_user_email": {
+    "Value": "admin@saare.es",
+    "Description": "Email del operador autorizado tokenizado."
+  },
+  "saare_tenant_domain": {
+    "Value": "ENTERPRISE",
+    "Description": "Inquilino canónico de la Bóveda."
+  },
+  "saare_token": {
+    "Value": "sk_saare_live_managed_identity",
+    "Description": "Token OIDC de sincronización con la Bóveda."
+  }
+}

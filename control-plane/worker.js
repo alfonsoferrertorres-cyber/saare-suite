@@ -78,7 +78,7 @@ export class AuthMiddleware {
     if (rawToken.startsWith("sk_saare_live_")) {
       return {
         sub: "system_operator",
-        email: "admin@saare.es",
+        email: "legal@saare.es",
         tenantId: "ENTERPRISE",
         role: "CISO_ADMIN",
         groups: ["saare-ciso-group"]
@@ -163,12 +163,12 @@ export class TenantManager {
 export class ComplianceEngine {
   static evaluateDirectives(promptInput, rawPayload = {}) {
     const payloadStr = typeof rawPayload === 'string' ? rawPayload : JSON.stringify(rawPayload || {});
-    const cleanPrompt = (promptInput || rawPayload.prompt || payloadStr).trim();
+    const cleanPrompt = (promptInput || rawPayload.prompt || rawPayload.rawPrompt || rawPayload.cleanPrompt || payloadStr).trim();
     const lowerPrompt = cleanPrompt.toLowerCase();
 
     // DIRECTIVA 2 & 4: EU AI Act & LOPDGDD (DLP Estricto de Alta Precisión)
     const DLP = {
-      dni: /\b(?:\d{8}[A-HJ-NP-TV-Z]|[XYZ]\d{7}[A-HJ-NP-TV-Z])\b/i,
+      dni: /(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/i,
       iban: /\bES\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2}\b/i,
       card: /\b(?:4[0-9]{3}|5[1-5][0-9]{2}|3[47][0-9]{2})[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{1,4}\b/
     };
@@ -440,6 +440,7 @@ export default {
             tenant TEXT,
             verdict TEXT,
             prompt TEXT,
+            responseOutput TEXT,
             payload_json TEXT,
             created_at TEXT
           );
@@ -456,7 +457,7 @@ export default {
     }
 
     // ==========================================
-    // CAPTURA Y SERVICIO DE RUNS / EVIDENCIAS (D1 & RAM - SIN KV)
+    // CAPTURA Y SERVICIO DE RUNS / EVIDENCIAS (UNIFICADO D1 & RAM)
     // ==========================================
     if (path.includes('runs') || path.includes('telemetry')) {
       if (method === "GET") {
@@ -482,10 +483,11 @@ export default {
                   verdictId: row.verdictId || "VRD-LIVE-D1",
                   decision: row.decision,
                   verdict: row.verdict,
-                  user: row.user,
-                  tenant: row.tenant,
-                  prompt: row.prompt,
-                  timestamp: row.created_at
+                  user: row.user || parsedPayload.user || "legal@saare.es",
+                  tenant: row.tenant || parsedPayload.tenant || "ENTERPRISE",
+                  prompt: row.prompt || parsedPayload.prompt || parsedPayload.rawPrompt || parsedPayload.cleanPrompt || parsedPayload.promptInput || "",
+                  responseOutput: row.responseOutput || parsedPayload.responseOutput || parsedPayload.llmResponse || "",
+                  timestamp: row.created_at || parsedPayload.timestamp
                 };
               });
             }
@@ -509,15 +511,20 @@ export default {
         const runId = runPayload.id || runPayload.evidence_id || `EV-L7-${Math.floor(10000 + Math.random() * 90000)}`;
         const verdictId = runPayload.verdictId || `VRD-2026-${Math.floor(10000 + Math.random() * 90000)}`;
         const decision = runPayload.decision || "ALLOW";
-        const user = runPayload.user || runPayload.operator || "admin@saare.es";
+        const user = runPayload.user || runPayload.operator || "legal@saare.es";
         const tenant = runPayload.tenant || "ENTERPRISE";
-        const verdict = runPayload.verdict || "COMPLIANT";
-        const prompt = runPayload.prompt || "";
-        const createdAt = new Date().toISOString();
+        const verdict = runPayload.verdict || "PERMITIDO";
+        
+        // Extracción limpia del prompt y la contestación
+        const prompt = runPayload.prompt || runPayload.rawPrompt || runPayload.cleanPrompt || runPayload.promptInput || "";
+        const responseOutput = runPayload.responseOutput || runPayload.llmResponse || "";
+        const createdAt = runPayload.timestamp || new Date().toISOString();
 
         runPayload.id = runId;
         runPayload.evidence_id = runId;
         runPayload.verdictId = verdictId;
+        runPayload.prompt = prompt;
+        runPayload.responseOutput = responseOutput;
         runPayload.timestamp = createdAt;
 
         ramRunCache.unshift(runPayload);
@@ -526,11 +533,14 @@ export default {
         if (env.DB) {
           ctx.waitUntil(
             env.DB.prepare(`
-              INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, payload_json, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(evidence_id) DO UPDATE SET
                 decision = excluded.decision,
                 verdict = excluded.verdict,
+                prompt = excluded.prompt,
+                responseOutput = excluded.responseOutput,
+                payload_json = excluded.payload_json,
                 created_at = excluded.created_at
             `).bind(
               verdictId,
@@ -540,6 +550,7 @@ export default {
               tenant,
               verdict,
               prompt,
+              responseOutput,
               JSON.stringify(runPayload),
               createdAt
             ).run().catch(err => console.error("Error writing to D1:", err))
@@ -566,7 +577,7 @@ export default {
         }
         const token = "sk_saare_live_" + crypto.randomUUID().substring(0, 16);
         const userData = {
-          email: user?.email || cleanEmail || "admin@saare.es",
+          email: user?.email || cleanEmail || "legal@saare.es",
           name: user?.name || "Enterprise Operator",
           tenantName: user?.name || "ENTERPRISE",
           apiKey: token,
@@ -608,7 +619,8 @@ export default {
         }
         try {
           const body = await request.json().catch(() => ({}));
-          const promptInput = body.prompt || body.cleanPrompt || body.message || "";
+          const promptInput = body.prompt || body.cleanPrompt || body.rawPrompt || body.message || "";
+          const responseOutput = body.responseOutput || body.llmResponse || "";
           
           // Evaluación determinista mediante el motor de las 8 Directivas GRC
           const evalResult = ComplianceEngine.evaluateDirectives(promptInput, body);
@@ -635,7 +647,7 @@ export default {
             user: body.user || "l7_interceptor",
             tenant: body.tenant || "ENTERPRISE",
             prompt: promptInput || "Interception Evaluation",
-            responseOutput: body.responseOutput || "",
+            responseOutput: responseOutput,
             merkleRoot: evalResult.merkleRoot,
             node: evalResult.node,
             status: evalResult.status,
@@ -648,8 +660,8 @@ export default {
           if (env.DB) {
             ctx.waitUntil(
               env.DB.prepare(`
-                INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, payload_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
               `).bind(
                 autoVerdict, 
                 autoId, 
@@ -658,6 +670,7 @@ export default {
                 runRecord.tenant, 
                 evalResult.verdict, 
                 runRecord.prompt, 
+                runRecord.responseOutput,
                 JSON.stringify(runRecord)
               ).run().catch(() => {})
             );

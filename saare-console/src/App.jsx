@@ -71,11 +71,13 @@ export default function App() {
             const mappedEvidences = remoteEvidences.map((item, idx) => {
               const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
               
-              let cleanPrompt = item.prompt || item.promptInput || item.promptSummary || '';
-              let cleanResponse = item.responseOutput || item.llmResponse || '';
+              // Extracción tolerante de prompts y respuestas
+              let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || item.promptSummary || '';
+              let cleanResponse = item.responseOutput || item.llmResponse || item.response || '';
+              
               try {
-                if (cleanPrompt.includes('%')) cleanPrompt = decodeURIComponent(cleanPrompt);
-                if (cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
+                if (typeof cleanPrompt === 'string' && cleanPrompt.includes('%')) cleanPrompt = decodeURIComponent(cleanPrompt);
+                if (typeof cleanResponse === 'string' && cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
               } catch (e) {}
 
               return {
@@ -83,8 +85,8 @@ export default function App() {
                 time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'En vivo',
                 cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
                 sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
-                prompt: cleanPrompt || '(Sin texto capturado)',
-                responseOutput: cleanResponse || '(Respuesta capturada)',
+                prompt: String(cleanPrompt || '(Sin texto capturado)'),
+                responseOutput: String(cleanResponse || ''),
                 verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
                 decision: isDeny ? 'DENY' : 'ALLOW',
                 type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
@@ -118,13 +120,11 @@ export default function App() {
     setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
-  // TOKENIZACIÓN EN TIEMPO REAL DESDE /public/extension-base.zip
   const handleDownloadExtension = async () => {
     try {
       const currentToken = localStorage.getItem('saare_token') || 'sk_saare_live_managed_identity';
       const currentUserEmail = userEmail || localStorage.getItem('saare_user_email') || 'legal@saare.es';
 
-      // 1. Cargar el ZIP virgen almacenado en la carpeta public/
       const response = await fetch('/extension-base.zip');
       if (!response.ok) {
         throw new Error("No se encontró el paquete base extension-base.zip en la carpeta public/.");
@@ -133,17 +133,14 @@ export default function App() {
       const zipBlob = await response.blob();
       const zip = await JSZip.loadAsync(zipBlob);
 
-      // 2. Configurar la credencial tokenizada
       const storageManaged = {
         "saare_user_email": { "Value": currentUserEmail, "Description": "Email del operador autorizado tokenizado." },
         "saare_tenant_domain": { "Value": "ENTERPRISE", "Description": "Inquilino canónico de la Bóveda." },
         "saare_token": { "Value": currentToken, "Description": "Token OIDC de sincronización con la Bóveda." }
       };
 
-      // 3. Sobrescribir el archivo de configuración en caliente
       zip.file("storage_managed.json", JSON.stringify(storageManaged, null, 2));
 
-      // 4. Generar el ZIP final tokenizado y descargar
       const content = await zip.generateAsync({ type: "blob" });
       const fileName = `saare-agente-tokenizado-${currentUserEmail.replace(/[@.]/g, "_")}.zip`;
 
