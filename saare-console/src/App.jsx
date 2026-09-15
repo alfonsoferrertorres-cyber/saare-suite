@@ -33,13 +33,11 @@ export default function App() {
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [resilienceReport, setResilienceReport] = useState(null);
 
-  // REGLAS Y FILTROS PERSONALIZADOS (POLICY-AS-CODE)
   const [customFilters, setCustomFilters] = useState([]);
   const [showAddFilterModal, setShowAddFilterModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
 
-  // ESTADOS DEL LAB INTERACTIVO S.A.A.R.E. ENFORCEMENT / RUNLIVE
   const [testPrompt, setTestPrompt] = useState("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
   const [testResult, setTestResult] = useState(null);
   const [auditedEvidenceId, setAuditedEvidenceId] = useState(null);
@@ -58,7 +56,6 @@ export default function App() {
 
   const [evidences, setEvidences] = useState([]);
 
-  // Limpieza de URL al recargar
   useEffect(() => {
     if (window.location.search) {
       const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
@@ -66,7 +63,6 @@ export default function App() {
     }
   }, []);
 
-  // SINCRONIZACIÓN Y TELEMETRÍA CON WORKERS Y KV/D1 (/api/v1/runs, /api/v1/custom-rules, /api/v1/vault/sync)
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
 
@@ -168,7 +164,6 @@ export default function App() {
     };
   }, [isAuthenticated, userEmail, tenantId]);
 
-  // GENERACIÓN DEL EXPEDIENTE OFICIAL DE IMPACTO FRIA (ART. 27 EU AI ACT)
   const handleGenerateFriaDocument = (friaConfig) => {
     const deniedEvidences = evidences.filter(e => e.verdict === 'RECHAZADO' || e.decision === 'DENY');
     const sampleMerkle = evidences[0]?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
@@ -216,7 +211,6 @@ export default function App() {
     triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) generado y sellado criptográficamente.");
   };
 
-  // VALIDACIÓN DE LICENCIA CORPORATIVA (/api/v1/auth/verifylicense)
   const handleVerifyLicense = async () => {
     try {
       const token = localStorage.getItem('saare_token');
@@ -239,7 +233,6 @@ export default function App() {
     }
   };
 
-  // AUDITAR PROMPT SELECCIONADO DESDE EL REGISTRO DE EVIDENCIA
   const handleAuditPromptFromRegistry = (ev) => {
     const targetPrompt = ev.prompt || ev.cleanPrompt || ev.rawPrompt || '';
     setTestPrompt(targetPrompt);
@@ -248,7 +241,6 @@ export default function App() {
     triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
-  // EJECUCIÓN DEL MOTOR EX-ANTE RAM EN VIVO CON CONEXIÓN A /api/v1/intercept Y /api/v1/runs
   const handleExecuteTestExAnte = async () => {
     if (!testPrompt.trim()) {
       triggerGovernance("Escriba o seleccione un prompt para evaluar.");
@@ -343,7 +335,6 @@ export default function App() {
     }
   };
 
-  // NODO DE CUSTODIA Y VERIFICACIÓN EN VIVO (/api/v1/vault/sync & /api/v1/verify/:hash)
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
     try {
@@ -506,7 +497,6 @@ export default function App() {
     }
   };
 
-  // EXPORTAR DOSSIER TÉCNICO DE SUBVENCIONES (RED.ES / INCIBE / CDTI)
   const handleExportGrantDossier = () => {
     const grantReport = {
       expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
@@ -637,19 +627,32 @@ export default function App() {
         </div>
       )}
 
-      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#38bdf8', letterSpacing: '1px' }}>S.A.A.R.E. CONSOLE GRC</h1>
-          <span style={{ fontSize: '0.75rem', background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>v7 PRO</span>
+      {/* HEADER INTEGRADO CON CABECERA / BANNER DE NAVEGADOR */}
+      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 24px 8px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+        
+        <div style={{ width: '100%', maxWidth: '1280px', marginBottom: '12px', overflow: 'hidden', borderRadius: '8px', border: '1px solid #1e293b' }}>
+          <img 
+            src="/cabecera.png" 
+            alt="SAARE Platform | GRC & AI Governance System" 
+            style={{ width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'cover', display: 'block' }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
         </div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '0.75rem', color: '#94a3b8', flexWrap: 'wrap' }}>
-          <span>🛡️ Trust Anchor: <strong style={{ color: '#4ade80' }}>{SAARE_CONFIG.TRUST_ANCHOR}</strong></span>
-          <span>⚖️ Safe Creative ID: <strong style={{ color: '#38bdf8' }}>{SAARE_CONFIG.SAFE_CREATIVE_ID}</strong></span>
-          <span>Forensic Custody & L7 Enforcement</span>
+
+        <div style={{ width: '100%', maxWidth: '1280px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#94a3b8', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
+            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>v7 PRO</span>
+          </div>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span>Trust Anchor: <strong style={{ color: '#4ade80' }}>{SAARE_CONFIG.TRUST_ANCHOR}</strong></span>
+            <span>Safe Creative ID: <strong style={{ color: '#38bdf8' }}>{SAARE_CONFIG.SAFE_CREATIVE_ID}</strong></span>
+            <span>Forensic Custody & L7 Enforcement</span>
+          </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
+      <main style={{ maxWidth: '1280px', margin: '20px auto', padding: '0 16px' }}>
 
         <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', border: '1px solid #1e293b' }}>
 
@@ -721,6 +724,7 @@ export default function App() {
             onVerifySignature={() => handleSyncVaultAndVerify()}
             onExportGrantDossier={handleExportGrantDossier}
             onOpenFriaModal={() => setShowFriaModal(true)}
+            onExecuteEnforcementCheck={handleExecuteTestExAnte}
           />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -733,8 +737,14 @@ export default function App() {
           <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
             <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>REGISTRO DE EVIDENCIA</button>
             <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
+            <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '10px 20px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>🏛️ SUBSIDIES HUB</button>
             <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>POLICY ENGINE ({customFilters.length + activeDirectivesCount})</button>
           </div>
+
+          {/* TAB: SUBSIDIES HUB */}
+          {activeTab === 'SUBSIDIES' && (
+            <SubsidiesHub tenantId={tenantId} currentEvidences={evidences} />
+          )}
 
           {/* TAB: REGISTRO DE EVIDENCIA */}
           {activeTab === 'GLOBAL' && (
@@ -994,7 +1004,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* MODAL PARA CREAR BLOQUEOS PERSONALIZADOS */}
+      {/* MODAL CREAR BLOQUEOS PERSONALIZADOS */}
       {showAddFilterModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #0284c7', borderRadius: '12px', width: '90%', maxWidth: '520px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1030,7 +1040,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL ASISTENTE FRIA (ART. 27 EU AI ACT) */}
+      {/* MODAL FRIA (ART. 27 EU AI ACT) */}
       <FriaWizardModal 
         isOpen={showFriaModal}
         onClose={() => setShowFriaModal(false)}
@@ -1054,7 +1064,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL EVIDENCIA JSON / FIRMA NOTARIAL */}
+      {/* MODAL EVIDENCIA JSON */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>

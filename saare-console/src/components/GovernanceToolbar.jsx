@@ -1,5 +1,3 @@
-// saare-console/src/components/GovernanceToolbar.jsx
-
 import React, { useState } from 'react';
 import { API_BASE_URL } from '../utils/api';
 
@@ -9,7 +7,8 @@ export default function GovernanceToolbar({
   onGenerateToken,
   onDownloadTeaser,
   onExportGrantDossier,
-  onOpenFriaModal
+  onOpenFriaModal,
+  onExecuteEnforcementCheck
 }) {
   const [status, setStatus] = useState('');
 
@@ -72,7 +71,14 @@ export default function GovernanceToolbar({
         </button>
 
         <button
-          onClick={() => triggerAction('Abriendo evaluacion de impacto FRIA...', onOpenFriaModal)}
+          onClick={() => triggerAction('Ejecutando verificacion de cumplimiento ex-ante en tiempo real...', onExecuteEnforcementCheck)}
+          style={{ padding: '8px 14px', background: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
+        >
+          Auditoria Cumplimiento Ex-Ante (L7)
+        </button>
+
+        <button
+          onClick={() => triggerAction('Abriendo evaluacion de impacto FRIA (Art. 27 EU AI Act)...', onOpenFriaModal)}
           style={{ padding: '8px 14px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
           Evaluacion Impacto FRIA (Art. 27)
