@@ -630,63 +630,65 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER INTEGRADO CON CABECERA DESDE SRC/ASSETS Y METADATOS */}
-      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 24px 8px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* HEADER INTEGRADO CON CABECERA 15% MÁS GRANDE (maxHeight: 207px) */}
+      <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '20px 24px 12px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* BANNER DE CABECERA DESDE SRC/ASSETS */}
-        <div style={{ width: '100%', maxWidth: '1280px', marginBottom: '12px', overflow: 'hidden', borderRadius: '8px', border: '1px solid #1e293b' }}>
+        {/* BANNER DE CABECERA DESDE SRC/ASSETS (15% AUMENTADO) */}
+        <div style={{ width: '100%', maxWidth: '1280px', marginBottom: '16px', overflow: 'hidden', borderRadius: '10px', border: '1px solid #1e293b', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)' }}>
           <img 
             src={cabeceraImg} 
             alt="S.A.A.R.E. Console Header" 
-            style={{ width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: 'auto', maxHeight: '207px', objectFit: 'cover', display: 'block' }}
           />
         </div>
 
         {/* BARRA DE METADATOS Y CONTROL */}
-        <div style={{ width: '100%', maxWidth: '1280px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#94a3b8', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
-            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>v7 PRO</span>
+        <div style={{ width: '100%', maxWidth: '1280px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#94a3b8', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px', fontSize: '0.9rem' }}>S.A.A.R.E. CONSOLE GRC</span>
+            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>v7 PRO</span>
           </div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <span>Trust Anchor: <strong style={{ color: '#4ade80' }}>{SAARE_CONFIG.TRUST_ANCHOR}</strong></span>
             <span>Safe Creative ID: <strong style={{ color: '#38bdf8' }}>{SAARE_CONFIG.SAFE_CREATIVE_ID}</strong></span>
-            <span>Forensic Custody & L7 Enforcement</span>
+            <span style={{ fontWeight: '600' }}>Forensic Custody & L7 Enforcement</span>
           </div>
         </div>
 
       </header>
 
-      <main style={{ maxWidth: '1280px', margin: '20px auto', padding: '0 16px' }}>
+      <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
 
         <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', border: '1px solid #1e293b' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-            <div>
-              <h2 style={{ margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.02em' }}>
+          {/* PANEL SUPERIOR SIMÉTRICO: TÍTULO Y BOTONES DE ACCIÓN RÁPIDA */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ flex: '1 1 500px' }}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '1.35rem', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.02em' }}>
                 PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA
               </h2>
-              <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#94a3b8', lineHeight: '1.4' }}>
                 ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>{tenantId}</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS BASE: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span> | FILTROS PERS.: <span style={{ color: '#38bdf8', fontWeight: '900' }}>{customFilters.length}</span>
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* BOTONES SIMÉTRICOS CON DIMENSIONES Y PADDING UNIFORME */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: '10px', flex: '0 0 auto' }}>
               <button
                 onClick={handleVerifyLicense}
-                style={{ padding: '8px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
                 🔑 Validar Licencia
               </button>
 
               <button
                 onClick={handleRunResilienceCheck}
-                style={{ padding: '8px 16px', background: '#8b5cf6', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                style={{ padding: '10px 14px', background: '#8b5cf6', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)' }}>
                 🧪 Invariant Audit
               </button>
 
               <button
                 onClick={() => setShowReportModal(true)}
-                style={{ padding: '8px 16px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
                 📋 Informe Oficial CISO
               </button>
 
@@ -696,13 +698,13 @@ export default function App() {
                     handleLogout();
                   }
                 }}
-                style={{ padding: '8px 18px', background: '#27272a', border: '1px solid #3f3f46', color: '#ef4444', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                style={{ padding: '10px 14px', background: '#27272a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center' }}>
                 🔴 CERRAR SESIÓN
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
@@ -717,7 +719,7 @@ export default function App() {
 
             <button
               onClick={handleDownloadExtension}
-              style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+              style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
               🧩 Descargar Sensor L7 Sovereign Tokenizado
             </button>
           </div>
@@ -739,11 +741,12 @@ export default function App() {
             <button onClick={() => setFilter('WORKFLOWS')} style={{ padding: '6px 14px', background: filter === 'WORKFLOWS' ? '#0284c7' : '#1e293b', color: filter === 'WORKFLOWS' ? '#ffffff' : '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>ORQUESTADORES / WORKFLOWS</button>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
-            <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 20px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>REGISTRO DE EVIDENCIA</button>
-            <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 20px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
-            <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '10px 20px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>🏛️ SUBSIDIES HUB</button>
-            <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '10px 20px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer' }}>POLICY ENGINE ({customFilters.length + activeDirectivesCount})</button>
+          {/* SIMETRÍA EN PESTAÑAS NAVEGABLES */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
+            <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '12px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>REGISTRO DE EVIDENCIA</button>
+            <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
+            <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '12px 16px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>🏛️ SUBSIDIES HUB</button>
+            <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 16px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>POLICY ENGINE ({customFilters.length + activeDirectivesCount})</button>
           </div>
 
           {/* TAB: SUBSIDIES HUB */}
