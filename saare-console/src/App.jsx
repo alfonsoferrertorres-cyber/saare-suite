@@ -4,6 +4,7 @@ import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
 import OfficialReportModal from './components/OfficialReportModal';
 import FriaWizardModal from './components/FriaWizardModal';
+import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
@@ -34,6 +35,7 @@ export default function App() {
   const [auditTokenModal, setAuditTokenModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false); // NUEVO ESTADO PARA EL MODAL DE INFORMES CLIENT-SIDE
   const [resilienceReport, setResilienceReport] = useState(null);
 
   const [customFilters, setCustomFilters] = useState([]);
@@ -689,9 +691,9 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setShowReportModal(true)}
-                style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
-                📋 Informe Oficial CISO
+                onClick={() => setShowExportModal(true)} // RUTA INTEGRADA AL MODAL DE INFORMES CLIENT-SIDE (FRIA, VAULT, GRC)
+                style={{ padding: '10px 14px', background: '#059669', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)' }}>
+                📋 Informes Auditados (PDF)
               </button>
 
               <button
@@ -1059,6 +1061,14 @@ export default function App() {
         tenantId={tenantId}
       />
 
+      {/* MODAL UNIFICADO DE INFORMES CLIENT-SIDE (FRIA, VAULT, GRC) */}
+      {showExportModal && (
+        <ReportExportModal 
+          useCaseId={tenantId} 
+          onClose={() => setShowExportModal(false)} 
+        />
+      )}
+
       {/* MODAL INVARIANT REPORT */}
       {resilienceReport && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
@@ -1076,7 +1086,7 @@ export default function App() {
 
       {/* MODAL EVIDENCIA JSON */}
       {selectedJson && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999' }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica Bóveda</h3>
             <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '350px' }}>

@@ -4,5 +4,6 @@ packages:
   - 'control-plane'
   - 'control-plane-local'
 allowBuilds:
+  core-js: true
   esbuild: true
   workerd: true
