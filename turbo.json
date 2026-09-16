@@ -1,9 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "RESEND_API_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "SLACK_WEBHOOK_URL",
+    "SAARE_PRIVATE_KEY",
+    "STRIPE_SECRET_KEY",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN"
+  ],
   "tasks": {
     "build": {
-      "outputs": ["dist/**"],
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"]
     }
   }
 }
