@@ -8,6 +8,8 @@
     "deploy:prod": "pnpm --filter saare-console run build && pnpm --filter saare-suite run build && pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console && pnpm --filter saare-suite exec wrangler pages deploy dist --project-name=saare-suite && pnpm --filter control-plane exec wrangler deploy"
   },
   "devDependencies": {
+    "prettier": "^3.9.6",
+    "rimraf": "^6.1.3",
     "turbo": "^2.10.12"
   }
 }

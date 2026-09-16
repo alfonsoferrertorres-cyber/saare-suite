@@ -11,8 +11,17 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173,
-    host: true
+    port: 3000,
+    strictPort: true, // Obliga a usar el puerto 3000 para no desalinear las redirecciones
+    host: true,
+    cors: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8787', // Worker local / Control Plane
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   build: {
     outDir: 'dist',
@@ -22,7 +31,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom'],
           graphics: ['three', '@react-three/fiber', '@react-three/drei']
         }
       }
