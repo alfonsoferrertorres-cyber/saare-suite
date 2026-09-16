@@ -458,8 +458,12 @@ export default function App() {
     }
   };
 
+  // =========================================================================
+  // LÓGICA DE VERIFICACIÓN CRIPTOGRÁFICA CORREGIDA (SIN FALSOS POSITIVOS)
+  // =========================================================================
   const handleSyncVaultAndVerify = async (merkleHash) => {
-    const hashToVerify = merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+    const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
+    
     try {
       const syncRes = await saareFetch('/api/v1/vault/sync', { method: 'GET' });
       if (syncRes.ok) {
@@ -467,28 +471,43 @@ export default function App() {
         if (syncData.source) setVaultSource(syncData.source);
       }
 
-      const verifyRes = await saareFetch(`/api/v1/verify/${hashToVerify}`, { method: 'GET' });
+      const verifyRes = await saareFetch(`/api/v1/verify/${encodeURIComponent(hashToVerify)}`, { method: 'GET' });
       const verifyData = await verifyRes.json();
 
-      setSelectedJson({
-        auditStatus: verifyData.status || "VERIFIED",
-        merkleRoot: hashToVerify,
-        node: SAARE_CONFIG.SAFE_CREATIVE_ID,
-        standard: verifyData.standard || "ISO/IEC 27037:2012 / DORA / EU AI Act",
-        rfc3161Timestamp: verifyData.timestamp || new Date().toISOString(),
-        evidenceBundle: verifyData.evidence || "Certificación cryptographic integrity OK"
-      });
-      triggerGovernance("Firma Notarial Ed25519 acreditada en Bóveda D1.");
+      if (verifyRes.ok && (verifyData.verified || verifyData.status === 'VERIFIED')) {
+        setSelectedJson({
+          auditStatus: "VERIFIED",
+          merkleRoot: hashToVerify,
+          node: verifyData.node || SAARE_CONFIG.SAFE_CREATIVE_ID,
+          standard: verifyData.standard || "ISO/IEC 27037:2012 / DORA / EU AI Act",
+          rfc3161Timestamp: verifyData.timestamp || new Date().toISOString(),
+          evidenceBundle: verifyData.evidence || "Certificación cryptographic integrity OK",
+          details: verifyData.message || "Sello e inmutabilidad acreditados contra el Trust Anchor."
+        });
+        triggerGovernance("Firma Notarial Ed25519 acreditada en Bóveda D1.");
+      } else {
+        setSelectedJson({
+          auditStatus: "FAILED_NOT_FOUND",
+          merkleRoot: hashToVerify,
+          node: SAARE_CONFIG.SAFE_CREATIVE_ID,
+          standard: "ISO/IEC 27037:2012",
+          timestamp: new Date().toISOString(),
+          verdict: "DENY / UNVERIFIED",
+          details: verifyData.error || verifyData.message || "El registro no existe o ha sido alterado."
+        });
+        triggerGovernance("❌ Verificación Fallida: Hash no registrado en la Bóveda.");
+      }
     } catch (e) {
       setSelectedJson({
-        auditStatus: "VERIFIED",
+        auditStatus: "FAILED_CONNECTION_ERROR",
         merkleRoot: hashToVerify,
         trustAnchor: SAARE_CONFIG.TRUST_ANCHOR,
-        standard: "ISO/IEC 27037:2012 / DORA",
+        standard: "ISO/IEC 27037:2012",
         timestamp: new Date().toISOString(),
-        verdict: "ALLOW (Sello inmutable comprobado)"
+        verdict: "ERROR_VERIFICATION",
+        details: "No se pudo establecer conexión con el nodo de auditoría o el hash es inválido."
       });
-      triggerGovernance("Certificado probado contra Bóveda Central.");
+      triggerGovernance("⚠️ Error de conexión al consultar el nodo de auditoría.");
     }
   };
 
@@ -1412,11 +1431,13 @@ export default function App() {
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#38bdf8' }}>Evidencia Criptográfica Bóveda</h3>
-            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '350px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: selectedJson.auditStatus === 'VERIFIED' ? '#38bdf8' : '#f87171' }}>
+              {selectedJson.auditStatus === 'VERIFIED' ? '🛡️ Evidencia Criptográfica Bóveda (VERIFICADA)' : '❌ Fallo de Verificación / Inexistente'}
+            </h3>
+            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: selectedJson.auditStatus === 'VERIFIED' ? '#34d399' : '#f87171', border: '1px solid #1e293b', maxHeight: '350px' }}>
               {JSON.stringify(selectedJson, null, 2)}
             </pre>
-            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
+            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: selectedJson.auditStatus === 'VERIFIED' ? '#2563eb' : '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
               Cerrar Evidence Bundle
             </button>
           </div>

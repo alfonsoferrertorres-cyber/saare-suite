@@ -1,3 +1,5 @@
+// saare-console/src/services/pdfGeneratorService.ts
+
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -34,9 +36,9 @@ export const generatePdfFromElement = async (elementId: string, fileName: string
   pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
   heightLeft -= pageHeight;
 
-  // Paginación continua sin hojas fantasma
+  // Paginación continua alineada
   while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
+    position -= pageHeight; // Desplazamiento vertical constante
     pdf.addPage();
     pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
     heightLeft -= pageHeight;

@@ -18,11 +18,11 @@ export const API_BASE_URL = `${API_HOST}/api/v1`;
 export async function saareFetch(endpoint, options = {}) {
   let cleanEndpoint = endpoint;
   
-  // 1. Normalización de URL y versionado
+  // 1. Normalización de URL y versionado (Prevención de duplicados de prefijo)
   if (!cleanEndpoint.startsWith('http')) {
     if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
     
-    // Antepone /api/v1 por defecto si no especifica versión (/api/v1 o /api/v7)
+    // Antepone /api/v1 solo si no especifica una versión de API explícita (/api/...)
     if (!cleanEndpoint.startsWith('/api/')) {
       cleanEndpoint = `/api/v1${cleanEndpoint}`;
     }

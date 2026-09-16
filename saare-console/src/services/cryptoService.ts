@@ -20,11 +20,25 @@ export class CryptoService {
    * Verifica la integridad de la evidencia comparando el hash Merkle local,
    * el Proof Bundle Ed25519 y la firma digital registrada.
    */
-  public static async verifyMerkleIntegrity(telemetry: MinimalTelemetry): Promise<{
+  public static async verifyMerkleIntegrity(telemetry: MinimalTelemetry | ProofBundle): Promise<{
     isValid: boolean;
     reason: string;
   }> {
-    if (!telemetry.cryptoSeal && !telemetry.merkleRoot && !telemetry.proofBundle) {
+    if (!telemetry) {
+      return {
+        isValid: false,
+        reason: 'Telemetría o paquete de evidencia inexistente.',
+      };
+    }
+
+    // Normalización defensiva para aceptar telemetría anidada o ProofBundle plano
+    const rawTelemetry = telemetry as MinimalTelemetry;
+    const rawBundle = (rawTelemetry.proofBundle || telemetry) as ProofBundle;
+
+    const signature = rawTelemetry.cryptoSeal || rawBundle.ed25519Signature;
+    const merkleRoot = rawTelemetry.merkleRoot || rawBundle.merkleRoot;
+
+    if (!signature && !merkleRoot) {
       return {
         isValid: false,
         reason: 'Falta la firma criptográfica Ed25519, el Proof Bundle o el hash raíz de Merkle.',
@@ -33,10 +47,10 @@ export class CryptoService {
 
     // Validación forense estructural sobre la evidencia procesada
     const isStructureValid = Boolean(
-      telemetry.dnshCompliance || 
-      telemetry.auditStandard || 
-      telemetry.merkleRoot || 
-      telemetry.proofBundle?.ed25519Signature
+      rawTelemetry.dnshCompliance || 
+      rawTelemetry.auditStandard || 
+      merkleRoot || 
+      signature
     );
 
     if (isStructureValid) {
