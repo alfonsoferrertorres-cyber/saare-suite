@@ -9,6 +9,8 @@ routes = [
 
 [vars]
 ENVIRONMENT = "production"
+SENDER_EMAIL = "legal@saare.es"
+APP_URL = "https://console.saare.es"
 
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"

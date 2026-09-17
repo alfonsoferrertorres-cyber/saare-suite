@@ -12,12 +12,17 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    strictPort: true, // Obliga a usar el puerto 3000 para no desalinear las redirecciones
+    strictPort: true,
     host: true,
     cors: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8787', // Worker local / Control Plane
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: 'http://127.0.0.1:8787',
         changeOrigin: true,
         secure: false,
       },

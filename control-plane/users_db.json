@@ -1,16 +1,22 @@
 {
-  "alfonsosb1@gmail.com": {
-    "user": "ALFONSO-ADMIN",
-    "company": "S.A.A.R.E. Cloud ISV",
+  "admin@saare.es": {
+    "user": "CISO-ADMIN",
+    "email": "admin@saare.es",
+    "company": "S.A.A.R.E. Governance Core",
     "plan": "ENTERPRISE PRO",
-    "token": "SAARE-TOKEN-ALFONSO-99",
-    "password": "demo"
+    "role": "CISO_ADMIN",
+    "is_verified": 1,
+    "password": "demo",
+    "token": "sk_saare_live_admin_2026"
   },
   "demo@saare.ai": {
     "user": "OPERADOR-ENTERPRISE",
+    "email": "demo@saare.ai",
     "company": "Banco Santander",
     "plan": "ENTERPRISE REGULATED",
-    "token": "SAARE-TOKEN-882910-X92",
-    "password": "demo"
+    "role": "CISO_ADMIN",
+    "is_verified": 1,
+    "password": "demo",
+    "token": "sk_saare_live_demo_882910"
   }
 }
