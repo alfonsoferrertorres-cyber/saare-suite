@@ -5,12 +5,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "start": "node telemetryServer.js",
-    "start:silent": "node telemetryServer.js > ./evidence_vault/server.log 2>&1 &"
+    "start": "node telemetryServer.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
     "jszip": "^3.10.2"
   },
   "devDependencies": {
