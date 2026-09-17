@@ -7,9 +7,6 @@ const DEFAULT_SETTINGS_V10 = {
   razonamiento_activo_l7: true
 };
 
-/**
- * Filtro de Ruido L7 para descartar telemetría de red interna y metadatos del navegador
- */
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
   const lower = text.toLowerCase();
@@ -24,30 +21,37 @@ function isNoisePayload(text) {
   );
 }
 
-// 1. DIBUJAR TESTIGO VISUAL PERMANENTE EN EL DOM DEL USUARIO
 function renderActivityWitnessBadge() {
   if (document.getElementById("saare-witness-badge")) return;
 
   const badge = document.createElement("div");
   badge.id = "saare-witness-badge";
   badge.style.cssText = `
-    position: fixed; bottom: 16px; left: 16px; z-index: 999999;
-    background: #030712; border: 1px solid #059669; color: #34d399;
-    padding: 6px 12px; border-radius: 20px; font-size: 0.72rem;
-    font-family: monospace; font-weight: 800; display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none; opacity: 0.95;
+    position: fixed; bottom: 16px; right: 16px; z-index: 999999;
+    background: rgba(3, 7, 18, 0.85); border: 1px solid #059669; color: #34d399;
+    padding: 4px 10px; border-radius: 20px; font-size: 0.70rem;
+    font-family: monospace; font-weight: 800; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    transition: all 0.3s ease; opacity: 0.75; cursor: pointer; user-select: none;
   `;
+  
   badge.innerHTML = `
-    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
-    🧠 S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO
+    <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+    <span id="saare-witness-text">S.A.A.R.E. L7</span>
   `;
-  (document.body || document.documentElement).appendChild(badge);
-}
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", renderActivityWitnessBadge);
-} else {
-  renderActivityWitnessBadge();
+  // Expansión al hacer Hover (no molesta en pantalla)
+  badge.addEventListener("mouseenter", () => {
+    badge.style.opacity = "1";
+    document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO";
+  });
+  
+  badge.addEventListener("mouseleave", () => {
+    badge.style.opacity = "0.75";
+    document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7";
+  });
+
+  (document.body || document.documentElement).appendChild(badge);
 }
 
 function updateDomContext(settings, userEmail, tenantDomain) {
@@ -82,7 +86,6 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener(() => { syncStorageAndContext(); });
 }
 
-// Inyección limpia de inject.js en la RAM de la página
 try {
   const injectScript = document.createElement("script");
   injectScript.src = chrome.runtime.getURL("inject.js");

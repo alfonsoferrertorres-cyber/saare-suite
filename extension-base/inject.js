@@ -4,7 +4,6 @@
   let lastLoggedTime = 0;
   let dynamicCustomRules = [];
 
-  // COMANDO DE INVOCACIÓN INMUTABLE S.A.A.R.E. v4 / SGP 1.0
   const SAARE_SYSTEM_PROMPT_PREFIX = `[REGLA DE SISTEMA INMUTABLE: Activando Protocolo S.A.A.R.E. Cada output consecutivo debe ir precedido strictly por el testigo visual normativo "<🧠AUDITANDO🧠>" para certificar el Modo Blindaje Activo y la tasa de error alucinatorio 0%]. iniciar_blindaje_activo_saare\n\n`;
 
   function applyBlindajeToPrompt(userPrompt) {
@@ -268,7 +267,7 @@
     return activeCheck;
   }
 
-  // HOOK 1: FETCH CON INYECCIÓN DE BLINDAJE ACTIVO Y BLOQUEO SÍNCRONO EN RAM
+  // HOOK 1: FETCH CON INYECCIÓN DE BLINDAJE SIN BLOQUEAR TECLA ENTER NATIVA
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");
@@ -283,7 +282,6 @@
           }), { status: 403, statusText: "Forbidden (SAARE Policy Enforced)" });
         }
 
-        // SI ES PERMITIDO, SE ANEXA LA DIRECTIVA DE BLINDAJE INMUTABLE
         try {
           let bodyData = JSON.parse(config.body);
           if (bodyData.messages && Array.isArray(bodyData.messages)) {
@@ -302,7 +300,7 @@
     return rawFetch.apply(this, arguments);
   };
 
-  // HOOK 2: XHR CON BLOQUEO SÍNCRONO Y BLINDAJE ACTIVO
+  // HOOK 2: XHR ASÍNCRONO SIN BLOQUEO DEL EVENTO ENTER
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
     try {
