@@ -30,17 +30,17 @@ export default function App() {
   const [activeCodeTab, setActiveCodeTab] = useState('sdk');
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [topBannerVisible, setTopBannerVisible] = useState(true);
   const [authTab, setAuthTab] = useState('login'); 
 
   const [activeSessionUser, setActiveSessionUser] = useState(null);
   const [cookieConsent, setCookieConsent] = useState(null);
 
-  // Form Fields (Captura Justa)
+  // Form Fields
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formName, setFormName] = useState('');
   const [formCompany, setFormCompany] = useState('');
-  const [formPlan, setFormPlan] = useState('TRIAL_7D');
 
   // Auth Status
   const [authLoading, setAuthLoading] = useState(false);
@@ -209,7 +209,7 @@ export default function App() {
       localStorage.setItem('saare_auth_token', masterUser.apiKey);
       setActiveSessionUser(masterUser);
       setDrawerOpen(false);
-      window.location.href = getConsoleTargetUrl(masterUser);
+      window.location.href = getConsoleTargetUrl('GRC_AUDIT');
       return;
     }
 
@@ -233,7 +233,7 @@ export default function App() {
 
       setTimeout(() => {
         setDrawerOpen(false);
-        window.location.href = getConsoleTargetUrl(data.user);
+        window.location.href = getConsoleTargetUrl('GRC_AUDIT');
       }, 600);
     } catch (err) {
       setAuthError(err.message);
@@ -264,7 +264,7 @@ export default function App() {
       localStorage.setItem('saare_auth_token', masterUser.apiKey);
       setActiveSessionUser(masterUser);
       setDrawerOpen(false);
-      window.location.href = getConsoleTargetUrl(masterUser);
+      window.location.href = getConsoleTargetUrl('GRC_AUDIT');
       return;
     }
 
@@ -404,138 +404,171 @@ services:
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif', position: 'relative', overflowX: 'hidden' }}>
       
-      {/* BARRA SUPERIOR INSTITUCIONAL */}
-      <div style={{ backgroundColor: '#030712', borderBottom: '1px solid #1f2937', padding: '8px 24px', fontSize: '11.5px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1100, position: 'relative', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }}
-            style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '4px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 10px rgba(239, 68, 68, 0.5)' }}
-          >
-            <span>🔴 Demo 7 Días (Cumplimiento SAARE)</span>
-          </button>
-
-          <button
-            onClick={handleDownloadTokenizedExtension}
-            style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid #0284c7', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            📦 Descargar Sensor L7 (.zip)
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <span style={{ color: '#38bdf8' }}>SGP 1.0 & Dual Vault Active</span>
-          <button 
-            onClick={handleTokenizedComplianceTrial}
-            style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid #10b981', padding: '2px 10px', borderRadius: '10.5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '10.5px' }}
-          >
-            ⚡ Probar Consola de Cumplimiento (7 Días)
-          </button>
-        </div>
-      </div>
-
-      {/* NAVBAR PRINCIPAL Y NAVEGACIÓN DE PERFILES */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1f2937' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setDrawerOpen(false)}>
-            <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2.5px', color: '#ffffff' }}>SAARE</span>
-            <span style={{ color: '#0ea5e9', fontSize: '10px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', maxWidth: '280px', lineHeight: 1.2 }}>
-              MS3V · AI Authorization & GRC Platform
+      {/* 1. ANNOUNCEMENT BAR SUPREMA ESTILO PALANTIR */}
+      {topBannerVisible && (
+        <div style={{ backgroundColor: '#111827', borderBottom: '1px solid #1f2937', padding: '10px 32px', fontSize: '13px', color: '#f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1100, position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ cursor: 'pointer', textDecoration: 'underline', fontWeight: '500' }} onClick={handleTokenizedComplianceTrial}>
+              Read SAARE Executive Briefing: Sovereign AI Architecture & Legal Pre-Constituted Evidence
             </span>
           </div>
+          <button onClick={() => setTopBannerVisible(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+        </div>
+      )}
 
-          <nav style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12.5px', fontWeight: '700', flexWrap: 'wrap' }}>
-            <button onClick={() => setActiveProfile('software')} style={{ background: activeProfile === 'software' ? 'rgba(14,165,233,0.15)' : 'none', border: activeProfile === 'software' ? '1px solid #0ea5e9' : '1px solid transparent', color: activeProfile === 'software' ? '#38bdf8' : '#9ca3af', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Software</button>
-            <button onClick={() => setActiveProfile('sales')} style={{ background: activeProfile === 'sales' ? 'rgba(16,185,129,0.15)' : 'none', border: activeProfile === 'sales' ? '1px solid #10b981' : '1px solid transparent', color: activeProfile === 'sales' ? '#34d399' : '#9ca3af', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Sales</button>
-            <button onClick={() => setActiveProfile('grc')} style={{ background: activeProfile === 'grc' ? 'rgba(168,85,247,0.15)' : 'none', border: activeProfile === 'grc' ? '1px solid #a855f7' : '1px solid transparent', color: activeProfile === 'grc' ? '#c084fc' : '#9ca3af', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>GRC</button>
-            <button onClick={() => setActiveProfile('developers')} style={{ background: activeProfile === 'developers' ? 'rgba(56,189,248,0.15)' : 'none', border: activeProfile === 'developers' ? '1px solid #38bdf8' : '1px solid transparent', color: activeProfile === 'developers' ? '#38bdf8' : '#9ca3af', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Developers</button>
-            <button onClick={() => setActiveProfile('enterprise')} style={{ background: activeProfile === 'enterprise' ? 'rgba(250,204,21,0.15)' : 'none', border: activeProfile === 'enterprise' ? '1px solid #facc15' : '1px solid transparent', color: activeProfile === 'enterprise' ? '#facc15' : '#9ca3af', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Enterprise</button>
-          </nav>
+      {/* 2. NAVBAR DESPEJADA LIMPIA ESTILO PALANTIR */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '18px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          
+          {/* BRAND LOGO PALANTIR STYLE */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }} onClick={() => setDrawerOpen(false)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a10 10 0 0 1 10 10"/>
+            </svg>
+            <span style={{ fontWeight: '800', fontSize: '22px', letterSpacing: '-0.5px', color: '#ffffff' }}>SAARE</span>
+          </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <a href={OFFICIAL_VERIFY_PAGE} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', border: '1px solid rgba(14, 165, 233, 0.4)', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}>
-              <span>🔏 Firma Oficial</span>
-            </a>
-
+          {/* DERECHA: BOTÓN UNIFICADO GET STARTED Y MENÚ HAMBURGUESA */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            
             {!activeSessionUser ? (
-              <button onClick={() => { setDrawerOpen(true); setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ padding: '6px 16px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '800', fontSize: '11px' }}>
-                <span>Get Started ↗</span>
+              <button 
+                onClick={() => { setDrawerOpen(true); setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} 
+                style={{ padding: '10px 24px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', letterSpacing: '0.2px' }}
+              >
+                Get Started
               </button>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#111827', border: '1px solid #374151', padding: '4px 8px', borderRadius: '6px' }}>
-                <span style={{ color: '#38bdf8', fontSize: '10.5px', fontFamily: 'monospace', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  👤 {activeSessionUser.email}
-                </span>
-                <button onClick={handleLogout} style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Salir</button>
-              </div>
+              <button 
+                onClick={() => window.location.href = getConsoleTargetUrl('GRC_AUDIT')}
+                style={{ padding: '10px 20px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
+              >
+                Console (👤 {activeSessionUser.email.split('@')[0]})
+              </button>
             )}
 
-            <a href={getConsoleTargetUrl('EXECUTIVE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>CEO ↗</a>
-            <a href={getConsoleTargetUrl('GRC_AUDIT')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>CISO ↗</a>
-            <a href={getConsoleTargetUrl('CYBER_RESILIENCE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#7c3aed', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>SOC ↗</a>
+            {/* BOTÓN MENÚ HAMBURGUESA / DRAWER */}
+            <button 
+              onClick={() => setDrawerOpen(true)}
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', padding: '9px 12px', borderRadius: '2px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
           </div>
 
         </div>
       </header>
 
-      {/* HERO SECTION MINIMALISTA ESTILO PALANTIR */}
-      <section style={{ position: 'relative', width: '100%', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '60px 24px', boxSizing: 'border-box', borderBottom: '1px solid #1f2937' }}>
-        <div style={{ display: 'inline-block', backgroundColor: 'rgba(14,165,233,0.1)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 'bold', marginBottom: '20px' }}>
-          🚀 Lanzamiento Oficial · Ecosistema S.A.A.R.E. v8.1 PRO
-        </div>
+      {/* 3. HERO SECTION DESPLAZADO HACIA ABAJO CON VIDEO MÁS CLARO E INTEGRADO CON FONDO CYBERPUNK */}
+      <section style={{ position: 'relative', width: '100%', minHeight: '88vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '100px 24px 60px 24px', boxSizing: 'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
         
-        <h1 style={{ fontSize: 'clamp(38px, 6.5vw, 76px)', fontWeight: '900', letterSpacing: '-1.5px', maxWidth: '980px', lineHeight: 1.08, margin: '0 auto 24px auto', color: '#ffffff' }}>
-          Sovereign AI Systems for Every Decision
-        </h1>
-        
-        <p style={{ fontSize: '16px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
-          Infraestructura de autorización ex-ante y gobernanza runtime bajo el estándar SGP 1.0. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
-        </p>
+        {/* REPRODUCTOR DE VIDEO DE FONDO - MÁS CLARO E INTEGRADO (Opacity 0.65) */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 0,
+            opacity: 0.65,
+            filter: 'brightness(0.85) contrast(1.15) saturate(1.2)'
+          }}
+        >
+          <source src="/saare-hero.mp4" type="video/mp4" />
+        </video>
 
-        <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
-          <button onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'transparent', color: '#38bdf8', border: '1px solid #0284c7', padding: '14px 36px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', textTransform: 'uppercase' }}>
-            Acceder a la Bóveda SAARE ↗
-          </button>
-          <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '14px 28px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
-            ⚡ Activar Suscripción Corporativa Inmediata
-          </button>
-          <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '14px 24px', backgroundColor: 'rgba(22, 163, 74, 0.9)', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            💬 Contacto Directo ({CONTACT_PHONE})
-          </a>
-        </div>
+        {/* OVERLAY CYBERPUNK GRADIENT INTEGRATION */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at center, rgba(3, 7, 18, 0.25) 0%, rgba(3, 7, 18, 0.85) 80%, #030712 100%)',
+          zIndex: 1
+        }} />
 
-        {/* VERIFICADOR CRIPTOGRÁFICO PÚBLICO */}
-        <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', maxWidth: '720px', width: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '8px' }}>
-            🛡️ VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO (ISO/IEC 27037)
+        {/* CONTENIDO HERO */}
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: '1100px', width: '100%', marginTop: '20px' }}>
+          
+          {/* TITULO PRINCIPAL PALANTIR STYLE */}
+          <h1 style={{ fontSize: 'clamp(42px, 7vw, 84px)', fontWeight: '900', letterSpacing: '-2px', maxWidth: '1050px', lineHeight: 1.05, margin: '0 auto 20px auto', color: '#ffffff', textShadow: '0 10px 40px rgba(0,0,0,0.9)' }}>
+            Sovereign AI Systems <br />for Every Decision
+          </h1>
+          
+          {/* NOMBRE DEL SISTEMA EN LETRAS MEDIO-GRANDES COMO EN PALANTIR */}
+          <div style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: '700', color: '#38bdf8', letterSpacing: '0.5px', maxWidth: '900px', margin: '0 auto 24px auto', textTransform: 'uppercase', textShadow: '0 4px 20px rgba(0,0,0,0.9)' }}>
+            Sistema de Alineamiento, Auditoría y Resiliencia Estructural
           </div>
-          <form onSubmit={handleVerifyPublicHash} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input 
-              type="text" 
-              placeholder={`Hash Merkle o ID de Evidencia (Ej. ${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
-              value={publicVerifyHash}
-              onChange={(e) => setPublicVerifyHash(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}
-            />
-            <button type="submit" disabled={publicVerifyLoading} style={{ padding: '10px 18px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-              {publicVerifyLoading ? 'Verificando...' : 'Verificar Inmutabilidad'}
-            </button>
-          </form>
 
-          {publicVerifyResult && (
-            <div style={{ marginTop: '14px', background: '#030712', border: `1px solid ${publicVerifyResult.status === 'VERIFIED' ? '#10b981' : '#ef4444'}`, padding: '12px', borderRadius: '6px', textAlign: 'left', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-              <div style={{ color: publicVerifyResult.status === 'VERIFIED' ? '#34d399' : '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>
-                {publicVerifyResult.status === 'VERIFIED' ? '✅ EVIDENCIA VÁLIDA Y SELLADA EN BÓVEDA D1' : '❌ FALLO DE AUDITORÍA'}
-              </div>
-              <div style={{ color: '#94a3b8' }}>Merkle Root: {publicVerifyResult.merkleRoot}</div>
-              <div style={{ color: '#94a3b8' }}>Estándar: {publicVerifyResult.standard} | Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+          <p style={{ fontSize: '17px', color: '#e2e8f0', maxWidth: '780px', margin: '0 auto 40px auto', lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>
+            Infraestructura de autorización ex-ante y gobernanza runtime bajo el estándar SGP 1.0. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
+          </p>
+
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '50px' }}>
+            <button onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '16px 38px', fontWeight: '800', fontSize: '13px', letterSpacing: '0.5px', cursor: 'pointer', borderRadius: '2px', boxShadow: '0 10px 30px rgba(255,255,255,0.2)' }}>
+              ACCEDER A LA BÓVEDA SAARE ↗
+            </button>
+            <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '16px 32px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 25px rgba(239,68,68,0.5)' }}>
+              ACTIVAR SUSCRIPCIÓN CORPORATIVA
+            </button>
+            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '16px 28px', backgroundColor: 'rgba(15, 23, 42, 0.85)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '2px', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(10px)' }}>
+              💬 Contacto Directo ({CONTACT_PHONE})
+            </a>
+          </div>
+
+          {/* VERIFICADOR CRIPTOGRÁFICO PÚBLICO MINIMALISTA */}
+          <div style={{ background: 'rgba(11, 15, 25, 0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '24px', maxWidth: '760px', width: '100%', margin: '0 auto', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', backdropFilter: 'blur(16px)' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '1px' }}>
+              🛡️ VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO (ISO/IEC 27037)
             </div>
-          )}
+            <form onSubmit={handleVerifyPublicHash} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <input 
+                type="text" 
+                placeholder={`Hash Merkle o ID de Evidencia (Ej. ${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
+                value={publicVerifyHash}
+                onChange={(e) => setPublicVerifyHash(e.target.value)}
+                style={{ flex: 1, padding: '12px 16px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '2px', fontSize: '0.85rem', fontFamily: 'monospace' }}
+              />
+              <button type="submit" disabled={publicVerifyLoading} style={{ padding: '12px 22px', background: '#059669', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
+                {publicVerifyLoading ? 'Verificando...' : 'Verificar Inmutabilidad'}
+              </button>
+            </form>
+
+            {publicVerifyResult && (
+              <div style={{ marginTop: '16px', background: '#030712', border: `1px solid ${publicVerifyResult.status === 'VERIFIED' ? '#10b981' : '#ef4444'}`, padding: '14px', borderRadius: '2px', textAlign: 'left', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                <div style={{ color: publicVerifyResult.status === 'VERIFIED' ? '#34d399' : '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>
+                  {publicVerifyResult.status === 'VERIFIED' ? '✅ EVIDENCIA VÁLIDA Y SELLADA EN BÓVEDA D1' : '❌ FALLO DE AUDITORÍA'}
+                </div>
+                <div style={{ color: '#94a3b8' }}>Merkle Root: {publicVerifyResult.merkleRoot}</div>
+                <div style={{ color: '#94a3b8' }}>Estándar: {publicVerifyResult.standard} | Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+              </div>
+            )}
+          </div>
+
         </div>
       </section>
 
-      {/* SECCIÓN INTEGRADORA DE SECTORES (SectorFunnel) */}
-      <section style={{ maxWidth: '1160px', margin: '40px auto 0 auto', padding: '0 24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginBottom: '16px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+      {/* 4. BARRA DE NAVEGACIÓN DE PERFILES / MODULOS (DESPLAZADA ABAJO DEL HERO) */}
+      <section style={{ backgroundColor: '#0b0f19', borderBottom: '1px solid #1f2937', padding: '16px 24px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={() => setActiveProfile('software')} style={{ background: activeProfile === 'software' ? '#ffffff' : 'transparent', color: activeProfile === 'software' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Software</button>
+          <button onClick={() => setActiveProfile('sales')} style={{ background: activeProfile === 'sales' ? '#ffffff' : 'transparent', color: activeProfile === 'sales' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Sales</button>
+          <button onClick={() => setActiveProfile('grc')} style={{ background: activeProfile === 'grc' ? '#ffffff' : 'transparent', color: activeProfile === 'grc' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>GRC</button>
+          <button onClick={() => setActiveProfile('developers')} style={{ background: activeProfile === 'developers' ? '#ffffff' : 'transparent', color: activeProfile === 'developers' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Developers</button>
+          <button onClick={() => setActiveProfile('enterprise')} style={{ background: activeProfile === 'enterprise' ? '#ffffff' : 'transparent', color: activeProfile === 'enterprise' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Enterprise</button>
+        </div>
+      </section>
+
+      {/* SECCIÓN INTEGRADORA DE SECTORS */}
+      <section style={{ maxWidth: '1160px', margin: '50px auto 0 auto', padding: '0 24px' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginBottom: '20px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
           Embudo de Conversión Sectorial & Ayudas Públicas Ex-Ante
         </h3>
         <SectorFunnel />
@@ -547,14 +580,14 @@ services:
         {/* ===================== 1. SOFTWARE ===================== */}
         {activeProfile === 'software' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #0ea5e9', borderRadius: '16px', padding: '36px', boxShadow: '0 10px 30px rgba(14,165,233,0.1)' }}>
+            <div style={{ background: '#0b0f19', border: '1px solid #0ea5e9', borderRadius: '4px', padding: '36px' }}>
               <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 1 · SOFTWARE CORE L7</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Motor Judge L7 & Autorización Runtime Síncrona</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
                 El núcleo tecnológico de S.A.A.R.E. intercepta cada llamada y decisión de tus agentes en el borde. Conexión directa mediante los endpoints <code>/api/v1/judge</code> y <code>/api/v1/intercept</code> para garantizar el bloqueo síncrono de prompt injections y bypasses del sistema en milisegundos.
               </p>
               
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Software Core Subscription</h3>
@@ -566,7 +599,7 @@ services:
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Software Core ↗
                   </button>
                 </div>
@@ -578,14 +611,14 @@ services:
         {/* ===================== 2. SALES ===================== */}
         {activeProfile === 'sales' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #10b981', borderRadius: '16px', padding: '36px', boxShadow: '0 10px 30px rgba(16,185,129,0.1)' }}>
+            <div style={{ background: '#0b0f19', border: '1px solid #10b981', borderRadius: '4px', padding: '36px' }}>
               <span style={{ color: '#10b981', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 2 · SALES & COMMERCIAL TRACEABILITY</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Trazabilidad Comercial y Auditoría de Leads con IA</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
                 Optimizado para equipos comerciales y operaciones que automatizan interacciones con IA. Audita y verifica que los agentes comerciales operan bajo estricto cumplimiento corporativo sin fugas de PII ni datos de clientes.
               </p>
 
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Sales Intelligence Suite</h3>
@@ -596,7 +629,7 @@ services:
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Sales Traceability', 7900)} style={{ padding: '12px 24px', background: '#10b981', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('Sales Traceability', 7900)} style={{ padding: '12px 24px', background: '#10b981', color: '#000', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Licencia Sales ↗
                   </button>
                 </div>
@@ -608,14 +641,14 @@ services:
         {/* ===================== 3. GRC ===================== */}
         {activeProfile === 'grc' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #a855f7', borderRadius: '16px', padding: '36px', boxShadow: '0 10px 30px rgba(168,85,247,0.1)' }}>
+            <div style={{ background: '#0b0f19', border: '1px solid #a855f7', borderRadius: '4px', padding: '36px' }}>
               <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 3 · GRC & COMPLIANCE</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Evidencias Automáticas & Proof Bundles RFC 3161</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
                 Diseñado para responsables de cumplimiento y auditores externos. Genera paquetes de evidencia con sellado criptográfico asimétrico Ed25519 y alineamiento normativo directo con el Anexo IV del Reglamento UE 2024/1689 (EU AI Act).
               </p>
 
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>GRC Compliance License</h3>
@@ -626,7 +659,7 @@ services:
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('GRC Compliance Suite', 14900)} style={{ padding: '12px 24px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => handleCheckout('GRC Compliance Suite', 14900)} style={{ padding: '12px 24px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Contratar Licencia GRC ↗
                   </button>
                 </div>
@@ -665,7 +698,7 @@ services:
         {/* ===================== 4. DEVELOPERS ===================== */}
         {activeProfile === 'developers' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '16px', padding: '36px', boxShadow: '0 10px 30px rgba(56,189,248,0.1)' }}>
+            <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '4px', padding: '36px' }}>
               <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 4 · DEVELOPERS & SDKS</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>SDKs, Ganchos L7 y Despliegue de Sensor Local</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
@@ -673,25 +706,25 @@ services:
               </p>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button onClick={() => setActiveCodeTab('sdk')} style={{ padding: '8px 14px', borderRadius: '6px', border: `1.5px solid ${activeCodeTab === 'sdk' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sdk' ? '#111827' : 'transparent', color: activeCodeTab === 'sdk' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>SDK (@saare/judge)</button>
-                <button onClick={() => setActiveCodeTab('workflow')} style={{ padding: '8px 14px', borderRadius: '6px', border: `1.5px solid ${activeCodeTab === 'workflow' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'workflow' ? '#111827' : 'transparent', color: activeCodeTab === 'workflow' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Workflow Interceptor</button>
-                <button onClick={() => setActiveCodeTab('sidecar')} style={{ padding: '8px 14px', borderRadius: '6px', border: `1.5px solid ${activeCodeTab === 'sidecar' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sidecar' ? '#111827' : 'transparent', color: activeCodeTab === 'sidecar' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Sidecar Container (Docker)</button>
+                <button onClick={() => setActiveCodeTab('sdk')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'sdk' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sdk' ? '#111827' : 'transparent', color: activeCodeTab === 'sdk' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>SDK (@saare/judge)</button>
+                <button onClick={() => setActiveCodeTab('workflow')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'workflow' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'workflow' ? '#111827' : 'transparent', color: activeCodeTab === 'workflow' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Workflow Interceptor</button>
+                <button onClick={() => setActiveCodeTab('sidecar')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'sidecar' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sidecar' ? '#111827' : 'transparent', color: activeCodeTab === 'sidecar' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Sidecar Container (Docker)</button>
               </div>
 
-              <pre style={{ margin: 0, backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '10px', padding: '20px', color: '#f3f4f6', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5, marginBottom: '24px' }}>
+              <pre style={{ margin: 0, backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '2px', padding: '20px', color: '#f3f4f6', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5, marginBottom: '24px' }}>
                 {codeSnippets[activeCodeTab]}
               </pre>
 
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                   <h3 style={{ fontSize: '20px', color: '#fff', margin: 0 }}>Runtime Test & Benchmarks P99</h3>
-                  <button onClick={handleEvaluateLiveJudge} disabled={liveJudgeLoading} style={{ padding: '8px 18px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                  <button onClick={handleEvaluateLiveJudge} disabled={liveJudgeLoading} style={{ padding: '8px 18px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
                     {liveJudgeLoading ? 'Evaluando...' : '▶ Evaluar Anclaje Raíz'}
                   </button>
                 </div>
 
                 {liveJudgeResult && (
-                  <div style={{ background: '#030712', border: '1px solid #34d399', padding: '14px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px', color: '#34d399' }}>
+                  <div style={{ background: '#030712', border: '1px solid #34d399', padding: '14px', borderRadius: '2px', fontFamily: 'monospace', fontSize: '12px', color: '#34d399' }}>
                     [DECISIÓN: {liveJudgeResult.decision}] · ID: {liveJudgeResult.verdictId} <br/>
                     <span style={{ color: '#9ca3af' }}>{liveJudgeResult.message || "Root attestation verified successfully."}</span>
                   </div>
@@ -704,14 +737,14 @@ services:
         {/* ===================== 5. ENTERPRISE ===================== */}
         {activeProfile === 'enterprise' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #ca8a04', borderRadius: '16px', padding: '36px', boxShadow: '0 10px 30px rgba(202,138,4,0.1)' }}>
+            <div style={{ background: '#0b0f19', border: '1px solid #ca8a04', borderRadius: '4px', padding: '36px' }}>
               <span style={{ color: '#facc15', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 5 · ENTERPRISE SOVEREIGN</span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Despliegue Dedicado, Contratos Marco y SLA 24/7</h2>
               <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
                 Infraestructura de grado operador para banca, seguros y sector público. Despliegues en VPC dedicada, custodia de claves en HSMs físicos y soporte crítico permanente con arquitecto asignado.
               </p>
 
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', margin: '24px 0' }}>
+              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Enterprise Contract</h3>
@@ -722,7 +755,7 @@ services:
                   </div>
                 </div>
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => setShowEnterpriseModal(true)} style={{ padding: '12px 24px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+                  <button onClick={() => setShowEnterpriseModal(true)} style={{ padding: '12px 24px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
                     Solicitar Propuesta Enterprise ↗
                   </button>
                 </div>
@@ -733,163 +766,173 @@ services:
 
       </main>
 
-      {/* DRAWER LATERAL DESLIZANTE (50% ANCHO DERECHA ESTILO PALANTIR) */}
+      {/* 5. DRAWER LATERAL DESLIZANTE CON DISEÑO ULTRA-MINIMALISTA ESTILO PALANTIR */}
       <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '50vw',
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '450px',
         backgroundColor: '#ffffff', color: '#0f172a', zIndex: 99999, transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)', padding: '60px 80px', boxSizing: 'border-box',
+        transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)', padding: '50px 40px', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto',
-        boxShadow: '-20px 0 50px rgba(0,0,0,0.5)'
+        boxShadow: '-20px 0 60px rgba(0,0,0,0.6)'
       }}>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
             <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1.5px', color: '#64748b', textTransform: 'uppercase' }}>
-              CONTACT / DEMO REQUEST + VAULT ACCESS
+              SAARE VAULT ACCESS
             </span>
-            <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#0f172a' }}>✕</button>
+            <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#0f172a' }}>✕</button>
           </div>
 
-          <h2 style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-0.5px', margin: '0 0 28px 0', color: '#0f172a', lineHeight: 1.2 }}>
-            {authTab === 'login' ? 'Acceso a la Bóveda SAARE' : authTab === 'register' ? 'Registro de Nueva Organización' : 'Restablecer Clave'}
+          <h2 style={{ fontSize: '28px', fontWeight: '900', letterSpacing: '-0.5px', margin: '0 0 24px 0', color: '#0f172a', lineHeight: 1.2 }}>
+            {authTab === 'login' ? 'Acceso a la Bóveda SAARE' : authTab === 'register' ? 'Registro de Organización' : 'Restablecer Clave'}
           </h2>
 
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '36px', borderBottom: '1px solid #e2e8f0' }}>
-            <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #000' : 'none', paddingBottom: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'login' ? '#000' : '#94a3b8' }}>LOGIN</button>
-            <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #000' : 'none', paddingBottom: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'register' ? '#000' : '#94a3b8' }}>REGISTRO NUEVO</button>
+          {/* ACCESOS DIRECTOS A CONSOLA DENTRO DEL MENÚ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '32px', background: '#f8fafc', padding: '16px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', letterSpacing: '1px' }}>ACCESO DIRECTO POR ROLES:</span>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <a href={getConsoleTargetUrl('EXECUTIVE')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#0284c7', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>CEO Console ↗</a>
+              <a href={getConsoleTargetUrl('GRC_AUDIT')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#059669', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>CISO Audit ↗</a>
+              <a href={getConsoleTargetUrl('CYBER_RESILIENCE')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#7c3aed', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>SOC Control ↗</a>
+            </div>
+            <button onClick={handleDownloadTokenizedExtension} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left', marginTop: '4px' }}>
+              📦 Descargar Sensor L7 (.zip)
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '28px', borderBottom: '1px solid #e2e8f0' }}>
+            <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #000' : 'none', paddingBottom: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'login' ? '#000' : '#94a3b8' }}>LOGIN</button>
+            <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #000' : 'none', paddingBottom: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'register' ? '#000' : '#94a3b8' }}>NUEVO REGISTRO</button>
           </div>
 
           {authTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>BUSINESS EMAIL ADDRESS *</label>
-                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '10px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL *</label>
+                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px' }}>PASSWORD *</label>
                   <button type="button" onClick={() => { setAuthTab('forgot'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>¿Olvidaste?</button>
                 </div>
-                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '10px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '12px' }}>
+              <button type="submit" disabled={authLoading} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '10px' }}>
                 {authLoading ? 'AUTENTICANDO...' : 'ENTRAR EN LA CONSOLA ↗'}
               </button>
             </form>
           )}
 
           {authTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>FULL NAME *</label>
-                <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>FULL NAME *</label>
+                <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>COMPANY / INSTITUTION *</label>
-                <input type="text" required value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>COMPANY *</label>
+                <input type="text" required value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL ADDRESS *</label>
-                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>BUSINESS EMAIL *</label>
+                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>PASSWORD *</label>
-                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>PASSWORD *</label>
+                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#059669', color: '#fff', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '12px' }}>
-                {authLoading ? 'TRANSMITIENDO...' : 'SOLICITAR VERIFICACIÓN POR CORREO (15 MIN) ↗'}
+              <button type="submit" disabled={authLoading} style={{ background: '#059669', color: '#fff', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '10px' }}>
+                {authLoading ? 'TRANSMITIENDO...' : 'SOLICITAR VERIFICACIÓN ↗'}
               </button>
             </form>
           )}
 
           {authTab === 'forgot' && (
-            <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-                Escriba su correo registrado y se le remitirá un enlace de verificación provisional a su bandeja de entrada.
+                Escriba su correo registrado para recibir una clave provisional.
               </p>
               <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL ADDRESS *</label>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL *</label>
                 <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
               </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#ca8a04', color: '#000', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}>
+              <button type="submit" disabled={authLoading} style={{ background: '#ca8a04', color: '#000', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}>
                 {authLoading ? 'ENVIANDO...' : 'ENVIAR CLAVE PROVISIONAL ↗'}
-              </button>
-              <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px' }}>
-                ← Volver al Login
               </button>
             </form>
           )}
 
-          {authError && <div style={{ marginTop: '20px', padding: '12px', background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', fontSize: '12px' }}>{authError}</div>}
-          {authSuccess && <div style={{ marginTop: '20px', padding: '12px', background: '#f0fdf4', border: '1px solid #34d399', color: '#166534', fontSize: '12px', lineHeight: 1.5 }}>{authSuccess}</div>}
+          {authError && <div style={{ marginTop: '16px', padding: '10px', background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', fontSize: '11px' }}>{authError}</div>}
+          {authSuccess && <div style={{ marginTop: '16px', padding: '10px', background: '#f0fdf4', border: '1px solid #34d399', color: '#166534', fontSize: '11px', lineHeight: 1.4 }}>{authSuccess}</div>}
         </div>
       </div>
 
-      {/* MODAL ENTERPRISE / CONTACTO B2B */}
+      {/* MODAL ENTERPRISE / B2B */}
       {showEnterpriseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowEnterpriseModal(false)}>
-          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #ca8a04', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '4px', border: '1px solid #ca8a04', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
             <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>GRANDES CUENTAS</span>
             <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Cualificación Enterprise / VPC Dedicada</h3>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 16px 0', lineHeight: 1.5 }}>
               Un especialista técnico de nuestro gabinete se pondrá en contacto para diseñar la arquitectura de despliegue soberano.
             </p>
 
-            <div style={{ background: '#030712', border: '1px solid #ca8a04', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ background: '#030712', border: '1px solid #ca8a04', padding: '12px', borderRadius: '2px', marginBottom: '16px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <span style={{ color: '#facc15', display: 'block', fontSize: '10px', fontWeight: 'bold' }}>LÍNEA DIRECTA:</span>
                 <strong style={{ color: '#ffffff' }}>{CONTACT_PHONE}</strong> | <strong style={{ color: '#38bdf8' }}>{CONTACT_EMAIL}</strong>
               </div>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ background: '#16a34a', color: '#fff', padding: '4px 10px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '11px' }}>WhatsApp ↗</a>
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ background: '#16a34a', color: '#fff', padding: '4px 10px', borderRadius: '2px', textDecoration: 'none', fontWeight: 'bold', fontSize: '11px' }}>WhatsApp ↗</a>
             </div>
 
             {b2bSuccessMsg ? (
-              <div style={{ padding: '14px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '8px', fontSize: '13px', textAlign: 'center' }}>
+              <div style={{ padding: '14px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '2px', fontSize: '13px', textAlign: 'center' }}>
                 {b2bSuccessMsg}
               </div>
             ) : (
               <form onSubmit={(e) => handleSendB2BForm(e, 'Enterprise Sovereign')} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO (CISO / CTO)</label>
-                  <input type="email" required placeholder="ciso@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '6px', boxSizing: 'border-box', fontSize: '13px' }} />
+                  <input type="email" required placeholder="ciso@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '2px', boxSizing: 'border-box', fontSize: '13px' }} />
                 </div>
-                <button type="submit" disabled={loadingLead} style={{ width: '100%', padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
+                <button type="submit" disabled={loadingLead} style={{ width: '100%', padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '2px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
                   {loadingLead ? 'Transmitiendo...' : 'Solicitar Propuesta Enterprise'}
                 </button>
               </form>
             )}
 
-            <button type="button" onClick={() => setShowEnterpriseModal(false)} style={{ width: '100%', padding: '12px', background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}>
+            <button type="button" onClick={() => setShowEnterpriseModal(false)} style={{ width: '100%', padding: '12px', background: '#374151', color: '#fff', border: 'none', borderRadius: '2px', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}>
               Cerrar
             </button>
           </div>
         </div>
       )}
 
-      {/* BANNER DE COOKIES ESTILO PALANTIR (MODAL GRANDE EN ESQUINA INFERIOR DERECHA) */}
+      {/* 6. BANNER DE COOKIES COPIADO EXACTO DE PALANTIR */}
       {!cookieConsent && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', maxWidth: '400px', backgroundColor: '#0b0f19', border: '1px solid #374151', padding: '24px', zIndex: 99999, boxShadow: '0 20px 50px rgba(0,0,0,0.85)' }}>
-          <p style={{ fontSize: '12.5px', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-            By clicking "Accept All Cookies", you agree to the storing of cookies on your device to enhance site navigation, analyze site usage, and assist in our marketing efforts. More Info
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', maxWidth: '380px', backgroundColor: '#0b0f19', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 99999, boxShadow: '0 20px 50px rgba(0,0,0,0.9)' }}>
+          <p style={{ fontSize: '12px', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5, fontFamily: 'sans-serif' }}>
+            By clicking "Accept All Cookies", you agree to the storing of cookies on your device to enhance site navigation, analyze site usage, and assist in our marketing efforts.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={() => handleCookieChoice('accepted')} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}>Accept All Cookies</button>
-            <button onClick={() => handleCookieChoice('rejected')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #4b5563', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}>Reject All</button>
+            <button onClick={() => handleCookieChoice('accepted')} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Accept All Cookies</button>
+            <button onClick={() => handleCookieChoice('rejected')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #4b5563', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reject All</button>
           </div>
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '32px', paddingBottom: '40px', fontSize: '12px', color: '#6b7280' }}>
-        <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '0 24px' }}>
+      {/* FOOTER PALANTIR STYLE */}
+      <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '40px', paddingBottom: '40px', fontSize: '12px', color: '#6b7280' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
             <div style={{ maxWidth: '620px' }}>
-              <strong style={{ color: '#f3f4f6', fontSize: '13px' }}>SAARE — AI Execution Authorization Infrastructure</strong>
-              <p style={{ margin: '6px 0 0 0', color: '#9ca3af', lineHeight: 1.5 }}>
+              <strong style={{ color: '#f3f4f6', fontSize: '14px' }}>SAARE — AI Execution Authorization Infrastructure</strong>
+              <p style={{ margin: '8px 0 0 0', color: '#9ca3af', lineHeight: 1.5 }}>
                 Runtime authorization for autonomous AI actions. <br />
                 <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>AI agents can act. SAARE decides what they're allowed to do.</span>
               </p>
               
-              <div style={{ marginTop: '12px', display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px' }}>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '18px', flexWrap: 'wrap', fontSize: '12px' }}>
                 <span style={{ color: '#cbd5e1' }}>📞 <strong>Tel:</strong> <a href={`tel:${CONTACT_PHONE_RAW}`} style={{ color: '#38bdf8', textDecoration: 'none' }}>{CONTACT_PHONE}</a></span>
                 <span>💬 <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ color: '#4ade80', textDecoration: 'none', fontWeight: 'bold' }}>WhatsApp Directo</a></span>
                 <span>✉️ <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#f472b6', textDecoration: 'none' }}>{CONTACT_EMAIL}</a></span>
@@ -897,7 +940,7 @@ services:
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #111827', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ borderTop: '1px solid #111827', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
             <span>Protocol Certification: SGP 1.0 · Trust Anchor Ref: SAARE-MD-IPRES-2026</span>
             <span>© 2026 SAARE Digital Governance — Gabinete Técnico MS3V</span>
           </div>
