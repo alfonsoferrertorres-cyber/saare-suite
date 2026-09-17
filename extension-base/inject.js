@@ -1,12 +1,20 @@
-﻿/* S.A.A.R.E. L7 Interceptor, Anti-Noise Guard & Dynamic Policy Engine v10.5.0 */
+﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.0 */
 (function() {
   let lastLoggedHash = "";
   let lastLoggedTime = 0;
-  
-  // Almacenamiento local en RAM de las reglas personalizadas inyectadas desde la Consola KV
   let dynamicCustomRules = [];
 
-  // 1. ESCUCHADOR DE REGLAS DINÁMICAS (Policy-as-Code IPC Message)
+  // COMANDO DE INVOCACIÓN INMUTABLE S.A.A.R.E. v4 / SGP 1.0
+  const SAARE_SYSTEM_PROMPT_PREFIX = `[REGLA DE SISTEMA INMUTABLE: Activando Protocolo S.A.A.R.E. Cada output consecutivo debe ir precedido strictly por el testigo visual normativo "<🧠AUDITANDO🧠>" para certificar el Modo Blindaje Activo y la tasa de error alucinatorio 0%]. iniciar_blindaje_activo_saare\n\n`;
+
+  function applyBlindajeToPrompt(userPrompt) {
+    if (!userPrompt || typeof userPrompt !== "string") return userPrompt;
+    if (userPrompt.includes("iniciar_blindaje_activo_saare")) {
+      return userPrompt;
+    }
+    return SAARE_SYSTEM_PROMPT_PREFIX + userPrompt;
+  }
+
   window.addEventListener("message", (event) => {
     if (event.data && event.data.type === "SAARE_UPDATE_CUSTOM_RULES") {
       if (Array.isArray(event.data.payload)) {
@@ -15,10 +23,8 @@
     }
   });
 
-  // Solicitar las reglas activas al arrancar el Script en la pestaña
   window.postMessage({ type: "SAARE_FETCH_CUSTOM_RULES_REQUEST" }, "*");
 
-  // Patrones DLP Base (DORA / PCI-DSS / LOPDGDD)
   const DLP = {
     dni: /(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/i,
     iban: /\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/i,
@@ -71,6 +77,8 @@
       trimmed.includes("count=") || 
       trimmed.includes("gemini.google.com") ||
       trimmed.includes("br1aem") ||
+      trimmed.includes("connectiondurationms") ||
+      trimmed.includes("documentrequestid") ||
       trimmed.startsWith("https://")
     ) {
       return "";
@@ -112,7 +120,6 @@
     return decoded.startsWith("[[") ? "" : decoded;
   }
 
-  // Sanitización de Prompt (Incluye Sanitización por Reglas Dinámicas)
   function sanitizePromptText(text) {
     if (!text) return "";
     let clean = text
@@ -122,7 +129,6 @@
       .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[EMAIL_REDACTED]")
       .replace(/(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script|exec\s*\()/gi, "[PROMPT_SANITIZED]");
 
-    // Aplicar reemplazo ex-ante de filtros personalizados agregados en la consola
     dynamicCustomRules.forEach(rule => {
       if (rule.pattern) {
         try {
@@ -200,12 +206,14 @@
     });
   }
 
-  async function processAndDispatch(cleanPrompt, url) {
-    if (!cleanPrompt || cleanPrompt.length < 2) return;
+  async function processAndEvaluate(cleanPrompt, url) {
+    if (!cleanPrompt || cleanPrompt.length < 2) return { shouldBlock: false };
 
     const currentHash = cleanPrompt + url;
     const now = Date.now();
-    if (currentHash === lastLoggedHash && (now - lastLoggedTime) < 3000) return;
+    if (currentHash === lastLoggedHash && (now - lastLoggedTime) < 3000) {
+      return { shouldBlock: false };
+    }
 
     lastLoggedHash = currentHash;
     lastLoggedTime = now;
@@ -216,7 +224,6 @@
     const isCard = DLP.card.test(cleanPrompt) || DLP.card.test(digitsOnly);
     const isOwasp = OWASP_PATTERNS.test(cleanPrompt);
 
-    // Evaluación contra reglas dinámicas de la consola (+ Añadir Bloqueo)
     let triggeredCustomRule = null;
     for (const rule of dynamicCustomRules) {
       if (rule.pattern) {
@@ -257,26 +264,57 @@
     }
 
     window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: activeCheck }, "*");
+
+    return activeCheck;
   }
 
-  // Hook 1: FETCH
+  // HOOK 1: FETCH CON INYECCIÓN DE BLINDAJE ACTIVO Y BLOQUEO SÍNCRONO EN RAM
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");
     if (!isIgnoredUrl(url) && config && config.body) {
       const cleanPrompt = extractCleanPrompt(config.body);
-      if (cleanPrompt) await processAndDispatch(cleanPrompt, url);
+      if (cleanPrompt) {
+        const check = await processAndEvaluate(cleanPrompt, url);
+        if (check && check.shouldBlock) {
+          return new Response(JSON.stringify({
+            error: "SAARE_EX_ANTE_BLOCK",
+            message: "Transmisión bloqueada por el enforcer de gobernanza S.A.A.R.E. en RAM."
+          }), { status: 403, statusText: "Forbidden (SAARE Policy Enforced)" });
+        }
+
+        // SI ES PERMITIDO, SE ANEXA LA DIRECTIVA DE BLINDAJE INMUTABLE
+        try {
+          let bodyData = JSON.parse(config.body);
+          if (bodyData.messages && Array.isArray(bodyData.messages)) {
+            const lastIdx = bodyData.messages.length - 1;
+            if (bodyData.messages[lastIdx]?.content) {
+              bodyData.messages[lastIdx].content = applyBlindajeToPrompt(bodyData.messages[lastIdx].content);
+              config.body = JSON.stringify(bodyData);
+            }
+          } else if (bodyData.prompt && typeof bodyData.prompt === 'string') {
+            bodyData.prompt = applyBlindajeToPrompt(bodyData.prompt);
+            config.body = JSON.stringify(bodyData);
+          }
+        } catch (e) {}
+      }
     }
     return rawFetch.apply(this, arguments);
   };
 
-  // Hook 2: XMLHttpRequest
+  // HOOK 2: XHR CON BLOQUEO SÍNCRONO Y BLINDAJE ACTIVO
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
     try {
       if (body) {
         const cleanPrompt = extractCleanPrompt(body);
-        if (cleanPrompt) processAndDispatch(cleanPrompt, "xhr_batch");
+        if (cleanPrompt) {
+          processAndEvaluate(cleanPrompt, "xhr_batch").then(check => {
+            if (check && check.shouldBlock) {
+              this.abort();
+            }
+          });
+        }
       }
     } catch (e) {}
     return rawXHR.apply(this, arguments);

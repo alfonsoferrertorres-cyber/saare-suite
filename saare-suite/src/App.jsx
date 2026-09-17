@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from './utils/api';
+import { SectorFunnel } from './components/SectorFunnel';
 
 // Configuración de endpoints sincronizada con el entorno local / producción
 const API_BASE = `${API_BASE_URL.replace(/\/$/, '')}/v1`;
@@ -9,7 +10,6 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
   : 'https://console.saare.es';
 
 const OFFICIAL_VERIFY_PAGE = `${API_BASE}/evidence/verify`;
-
 const DEMO_ROOT_MERKLE_HASH = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
 
 const CONTACT_PHONE = "+34 633 886 506";
@@ -49,7 +49,6 @@ export default function App() {
   const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
   const [loadingLead, setLoadingLead] = useState(false);
 
-  // BUSCADOR DE VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO
   const [publicVerifyHash, setPublicVerifyHash] = useState('');
   const [publicVerifyLoading, setPublicVerifyLoading] = useState(false);
   const [publicVerifyResult, setPublicVerifyResult] = useState(null);
@@ -101,7 +100,6 @@ export default function App() {
     window.location.href = `${API_BASE}/download-extension?user=${email}&tenant=${tenant}&token=${encodeURIComponent(token)}`;
   };
 
-  // GENERADOR DE URLS CON PARAMETRIZACIÓN DE PERFILES PARA LA CONSOLA
   const getConsoleTargetUrl = (targetMode = "GRC_AUDIT", targetPath = "/") => {
     const baseConsole = CONSOLE_URL.endsWith('/') ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
     const path = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
@@ -570,7 +568,7 @@ services:
             Infraestructura Crítica de Autorización IA en Tiempo Real
           </h1>
           <p style={{ fontSize: '15px', color: '#cbd5e1', maxWidth: '780px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
-            Despliegue autónomo instantáneo. Protege tus agentes de IA, previene fugas de datos y cumple estrictamente con el EU AI Act y DORA sin necesidad de rediseñar tu arquitectura.
+            Despliegue autónomo instantáneo. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA sin necesidad de rediseñar tu arquitectura.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '30px' }}>
             <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '12.5px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
@@ -610,6 +608,14 @@ services:
             )}
           </div>
         </div>
+      </section>
+
+      {/* SECCIÓN INTEGRADORA DE SECTORES (SectorFunnel) */}
+      <section style={{ maxWidth: '1160px', margin: '40px auto 0 auto', padding: '0 24px' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginBottom: '16px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Embudo de Conversión Sectorial & Ayudas Públicas Ex-Ante
+        </h3>
+        <SectorFunnel />
       </section>
 
       {/* CONTENIDO PRINCIPAL POR MÓDULO */}

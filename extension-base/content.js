@@ -1,4 +1,4 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v10.0.14 (SGP 1.0)
+// SAARE L7 TELEMETRY & DOM BRIDGE v10.5.0 (SGP 1.0 / Blindaje Activo)
 console.log("[SAARE L7 Engine] DOM Bridge & Execution Guard Active");
 
 const DEFAULT_SETTINGS_V10 = {
@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS_V10 = {
 };
 
 /**
- * Filtro de Ruido L7 para descartar telemetría de red interna de Gemini/Google
+ * Filtro de Ruido L7 para descartar telemetría de red interna y metadatos del navegador
  */
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
@@ -18,8 +18,36 @@ function isNoisePayload(text) {
     lower.includes("bard_activity") ||
     lower.includes("generic") ||
     lower.includes("at=aovx") ||
+    lower.includes("connectiondurationms") ||
+    lower.includes("documentrequestid") ||
     lower.startsWith("[[[\"")
   );
+}
+
+// 1. DIBUJAR TESTIGO VISUAL PERMANENTE EN EL DOM DEL USUARIO
+function renderActivityWitnessBadge() {
+  if (document.getElementById("saare-witness-badge")) return;
+
+  const badge = document.createElement("div");
+  badge.id = "saare-witness-badge";
+  badge.style.cssText = `
+    position: fixed; bottom: 16px; left: 16px; z-index: 999999;
+    background: #030712; border: 1px solid #059669; color: #34d399;
+    padding: 6px 12px; border-radius: 20px; font-size: 0.72rem;
+    font-family: monospace; font-weight: 800; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none; opacity: 0.95;
+  `;
+  badge.innerHTML = `
+    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+    🧠 S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO
+  `;
+  (document.body || document.documentElement).appendChild(badge);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", renderActivityWitnessBadge);
+} else {
+  renderActivityWitnessBadge();
 }
 
 function updateDomContext(settings, userEmail, tenantDomain) {
@@ -30,12 +58,10 @@ function updateDomContext(settings, userEmail, tenantDomain) {
 
 function syncStorageAndContext() {
   if (typeof chrome !== "undefined" && chrome.storage) {
-    // 1. Priorizar la lectura de local storage (tokenizado)
     chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
       if (local?.saare_user_email) {
         updateDomContext(local.saare_settings || DEFAULT_SETTINGS_V10, local.saare_user_email, local.saare_tenant_domain || "ENTERPRISE");
       } else if (chrome.storage.managed) {
-        // Fallback a Enterprise Managed (MDM)
         chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
           const finalUser = managed?.saare_user_email || "";
           const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
@@ -67,12 +93,10 @@ try {
 function sendEvidenceToBackground(verdictData) {
   const text = verdictData.cleanPrompt || verdictData.rawPrompt || verdictData.prompt || "";
 
-  // FILTRO EX-ANTE: Descartar telemetría interna o textos vacíos
   if (isNoisePayload(text)) {
     return;
   }
 
-  // Resuelve la identidad en vivo directamente de las propiedades del DOM
   const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "";
   const currentDomTenant = document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE";
 
@@ -104,7 +128,6 @@ function sendEvidenceToBackground(verdictData) {
   }
 }
 
-// Escucha de eventos emitidos desde inject.js
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
 
