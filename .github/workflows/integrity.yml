@@ -1,4 +1,4 @@
-﻿name: SAARE Pipeline Integrity Check
+name: SAARE Pipeline Integrity Check
 
 on:
   push:
@@ -14,20 +14,19 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Configurar Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: 'pnpm'
 
-      - name: Configurar Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Instalar dependencias
+        run: pnpm install
 
-      - name: Validar compilación del Proxy en Rust
-        working-directory: runtime/l7_proxy
-        run: cargo check
-
-      - name: Validar Integridad Criptográfica del Ledger
-        working-directory: control-plane
-        run: |
-          npm ci --if-present
-          node verifyLedger.js
+      - name: Validar compilación del Monorepo
+        run: pnpm run build:all
