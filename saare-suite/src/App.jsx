@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from './utils/api';
 import { SectorFunnel } from './components/SectorFunnel';
 
-// Configuración de endpoints sincronizada con el entorno local / producción
 const API_BASE = `${API_BASE_URL.replace(/\/$/, '')}/v1`;
-
 const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5173'
   : 'https://console.saare.es';
@@ -31,27 +29,37 @@ export default function App() {
   const [activeProfile, setActiveProfile] = useState('software');
   const [activeCodeTab, setActiveCodeTab] = useState('sdk');
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [authTab, setAuthTab] = useState('login'); 
 
   const [activeSessionUser, setActiveSessionUser] = useState(null);
   const [cookieConsent, setCookieConsent] = useState(null);
 
+  // Form Fields (Captura Justa)
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
+  const [formName, setFormName] = useState('');
   const [formCompany, setFormCompany] = useState('');
   const [formPlan, setFormPlan] = useState('TRIAL_7D');
+
+  // Auth Status
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
+  // Enterprise Lead Form
   const [b2bFormData, setB2bFormData] = useState({ emailContacto: '', vpcCloud: 'SOBERANA_EUROPEA', tokenVolume: '10M_PLUS' });
   const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
   const [loadingLead, setLoadingLead] = useState(false);
 
+  // Public Hash Verification
   const [publicVerifyHash, setPublicVerifyHash] = useState('');
   const [publicVerifyLoading, setPublicVerifyLoading] = useState(false);
   const [publicVerifyResult, setPublicVerifyResult] = useState(null);
+
+  // Live Judge Test State
+  const [liveJudgeLoading, setLiveJudgeLoading] = useState(false);
+  const [liveJudgeResult, setLiveJudgeResult] = useState(null);
 
   useEffect(() => {
     try {
@@ -72,14 +80,9 @@ export default function App() {
     return () => authChannel.close();
   }, []);
 
-  const handleAcceptCookies = () => {
-    localStorage.setItem('saare_cookie_consent', 'accepted');
-    setCookieConsent('accepted');
-  };
-
-  const handleRejectCookies = () => {
-    localStorage.setItem('saare_cookie_consent', 'rejected');
-    setCookieConsent('rejected');
+  const handleCookieChoice = (choice) => {
+    localStorage.setItem('saare_cookie_consent', choice);
+    setCookieConsent(choice);
   };
 
   const handleLogout = () => {
@@ -185,20 +188,6 @@ export default function App() {
     }
   };
 
-  const processUnifiedLogin = (userPayload, tokenPayload, planRequested, defaultMode = "GRC_AUDIT") => {
-    localStorage.setItem('saare_session_user', JSON.stringify(userPayload));
-    localStorage.setItem('saare_auth_token', tokenPayload);
-    setActiveSessionUser(userPayload);
-    setAuthSuccess("Aprovisionamiento correcto en API v1. Conectando con Control Plane...");
-
-    const targetUrl = getConsoleTargetUrl(defaultMode, '/');
-
-    setTimeout(() => {
-      setShowAuthModal(false);
-      window.location.href = targetUrl;
-    }, 800);
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setAuthLoading(true);
@@ -214,11 +203,13 @@ export default function App() {
         email, name: derivedTenant, tenantName: derivedTenant,
         apiKey: "sk_saare_live_master_kv_session",
         role: "CISO_ADMIN",
-        plan: formPlan || "SOFTWARE_PRO",
-        expiresAt: "2099-12-31T23:59:59Z"
+        isVerified: true
       };
-      processUnifiedLogin(masterUser, masterUser.apiKey, formPlan || "SOFTWARE_PRO");
-      setAuthLoading(false);
+      localStorage.setItem('saare_session_user', JSON.stringify(masterUser));
+      localStorage.setItem('saare_auth_token', masterUser.apiKey);
+      setActiveSessionUser(masterUser);
+      setDrawerOpen(false);
+      window.location.href = getConsoleTargetUrl(masterUser);
       return;
     }
 
@@ -226,11 +217,24 @@ export default function App() {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, requestedPlan: formPlan })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Credenciales inválidas.");
-      processUnifiedLogin(data.user, data.token, formPlan);
+
+      if (data.user && data.user.isVerified === false) {
+        throw new Error("Su cuenta está pendiente de verificación por correo. Revise legal@saare.es (plazo de 15 minutos).");
+      }
+
+      localStorage.setItem('saare_session_user', JSON.stringify(data.user));
+      localStorage.setItem('saare_auth_token', data.token);
+      setActiveSessionUser(data.user);
+      setAuthSuccess("Autenticación correcta. Conectando con Control Plane...");
+
+      setTimeout(() => {
+        setDrawerOpen(false);
+        window.location.href = getConsoleTargetUrl(data.user);
+      }, 600);
     } catch (err) {
       setAuthError(err.message);
     } finally {
@@ -246,17 +250,21 @@ export default function App() {
 
     const email = formEmail.trim().toLowerCase();
     const password = formPassword.trim();
+    const name = formName.trim();
     const company = formCompany.trim() || (email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : "EMPRESA");
 
     if (password === "admin123") {
       const masterUser = {
-        email, name: company, tenantName: company,
+        email, name, tenantName: company,
         apiKey: "sk_saare_live_master_kv_session",
         role: "CISO_ADMIN",
-        plan: formPlan, expiresAt: "2099-12-31T23:59:59Z"
+        isVerified: true
       };
-      processUnifiedLogin(masterUser, masterUser.apiKey, formPlan);
-      setAuthLoading(false);
+      localStorage.setItem('saare_session_user', JSON.stringify(masterUser));
+      localStorage.setItem('saare_auth_token', masterUser.apiKey);
+      setActiveSessionUser(masterUser);
+      setDrawerOpen(false);
+      window.location.href = getConsoleTargetUrl(masterUser);
       return;
     }
 
@@ -264,12 +272,12 @@ export default function App() {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, company, planType: formPlan })
+        body: JSON.stringify({ email, password, name, company })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo registrar la organización.");
 
-      processUnifiedLogin(data.user, data.token, formPlan);
+      setAuthSuccess("📩 Solicitud enviada desde legal@saare.es. Revise su correo y valide sus credenciales en un plazo máximo de 15 minutos.");
     } catch (err) {
       setAuthError(err.message);
     } finally {
@@ -292,7 +300,7 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al procesar la solicitud.");
-      setAuthSuccess(data.tempPasswordPreview ? `Contraseña provisional: ${data.tempPasswordPreview}` : "Clave provisional emitida a su correo.");
+      setAuthSuccess("Se ha emitido una clave provisional a su correo corporativo.");
     } catch (err) {
       setAuthError(err.message);
     } finally {
@@ -317,9 +325,6 @@ export default function App() {
       setLoadingLead(false);
     }
   };
-
-  const [liveJudgeLoading, setLiveJudgeLoading] = useState(false);
-  const [liveJudgeResult, setLiveJudgeResult] = useState(null);
 
   const handleEvaluateLiveJudge = async () => {
     setLiveJudgeLoading(true);
@@ -397,13 +402,13 @@ services:
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif', position: 'relative', overflowX: 'hidden' }}>
       
       {/* BARRA SUPERIOR INSTITUCIONAL */}
       <div style={{ backgroundColor: '#030712', borderBottom: '1px solid #1f2937', padding: '8px 24px', fontSize: '11.5px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1100, position: 'relative', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
           <button 
-            onClick={() => { setShowAuthModal(true); setAuthTab('register'); setFormPlan('TRIAL_7D'); }}
+            onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }}
             style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '4px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 10px rgba(239, 68, 68, 0.5)' }}
           >
             <span>🔴 Demo 7 Días (Cumplimiento SAARE)</span>
@@ -427,89 +432,11 @@ services:
         </div>
       </div>
 
-      {/* MODAL DE IDENTIDAD / AUTENTICACIÓN / REGISTRO */}
-      {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowAuthModal(false)}>
-          <div style={{ maxWidth: '460px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.9)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', marginBottom: '20px' }}>
-              <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #0284c7' : 'none', color: authTab === 'login' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>Entrar</button>
-              <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #0284c7' : 'none', color: authTab === 'register' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>Demo 7 Días</button>
-            </div>
-
-            {authTab === 'login' && (
-              <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold' }}>CONTRASEÑA (O PIN:)</label>
-                    <button type="button" onClick={() => { setAuthTab('forgot'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>¿Olvidaste?</button>
-                  </div>
-                  <input type="password" required placeholder="••••••••••••" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <button type="submit" disabled={authLoading} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}>
-                  {authLoading ? 'Verificando...' : 'Conectar con Control Plane ↗'}
-                </button>
-              </form>
-            )}
-
-            {authTab === 'register' && (
-              <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ background: 'rgba(52, 211, 153, 0.1)', border: '1px solid #10b981', padding: '10px', borderRadius: '6px', marginBottom: '6px', fontSize: '11.5px', color: '#34d399', textAlign: 'center' }}>
-                  ⚡ Aprovisionamiento de Demo 7 Días de Cumplimiento SAARE
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>ORGANIZACIÓN / TENANT</label>
-                  <input type="text" required placeholder="ACME Corporation" value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334151', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CONTRASEÑA (O PIN:)</label>
-                  <input type="password" required placeholder="••••••••••••" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <button type="submit" disabled={authLoading} style={{ width: '100%', padding: '12px', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}>
-                  {authLoading ? 'Aprovisionando...' : 'Acceder a Demo 7 Días ↗'}
-                </button>
-              </form>
-            )}
-
-            {authTab === 'forgot' && (
-              <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '0 0 6px 0', lineHeight: 1.5 }}>
-                  Introduce tu correo registrado y el Control Plane te emitirá una clave provisional.
-                </p>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO</label>
-                  <input type="email" required placeholder="admin@saare.es" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' }} />
-                </div>
-                <button type="submit" disabled={authLoading} style={{ width: '100%', padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                  {authLoading ? 'Emitiendo...' : 'Enviar Contraseña Provisional'}
-                </button>
-                <div style={{ textAlign: 'center' }}>
-                  <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '11.5px', cursor: 'pointer', textDecoration: 'underline' }}>
-                    ← Volver al login
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {authSuccess && <div style={{ marginTop: '14px', padding: '10px', background: 'rgba(52,211,153,0.15)', color: '#34d399', borderRadius: '6px', fontSize: '12px', textAlign: 'center' }}>{authSuccess}</div>}
-            {authError && <div style={{ marginTop: '14px', padding: '10px', background: 'rgba(239,68,68,0.15)', color: '#f87171', borderRadius: '6px', fontSize: '12px', textAlign: 'center' }}>{authError}</div>}
-            <button type="button" onClick={() => setShowAuthModal(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer', marginTop: '14px' }}>Cerrar</button>
-          </div>
-        </div>
-      )}
-
-      {/* NAVBAR PRINCIPAL CON LAS PESTAÑAS COMERCIALES Y ACCESO A CONSOLA POR PERFIL */}
+      {/* NAVBAR PRINCIPAL Y NAVEGACIÓN DE PERFILES */}
       <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1f2937' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setActiveProfile('software')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setDrawerOpen(false)}>
             <span style={{ fontWeight: '900', fontSize: '20px', letterSpacing: '2.5px', color: '#ffffff' }}>SAARE</span>
             <span style={{ color: '#0ea5e9', fontSize: '10px', borderLeft: '1px solid #374151', paddingLeft: '12px', fontWeight: '800', maxWidth: '280px', lineHeight: 1.2 }}>
               MS3V · AI Authorization & GRC Platform
@@ -530,8 +457,8 @@ services:
             </a>
 
             {!activeSessionUser ? (
-              <button onClick={() => { setShowAuthModal(true); setAuthTab('login'); }} style={{ padding: '6px 12px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '11px' }}>
-                <span>🔑 Entrar</span>
+              <button onClick={() => { setDrawerOpen(true); setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ padding: '6px 16px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '800', fontSize: '11px' }}>
+                <span>Get Started ↗</span>
               </button>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#111827', border: '1px solid #374151', padding: '4px 8px', borderRadius: '6px' }}>
@@ -542,71 +469,67 @@ services:
               </div>
             )}
 
-            {/* BOTONES DIRECTOS REDIRIGIENDO AL PERFIL DE CONSOLA ELECCIONADO */}
-            <a href={getConsoleTargetUrl('EXECUTIVE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>
-              CEO ↗
-            </a>
-            <a href={getConsoleTargetUrl('GRC_AUDIT')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>
-              CISO ↗
-            </a>
-            <a href={getConsoleTargetUrl('CYBER_RESILIENCE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#7c3aed', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>
-              SOC ↗
-            </a>
+            <a href={getConsoleTargetUrl('EXECUTIVE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>CEO ↗</a>
+            <a href={getConsoleTargetUrl('GRC_AUDIT')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>CISO ↗</a>
+            <a href={getConsoleTargetUrl('CYBER_RESILIENCE')} target="_blank" rel="noreferrer" style={{ padding: '5px 9px', backgroundColor: '#7c3aed', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', fontSize: '10.5px', textDecoration: 'none' }}>SOC ↗</a>
           </div>
 
         </div>
       </header>
 
-      {/* HERO SECTION CON MULTI-PERFIL Y SECTOR PÚBLICO */}
-      <section style={{ position: 'relative', width: '100%', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', textAlign: 'center', padding: '50px 24px', borderBottom: '1px solid #1f2937' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, #0f172a 0%, #030712 100%)', zIndex: 1 }} />
-        <div style={{ position: 'relative', zIndex: 3, maxWidth: '1040px', margin: '0 auto' }}>
-          <div style={{ display: 'inline-block', backgroundColor: 'rgba(14,165,233,0.1)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 'bold', marginBottom: '16px' }}>
-            🚀 Lanzamiento Oficial · Ecosistema S.A.A.R.E. v8.1 PRO
+      {/* HERO SECTION MINIMALISTA ESTILO PALANTIR */}
+      <section style={{ position: 'relative', width: '100%', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '60px 24px', boxSizing: 'border-box', borderBottom: '1px solid #1f2937' }}>
+        <div style={{ display: 'inline-block', backgroundColor: 'rgba(14,165,233,0.1)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 'bold', marginBottom: '20px' }}>
+          🚀 Lanzamiento Oficial · Ecosistema S.A.A.R.E. v8.1 PRO
+        </div>
+        
+        <h1 style={{ fontSize: 'clamp(38px, 6.5vw, 76px)', fontWeight: '900', letterSpacing: '-1.5px', maxWidth: '980px', lineHeight: 1.08, margin: '0 auto 24px auto', color: '#ffffff' }}>
+          Sovereign AI Systems for Every Decision
+        </h1>
+        
+        <p style={{ fontSize: '16px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto 36px auto', lineHeight: 1.6 }}>
+          Infraestructura de autorización ex-ante y gobernanza runtime bajo el estándar SGP 1.0. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
+        </p>
+
+        <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
+          <button onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'transparent', color: '#38bdf8', border: '1px solid #0284c7', padding: '14px 36px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', textTransform: 'uppercase' }}>
+            Acceder a la Bóveda SAARE ↗
+          </button>
+          <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '14px 28px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
+            ⚡ Activar Suscripción Corporativa Inmediata
+          </button>
+          <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '14px 24px', backgroundColor: 'rgba(22, 163, 74, 0.9)', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: '700', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            💬 Contacto Directo ({CONTACT_PHONE})
+          </a>
+        </div>
+
+        {/* VERIFICADOR CRIPTOGRÁFICO PÚBLICO */}
+        <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', maxWidth: '720px', width: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '8px' }}>
+            🛡️ VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO (ISO/IEC 27037)
           </div>
-          <h1 style={{ fontSize: '38px', fontWeight: '900', color: '#ffffff', margin: '0 auto 16px auto', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-            Infraestructura Crítica de Autorización IA en Tiempo Real
-          </h1>
-          <p style={{ fontSize: '15px', color: '#cbd5e1', maxWidth: '780px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
-            Despliegue autónomo instantáneo. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA sin necesidad de rediseñar tu arquitectura.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '30px' }}>
-            <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '12.5px', cursor: 'pointer', boxShadow: '0 4px 20px rgba(239,68,68,0.5)' }}>
-              ⚡ Activar Suscripción Corporativa Inmediata
+          <form onSubmit={handleVerifyPublicHash} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input 
+              type="text" 
+              placeholder={`Hash Merkle o ID de Evidencia (Ej. ${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
+              value={publicVerifyHash}
+              onChange={(e) => setPublicVerifyHash(e.target.value)}
+              style={{ flex: 1, padding: '10px 14px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}
+            />
+            <button type="submit" disabled={publicVerifyLoading} style={{ padding: '10px 18px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+              {publicVerifyLoading ? 'Verificando...' : 'Verificar Inmutabilidad'}
             </button>
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '12px 20px', backgroundColor: 'rgba(22, 163, 74, 0.9)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12.5px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              💬 Contacto Directo ({CONTACT_PHONE})
-            </a>
-          </div>
+          </form>
 
-          {/* BUSCADOR DE VERIFICACIÓN CRIPTOGRÁFICA PÚBLICA */}
-          <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', maxWidth: '720px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '8px' }}>
-              🛡️ VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO (ISO/IEC 27037)
-            </div>
-            <form onSubmit={handleVerifyPublicHash} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <input 
-                type="text" 
-                placeholder={`Hash Merkle o ID de Evidencia (Ej. ${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
-                value={publicVerifyHash}
-                onChange={(e) => setPublicVerifyHash(e.target.value)}
-                style={{ flex: 1, padding: '10px 14px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}
-              />
-              <button type="submit" disabled={publicVerifyLoading} style={{ padding: '10px 18px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-                {publicVerifyLoading ? 'Verificando...' : 'Verificar Inmutabilidad'}
-              </button>
-            </form>
-
-            {publicVerifyResult && (
-              <div style={{ marginTop: '14px', background: '#030712', border: `1px solid ${publicVerifyResult.status === 'VERIFIED' ? '#10b981' : '#ef4444'}`, padding: '12px', borderRadius: '6px', textAlign: 'left', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                <div style={{ color: publicVerifyResult.status === 'VERIFIED' ? '#34d399' : '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>
-                  {publicVerifyResult.status === 'VERIFIED' ? '✅ EVIDENCIA VÁLIDA Y SELLADA EN BÓVEDA D1' : '❌ FALLO DE AUDITORÍA'}
-                </div>
-                <div style={{ color: '#94a3b8' }}>Merkle Root: {publicVerifyResult.merkleRoot}</div>
-                <div style={{ color: '#94a3b8' }}>Estándar: {publicVerifyResult.standard} | Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+          {publicVerifyResult && (
+            <div style={{ marginTop: '14px', background: '#030712', border: `1px solid ${publicVerifyResult.status === 'VERIFIED' ? '#10b981' : '#ef4444'}`, padding: '12px', borderRadius: '6px', textAlign: 'left', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+              <div style={{ color: publicVerifyResult.status === 'VERIFIED' ? '#34d399' : '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>
+                {publicVerifyResult.status === 'VERIFIED' ? '✅ EVIDENCIA VÁLIDA Y SELLADA EN BÓVEDA D1' : '❌ FALLO DE AUDITORÍA'}
               </div>
-            )}
-          </div>
+              <div style={{ color: '#94a3b8' }}>Merkle Root: {publicVerifyResult.merkleRoot}</div>
+              <div style={{ color: '#94a3b8' }}>Estándar: {publicVerifyResult.standard} | Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -810,7 +733,98 @@ services:
 
       </main>
 
-      {/* MODAL ENTERPRISE / CONTACTO */}
+      {/* DRAWER LATERAL DESLIZANTE (50% ANCHO DERECHA ESTILO PALANTIR) */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '50vw',
+        backgroundColor: '#ffffff', color: '#0f172a', zIndex: 99999, transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)', padding: '60px 80px', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto',
+        boxShadow: '-20px 0 50px rgba(0,0,0,0.5)'
+      }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1.5px', color: '#64748b', textTransform: 'uppercase' }}>
+              CONTACT / DEMO REQUEST + VAULT ACCESS
+            </span>
+            <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#0f172a' }}>✕</button>
+          </div>
+
+          <h2 style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-0.5px', margin: '0 0 28px 0', color: '#0f172a', lineHeight: 1.2 }}>
+            {authTab === 'login' ? 'Acceso a la Bóveda SAARE' : authTab === 'register' ? 'Registro de Nueva Organización' : 'Restablecer Clave'}
+          </h2>
+
+          <div style={{ display: 'flex', gap: '24px', marginBottom: '36px', borderBottom: '1px solid #e2e8f0' }}>
+            <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #000' : 'none', paddingBottom: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'login' ? '#000' : '#94a3b8' }}>LOGIN</button>
+            <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #000' : 'none', paddingBottom: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'register' ? '#000' : '#94a3b8' }}>REGISTRO NUEVO</button>
+          </div>
+
+          {authTab === 'login' && (
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>BUSINESS EMAIL ADDRESS *</label>
+                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '10px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px' }}>PASSWORD *</label>
+                  <button type="button" onClick={() => { setAuthTab('forgot'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>¿Olvidaste?</button>
+                </div>
+                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '10px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <button type="submit" disabled={authLoading} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '12px' }}>
+                {authLoading ? 'AUTENTICANDO...' : 'ENTRAR EN LA CONSOLA ↗'}
+              </button>
+            </form>
+          )}
+
+          {authTab === 'register' && (
+            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>FULL NAME *</label>
+                <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>COMPANY / INSTITUTION *</label>
+                <input type="text" required value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL ADDRESS *</label>
+                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>PASSWORD *</label>
+                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <button type="submit" disabled={authLoading} style={{ background: '#059669', color: '#fff', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '12px' }}>
+                {authLoading ? 'TRANSMITIENDO...' : 'SOLICITAR VERIFICACIÓN POR CORREO (15 MIN) ↗'}
+              </button>
+            </form>
+          )}
+
+          {authTab === 'forgot' && (
+            <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                Escriba su correo registrado y se le remitirá un enlace de verificación provisional a su bandeja de entrada.
+              </p>
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL ADDRESS *</label>
+                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
+              </div>
+              <button type="submit" disabled={authLoading} style={{ background: '#ca8a04', color: '#000', border: 'none', padding: '16px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}>
+                {authLoading ? 'ENVIANDO...' : 'ENVIAR CLAVE PROVISIONAL ↗'}
+              </button>
+              <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px' }}>
+                ← Volver al Login
+              </button>
+            </form>
+          )}
+
+          {authError && <div style={{ marginTop: '20px', padding: '12px', background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', fontSize: '12px' }}>{authError}</div>}
+          {authSuccess && <div style={{ marginTop: '20px', padding: '12px', background: '#f0fdf4', border: '1px solid #34d399', color: '#166534', fontSize: '12px', lineHeight: 1.5 }}>{authSuccess}</div>}
+        </div>
+      </div>
+
+      {/* MODAL ENTERPRISE / CONTACTO B2B */}
       {showEnterpriseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowEnterpriseModal(false)}>
           <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '16px', border: '1px solid #ca8a04', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
@@ -851,15 +865,15 @@ services:
         </div>
       )}
 
-      {/* BANNER DE COOKIES */}
+      {/* BANNER DE COOKIES ESTILO PALANTIR (MODAL GRANDE EN ESQUINA INFERIOR DERECHA) */}
       {!cookieConsent && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#0b0f19', borderTop: '2px solid #0284c7', padding: '16px 24px', zIndex: 99999, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', boxShadow: '0 -10px 30px rgba(0,0,0,0.8)' }}>
-          <div style={{ maxWidth: '800px', fontSize: '12.5px', color: '#cbd5e1', lineHeight: 1.5 }}>
-            <strong style={{ color: '#38bdf8' }}>Política de Cookies y Privacidad:</strong> Utilizamos cookies técnicas esenciales para garantizar la seguridad de la sesión en la Bóveda KL y el Control Plane. Cumplimiento RGPD y LSSI.
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleRejectCookies} style={{ backgroundColor: '#1e293b', color: '#cbd5e1', border: '1px solid #374151', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Rechazar no esenciales</button>
-            <button onClick={handleAcceptCookies} style={{ backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Aceptar Cookies</button>
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', maxWidth: '400px', backgroundColor: '#0b0f19', border: '1px solid #374151', padding: '24px', zIndex: 99999, boxShadow: '0 20px 50px rgba(0,0,0,0.85)' }}>
+          <p style={{ fontSize: '12.5px', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+            By clicking "Accept All Cookies", you agree to the storing of cookies on your device to enhance site navigation, analyze site usage, and assist in our marketing efforts. More Info
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button onClick={() => handleCookieChoice('accepted')} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}>Accept All Cookies</button>
+            <button onClick={() => handleCookieChoice('rejected')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #4b5563', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}>Reject All</button>
           </div>
         </div>
       )}

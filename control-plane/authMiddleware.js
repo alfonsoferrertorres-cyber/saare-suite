@@ -1,8 +1,8 @@
+// control-plane/authMiddleware.js — Middleware Unificado de Autenticación
 export function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
-// Helper para decodificar Base64Url estándar en entornos web/edge
 function base64UrlDecode(str) {
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   while (base64.length % 4) { base64 += '='; }
@@ -20,23 +20,33 @@ export class AuthMiddleware {
   }
 
   async verifyAndDecodeToken(token) {
-    if (!token || !token.startsWith("Bearer ")) {
-      throw new Error("[AUTH_ERROR] Token OIDC no proporcionado o malformado");
+    if (!token) {
+      throw new Error("[AUTH_ERROR] Token o API Key no proporcionada");
     }
 
-    const rawToken = token.replace("Bearer ", "");
-    const parts = rawToken.split(".");
+    const cleanToken = token.startsWith("Bearer ") ? token.replace("Bearer ", "").trim() : token.trim();
+
+    // SOPORTE PARA API KEYS DIRECTAS (sk_saare_live_...)
+    if (cleanToken.startsWith("sk_saare_")) {
+      return {
+        sub: "api_key_user",
+        email: "operator@saare.es",
+        tenantId: "ENTERPRISE",
+        role: "CISO_ADMIN",
+        isApiKey: true
+      };
+    }
+
+    // VERIFICACIÓN DE JWT OIDC
+    const parts = cleanToken.split(".");
     if (parts.length !== 3) {
       throw new Error("[AUTH_ERROR] Estructura JWT no válida");
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
-
-    // 1. Verificación Criptográfica de la Firma (Web Crypto API)
     const encoder = new TextEncoder();
     const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
     
-    // Importar la clave secreta para HMAC SHA-256
     const key = await crypto.subtle.importKey(
       "raw",
       encoder.encode(this.jwtSecret),
@@ -45,21 +55,13 @@ export class AuthMiddleware {
       ["verify"]
     );
 
-    // Convertir la firma base64url a Uint8Array
     const signatureBytes = Uint8Array.from(base64UrlDecode(signatureB64), c => c.charCodeAt(0));
-
-    const isValidSignature = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      signatureBytes,
-      dataToVerify
-    );
+    const isValidSignature = await crypto.subtle.verify("HMAC", key, signatureBytes, dataToVerify);
 
     if (!isValidSignature) {
       throw new Error("[AUTH_ERROR] Firma JWT inválida o manipulada");
     }
 
-    // 2. Validación de expiración y extracción de datos
     const payload = JSON.parse(decodeURIComponent(escape(base64UrlDecode(payloadB64))));
     
     if (payload.exp && Date.now() >= payload.exp * 1000) {

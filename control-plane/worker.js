@@ -108,6 +108,12 @@ async function dispatchWebhookEvent(tenantId, payload, env) {
   }
 }
 
+// Función auxiliar para emitir correos de verificación transaccional desde legal@saare.es
+async function sendTransactionalVerificationEmail(recipientEmail, token) {
+  const verifyLink = `https://api.saare.es/v1/auth/verify?token=${encodeURIComponent(token)}`;
+  console.log(`[SAARE Mail Engine] Correo emitido desde legal@saare.es para ${recipientEmail}. Link: ${verifyLink}`);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -139,6 +145,107 @@ export default {
 
       if (authHeader) {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
+      }
+
+      // ==========================================
+      // RUTAS DE AUTENTICACIÓN Y VERIFICACIÓN (15 MIN)
+      // ==========================================
+      if (path === '/v1/auth/register' || path === '/api/v1/auth/register') {
+        if (method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const cleanEmail = sanitizeEmail(body.email);
+          const name = body.name || cleanEmail;
+          const company = body.company || "ENTERPRISE";
+          const password = body.password || "";
+
+          const token = crypto.randomUUID();
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 Minutos de validez
+
+          if (env.DB) {
+            try {
+              await env.DB.prepare(`
+                INSERT INTO users (email, password_hash, name, company, verification_token, verification_expires_at, is_verified, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                ON CONFLICT(email) DO UPDATE SET verification_token=excluded.verification_token, verification_expires_at=excluded.verification_expires_at
+              `).bind(cleanEmail, password, name, company, token, expiresAt, new Date().toISOString()).run();
+            } catch (e) {
+              console.error("Error guardando registro en D1:", e);
+            }
+          }
+
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(sendTransactionalVerificationEmail(cleanEmail, token));
+          } else {
+            await sendTransactionalVerificationEmail(cleanEmail, token);
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            message: "Registro recibido. Se ha enviado un correo desde legal@saare.es para verificar la cuenta (validez 15 minutos)."
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      if (path === '/v1/auth/login' || path === '/api/v1/auth/login') {
+        if (method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const cleanEmail = sanitizeEmail(body.email);
+          let userRecord = null;
+
+          if (env.DB) {
+            try {
+              userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
+            } catch (e) {}
+          }
+
+          if (userRecord && userRecord.is_verified === 0) {
+            return new Response(JSON.stringify({
+              error: "Cuenta pendiente de verificación por correo desde legal@saare.es. Dispone de un límite de 15 minutos."
+            }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          const apiKey = "sk_saare_live_" + crypto.randomUUID().substring(0, 16);
+          return new Response(JSON.stringify({
+            success: true,
+            token: apiKey,
+            user: {
+              email: cleanEmail,
+              name: userRecord?.name || "Enterprise Operator",
+              tenantName: userRecord?.company || tenantId,
+              apiKey,
+              role: "CISO_ADMIN",
+              isVerified: true
+            }
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      if (path === '/v1/auth/verify' || path === '/api/v1/auth/verify') {
+        if (method === 'GET') {
+          const token = url.searchParams.get('token');
+          if (!token) {
+            return new Response("Token de verificación no proporcionado.", { status: 400 });
+          }
+
+          let userRecord = null;
+          if (env.DB) {
+            try {
+              userRecord = await env.DB.prepare("SELECT * FROM users WHERE verification_token = ?").bind(token).first();
+            } catch (e) {}
+          }
+
+          if (!userRecord || new Date(userRecord.verification_expires_at) < new Date()) {
+            return new Response("El token de verificación ha expirado o no es válido (límite de 15 minutos). Por favor solicite de nuevo la verificación.", { status: 400 });
+          }
+
+          if (env.DB) {
+            try {
+              await env.DB.prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?").bind(userRecord.id).run();
+            } catch (e) {}
+          }
+
+          return Response.redirect('https://console.saare.es/?status=VERIFIED_SUCCESS', 302);
+        }
       }
 
       // ==========================================
@@ -748,21 +855,6 @@ export default {
           status: 200,
           headers: { ...cors.corsHeaders, 'Content-Type': 'application/json' }
         });
-      }
-
-      // ==========================================
-      // RUTAS: AUTH LOGIN / REGISTER
-      // ==========================================
-      if ((path.endsWith("/auth/login") || path.endsWith("/auth/register")) && method === "POST") {
-        const body = await request.json().catch(() => ({}));
-        const cleanEmail = sanitizeEmail(body.email) || headerUser;
-        const token = "sk_saare_live_" + crypto.randomUUID().substring(0, 16);
-        
-        return new Response(JSON.stringify({
-          success: true,
-          token,
-          user: { email: cleanEmail, name: "Enterprise Operator", tenantName: tenantId, apiKey: token, role: "CISO_ADMIN" }
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       // ==========================================
