@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from './utils/api';
 import { SectorFunnel } from './components/SectorFunnel';
+import GovernanceToolbar from './components/GovernanceToolbar';
+import OfficialReportModal from './OfficialReportModal';
 
 const API_BASE = `${API_BASE_URL.replace(/\/$/, '')}/v1`;
 const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -34,6 +36,9 @@ export default function App() {
   const [activeSessionUser, setActiveSessionUser] = useState(null);
   const [activeNavTab, setActiveNavTab] = useState('software');
   const [activeCodeTab, setActiveCodeTab] = useState('sdk');
+
+  // Estado Modal de Informes Oficiales
+  const [selectedReportSector, setSelectedReportSector] = useState(null);
 
   // Form states
   const [formEmail, setFormEmail] = useState('');
@@ -81,6 +86,11 @@ export default function App() {
   };
 
   const handleStartTrial = () => {
+    if (agentCount === '10+') {
+      window.open(WHATSAPP_URL, '_blank');
+      return;
+    }
+
     const trialUser = {
       email: formEmail || "auditor.trial@empresa.com",
       name: "Auditor Compliance",
@@ -225,19 +235,18 @@ services:
     <div className="bg-saare-bg text-saare-ink min-h-screen font-sans selection:bg-saare-allow selection:text-black">
       
       {/* 00 · TOP EXECUTIVE ANNOUNCEMENT BANNER */}
-      <div className="bg-saare-surface-2 border-b border-saare-line py-2 px-4 text-xs text-center">
+      <div className="bg-saare-surface-2 border-b border-saare-line py-2 px-4 text-xs text-center relative z-50">
         <span className="text-saare-ink-dim">Read SAARE Executive Briefing: </span>
-        <strong className="text-saare-accent ml-1">Sistema de Alineamiento, Auditoría y Resiliencia Estructural</strong>
+        <strong className="text-saare-accent ml-1">Sovereign AI Architecture & Legal Pre-Constituted Evidence</strong>
         <span className="ml-3 text-saare-seal cursor-pointer underline" onClick={handleStartTrial}>
           Ver Especificación ↗
         </span>
       </div>
 
-      {/* 00 · HEADER / NAVEGACIÓN DE 5 PUNTOS DE ENTRADA CON DESCRIPTORES */}
+      {/* 00 · HEADER / NAVEGACIÓN */}
       <header className="sticky top-0 z-50 bg-[#030712]/90 backdrop-blur-md border-b border-saare-line">
         <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
           
-          {/* LOGO */}
           <div className="flex items-center gap-3">
             <span className="font-display font-bold text-2xl text-saare-ink tracking-tight">S.A.A.R.E.</span>
             <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 px-2 py-0.5 border border-saare-accent rounded">
@@ -245,7 +254,6 @@ services:
             </span>
           </div>
 
-          {/* 5 ENTRY POINTS WITH DESCRIPTORS */}
           <nav className="hidden lg:flex gap-6">
             {[
               { id: 'software', name: 'SOFTWARE', desc: 'Execution Control' },
@@ -267,7 +275,6 @@ services:
             ))}
           </nav>
 
-          {/* ACTIONS */}
           <div className="flex gap-3 items-center">
             <button 
               className="px-4 py-2 text-xs font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
@@ -286,84 +293,111 @@ services:
         </div>
       </header>
 
-      {/* 01 · HERO CON ESTÉTICA PALANTIR (LIMPIO Y DESPEJADO) */}
-      <section className="relative pt-24 pb-20 px-6 text-center border-b border-saare-line bg-gradient-to-b from-[#030712] via-saare-surface/40 to-[#030712] overflow-hidden">
-        
-        {/* GRID DE FONDO INSPIRACIÓN EN PALANTIR */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#232E4215_1px,transparent_1px),linear-gradient(to_bottom,#232E4215_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+      {/* 01 · HERO LIMPIO A PANTALLA COMPLETA ESTILO PALANTIR */}
+      <section className="relative h-[85vh] min-h-[600px] w-full flex items-center justify-center border-b border-saare-line overflow-hidden bg-black">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-35 pointer-events-none z-0 filter grayscale contrast-125"
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
 
-        <div className="relative z-10 max-w-5xl mx-auto">
-          
-          {/* EYEBROW */}
-          <div className="font-mono text-xs text-saare-accent uppercase tracking-widest mb-4">
-            S.A.A.R.E. SGP 1.0 · AI EXECUTION AUTHORIZATION INFRASTRUCTURE
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/70 via-transparent to-[#030712] pointer-events-none z-0"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#232E4215_1px,transparent_1px),linear-gradient(to_bottom,#232E4215_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0"></div>
 
-          {/* H1 INTEGRANDO EL TEXTO ORIGINAL Y EL NUEVO RELATO MATRIZ */}
-          <h1 className="font-display font-bold text-4xl sm:text-6xl text-white tracking-tight leading-none mb-4">
-            Sovereign AI Systems for Every Decision
+        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+          <h1 className="font-display font-bold text-4xl sm:text-6xl md:text-7xl text-white tracking-tight leading-tight drop-shadow-lg">
+            Sistema de Alineamiento, Auditoría y Resiliencia Estructural
           </h1>
-
-          <p className="font-display font-semibold text-xl sm:text-2xl text-saare-accent mb-6">
-            Los agentes de IA actúan. S.A.A.R.E. decide qué tienen permitido hacer.
+          <p className="mt-4 font-mono text-sm text-saare-accent tracking-widest uppercase">
+            AI Execution Authorization Infrastructure
           </p>
+        </div>
 
-          {/* SUBHEAD */}
-          <p className="text-saare-ink-dim text-lg max-w-3xl mx-auto mb-6 leading-relaxed">
-            Infraestructura de autorización ex-ante y gobernanza runtime L7 para agentes autónomos, herramientas, APIs y acciones críticas. Protege tus agentes de IA, previene fugas de datos y cumple estrictamente con el EU AI Act y DORA.
-          </p>
-
-          {/* SUPPORTING LINE */}
-          <div className="font-mono text-xs text-saare-seal mb-8 tracking-widest">
-            IDENTITY · ACTION · CONTEXT · RESOURCE · DATA · RISK · POLICY
+        <div className="absolute bottom-6 inset-x-0 flex justify-center z-10">
+          <div className="font-mono text-[10px] text-saare-ink-dim tracking-widest uppercase animate-bounce flex items-center gap-2">
+            <span>Explorar Arquitectura</span> ↓
           </div>
-
-          {/* CTAs */}
-          <div className="flex flex-wrap justify-center gap-4 mb-8">
-            <button 
-              className="px-7 py-3.5 text-sm font-bold rounded bg-saare-allow text-black hover:shadow-[0_0_25px_rgba(30,185,104,0.4)] transition"
-              onClick={handleStartTrial}
-            >
-              RUN CONTROL TEST ↗
-            </button>
-            <button 
-              className="px-7 py-3.5 text-sm font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
-              onClick={() => setActiveNavTab('enterprise')}
-            >
-              VIEW ARCHITECTURE
-            </button>
-            <button 
-              className="px-5 py-3.5 text-sm font-mono font-medium rounded border border-saare-accent/40 text-saare-accent bg-saare-accent/10 hover:bg-saare-accent/20 transition"
-              onClick={() => setActiveNavTab('developers')}
-            >
-              READ DEVELOPER DOCS
-            </button>
-          </div>
-
-          {/* MICROCOPY ESPECÍFICO DE ARQUITECTURA */}
-          <p className="font-mono text-xs text-saare-ink-dim max-w-2xl mx-auto mb-10 bg-saare-surface/80 p-3 border border-saare-line-hi rounded">
-            “No almacenamos el payload como evidencia. Conservamos la prueba criptográfica de la decisión.”
-          </p>
-
-          {/* HERO VISUAL PIPELINE MODEL */}
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 font-mono text-xs text-saare-ink-dim bg-saare-surface p-4 rounded-lg border border-saare-line-hi">
-            <span className="text-white font-bold">AGENT</span>
-            <span className="text-saare-accent">➔</span>
-            <span className="text-saare-seal font-bold">S.A.A.R.E. JUDGE</span>
-            <span className="text-saare-accent">➔</span>
-            <span className="text-white">POLICY DECISION</span>
-            <span className="text-saare-accent">➔</span>
-            <span className="text-saare-allow font-bold">ALLOW</span> / <span className="text-saare-seal font-bold">REVIEW</span> / <span className="text-saare-deny font-bold">DENY</span>
-            <span className="text-saare-accent">➔</span>
-            <span className="text-saare-allow">EXECUTION PERMIT</span>
-            <span className="text-saare-accent">➔</span>
-            <span className="text-white">TOOL / API / MCP / LLM</span>
-          </div>
-
         </div>
       </section>
 
-      {/* 02 · TRUST STRIP MONOCROMATIZADO */}
+      {/* 01.5 · BLOQUE DE PRESENTACIÓN Y CTAs */}
+      <section className="py-20 px-6 max-w-5xl mx-auto text-center border-b border-saare-line">
+        <div className="font-mono text-xs text-saare-accent uppercase tracking-widest mb-3">
+          S.A.A.R.E. SGP 1.0 · GOVERNANCE CORE
+        </div>
+
+        <h2 className="font-display font-bold text-3xl sm:text-5xl text-white mb-4">
+          Sovereign AI Systems for Every Decision
+        </h2>
+
+        <p className="font-display font-semibold text-lg sm:text-xl text-saare-accent mb-6">
+          Los agentes de IA actúan. S.A.A.R.E. decide qué tienen permitido hacer.
+        </p>
+
+        <p className="text-saare-ink-dim text-base max-w-3xl mx-auto mb-6 leading-relaxed">
+          Autorización ex-ante y gobernanza runtime L7 para agentes autónomos, herramientas, APIs y acciones críticas. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
+        </p>
+
+        <div className="font-mono text-xs text-saare-seal mb-8 tracking-widest">
+          IDENTITY · ACTION · CONTEXT · RESOURCE · DATA · RISK · POLICY
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-4 mb-8">
+          <button 
+            className="px-7 py-3.5 text-sm font-bold rounded bg-saare-allow text-black hover:shadow-[0_0_25px_rgba(30,185,104,0.4)] transition"
+            onClick={handleStartTrial}
+          >
+            RUN CONTROL TEST ↗
+          </button>
+          <button 
+            className="px-7 py-3.5 text-sm font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
+            onClick={() => setActiveNavTab('enterprise')}
+          >
+            VIEW ARCHITECTURE
+          </button>
+          <button 
+            className="px-5 py-3.5 text-sm font-mono font-medium rounded border border-saare-accent/40 text-saare-accent bg-saare-accent/10 hover:bg-saare-accent/20 transition"
+            onClick={() => setActiveNavTab('developers')}
+          >
+            READ DEVELOPER DOCS
+          </button>
+        </div>
+
+        <p className="font-mono text-xs text-saare-ink-dim max-w-2xl mx-auto mb-10 bg-saare-surface/80 p-3 border border-saare-line-hi rounded backdrop-blur-sm">
+          “No almacenamos el payload como evidencia. Conservamos la prueba criptográfica de la decisión.”
+        </p>
+
+        <div className="inline-flex flex-wrap items-center justify-center gap-2 font-mono text-xs text-saare-ink-dim bg-saare-surface/90 p-4 rounded-lg border border-saare-line-hi backdrop-blur-sm">
+          <span className="text-white font-bold">AGENT</span>
+          <span className="text-saare-accent">➔</span>
+          <span className="text-saare-seal font-bold">S.A.A.R.E. JUDGE</span>
+          <span className="text-saare-accent">➔</span>
+          <span className="text-white">POLICY DECISION</span>
+          <span className="text-saare-accent">➔</span>
+          <span className="text-saare-allow font-bold">ALLOW</span> / <span className="text-saare-seal font-bold">REVIEW</span> / <span className="text-saare-deny font-bold">DENY</span>
+          <span className="text-saare-accent">➔</span>
+          <span className="text-saare-allow">EXECUTION PERMIT</span>
+          <span className="text-saare-accent">➔</span>
+          <span className="text-white">TOOL / API / MCP / LLM</span>
+        </div>
+      </section>
+
+      {/* PANEL DE GOBERNANZA INTEGRADO */}
+      <section className="max-w-7xl mx-auto px-6">
+        <GovernanceToolbar 
+          onVerifySignature={() => console.log('Firma verificada')}
+          onExportCustody={() => console.log('Cadena exportada')}
+          onSimulateBlock={() => console.log('Bloqueo simulado')}
+          onGenerateToken={() => console.log('Token generado')}
+          onDownloadTeaser={() => setSelectedReportSector('Documentación Técnica Teaser')}
+        />
+      </section>
+
+      {/* 02 · TRUST STRIP */}
       <section className="border-b border-saare-line bg-saare-surface py-4 px-6">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 font-mono text-xs text-saare-ink-dim tracking-wider">
           <div>L7 RUNTIME</div>
@@ -382,7 +416,7 @@ services:
         </div>
       </section>
 
-      {/* 03 · EL ENEMIGO CONCEPTUAL (EXECUTION WITHOUT AUTHORIZATION) */}
+      {/* 03 · EL ENEMIGO CONCEPTUAL */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <span className="font-mono text-xs font-bold text-saare-deny bg-saare-deny/10 border border-saare-deny px-3 py-1 rounded inline-block mb-3">
@@ -397,8 +431,6 @@ services:
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* 01 EXECUTION */}
           <div className="bg-saare-surface border border-saare-line-hi p-8 rounded">
             <div className="font-mono text-xs text-saare-accent mb-3">01 — EXECUTION</div>
             <h3 className="font-display font-bold text-xl text-white mb-4">The agent can act.</h3>
@@ -411,7 +443,6 @@ services:
             </div>
           </div>
 
-          {/* 02 AUTHORIZATION */}
           <div className="bg-saare-surface border border-saare-seal p-8 rounded">
             <div className="font-mono text-xs text-saare-seal mb-3">02 — AUTHORIZATION</div>
             <h3 className="font-display font-bold text-xl text-white mb-4">Who authorized the action?</h3>
@@ -424,7 +455,6 @@ services:
             </div>
           </div>
 
-          {/* 03 PROOF */}
           <div className="bg-saare-surface border border-saare-allow p-8 rounded">
             <div className="font-mono text-xs text-saare-allow mb-3">03 — PROOF</div>
             <h3 className="font-display font-bold text-xl text-white mb-4">Can you prove it afterwards?</h3>
@@ -436,7 +466,6 @@ services:
               <div>PROOF BUNDLE: RFC 3161 TSA</div>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -502,8 +531,6 @@ services:
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-saare-surface border border-saare-line-hi p-8 rounded-lg">
-          
-          {/* LEFT: ACTION REQUEST INPUT */}
           <div>
             <div className="font-mono text-xs text-saare-accent mb-4 font-bold">
               [INPUT] ACTION REQUEST PAYLOAD
@@ -528,7 +555,6 @@ services:
             </button>
           </div>
 
-          {/* RIGHT: S.A.A.R.E. JUDGE VERDICT & PERMIT */}
           <div>
             <div className="font-mono text-xs text-saare-seal mb-4 font-bold">
               [OUTPUT] S.A.A.R.E. JUDGE ENGINE VERDICT
@@ -536,7 +562,6 @@ services:
 
             {liveJudgeResult ? (
               <div className="bg-saare-bg border border-saare-deny p-5 rounded font-mono text-xs space-y-3">
-                
                 <div className="flex justify-between items-center pb-2 border-b border-saare-line-hi">
                   <span>DECISION:</span>
                   <span className="px-2 py-0.5 text-sm font-bold bg-saare-deny/20 border border-saare-deny text-saare-deny rounded">
@@ -558,7 +583,6 @@ services:
               </div>
             )}
           </div>
-
         </div>
       </section>
 
@@ -581,7 +605,7 @@ services:
         </div>
       </section>
 
-      {/* 11 · LAS TRES DECISIONES: ALLOW / REVIEW / DENY */}
+      {/* 11 · LAS TRES DECISIONES */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <h2 className="font-display font-bold text-3xl text-white text-center mb-12">
           Tres Veredictos Deterministas
@@ -676,7 +700,6 @@ services:
             <p className="text-saare-ink-dim text-sm">Cada decisión se convierte en evidencia digital verificable por un tercero sin confiar en S.A.A.R.E.</p>
           </div>
 
-          {/* VERIFICADOR PÚBLICO DE HASHES */}
           <div className="bg-saare-bg border border-saare-seal p-8 rounded">
             <h3 className="font-mono font-bold text-saare-seal text-sm mb-4">
               Verificación Pública de Inmutabilidad (RFC 3161)
@@ -710,7 +733,7 @@ services:
         </div>
       </section>
 
-      {/* 15 - 19 · LAS 5 PESTAÑAS ESPECÍFICAS DE VALOR */}
+      {/* 15 - 19 · PESTAÑAS DE VALOR */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
@@ -807,7 +830,7 @@ services:
         </div>
       </section>
 
-      {/* 24 · OPERATING SURFACES: LAS TRES CONSOLAS */}
+      {/* 24 · OPERATING SURFACES */}
       <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -818,8 +841,6 @@ services:
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* EXECUTIVE */}
             <div className="bg-saare-surface-2 border border-saare-line-hi p-8 rounded">
               <span className="font-mono text-xs text-saare-accent">EXECUTIVE CONSOLE</span>
               <h3 className="font-display font-bold text-xl text-white my-3">CEO & Board</h3>
@@ -830,7 +851,6 @@ services:
               </div>
             </div>
 
-            {/* GRC_AUDIT */}
             <div className="bg-saare-surface-2 border border-saare-seal p-8 rounded">
               <span className="font-mono text-xs text-saare-seal">GRC_AUDIT CONSOLE</span>
               <h3 className="font-display font-bold text-xl text-white my-3">CISO & DPO</h3>
@@ -841,7 +861,6 @@ services:
               </div>
             </div>
 
-            {/* CYBER_RESILIENCE */}
             <div className="bg-saare-surface-2 border border-saare-deny p-8 rounded">
               <span className="font-mono text-xs text-saare-deny">CYBER_RESILIENCE</span>
               <h3 className="font-display font-bold text-xl text-white my-3">SecOps & SOC</h3>
@@ -851,12 +870,11 @@ services:
                 <div className="flex justify-between"><span>Modo Operatorio</span><span className="text-saare-allow font-bold">FAIL-CLOSED</span></div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* 21 · PRICING ARCHITECTURE (MONETIZACIÓN POR TENANT / DEPLOYMENT) */}
+      {/* 21 · PRICING ARCHITECTURE */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -866,8 +884,6 @@ services:
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* STANDARD */}
           <div className="bg-saare-surface border border-saare-line p-8 rounded flex flex-col justify-between">
             <div>
               <span className="font-mono text-xs text-saare-accent">STANDARD</span>
@@ -880,7 +896,6 @@ services:
             </div>
           </div>
 
-          {/* GRC & COMPLIANCE */}
           <div className="bg-saare-surface border border-saare-allow p-8 rounded relative flex flex-col justify-between">
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-saare-allow text-black rounded absolute top-4 right-4">RECOMENDADO</span>
             <div>
@@ -894,7 +909,6 @@ services:
             </div>
           </div>
 
-          {/* ENTERPRISE VPC */}
           <div className="bg-saare-surface border border-saare-seal p-8 rounded flex flex-col justify-between">
             <div>
               <span className="font-mono text-xs text-saare-seal">ENTERPRISE VPC</span>
@@ -908,11 +922,10 @@ services:
               <p className="text-[11px] text-saare-ink-faint mt-3 text-center">contrato marco · arquitectura air-gapped</p>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* 33 · SCENARIO CARDS: WHAT HAPPENS WHEN... */}
+      {/* 33 · SCENARIO CARDS */}
       <section className="py-16 px-6 bg-saare-surface border-t border-saare-line">
         <div className="max-w-7xl mx-auto">
           <h2 className="font-display font-bold text-2xl text-white text-center mb-8">
@@ -944,12 +957,13 @@ services:
         </div>
       </section>
 
-      {/* SECTORES Y AYUDAS DIGITALES */}
+      {/* SECTORES Y AYUDAS DIGITALES (CONECTADO A MODAL) */}
       <section className="py-16 px-6 max-w-7xl mx-auto">
-        <SectorFunnel />
+        <h2 className="font-display font-bold text-2xl text-white text-center mb-8">Informes Oficiales de Gobernanza por Sector</h2>
+        <SectorFunnel onSelectSectorReport={(sectorTitle) => setSelectedReportSector(sectorTitle)} />
       </section>
 
-      {/* 34 & 35 · FINAL CONVERSION SECTION & QUALIFICATION FORM */}
+      {/* 34 & 35 · FORMULARIO DE FORMALIZACIÓN */}
       <section className="py-20 px-6 max-w-3xl mx-auto text-center">
         <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
           PUT AN AGENT THROUGH THE CONTROL PLANE.
@@ -980,10 +994,18 @@ services:
           </div>
 
           <button className="w-full py-4 bg-saare-allow text-black font-bold text-sm rounded hover:bg-saare-allow/90 transition" onClick={handleStartTrial}>
-            {agentCount === '10+' ? 'REQUEST ENTERPRISE ARCHITECTURE ↗' : 'RUN CONTROL TEST ↗'}
+            {agentCount === '10+' ? 'REQUEST ENTERPRISE ARCHITECTURE (WHATSAPP DIRECTO) ↗' : 'RUN CONTROL TEST ↗'}
           </button>
         </div>
       </section>
+
+      {/* RENDERIZADO CONDICIONAL DEL MODAL DE INFORME OFICIAL */}
+      {selectedReportSector && (
+        <OfficialReportModal 
+          sectorTitle={selectedReportSector} 
+          onClose={() => setSelectedReportSector(null)} 
+        />
+      )}
 
       {/* FOOTER */}
       <footer className="border-t border-saare-line py-10 px-6 bg-saare-surface text-xs text-saare-ink-faint">

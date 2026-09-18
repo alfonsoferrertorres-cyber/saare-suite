@@ -1,6 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 
-export default function OfficialReportModal({ onClose }) {
+export default function OfficialReportModal({ onClose, sectorTitle }) {
   const userEmail = localStorage.getItem('saare_user_email') || 'legal@saare.es';
   const tenantDomain = localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
 
@@ -9,86 +9,92 @@ export default function OfficialReportModal({ onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
-      
-      {/* Contenedor tipo Hoja Oficial con Membrete */}
-      <div style={{ background: '#ffffff', color: '#0f172a', width: '100%', maxWidth: '850px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '8px', padding: '40px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', fontFamily: 'Inter, sans-serif', position: 'relative' }}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-5">
+      <div className="bg-white text-slate-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg p-8 shadow-2xl font-sans relative">
         
         {/* Encabezado / Membrete Oficial */}
-        <div style={{ borderBottom: '2px solid #0284c7', paddingBottom: '20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="border-b-2 border-sky-600 pb-5 mb-6 flex justify-between items-start">
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: '900', color: '#030712', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>
-              S.A.A.R.E. <span style={{ color: '#0284c7', fontSize: '1rem', fontWeight: '600' }}>ENTERPRISE GOVERNANCE REPORT</span>
+            <h1 className="text-2xl font-black text-slate-950 m-0 tracking-tight">
+              S.A.A.R.E. <span className="text-sky-600 text-base font-semibold">ENTERPRISE GOVERNANCE REPORT</span>
             </h1>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+            <p className="text-xs text-slate-500 m-0 mt-1">
               Sovereign AI Authorization & Runtime Enforcement • Grado Financiero
             </p>
           </div>
-          <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+          <div className="text-right text-xs text-slate-600 bg-slate-100 p-3 rounded-md border border-slate-300">
+            <strong>Sector:</strong> {sectorTitle || 'Evaluación Estándar'}<br/>
             <strong>Organización:</strong> {tenantDomain}<br/>
             <strong>Operador:</strong> {userEmail}<br/>
-            <strong>Fecha:</strong> {new Date().toLocaleDateString()} • {new Date().toLocaleTimeString()}<br/>
-            <strong>Frameworks:</strong> NIST CSF 2.0 • OWASP LLM Top 10 • DORA
+            <strong>Fecha:</strong> {new Date().toLocaleDateString()} • {new Date().toLocaleTimeString()}
           </div>
         </div>
 
         {/* Cuerpo del Informe */}
-        <div style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}>
-          <h3 style={{ fontSize: '1.1rem', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginTop: '0' }}>
-            1. Resumen Ejecutivo y Alineación Normativa
-          </h3>
-          <p>
-            El presente informe certifica la operatividad de los controles de gobernanza, protección ex-ante y detección en tiempo real bajo los estándares globales <strong>NIST CSF 2.0</strong> y <strong>OWASP LLM Top 10</strong>. Todas las interacciones de IA y agentes autónomos están sujetas al principio de seguridad <em>Fail-Closed</em>.
-          </p>
+        <div className="text-sm leading-relaxed text-slate-700 space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2">
+              1. Resumen Ejecutivo y Alineación Normativa
+            </h3>
+            <p>
+              El presente informe certifica la operatividad de los controles de gobernanza, protección ex-ante y detección en tiempo real bajo los estándares globales <strong>NIST CSF 2.0</strong>, <strong>OWASP LLM Top 10</strong>, <strong>EU AI Act (Art. 15)</strong> y <strong>DORA</strong>.
+            </p>
+          </div>
 
-          <h3 style={{ fontSize: '1.1rem', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginTop: '24px' }}>
-            2. Auditoría de Veredictos e Intercepciones L7
-          </h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px', fontSize: '0.8rem' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
-                <th style={{ padding: '8px', color: '#475569' }}>ID Evidencia</th>
-                <th style={{ padding: '8px', color: '#475569' }}>Timestamp</th>
-                <th style={{ padding: '8px', color: '#475569' }}>Clasificación OWASP / NIST</th>
-                <th style={{ padding: '8px', color: '#475569' }}>Dictamen</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '8px', fontFamily: 'monospace' }}>EV-OWASP-101</td>
-                <td style={{ padding: '8px' }}>En vivo</td>
-                <td style={{ padding: '8px' }}>LLM01:2025 - Prompt Injection</td>
-                <td style={{ padding: '8px', color: '#dc2626', fontWeight: 'bold' }}>RECHAZADO (DENY)</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '8px', fontFamily: 'monospace' }}>EV-OWASP-102</td>
-                <td style={{ padding: '8px' }}>En vivo</td>
-                <td style={{ padding: '8px' }}>LLM02:2025 - Sensitive Data Disclosure</td>
-                <td style={{ padding: '8px', color: '#dc2626', fontWeight: 'bold' }}>RECHAZADO (DENY)</td>
-              </tr>
-            </tbody>
-          </table>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2">
+              2. Auditoría de Veredictos e Intercepciones L7
+            </h3>
+            <table className="w-full border-collapse mt-3 text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b-2 border-slate-300 text-left">
+                  <th className="p-2 text-slate-600">ID Evidencia</th>
+                  <th className="p-2 text-slate-600">Timestamp</th>
+                  <th className="p-2 text-slate-600">Clasificación OWASP / NIST</th>
+                  <th className="p-2 text-slate-600">Dictamen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <tr>
+                  <td className="p-2 font-mono">EV-OWASP-101</td>
+                  <td className="p-2">En vivo</td>
+                  <td className="p-2">LLM01:2025 - Prompt Injection</td>
+                  <td className="p-2 text-red-600 font-bold">RECHAZADO (DENY)</td>
+                </tr>
+                <tr>
+                  <td className="p-2 font-mono">EV-OWASP-102</td>
+                  <td className="p-2">En vivo</td>
+                  <td className="p-2">LLM02:2025 - Sensitive Data Disclosure</td>
+                  <td className="p-2 text-red-600 font-bold">RECHAZADO (DENY)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <h3 style={{ fontSize: '1.1rem', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginTop: '24px' }}>
-            3. Validación Criptográfica y Cadena de Custodia (ISO/IEC 27037)
-          </h3>
-          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-            <strong>Merkle Root Hash:</strong> 6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842<br/>
-            <strong>Ed25519 Signature:</strong> 3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41d7e35b71946399120785cba028e3b4821a8b0c619472e61a84b6f89004<br/>
-            <strong>TSA Record:</strong> SAARE-OWASP-2026 • Estado: Verificado e Inmutable
+          <div>
+            <h3 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2">
+              3. Validación Criptográfica y Cadena de Custodia (ISO/IEC 27037)
+            </h3>
+            <div className="bg-slate-50 p-4 rounded border border-slate-300 text-xs font-mono space-y-1">
+              <div><strong>Merkle Root Hash:</strong> 6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842</div>
+              <div><strong>Ed25519 Signature:</strong> 3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41...</div>
+              <div><strong>TSA Record:</strong> SAARE-OWASP-2026 • Estado: Verificado e Inmutable</div>
+            </div>
           </div>
         </div>
 
         {/* Botones de Acción */}
-        <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }} className="no-print">
+        <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5 no-print">
           <button 
             onClick={onClose}
-            style={{ padding: '10px 20px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
+            className="px-5 py-2.5 bg-slate-100 text-slate-700 border border-slate-300 rounded font-bold hover:bg-slate-200 transition"
+          >
             Cerrar Vista Previa
           </button>
           <button 
             onClick={handlePrint}
-            style={{ padding: '10px 24px', background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(2,132,199,0.3)' }}>
+            className="px-6 py-2.5 bg-sky-600 text-white rounded font-bold shadow-md hover:bg-sky-700 transition"
+          >
             Imprimir / Guardar como PDF
           </button>
         </div>

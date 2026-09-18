@@ -1,4 +1,3 @@
-// components/SectorFunnel.tsx
 import React from 'react';
 
 interface SectorCardProps {
@@ -6,7 +5,10 @@ interface SectorCardProps {
   focus: string;
   claim: string;
   ctaText: string;
-  onAction: () => void;
+}
+
+interface SectorFunnelProps {
+  onSelectSectorReport?: (sectorTitle: string) => void;
 }
 
 const sectors: SectorCardProps[] = [
@@ -14,33 +16,29 @@ const sectors: SectorCardProps[] = [
     title: 'Financiero & Fintech',
     focus: 'DORA / PCI-DSS',
     claim: 'Financia la adecuación a DORA con hasta 24.000 € de Kit Consulting.',
-    ctaText: 'Audit de Resiliencia en 1 Clic',
-    onAction: () => alert('Descargando plantilla DORA...'),
+    ctaText: 'Audit de Resiliencia (Generar Informe)',
   },
   {
     title: 'Sanitario & E-Health',
     focus: 'HIPAA / RGPD / EUDAMED',
     claim: 'Despliega IA anonimizada en RAM financiada al 80% mediante Impulso Ecosistemas IA.',
-    ctaText: 'Validador de Anonimización FHIR/DICOM',
-    onAction: () => alert('Iniciando validador FHIR...'),
+    ctaText: 'Validador FHIR/DICOM (Generar Informe)',
   },
   {
     title: 'Industrial & Infraestructuras Críticas',
     focus: 'NIS2 / ENS Nivel Alto',
     claim: 'Securiza tu cadena de suministro TIC con subvenciones I+D+i del CDTI.',
-    ctaText: 'Scanner de Vulnerabilidades L7 Ex-Ante',
-    onAction: () => alert('Ejecutando escáner NIS2...'),
+    ctaText: 'Scanner NIS2 Ex-Ante (Generar Informe)',
   },
   {
     title: 'Despachos & Agentes de Software',
     focus: 'Kit Digital (Hasta 29.000 €)',
     claim: 'Instala la consola de ciberseguridad perimetral a coste 0 € para tu cliente.',
-    ctaText: 'Generador de Acuerdo de Prestación',
-    onAction: () => alert('Generando borrador de acuerdo...'),
+    ctaText: 'Acuerdo de Prestación (Generar Informe)',
   },
 ];
 
-export const SectorFunnel: React.FC = () => {
+export const SectorFunnel: React.FC<SectorFunnelProps> = ({ onSelectSectorReport }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-saare-surface border border-saare-line text-saare-ink rounded-xl">
       {sectors.map((sector, index) => (
@@ -56,7 +54,7 @@ export const SectorFunnel: React.FC = () => {
             <p className="text-saare-ink-dim text-sm mt-2 leading-relaxed">{sector.claim}</p>
           </div>
           <button
-            onClick={sector.onAction}
+            onClick={() => onSelectSectorReport && onSelectSectorReport(sector.title)}
             className="mt-6 w-full bg-saare-allow hover:bg-saare-allow/90 text-black font-bold py-2.5 px-4 text-xs rounded transition-all"
           >
             {sector.ctaText}
