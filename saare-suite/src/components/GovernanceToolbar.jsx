@@ -29,7 +29,6 @@ export default function GovernanceToolbar({
     );
   };
 
-  // DESCARGA REAL DE CADENA DE CUSTODIA EN JSON
   const handleExportCustodyJSON = () => {
     const custodyPayload = {
       trustAnchor: "SAARE-MD-IPRES-2026",
@@ -54,7 +53,6 @@ export default function GovernanceToolbar({
     triggerAction('Cadena de Custodia descargada en JSON verificado.', onExportCustody);
   };
 
-  // EMISIÓN Y DESCARGA REAL DE TOKEN TEMPORAL DE AUDITORÍA
   const handleIssueAuditToken = async () => {
     try {
       const res = await saareFetch('/v1/tokens/issue', {

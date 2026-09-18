@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL, saareFetch } from './utils/api';
 import { SectorFunnel } from './components/SectorFunnel';
 import GovernanceToolbar from './components/GovernanceToolbar';
-import OfficialReportModal from './OfficialReportModal';
+import OfficialReportModal from './components/OfficialReportModal';
 
 const API_BASE = `${API_BASE_URL.replace(/\/$/, '')}/v1`;
 const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
