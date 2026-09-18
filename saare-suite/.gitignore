@@ -1,5 +1,19 @@
+# Dependencias y cache
 node_modules/
-dist/
+.pnpm-store/
 .vite/
+
+# Salidas de compilación
+dist/
+build/
+
+# Variables de entorno y credenciales (Aislamiento de seguridad)
 .env
+.env.local
+.env.*.local
+.dev.vars
+
+# Registros temporales y volcados
+*.log
 leads_log.json
+.DS_Store

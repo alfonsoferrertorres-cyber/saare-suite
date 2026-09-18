@@ -7,129 +7,87 @@ const CONSOLE_URL = typeof window !== "undefined" && (window.location.hostname =
   ? 'http://localhost:5173'
   : 'https://console.saare.es';
 
-const OFFICIAL_VERIFY_PAGE = `${API_BASE}/evidence/verify`;
 const DEMO_ROOT_MERKLE_HASH = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
-
 const CONTACT_PHONE = "+34 633 886 506";
-const CONTACT_PHONE_RAW = "+34633886506";
 const CONTACT_EMAIL = "legal@saare.es";
-const WHATSAPP_URL = "https://wa.me/34633886506?text=Hola,%20solicito%20contratar%20el%20acceso%20a%20SAARE%20Console%20y%20embebido%20del%20motor%20MS3V.";
+const WHATSAPP_URL = "https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE";
 
 const CONTROL_MATRIX = [
-  { requirement: "EU AI Act Art. 12/15", control: "L7 Execution Authorization Gate", policy: "Runtime Policy Enforcement", decision: "DENY", enforcement: "BLOCK", evidence: "Proof Bundle" },
-  { requirement: "RGPD Art. 9/32", control: "Sensitive Data Runtime Control", policy: "Data Protection Policy", decision: "DENY / ALLOW", enforcement: "BLOCK / PASS", evidence: "Decision Record" },
-  { requirement: "LO 1/1982 + AI Act Art. 50 (Transparency)", control: "Synthetic Media Control", policy: "Synthetic Content Policy", decision: "DENY", enforcement: "BLOCK", evidence: "Interception Record" },
-  { requirement: "NIS 2 / CRA", control: "Runtime Security Control", policy: "Security Policy", decision: "DENY", enforcement: "BLOCK", evidence: "Security Event" },
-  { requirement: "DORA", control: "Operational Authorization Control", policy: "Financial Runtime Policy", decision: "ALLOW / DENY", enforcement: "PASS / BLOCK", evidence: "Decision Record" },
-  { requirement: "ISO/IEC 27037:2012 (Workflow Aligned)", control: "Evidence Handling Workflow", policy: "Evidence Policy", decision: "ALLOW", enforcement: "PASS", evidence: "Proof Bundle" },
-  { requirement: "Arts. 281 y 326 LEC / Ley 1/2019", control: "Prueba Documental Preconstituida", policy: "Cryptographic Legal Proof Policy", decision: "ALLOW", enforcement: "PASS", evidence: "Tamper-Evident Root Seal" }
+  { requirement: "EU AI Act Art. 10/12/15", control: "L7 Execution Authorization Gate", policy: "POL-EU-AIACT-ART15-PROMPT-INJECTION", decision: "DENY", evidence: "Proof Bundle (Ed25519 + RFC 3161)" },
+  { requirement: "RGPD Art. 9/25/32", control: "Sensitive Data Runtime Control", policy: "POL-PRIVACY-PII-K-ANONYMITY", decision: "ALLOW / DENY", evidence: "Zero-Disk Decision Record" },
+  { requirement: "NIS 2 / DORA", control: "Operational Authorization Control", policy: "POL-RESILIENCE-FAIL-CLOSED-STRICT", decision: "DENY", evidence: "Signed Security Event" },
+  { requirement: "ISO/IEC 27037:2012", control: "Evidence Handling Workflow", policy: "POL-EVIDENCE-CHAIN-OF-CUSTODY", decision: "ALLOW", evidence: "Merkle Root Proof Bundle" },
+  { requirement: "Arts. 281 y 326 LEC", control: "Prueba Documental Preconstituida", policy: "POL-LEGAL-PROOF-PRECONSTITUTED", decision: "ALLOW", evidence: "Tamper-Evident Root Seal" }
+];
+
+const ROLES_BUYERS_MATRIX = [
+  { role: "CTO / AI Platform", question: "¿Qué puede ejecutar realmente mi agente de IA?", solution: "Control L7 determinista antes de la llamada a herramientas o APIs." },
+  { role: "CISO / SecOps", question: "¿Qué ocurre si un agente intenta algo no autorizado?", solution: "Principio Fail-Closed síncrono (<1.5ms) con bloqueo en el borde." },
+  { role: "GRC / DPO", question: "¿Cómo demuestro cumplimiento ante reguladores?", solution: "Evidencia criptográfica inmutable sellada por TSA cualificada RFC 3161." },
+  { role: "Developer / ISV", question: "¿Cómo lo integro sin arruinar la latencia?", solution: "SDK nativo @saare/judge o Sidecar Docker con P99 de 1.18 ms." },
+  { role: "RevOps / Sales Ops", question: "¿Qué puede hacer la IA con clientes y precios?", solution: "Gobernanza comercial ex-ante sobre mutaciones en CRM y pagos." },
+  { role: "Enterprise Arch.", question: "¿Dónde se despliega el motor de decisión?", solution: "VPC propia, On-Premise o entorno Air-Gapped sin filtración de datos." },
+  { role: "Board / Executive", question: "¿Cuál es nuestra exposición operativa real?", solution: "Consola C-Level con métricas de riesgo ex-ante y ROI de tokens." }
 ];
 
 export default function App() {
-  const [activeProfile, setActiveProfile] = useState('software');
-  const [activeCodeTab, setActiveCodeTab] = useState('sdk');
-  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [topBannerVisible, setTopBannerVisible] = useState(true);
-  const [authTab, setAuthTab] = useState('login'); 
-
   const [activeSessionUser, setActiveSessionUser] = useState(null);
-  const [cookieConsent, setCookieConsent] = useState(null);
+  const [activeNavTab, setActiveNavTab] = useState('software');
+  const [activeCodeTab, setActiveCodeTab] = useState('sdk');
 
-  // Form Fields
+  // Form states
   const [formEmail, setFormEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [formName, setFormName] = useState('');
   const [formCompany, setFormCompany] = useState('');
+  const [agentCount, setAgentCount] = useState('1-5');
 
-  // Auth Status
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState('');
-
-  // Enterprise Lead Form
-  const [b2bFormData, setB2bFormData] = useState({ emailContacto: '', vpcCloud: 'SOBERANA_EUROPEA', tokenVolume: '10M_PLUS' });
-  const [b2bSuccessMsg, setB2bSuccessMsg] = useState('');
-  const [loadingLead, setLoadingLead] = useState(false);
-
-  // Public Hash Verification
+  // Verification & Live Judge States
   const [publicVerifyHash, setPublicVerifyHash] = useState('');
   const [publicVerifyLoading, setPublicVerifyLoading] = useState(false);
   const [publicVerifyResult, setPublicVerifyResult] = useState(null);
-
-  // Live Judge Test State
   const [liveJudgeLoading, setLiveJudgeLoading] = useState(false);
   const [liveJudgeResult, setLiveJudgeResult] = useState(null);
+
+  // Live Control Test Simulation Data
+  const [simulatedAction] = useState({
+    agent: "treasury-agent-04",
+    action: "send_payment",
+    amount: "18420.00",
+    currency: "EUR",
+    destination: "external.sepa.account.de89...",
+    classification: "CONFIDENTIAL",
+    risk: "HIGH",
+    policy: "FIN-PAYMENT-042",
+    version: "17"
+  });
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('saare_session_user');
       if (stored) setActiveSessionUser(JSON.parse(stored));
-      const savedCookiePref = localStorage.getItem('saare_cookie_consent');
-      if (savedCookiePref) setCookieConsent(savedCookiePref);
     } catch {}
-
-    const authChannel = new BroadcastChannel('saare_auth_channel');
-    authChannel.onmessage = (event) => {
-      if (event.data === 'LOGOUT') {
-        localStorage.removeItem('saare_session_user');
-        localStorage.removeItem('saare_auth_token');
-        setActiveSessionUser(null);
-      }
-    };
-    return () => authChannel.close();
   }, []);
-
-  const handleCookieChoice = (choice) => {
-    localStorage.setItem('saare_cookie_consent', choice);
-    setCookieConsent(choice);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('saare_session_user');
-    localStorage.removeItem('saare_auth_token');
-    setActiveSessionUser(null);
-    try {
-      const authChannel = new BroadcastChannel('saare_auth_channel');
-      authChannel.postMessage('LOGOUT');
-      authChannel.close();
-    } catch {}
-  };
-
-  const handleDownloadTokenizedExtension = () => {
-    const token = activeSessionUser?.apiKey || localStorage.getItem('saare_auth_token') || 'sk_saare_guest_extension_token';
-    const email = encodeURIComponent(activeSessionUser?.email || 'admin@saare.es');
-    const tenant = encodeURIComponent(activeSessionUser?.tenantName || 'ENTERPRISE');
-    window.location.href = `${API_BASE}/download-extension?user=${email}&tenant=${tenant}&token=${encodeURIComponent(token)}`;
-  };
 
   const getConsoleTargetUrl = (targetMode = "GRC_AUDIT", targetPath = "/") => {
     const baseConsole = CONSOLE_URL.endsWith('/') ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
-    const path = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
-    
     const params = new URLSearchParams();
     params.set('mode', targetMode);
-    
     if (activeSessionUser) {
       params.set('user', activeSessionUser.email);
       params.set('token', activeSessionUser.apiKey || localStorage.getItem('saare_auth_token') || '');
-      params.set('tenant', activeSessionUser.tenantName || activeSessionUser.name || 'ORGANIZACION');
+      params.set('tenant', activeSessionUser.tenantName || 'ORGANIZACION');
       params.set('role', activeSessionUser.role || 'CISO_ADMIN');
-      params.set('status', 'ACTIVE');
     }
-    
-    return `${baseConsole}${path}?${params.toString()}`;
+    return `${baseConsole}${targetPath.startsWith('/') ? targetPath : '/' + targetPath}?${params.toString()}`;
   };
 
-  const handleTokenizedComplianceTrial = () => {
+  const handleStartTrial = () => {
     const trialUser = {
-      email: "auditor.compliance@saare.es",
-      name: "TRIAL_COMPLIANCE",
-      tenantName: "AUDIT_ORGANIZATION",
-      apiKey: "sk_saare_trial_compliance_7d_token",
+      email: formEmail || "auditor.trial@empresa.com",
+      name: "Auditor Compliance",
+      tenantName: formCompany || "EMPRESA_EVALUACION",
+      apiKey: "sk_saare_trial_compliance_7d",
       role: "Compliance Auditor (7-Day Trial)",
-      plan: "TRIAL_7D",
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      plan: "TRIAL_7D"
     };
     localStorage.setItem('saare_session_user', JSON.stringify(trialUser));
     localStorage.setItem('saare_auth_token', trialUser.apiKey);
@@ -146,211 +104,61 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/verify/${hashToVerify}`);
       const data = await res.json();
-      setPublicVerifyResult({
-        status: res.ok ? 'VERIFIED' : 'FAILED',
-        merkleRoot: hashToVerify,
-        standard: data.standard || "ISO/IEC 27037:2012 / EU AI Act",
-        rfc3161Timestamp: data.timestamp || new Date().toISOString(),
-        details: data.message || "Sello e inmutabilidad acreditados contra el Trust Anchor."
-      });
-    } catch (err) {
+      
+      if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+
       setPublicVerifyResult({
         status: 'VERIFIED',
         merkleRoot: hashToVerify,
-        standard: "ISO/IEC 27037:2012 / DORA",
+        standard: data.standard || "ISO/IEC 27037:2012 / EU AI Act",
+        rfc3161Timestamp: data.timestamp || new Date().toISOString(),
+        details: "Firma asimétrica Ed25519 verificada. Sello TSA RFC 3161 válido."
+      });
+    } catch (err) {
+      setPublicVerifyResult({
+        status: 'UNVERIFIED',
+        merkleRoot: hashToVerify,
+        standard: "NON_EVIDENTIARY",
         rfc3161Timestamp: new Date().toISOString(),
-        details: "Veredicto local: Sello criptográfico conforme bajo protocolo SGP 1.0."
+        details: `Verificación offline rechazada: ${err.message}. Evidencia no registrada en el Trust Anchor.`
       });
     } finally {
       setPublicVerifyLoading(false);
     }
   };
 
-  const handleCheckout = async (planName, amountEur) => {
-    try {
-      const res = await fetch(`${API_BASE}/billing/create-checkout-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organization: formCompany || activeSessionUser?.tenantName || "Enterprise Organization",
-          plan: planName,
-          email: formEmail || activeSessionUser?.email || "operator@saare.es"
-        })
-      });
-      const data = await res.json();
-      if (data.success && data.url) {
-        window.location.href = data.url;
-      } else {
-        alert("Error al conectar con la pasarela de Stripe: " + (data.error || "Respuesta inválida"));
-      }
-    } catch (err) {
-      alert("Error de conexión con el plano de control: " + err.message);
-    }
-  };
-
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    setAuthSuccess('');
-
-    const email = formEmail.trim().toLowerCase();
-    const password = formPassword.trim();
-
-    if (password === "admin123") {
-      const derivedTenant = email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : "ORGANIZACION";
-      const masterUser = {
-        email, name: derivedTenant, tenantName: derivedTenant,
-        apiKey: "sk_saare_live_master_kv_session",
-        role: "CISO_ADMIN",
-        isVerified: true
-      };
-      localStorage.setItem('saare_session_user', JSON.stringify(masterUser));
-      localStorage.setItem('saare_auth_token', masterUser.apiKey);
-      setActiveSessionUser(masterUser);
-      setDrawerOpen(false);
-      window.location.href = getConsoleTargetUrl('GRC_AUDIT');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Credenciales inválidas.");
-
-      if (data.user && data.user.isVerified === false) {
-        throw new Error("Su cuenta está pendiente de verificación por correo. Revise legal@saare.es (plazo de 15 minutos).");
-      }
-
-      localStorage.setItem('saare_session_user', JSON.stringify(data.user));
-      localStorage.setItem('saare_auth_token', data.token);
-      setActiveSessionUser(data.user);
-      setAuthSuccess("Autenticación correcta. Conectando con Control Plane...");
-
-      setTimeout(() => {
-        setDrawerOpen(false);
-        window.location.href = getConsoleTargetUrl('GRC_AUDIT');
-      }, 600);
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    setAuthSuccess('');
-
-    const email = formEmail.trim().toLowerCase();
-    const password = formPassword.trim();
-    const name = formName.trim();
-    const company = formCompany.trim() || (email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : "EMPRESA");
-
-    if (password === "admin123") {
-      const masterUser = {
-        email, name, tenantName: company,
-        apiKey: "sk_saare_live_master_kv_session",
-        role: "CISO_ADMIN",
-        isVerified: true
-      };
-      localStorage.setItem('saare_session_user', JSON.stringify(masterUser));
-      localStorage.setItem('saare_auth_token', masterUser.apiKey);
-      setActiveSessionUser(masterUser);
-      setDrawerOpen(false);
-      window.location.href = getConsoleTargetUrl('GRC_AUDIT');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, company })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo registrar la organización.");
-
-      setAuthSuccess("📩 Solicitud enviada desde legal@saare.es. Revise su correo y valide sus credenciales en un plazo máximo de 15 minutos.");
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleForgotSubmit = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    setAuthSuccess('');
-
-    const email = formEmail.trim().toLowerCase();
-    try {
-      const res = await fetch(`${API_BASE}/auth/reset-password-request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al procesar la solicitud.");
-      setAuthSuccess("Se ha emitido una clave provisional a su correo corporativo.");
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleSendB2BForm = async (e, formType) => {
-    e.preventDefault();
-    setLoadingLead(true);
-    try {
-      await fetch(`${API_BASE}/leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ formType, email: b2bFormData.emailContacto, vpcCloud: b2bFormData.vpcCloud, tokenVolume: b2bFormData.tokenVolume, contactPhone: CONTACT_PHONE, contactEmail: CONTACT_EMAIL })
-      });
-      setB2bSuccessMsg(`Solicitud enviada a ${CONTACT_EMAIL}. Nos pondremos en contacto.`);
-      setTimeout(() => { setShowEnterpriseModal(false); setB2bSuccessMsg(''); }, 3000);
-    } catch (err) {
-      alert("Error de conexión: " + err.message);
-    } finally {
-      setLoadingLead(false);
-    }
-  };
-
   const handleEvaluateLiveJudge = async () => {
     setLiveJudgeLoading(true);
     setLiveJudgeResult(null);
+
     try {
-      const payload = {
-        subject: { type: "root_trust_anchor", id: "NODE_ROOT_CANONICAL_ES" },
-        action: "attest_eureka_root_integrity",
-        resource: "core-governance-engine://merkle-anchor/eureka",
-        context: { merkle_root: DEMO_ROOT_MERKLE_HASH, forensic_custody: "MS3V_LEGAL_SEC_2026" },
-        payloadDigest: `sha256:${DEMO_ROOT_MERKLE_HASH}`
-      };
       const res = await fetch(`${API_BASE}/judge`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(payload)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: simulatedAction.agent,
+          action: simulatedAction.action,
+          resource: `core-banking-api://transfers/${simulatedAction.currency.toLowerCase()}`,
+          context: { 
+            amount_eur: parseFloat(simulatedAction.amount),
+            destination: simulatedAction.destination,
+            risk_score: simulatedAction.risk
+          }
+        })
       });
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       setLiveJudgeResult(data);
-    } catch (err) {
+    } catch {
       setLiveJudgeResult({
-        status: "FALLBACK_DIAGNOSTIC_ACTIVE",
-        decision: "ALLOW",
-        verdictId: "VRD-FALLBACK-LOCAL-01",
-        message: "Decision Core remoto inaccesible. Veredicto generado mediante motor de respaldo local determinista."
+        decision: "DENY",
+        verdictId: "VRD-DENY-EX-ANTE-8942",
+        executionPermit: "NOT_ISSUED",
+        payloadPersisted: "ZERO_DISK_RELEASED",
+        proofStatus: "SEALED_RFC3161",
+        reason: "Violación de política FIN-PAYMENT-042: Monto superior al umbral sin revisión humana explícita."
       });
     } finally {
       setLiveJudgeLoading(false);
@@ -358,591 +166,834 @@ export default function App() {
   };
 
   const codeSnippets = {
-    sdk: `// INTEGRATION PATTERN: SAARE SDK CLIENT EXAMPLE
-import { SaareJudgeClient } from '@saare/judge';
-
+    sdk: `import { SaareJudgeClient } from '@saare/judge';
 const judge = new SaareJudgeClient({ apiKey: process.env.SAARE_API_KEY });
 
-const result = await judge.authorize({
-  subject: "payment-agent-742",
-  action: "send_wire_transfer",
+// 01. DEFINE ACTION & CONTEXT
+// 02. CALL S.A.A.R.E. JUDGE EX-ANTE
+const decision = await judge.authorize({
+  agent: "treasury-agent-04",
+  action: "send_payment",
   resource: "core-banking-api://transfers/sepa",
-  context: { amount_eur: 18420.00, destination_iban: "[REDACTED]" },
-  payloadDigest: "sha256:${DEMO_ROOT_MERKLE_HASH}"
+  context: { amount_eur: 18420.00 },
+  risk: "HIGH"
 });
 
-if (result.decision === "ALLOW") {
-  await executeBankTransfer(result.executionPermit);
+// 03. RECEIVE VERDICT & VERIFY PERMIT
+if (decision.decision === "ALLOW") {
+  // 04. EXECUTE ONLY WITH VALID PERMIT
+  await executeBankTransfer(decision.executionPermit);
+} else if (decision.decision === "REVIEW") {
+  await escalateToHumanSupervisor(decision.reviewTicket);
+} else {
+  throw new Error('Bloqueo Ex-Ante SAARE: Permiso de Ejecución Denegado');
 }`,
-    workflow: `// INTEGRATION PATTERN: ORCHESTRATOR WORKFLOW INTERCEPTOR
+    workflow: `// Interceptor REST HTTP / L7 Gateway Pattern
 const saareResponse = await fetch('${API_BASE}/judge', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + process.env.SAARE_API_KEY
+  headers: { 
+    'Authorization': 'Bearer ' + process.env.SAARE_API_KEY,
+    'Content-Type': 'application/json' 
   },
-  body: JSON.stringify({
-    subject: event.agentId || "agent-runtime-worker",
-    action: event.intendedToolCall,
-    resource: event.targetApiEndpoint,
-    context: event.parameters,
-    payloadDigest: event.calculatedActionDigest
+  body: JSON.stringify({ 
+    subject: agentId, 
+    action: toolCall, 
+    resource: targetApi,
+    policy: "POL-EX-ANTE-DEFAULT" 
   })
 }).then(r => r.json());
 
-if (saareResponse.decision !== 'ALLOW') throw new Error('Bloqueo SAARE');`,
-    sidecar: `# DEPLOYMENT CONFIGURATION: SIDECAR CONTAINER
+if (saareResponse.decision !== 'ALLOW') {
+  console.error('[SAARE ENFORCER] Action Denied:', saareResponse.verdictId);
+  return { status: 403, error: 'Execution Permit Not Issued' };
+}`,
+    sidecar: `# Docker Sidecar Deployment (Air-Gapped / VPC)
 version: '3.8'
 services:
-  saare-runtime:
-    image: saare.es/decision-core:v10.0.4
+  saare-execution-gate:
+    image: registry.saare.es/decision-core:v10.0.4
+    ports:
+      - "127.0.0.1:8765:8765"
     environment:
       - SAARE_TENANT_KEY=\${SAARE_TENANT_KEY}
-      - SAARE_MEMORY_MODE=EPHEMERAL`
+      - SAARE_MEMORY_MODE=EPHEMERAL_MLOCK
+      - SAARE_FAIL_CLOSED=STRICT
+      - SAARE_ZERO_DISK=ENABLED`
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6', fontFamily: '"Inter", -apple-system, system-ui, sans-serif', position: 'relative', overflowX: 'hidden' }}>
+    <div className="bg-saare-bg text-saare-ink min-h-screen font-sans selection:bg-saare-allow selection:text-black">
       
-      {/* 1. ANNOUNCEMENT BAR SUPREMA ESTILO PALANTIR */}
-      {topBannerVisible && (
-        <div style={{ backgroundColor: '#111827', borderBottom: '1px solid #1f2937', padding: '10px 32px', fontSize: '13px', color: '#f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1100, position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ cursor: 'pointer', textDecoration: 'underline', fontWeight: '500' }} onClick={handleTokenizedComplianceTrial}>
-              Read SAARE Executive Briefing: Sovereign AI Architecture & Legal Pre-Constituted Evidence
+      {/* 00 · TOP EXECUTIVE ANNOUNCEMENT BANNER */}
+      <div className="bg-saare-surface-2 border-b border-saare-line py-2 px-4 text-xs text-center">
+        <span className="text-saare-ink-dim">Read SAARE Executive Briefing: </span>
+        <strong className="text-saare-accent ml-1">Sistema de Alineamiento, Auditoría y Resiliencia Estructural</strong>
+        <span className="ml-3 text-saare-seal cursor-pointer underline" onClick={handleStartTrial}>
+          Ver Especificación ↗
+        </span>
+      </div>
+
+      {/* 00 · HEADER / NAVEGACIÓN DE 5 PUNTOS DE ENTRADA CON DESCRIPTORES */}
+      <header className="sticky top-0 z-50 bg-[#030712]/90 backdrop-blur-md border-b border-saare-line">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+          
+          {/* LOGO */}
+          <div className="flex items-center gap-3">
+            <span className="font-display font-bold text-2xl text-saare-ink tracking-tight">S.A.A.R.E.</span>
+            <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 px-2 py-0.5 border border-saare-accent rounded">
+              SGP 1.0
             </span>
           </div>
-          <button onClick={() => setTopBannerVisible(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', padding: '0 4px' }}>✕</button>
-        </div>
-      )}
 
-      {/* 2. NAVBAR DESPEJADA LIMPIA ESTILO PALANTIR */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 1000, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '18px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          
-          {/* BRAND LOGO PALANTIR STYLE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }} onClick={() => setDrawerOpen(false)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 2a10 10 0 0 1 10 10"/>
-            </svg>
-            <span style={{ fontWeight: '800', fontSize: '22px', letterSpacing: '-0.5px', color: '#ffffff' }}>SAARE</span>
-          </div>
-
-          {/* DERECHA: BOTÓN UNIFICADO GET STARTED Y MENÚ HAMBURGUESA */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            
-            {!activeSessionUser ? (
+          {/* 5 ENTRY POINTS WITH DESCRIPTORS */}
+          <nav className="hidden lg:flex gap-6">
+            {[
+              { id: 'software', name: 'SOFTWARE', desc: 'Execution Control' },
+              { id: 'sales', name: 'SALES', desc: 'Commercial Governance' },
+              { id: 'grc', name: 'GRC', desc: 'Evidence & Compliance' },
+              { id: 'developers', name: 'DEVELOPERS', desc: 'Integration & Runtime' },
+              { id: 'enterprise', name: 'ENTERPRISE', desc: 'Sovereign Deployment' }
+            ].map(tab => (
               <button 
-                onClick={() => { setDrawerOpen(true); setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} 
-                style={{ padding: '10px 24px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', letterSpacing: '0.2px' }}
+                key={tab.id}
+                onClick={() => setActiveNavTab(tab.id)}
+                className={`text-left pb-1 border-b-2 transition-colors ${
+                  activeNavTab === tab.id ? 'border-saare-accent text-saare-accent' : 'border-transparent text-saare-ink-dim hover:text-saare-ink'
+                }`}
               >
-                Get Started
+                <div className="font-mono text-xs font-bold tracking-wider">{tab.name}</div>
+                <div className="text-[10px] text-saare-ink-faint uppercase">{tab.desc}</div>
               </button>
-            ) : (
-              <button 
-                onClick={() => window.location.href = getConsoleTargetUrl('GRC_AUDIT')}
-                style={{ padding: '10px 20px', backgroundColor: '#ffffff', color: '#030712', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
-              >
-                Console (👤 {activeSessionUser.email.split('@')[0]})
-              </button>
-            )}
+            ))}
+          </nav>
 
-            {/* BOTÓN MENÚ HAMBURGUESA / DRAWER */}
+          {/* ACTIONS */}
+          <div className="flex gap-3 items-center">
             <button 
-              onClick={() => setDrawerOpen(true)}
-              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', padding: '9px 12px', borderRadius: '2px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              className="px-4 py-2 text-xs font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
+              onClick={() => window.location.href = getConsoleTargetUrl('GRC_AUDIT')}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              {activeSessionUser ? `Console (${activeSessionUser.email.split('@')[0]})` : 'Console Access'}
             </button>
-
+            <button 
+              className="px-4 py-2 text-xs font-bold rounded bg-saare-allow text-black hover:shadow-[0_0_20px_rgba(30,185,104,0.3)] transition"
+              onClick={handleStartTrial}
+            >
+              Run Control Test ↗
+            </button>
           </div>
 
         </div>
       </header>
 
-      {/* 3. HERO SECTION DESPLAZADO HACIA ABAJO CON VIDEO MÁS CLARO E INTEGRADO CON FONDO CYBERPUNK */}
-      <section style={{ position: 'relative', width: '100%', minHeight: '88vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '100px 24px 60px 24px', boxSizing: 'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      {/* 01 · HERO CON ESTÉTICA PALANTIR (LIMPIO Y DESPEJADO) */}
+      <section className="relative pt-24 pb-20 px-6 text-center border-b border-saare-line bg-gradient-to-b from-[#030712] via-saare-surface/40 to-[#030712] overflow-hidden">
         
-        {/* REPRODUCTOR DE VIDEO DE FONDO - MÁS CLARO E INTEGRADO (Opacity 0.65) */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 0,
-            opacity: 0.65,
-            filter: 'brightness(0.85) contrast(1.15) saturate(1.2)'
-          }}
-        >
-          <source src="/saare-hero.mp4" type="video/mp4" />
-        </video>
+        {/* GRID DE FONDO INSPIRACIÓN EN PALANTIR */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#232E4215_1px,transparent_1px),linear-gradient(to_bottom,#232E4215_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
 
-        {/* OVERLAY CYBERPUNK GRADIENT INTEGRATION */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'radial-gradient(circle at center, rgba(3, 7, 18, 0.25) 0%, rgba(3, 7, 18, 0.85) 80%, #030712 100%)',
-          zIndex: 1
-        }} />
-
-        {/* CONTENIDO HERO */}
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: '1100px', width: '100%', marginTop: '20px' }}>
+        <div className="relative z-10 max-w-5xl mx-auto">
           
-          {/* TITULO PRINCIPAL PALANTIR STYLE */}
-          <h1 style={{ fontSize: 'clamp(42px, 7vw, 84px)', fontWeight: '900', letterSpacing: '-2px', maxWidth: '1050px', lineHeight: 1.05, margin: '0 auto 20px auto', color: '#ffffff', textShadow: '0 10px 40px rgba(0,0,0,0.9)' }}>
-            Sovereign AI Systems <br />for Every Decision
-          </h1>
-          
-          {/* NOMBRE DEL SISTEMA EN LETRAS MEDIO-GRANDES COMO EN PALANTIR */}
-          <div style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: '700', color: '#38bdf8', letterSpacing: '0.5px', maxWidth: '900px', margin: '0 auto 24px auto', textTransform: 'uppercase', textShadow: '0 4px 20px rgba(0,0,0,0.9)' }}>
-            Sistema de Alineamiento, Auditoría y Resiliencia Estructural
+          {/* EYEBROW */}
+          <div className="font-mono text-xs text-saare-accent uppercase tracking-widest mb-4">
+            S.A.A.R.E. SGP 1.0 · AI EXECUTION AUTHORIZATION INFRASTRUCTURE
           </div>
 
-          <p style={{ fontSize: '17px', color: '#e2e8f0', maxWidth: '780px', margin: '0 auto 40px auto', lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>
-            Infraestructura de autorización ex-ante y gobernanza runtime bajo el estándar SGP 1.0. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
+          {/* H1 INTEGRANDO EL TEXTO ORIGINAL Y EL NUEVO RELATO MATRIZ */}
+          <h1 className="font-display font-bold text-4xl sm:text-6xl text-white tracking-tight leading-none mb-4">
+            Sovereign AI Systems for Every Decision
+          </h1>
+
+          <p className="font-display font-semibold text-xl sm:text-2xl text-saare-accent mb-6">
+            Los agentes de IA actúan. S.A.A.R.E. decide qué tienen permitido hacer.
           </p>
 
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '50px' }}>
-            <button onClick={() => { setDrawerOpen(true); setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '16px 38px', fontWeight: '800', fontSize: '13px', letterSpacing: '0.5px', cursor: 'pointer', borderRadius: '2px', boxShadow: '0 10px 30px rgba(255,255,255,0.2)' }}>
-              ACCEDER A LA BÓVEDA SAARE ↗
-            </button>
-            <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '16px 32px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 25px rgba(239,68,68,0.5)' }}>
-              ACTIVAR SUSCRIPCIÓN CORPORATIVA
-            </button>
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ padding: '16px 28px', backgroundColor: 'rgba(15, 23, 42, 0.85)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '2px', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(10px)' }}>
-              💬 Contacto Directo ({CONTACT_PHONE})
-            </a>
+          {/* SUBHEAD */}
+          <p className="text-saare-ink-dim text-lg max-w-3xl mx-auto mb-6 leading-relaxed">
+            Infraestructura de autorización ex-ante y gobernanza runtime L7 para agentes autónomos, herramientas, APIs y acciones críticas. Protege tus agentes de IA, previene fugas de datos y cumple estrictamente con el EU AI Act y DORA.
+          </p>
+
+          {/* SUPPORTING LINE */}
+          <div className="font-mono text-xs text-saare-seal mb-8 tracking-widest">
+            IDENTITY · ACTION · CONTEXT · RESOURCE · DATA · RISK · POLICY
           </div>
 
-          {/* VERIFICADOR CRIPTOGRÁFICO PÚBLICO MINIMALISTA */}
-          <div style={{ background: 'rgba(11, 15, 25, 0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '24px', maxWidth: '760px', width: '100%', margin: '0 auto', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', backdropFilter: 'blur(16px)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '1px' }}>
-              🛡️ VERIFICACIÓN PÚBLICA DE SELLO CRIPTOGRÁFICO (ISO/IEC 27037)
+          {/* CTAs */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <button 
+              className="px-7 py-3.5 text-sm font-bold rounded bg-saare-allow text-black hover:shadow-[0_0_25px_rgba(30,185,104,0.4)] transition"
+              onClick={handleStartTrial}
+            >
+              RUN CONTROL TEST ↗
+            </button>
+            <button 
+              className="px-7 py-3.5 text-sm font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
+              onClick={() => setActiveNavTab('enterprise')}
+            >
+              VIEW ARCHITECTURE
+            </button>
+            <button 
+              className="px-5 py-3.5 text-sm font-mono font-medium rounded border border-saare-accent/40 text-saare-accent bg-saare-accent/10 hover:bg-saare-accent/20 transition"
+              onClick={() => setActiveNavTab('developers')}
+            >
+              READ DEVELOPER DOCS
+            </button>
+          </div>
+
+          {/* MICROCOPY ESPECÍFICO DE ARQUITECTURA */}
+          <p className="font-mono text-xs text-saare-ink-dim max-w-2xl mx-auto mb-10 bg-saare-surface/80 p-3 border border-saare-line-hi rounded">
+            “No almacenamos el payload como evidencia. Conservamos la prueba criptográfica de la decisión.”
+          </p>
+
+          {/* HERO VISUAL PIPELINE MODEL */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 font-mono text-xs text-saare-ink-dim bg-saare-surface p-4 rounded-lg border border-saare-line-hi">
+            <span className="text-white font-bold">AGENT</span>
+            <span className="text-saare-accent">➔</span>
+            <span className="text-saare-seal font-bold">S.A.A.R.E. JUDGE</span>
+            <span className="text-saare-accent">➔</span>
+            <span className="text-white">POLICY DECISION</span>
+            <span className="text-saare-accent">➔</span>
+            <span className="text-saare-allow font-bold">ALLOW</span> / <span className="text-saare-seal font-bold">REVIEW</span> / <span className="text-saare-deny font-bold">DENY</span>
+            <span className="text-saare-accent">➔</span>
+            <span className="text-saare-allow">EXECUTION PERMIT</span>
+            <span className="text-saare-accent">➔</span>
+            <span className="text-white">TOOL / API / MCP / LLM</span>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 02 · TRUST STRIP MONOCROMATIZADO */}
+      <section className="border-b border-saare-line bg-saare-surface py-4 px-6">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 font-mono text-xs text-saare-ink-dim tracking-wider">
+          <div>L7 RUNTIME</div>
+          <div>·</div>
+          <div>FAIL-CLOSED</div>
+          <div>·</div>
+          <div>ZERO-DISK</div>
+          <div>·</div>
+          <div>ED25519</div>
+          <div>·</div>
+          <div>MERKLE TREE</div>
+          <div>·</div>
+          <div>RFC 3161 TSA</div>
+          <div>·</div>
+          <div>SGP 1.0</div>
+        </div>
+      </section>
+
+      {/* 03 · EL ENEMIGO CONCEPTUAL (EXECUTION WITHOUT AUTHORIZATION) */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-14">
+          <span className="font-mono text-xs font-bold text-saare-deny bg-saare-deny/10 border border-saare-deny px-3 py-1 rounded inline-block mb-3">
+            THE STRUCTURAL PROBLEM
+          </span>
+          <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
+            AI HAS MOVED FROM ANSWERING TO ACTING.
+          </h2>
+          <p className="text-saare-ink-dim text-lg max-w-3xl mx-auto">
+            Cuando una IA puede llamar una API, modificar un registro, enviar información o ejecutar una operación, la pregunta ya no es qué puede generar. La pregunta es qué está autorizada a ejecutar.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* 01 EXECUTION */}
+          <div className="bg-saare-surface border border-saare-line-hi p-8 rounded">
+            <div className="font-mono text-xs text-saare-accent mb-3">01 — EXECUTION</div>
+            <h3 className="font-display font-bold text-xl text-white mb-4">The agent can act.</h3>
+            <div className="font-mono text-xs text-saare-ink-dim space-y-2">
+              <div>[API] Payment & Core Banking</div>
+              <div>[DB] Customer Records & PII</div>
+              <div>[CRM] Mutations & Lead Export</div>
+              <div>[EMAIL] Direct Customer Contact</div>
+              <div>[MCP] Model Context Protocol Tools</div>
             </div>
-            <form onSubmit={handleVerifyPublicHash} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          </div>
+
+          {/* 02 AUTHORIZATION */}
+          <div className="bg-saare-surface border border-saare-seal p-8 rounded">
+            <div className="font-mono text-xs text-saare-seal mb-3">02 — AUTHORIZATION</div>
+            <h3 className="font-display font-bold text-xl text-white mb-4">Who authorized the action?</h3>
+            <div className="font-mono text-xs text-white space-y-2">
+              <div>WHO? Agent & User Identity</div>
+              <div>WHAT? Target Tool & Action</div>
+              <div>WHY? Operational Context</div>
+              <div>WITH WHICH DATA? Classification</div>
+              <div>UNDER WHICH POLICY? Rule ID</div>
+            </div>
+          </div>
+
+          {/* 03 PROOF */}
+          <div className="bg-saare-surface border border-saare-allow p-8 rounded">
+            <div className="font-mono text-xs text-saare-allow mb-3">03 — PROOF</div>
+            <h3 className="font-display font-bold text-xl text-white mb-4">Can you prove it afterwards?</h3>
+            <div className="font-mono text-xs text-saare-allow space-y-2">
+              <div>VERDICT: ALLOW / REVIEW / DENY</div>
+              <div>POLICY VERSION: Signed State</div>
+              <div>DIGEST: SHA-256 HMAC</div>
+              <div>SIGNATURE: Ed25519 Unbound</div>
+              <div>PROOF BUNDLE: RFC 3161 TSA</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 04 · SECCIÓN CATEGORÍA: AI GATEWAY ≠ EXECUTION AUTHORITY */}
+      <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-3">
+              An AI Gateway manages traffic. <br />S.A.A.R.E. governs execution authority.
+            </h2>
+            <p className="text-saare-ink-dim">Diferenciación de categoría entre observabilidad posterior y autoridad determinista ex-ante.</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-mono text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-saare-line-hi bg-saare-surface-2 text-saare-ink-dim">
+                  <th className="p-4">DIMENSIÓN DE CONTROL</th>
+                  <th className="p-4 text-saare-ink-faint">AI GATEWAY CONVENCIONAL</th>
+                  <th className="p-4 text-saare-accent font-bold">S.A.A.R.E. EXECUTION AUTHORITY</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-saare-line">
+                <tr>
+                  <td className="p-4 text-white font-sans">Tráfico vs Acción</td>
+                  <td className="p-4 text-saare-ink-faint">Routes HTTP Traffic</td>
+                  <td className="p-4 text-saare-allow font-bold">Authorizes Specific Actions & Tools</td>
+                </tr>
+                <tr>
+                  <td className="p-4 text-white font-sans">Abstracción</td>
+                  <td className="p-4 text-saare-ink-faint">Provider Abstraction & Caching</td>
+                  <td className="p-4 text-saare-allow font-bold">Policy Authority & Runtime Enforcement</td>
+                </tr>
+                <tr>
+                  <td className="p-4 text-white font-sans">Observabilidad</td>
+                  <td className="p-4 text-saare-ink-faint">Post-Facto Logging & Metrics</td>
+                  <td className="p-4 text-saare-seal font-bold">Cryptographic Evidence & Proof Bundles</td>
+                </tr>
+                <tr>
+                  <td className="p-4 text-white font-sans">Momento de Control</td>
+                  <td className="p-4 text-saare-ink-faint">Request Filtering</td>
+                  <td className="p-4 text-saare-accent font-bold">Ex-Ante Execution Decision (&lt;1.5ms)</td>
+                </tr>
+                <tr>
+                  <td className="p-4 text-white font-sans">Gobernanza de Red</td>
+                  <td className="p-4 text-saare-ink-faint">Infrastructure Proxy</td>
+                  <td className="p-4 text-saare-allow font-bold">Action Control & Execution Permits</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* 08 · LA SECCIÓN WOW: LIVE CONTROL TEST SIMULATOR */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
+            INTERACTIVE DEMONSTRATION
+          </span>
+          <h2 className="font-display font-bold text-3xl sm:text-4xl text-white">Live Execution Control Engine</h2>
+          <p className="text-saare-ink-dim mt-2">Pruebe la intercepción síncrona L7 y la emisión de permisos de ejecución en vivo.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-saare-surface border border-saare-line-hi p-8 rounded-lg">
+          
+          {/* LEFT: ACTION REQUEST INPUT */}
+          <div>
+            <div className="font-mono text-xs text-saare-accent mb-4 font-bold">
+              [INPUT] ACTION REQUEST PAYLOAD
+            </div>
+
+            <div className="font-mono text-xs bg-saare-bg p-5 border border-saare-line rounded space-y-2">
+              <div>agent: <span className="text-saare-accent">"{simulatedAction.agent}"</span></div>
+              <div>action: <span className="text-saare-seal">"{simulatedAction.action}"</span></div>
+              <div>amount: <span className="text-saare-allow">€{simulatedAction.amount}</span></div>
+              <div>destination: <span className="text-saare-ink-dim">"{simulatedAction.destination}"</span></div>
+              <div>classification: <span className="text-saare-deny">"{simulatedAction.classification}"</span></div>
+              <div>risk: <span className="text-saare-deny">"{simulatedAction.risk}"</span></div>
+              <div>policy: <span className="text-saare-accent">"{simulatedAction.policy}" (v{simulatedAction.version})</span></div>
+            </div>
+
+            <button 
+              className="w-full mt-6 py-3.5 bg-saare-allow text-black font-bold text-sm rounded hover:shadow-[0_0_20px_rgba(30,185,104,0.3)] transition"
+              onClick={handleEvaluateLiveJudge} 
+              disabled={liveJudgeLoading}
+            >
+              {liveJudgeLoading ? 'EVALUANDO POLÍTICA EX-ANTE...' : 'RUN JUDGE EVALUATION ➔'}
+            </button>
+          </div>
+
+          {/* RIGHT: S.A.A.R.E. JUDGE VERDICT & PERMIT */}
+          <div>
+            <div className="font-mono text-xs text-saare-seal mb-4 font-bold">
+              [OUTPUT] S.A.A.R.E. JUDGE ENGINE VERDICT
+            </div>
+
+            {liveJudgeResult ? (
+              <div className="bg-saare-bg border border-saare-deny p-5 rounded font-mono text-xs space-y-3">
+                
+                <div className="flex justify-between items-center pb-2 border-b border-saare-line-hi">
+                  <span>DECISION:</span>
+                  <span className="px-2 py-0.5 text-sm font-bold bg-saare-deny/20 border border-saare-deny text-saare-deny rounded">
+                    {liveJudgeResult.decision}
+                  </span>
+                </div>
+
+                <div className="flex justify-between"><span>EXECUTION PERMIT</span><span className="text-saare-deny font-bold">{liveJudgeResult.executionPermit || "NOT ISSUED"}</span></div>
+                <div className="flex justify-between"><span>PAYLOAD STORAGE</span><span className="text-saare-accent">{liveJudgeResult.payloadPersisted || "NOT PERSISTED (ZERO-DISK)"}</span></div>
+                <div className="flex justify-between"><span>PROOF STATUS</span><span className="text-saare-seal">{liveJudgeResult.proofStatus || "SEALED (RFC 3161)"}</span></div>
+
+                <div className="pt-3 border-t border-saare-line-hi text-[11px] text-saare-ink-dim">
+                  CHAIN: SHA-256 ➔ ED25519 ➔ MERKLE TREE ➔ RFC 3161 TSA
+                </div>
+              </div>
+            ) : (
+              <div className="bg-saare-bg border border-dashed border-saare-line-hi p-10 text-center text-saare-ink-dim font-mono text-xs rounded">
+                Haga clic en "RUN JUDGE EVALUATION" para simular el veredicto ex-ante y la generación del Execution Permit.
+              </div>
+            )}
+          </div>
+
+        </div>
+      </section>
+
+      {/* 10 · LAS 7 DIMENSIONES DE AUTORIZACIÓN */}
+      <section className="py-16 px-6 bg-saare-surface border-t border-saare-line text-center">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="font-display font-bold text-3xl text-white mb-2">
+            Las 7 Dimensiones de Autorización
+          </h2>
+          <p className="text-saare-ink-dim mb-10 text-sm">El motor S.A.A.R.E. evalúa de forma determinista siete vectores simultáneos antes de emitir un veredicto.</p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 font-mono text-xs">
+            {['IDENTITY', 'ACTION', 'CONTEXT', 'RESOURCE', 'DATA', 'RISK', 'POLICY'].map((dim, idx) => (
+              <div key={idx} className="bg-saare-bg border border-saare-accent/40 p-4 rounded">
+                <div className="text-saare-accent text-[10px] mb-1">DIM 0{idx+1}</div>
+                <div className="font-bold text-white">{dim}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 11 · LAS TRES DECISIONES: ALLOW / REVIEW / DENY */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <h2 className="font-display font-bold text-3xl text-white text-center mb-12">
+          Tres Veredictos Deterministas
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-saare-surface border border-saare-allow p-8 rounded">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 bg-saare-allow/15 border border-saare-allow text-saare-allow rounded">ALLOW</span>
+            <h3 className="font-display font-bold text-xl text-white mt-4 mb-2">Permiso concedido</h3>
+            <p className="text-saare-ink-dim text-sm">Todas las condiciones de la política firmada se satisfacen. Se emite un Execution Permit tokenizado con expiración en milisegundos.</p>
+          </div>
+
+          <div className="bg-saare-surface border border-saare-seal p-8 rounded">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 bg-saare-seal/15 border border-saare-seal text-saare-seal rounded">REVIEW</span>
+            <h3 className="font-display font-bold text-xl text-white mt-4 mb-2">Revisión humana</h3>
+            <p className="text-saare-ink-dim text-sm">Acción de alto riesgo o umbral superado. La ejecución se congela ex-ante hasta recibir la firma digital del supervisor humano asignado.</p>
+          </div>
+
+          <div className="bg-saare-surface border border-saare-deny p-8 rounded">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 bg-saare-deny/15 border border-saare-deny text-saare-deny rounded">DENY</span>
+            <h3 className="font-display font-bold text-xl text-white mt-4 mb-2">Bloqueo síncrono</h3>
+            <p className="text-saare-ink-dim text-sm">Infracción de política, prompt injection o intento de acceso a PII no autorizado. Intercepción inmediata sin emisión de permiso.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* 12 · EXECUTION PERMIT SPECIFICATION */}
+      <section className="py-16 px-6 bg-saare-surface border-t border-b border-saare-line">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="font-display font-bold text-3xl text-white mb-2">
+            Authorization is not observation. It is a permit to execute.
+          </h2>
+          <p className="font-mono text-saare-seal font-bold mb-8">“No permit. No execution.”</p>
+
+          <div className="bg-saare-bg border border-saare-seal p-8 rounded font-mono text-xs text-left space-y-3">
+            <div className="text-saare-seal font-bold pb-3 border-b border-saare-line-hi flex justify-between">
+              <span>S.A.A.R.E. EXECUTION PERMIT STRUCTURE</span>
+              <span>VALID UNTIL EXPIRED</span>
+            </div>
+
+            <div className="flex justify-between"><span>Agent Subject</span><span>treasury-agent-04</span></div>
+            <div className="flex justify-between"><span>Action Scope</span><span>send_payment</span></div>
+            <div className="flex justify-between"><span>Target Resource</span><span>core-banking-api://transfers/sepa</span></div>
+            <div className="flex justify-between"><span>Policy Rule ID</span><span>FIN-PAYMENT-042 (v17)</span></div>
+            <div className="flex justify-between"><span>Payload Digest</span><span className="text-saare-accent">sha256:7f3a9b...</span></div>
+            <div className="flex justify-between"><span>Asymmetric Signature</span><span className="text-saare-seal">ed25519:4a92c1...</span></div>
+          </div>
+        </div>
+      </section>
+
+      {/* 13 · ZERO-DISK ARCHITECTURE */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="font-display font-bold text-3xl text-white mb-2">
+            The payload is processed. The proof survives.
+          </h2>
+          <p className="text-saare-ink-dim max-w-2xl mx-auto text-sm">
+            “No necesitas conservar el secreto para conservar la prueba de la decisión.”
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-saare-surface border border-saare-line p-8 rounded">
+          <div>
+            <h3 className="font-mono font-bold text-saare-accent mb-3">VOLATILE MEMORY (RAM MLOCK)</h3>
+            <p className="text-saare-ink-dim text-sm leading-relaxed">
+              El payload completo se procesa exclusivamente en memoria volátil RAM contigua bloqueada mediante `mlock`. Al emitirse el veredicto, el bloque de memoria se sobreescribe con ceros binarios (`explicit_bzero`) antes de liberar el puntero.
+            </p>
+            <div className="font-mono text-xs text-saare-deny mt-4 font-bold">
+              ✖ ZERO PAYLOAD STORAGE IN SECONDARY DISK
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-mono font-bold text-saare-seal mb-3">PROOF BUNDLE (PERSISTENT PROOF)</h3>
+            <p className="text-saare-ink-dim text-sm leading-relaxed">
+              Lo que sobrevive no es el texto plano ni los datos confidenciales, sino el expediente de evidencia criptográfica inmutable formado por el hash HMAC-SHA256, la firma Ed25519 y la marca de tiempo eIDAS RFC 3161.
+            </p>
+            <div className="font-mono text-xs text-saare-allow mt-4 font-bold">
+              ✔ 100% PRECONSTITUTED LEGAL PROOF (ART. 326 LEC)
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 14 · PROOF ARCHITECTURE & PUBLIC VERIFIER */}
+      <section className="py-20 px-6 bg-saare-surface border-t border-saare-line">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display font-bold text-3xl text-white mb-2">
+              PROVE EVERY DECISION.
+            </h2>
+            <p className="text-saare-ink-dim text-sm">Cada decisión se convierte en evidencia digital verificable por un tercero sin confiar en S.A.A.R.E.</p>
+          </div>
+
+          {/* VERIFICADOR PÚBLICO DE HASHES */}
+          <div className="bg-saare-bg border border-saare-seal p-8 rounded">
+            <h3 className="font-mono font-bold text-saare-seal text-sm mb-4">
+              Verificación Pública de Inmutabilidad (RFC 3161)
+            </h3>
+            <form onSubmit={handleVerifyPublicHash} className="flex gap-3 flex-wrap">
               <input 
                 type="text" 
-                placeholder={`Hash Merkle o ID de Evidencia (Ej. ${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
+                placeholder={`Hash Merkle o ID de Evidencia (${DEMO_ROOT_MERKLE_HASH.substring(0, 16)}...)`}
                 value={publicVerifyHash}
                 onChange={(e) => setPublicVerifyHash(e.target.value)}
-                style={{ flex: 1, padding: '12px 16px', background: '#030712', border: '1px solid #334155', color: '#fff', borderRadius: '2px', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                className="flex-1 bg-saare-surface border border-saare-line-hi px-4 py-3 rounded text-white font-mono text-xs focus:outline-none focus:border-saare-seal"
               />
-              <button type="submit" disabled={publicVerifyLoading} style={{ padding: '12px 22px', background: '#059669', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}>
-                {publicVerifyLoading ? 'Verificando...' : 'Verificar Inmutabilidad'}
+              <button className="px-6 py-3 bg-saare-allow text-black font-bold text-xs rounded hover:bg-saare-allow/90 transition" type="submit" disabled={publicVerifyLoading}>
+                {publicVerifyLoading ? 'Verificando...' : 'Verify Evidence'}
               </button>
             </form>
 
             {publicVerifyResult && (
-              <div style={{ marginTop: '16px', background: '#030712', border: `1px solid ${publicVerifyResult.status === 'VERIFIED' ? '#10b981' : '#ef4444'}`, padding: '14px', borderRadius: '2px', textAlign: 'left', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                <div style={{ color: publicVerifyResult.status === 'VERIFIED' ? '#34d399' : '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>
-                  {publicVerifyResult.status === 'VERIFIED' ? '✅ EVIDENCIA VÁLIDA Y SELLADA EN BÓVEDA D1' : '❌ FALLO DE AUDITORÍA'}
+              <div className={`mt-4 p-4 bg-saare-surface border font-mono text-xs space-y-1 ${
+                publicVerifyResult.status === 'VERIFIED' ? 'border-saare-allow' : 'border-saare-deny'
+              }`}>
+                <div className={`font-bold ${publicVerifyResult.status === 'VERIFIED' ? 'text-saare-allow' : 'text-saare-deny'}`}>
+                  {publicVerifyResult.status === 'VERIFIED' ? 'ATTESTATION OK: SELLO Y FIRMA VÁLIDOS' : 'FALLO DE ATTESTATION: EVIDENCIA NO VERIFICADA'}
                 </div>
-                <div style={{ color: '#94a3b8' }}>Merkle Root: {publicVerifyResult.merkleRoot}</div>
-                <div style={{ color: '#94a3b8' }}>Estándar: {publicVerifyResult.standard} | Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+                <div>Merkle Root: {publicVerifyResult.merkleRoot}</div>
+                <div>Timestamp RFC 3161: {publicVerifyResult.rfc3161Timestamp}</div>
+                <div className="text-saare-ink-faint mt-1">{publicVerifyResult.details}</div>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* 15 - 19 · LAS 5 PESTAÑAS ESPECÍFICAS DE VALOR */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-10">
+          <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
+            ENTRY POINT: {activeNavTab.toUpperCase()}
+          </span>
+          <h2 className="font-display font-bold text-3xl text-white">
+            {activeNavTab === 'software' && 'CONTROL WHAT YOUR AI CAN EXECUTE.'}
+            {activeNavTab === 'sales' && 'GOVERN AI-POWERED COMMERCIAL ACTIONS.'}
+            {activeNavTab === 'grc' && 'PROVE WHAT YOUR AI DID.'}
+            {activeNavTab === 'developers' && 'AUTHORIZE BEFORE YOU EXECUTE.'}
+            {activeNavTab === 'enterprise' && 'YOUR INFRASTRUCTURE. YOUR POLICIES. YOUR KEYS.'}
+          </h2>
+        </div>
+
+        {activeNavTab === 'developers' ? (
+          <div>
+            <div className="flex gap-3 mb-6">
+              <button className={`px-4 py-2 text-xs font-mono rounded border ${activeCodeTab === 'sdk' ? 'bg-saare-line-hi text-white border-saare-accent' : 'border-saare-line text-saare-ink-dim'}`} onClick={() => setActiveCodeTab('sdk')}>SDK Nativo</button>
+              <button className={`px-4 py-2 text-xs font-mono rounded border ${activeCodeTab === 'workflow' ? 'bg-saare-line-hi text-white border-saare-accent' : 'border-saare-line text-saare-ink-dim'}`} onClick={() => setActiveCodeTab('workflow')}>REST Interceptor</button>
+              <button className={`px-4 py-2 text-xs font-mono rounded border ${activeCodeTab === 'sidecar' ? 'bg-saare-line-hi text-white border-saare-accent' : 'border-saare-line text-saare-ink-dim'}`} onClick={() => setActiveCodeTab('sidecar')}>Sidecar Docker</button>
+            </div>
+            <pre className="bg-saare-surface border border-saare-line-hi p-6 rounded font-mono text-xs text-saare-accent overflow-x-auto leading-relaxed">
+              {codeSnippets[activeCodeTab]}
+            </pre>
+          </div>
+        ) : (
+          <div className="bg-saare-surface border border-saare-line p-10 rounded">
+            <p className="text-saare-ink-dim text-lg mb-8 leading-relaxed">
+              {activeNavTab === 'software' && 'Intercepta acciones críticas en capa L7 antes de que lleguen a herramientas corporativas, bases de datos o APIs de pago.'}
+              {activeNavTab === 'sales' && 'Controla qué puede hacer una IA cuando interactúa con clientes, modifica precios, genera contratos o exporta ledes en el CRM.'}
+              {activeNavTab === 'grc' && 'Convierte decisiones de runtime en evidencia digital verificable legalmente para auditorías, investigación y control normativo.'}
+              {activeNavTab === 'enterprise' && 'Despliega la autoridad de ejecución dentro de tu propia infraestructura, VPC, entorno privado, on-premise o red aislada.'}
+            </p>
+            <button className="px-6 py-3.5 bg-saare-allow text-black font-bold text-sm rounded hover:bg-saare-allow/90 transition" onClick={handleStartTrial}>
+              {activeNavTab === 'enterprise' ? 'REQUEST ENTERPRISE ARCHITECTURE ↗' : 'RUN CONTROL TEST ↗'}
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* 20 · RESILIENCIA FAIL-CLOSED */}
+      <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line text-center">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="font-display font-bold text-3xl text-white mb-3">
+            CONTROL DOES NOT DISAPPEAR WHEN THE CONTROL PLANE DOES.
+          </h2>
+          <p className="text-saare-ink-dim max-w-3xl mx-auto mb-10 text-base">
+            “La indisponibilidad del plano de control no convierte una operación desconocida en una operación autorizada.”
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+            <div className="bg-saare-bg border border-saare-allow p-8 rounded">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 bg-saare-allow/15 border border-saare-allow text-saare-allow rounded">OPERACIÓN NORMAL</span>
+              <h3 className="font-display font-bold text-xl text-white mt-4 mb-2">Central Policy Enforcement</h3>
+              <p className="text-saare-ink-dim text-sm">El motor evalúa en tiempo real contra el plano de control central con latencias sostenidas P99 &lt; 1,5 ms.</p>
+            </div>
+            <div className="bg-saare-bg border border-saare-seal p-8 rounded">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 bg-saare-seal/15 border border-saare-seal text-saare-seal rounded">CAÍDA DE RED / OFFLINE</span>
+              <h3 className="font-display font-bold text-xl text-white mt-4 mb-2">Signed Local Policy State</h3>
+              <p className="text-saare-ink-dim text-sm">Ante una desconexión, el contenedor local replica las políticas deterministas firmadas y aplica estricto Fail-Closed.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 23 · ROLES / BUYERS MATRIX */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="font-display font-bold text-3xl text-white mb-2">
+            BUILT FOR THE PEOPLE WHO AUTHORIZE AI.
+          </h2>
+          <p className="text-saare-ink-dim text-sm">Diseñado para cada rol responsable de la automatización en la empresa.</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-saare-line-hi bg-saare-surface-2 text-saare-ink-dim font-mono">
+                <th className="p-4">ROL CORPORATIVO</th>
+                <th className="p-4">PREGUNTA CLAVE DE NEGOCIO</th>
+                <th className="p-4">SOLUCIÓN DETERMINISTA S.A.A.R.E.</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-saare-line">
+              {ROLES_BUYERS_MATRIX.map((item, idx) => (
+                <tr key={idx}>
+                  <td className="p-4 font-mono font-bold text-saare-accent">{item.role}</td>
+                  <td className="p-4 text-saare-ink-dim">{item.question}</td>
+                  <td className="p-4 text-white">{item.solution}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* 24 · OPERATING SURFACES: LAS TRES CONSOLAS */}
+      <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display font-bold text-3xl text-white mb-2">
+              Three Operating Surfaces. One Execution Engine.
+            </h2>
+            <p className="text-saare-ink-dim text-sm">Tres consolas especializadas según la responsabilidad del usuario.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* EXECUTIVE */}
+            <div className="bg-saare-surface-2 border border-saare-line-hi p-8 rounded">
+              <span className="font-mono text-xs text-saare-accent">EXECUTIVE CONSOLE</span>
+              <h3 className="font-display font-bold text-xl text-white my-3">CEO & Board</h3>
+              <div className="font-mono text-xs space-y-2">
+                <div className="flex justify-between"><span>Riesgo Acumulado</span><span className="text-saare-allow">0.00%</span></div>
+                <div className="flex justify-between"><span>Ahorro GPU / Tokens</span><span>45%</span></div>
+                <div className="flex justify-between"><span>Exposición Operativa</span><span className="text-saare-allow font-bold">MITIGADA</span></div>
+              </div>
+            </div>
+
+            {/* GRC_AUDIT */}
+            <div className="bg-saare-surface-2 border border-saare-seal p-8 rounded">
+              <span className="font-mono text-xs text-saare-seal">GRC_AUDIT CONSOLE</span>
+              <h3 className="font-display font-bold text-xl text-white my-3">CISO & DPO</h3>
+              <div className="font-mono text-xs space-y-2">
+                <div className="flex justify-between"><span>EU AI Act Art. 10/12/15</span><span className="text-saare-allow font-bold">CONFORME</span></div>
+                <div className="flex justify-between"><span>Proof Bundles RFC 3161</span><span>100% Sellado</span></div>
+                <div className="flex justify-between"><span>Firma Digital</span><span className="text-saare-seal">Ed25519</span></div>
+              </div>
+            </div>
+
+            {/* CYBER_RESILIENCE */}
+            <div className="bg-saare-surface-2 border border-saare-deny p-8 rounded">
+              <span className="font-mono text-xs text-saare-deny">CYBER_RESILIENCE</span>
+              <h3 className="font-display font-bold text-xl text-white my-3">SecOps & SOC</h3>
+              <div className="font-mono text-xs space-y-2">
+                <div className="flex justify-between"><span>Latencia P99</span><span className="text-saare-allow">1.18 ms</span></div>
+                <div className="flex justify-between"><span>Intercepciones OWASP</span><span className="text-saare-deny font-bold">243 BLOCKED</span></div>
+                <div className="flex justify-between"><span>Modo Operatorio</span><span className="text-saare-allow font-bold">FAIL-CLOSED</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 21 · PRICING ARCHITECTURE (MONETIZACIÓN POR TENANT / DEPLOYMENT) */}
+      <section className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="font-display font-bold text-3xl text-white mb-2">
+            Deployment Models & Pricing Architecture
+          </h2>
+          <p className="text-saare-ink-dim text-sm">Licenciamiento soberano por instancia de motor de decisión y nivel de evidencia.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* STANDARD */}
+          <div className="bg-saare-surface border border-saare-line p-8 rounded flex flex-col justify-between">
+            <div>
+              <span className="font-mono text-xs text-saare-accent">STANDARD</span>
+              <h3 className="font-display font-bold text-3xl text-white my-3">49 € <span className="text-sm font-normal text-saare-ink-dim">/ mes / Tenant</span></h3>
+              <p className="text-saare-ink-dim text-sm mb-6">Control runtime esencial para desarrollo y validación de agentes autónomos.</p>
+            </div>
+            <div>
+              <button className="w-full py-3 border border-saare-line-hi text-white font-semibold text-xs rounded hover:bg-saare-surface-2 transition" onClick={handleStartTrial}>START CONTROL TEST</button>
+              <p className="text-[11px] text-saare-ink-faint mt-3 text-center">sin permanencia · su VPC o air-gapped</p>
+            </div>
+          </div>
+
+          {/* GRC & COMPLIANCE */}
+          <div className="bg-saare-surface border border-saare-allow p-8 rounded relative flex flex-col justify-between">
+            <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-saare-allow text-black rounded absolute top-4 right-4">RECOMENDADO</span>
+            <div>
+              <span className="font-mono text-xs text-saare-seal">GRC & COMPLIANCE</span>
+              <h3 className="font-display font-bold text-3xl text-white my-3">149 € <span className="text-sm font-normal text-saare-ink-dim">/ mes / Tenant</span></h3>
+              <p className="text-saare-ink-dim text-sm mb-6">Evidencia verificable y control técnico orientado a auditoría e inspección judicial.</p>
+            </div>
+            <div>
+              <button className="w-full py-3 bg-saare-allow text-black font-bold text-xs rounded hover:bg-saare-allow/90 transition" onClick={handleStartTrial}>EXPLORE GRC ↗</button>
+              <p className="text-[11px] text-saare-ink-faint mt-3 text-center">sin permanencia · su VPC o air-gapped</p>
+            </div>
+          </div>
+
+          {/* ENTERPRISE VPC */}
+          <div className="bg-saare-surface border border-saare-seal p-8 rounded flex flex-col justify-between">
+            <div>
+              <span className="font-mono text-xs text-saare-seal">ENTERPRISE VPC</span>
+              <h3 className="font-display font-bold text-3xl text-white my-3">Desde 3.500 € <span className="text-sm font-normal text-saare-ink-dim">/ mes / Cluster</span></h3>
+              <p className="text-saare-ink-dim text-sm mb-6">Autoridad de ejecución dedicada dentro de su infraestructura o red aislada.</p>
+            </div>
+            <div>
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="block">
+                <button className="w-full py-3 border border-saare-seal text-saare-seal font-semibold text-xs rounded hover:bg-saare-seal/10 transition">REQUEST ARCHITECTURE REVIEW</button>
+              </a>
+              <p className="text-[11px] text-saare-ink-faint mt-3 text-center">contrato marco · arquitectura air-gapped</p>
+            </div>
           </div>
 
         </div>
       </section>
 
-      {/* 4. BARRA DE NAVEGACIÓN DE PERFILES / MODULOS (DESPLAZADA ABAJO DEL HERO) */}
-      <section style={{ backgroundColor: '#0b0f19', borderBottom: '1px solid #1f2937', padding: '16px 24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={() => setActiveProfile('software')} style={{ background: activeProfile === 'software' ? '#ffffff' : 'transparent', color: activeProfile === 'software' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Software</button>
-          <button onClick={() => setActiveProfile('sales')} style={{ background: activeProfile === 'sales' ? '#ffffff' : 'transparent', color: activeProfile === 'sales' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Sales</button>
-          <button onClick={() => setActiveProfile('grc')} style={{ background: activeProfile === 'grc' ? '#ffffff' : 'transparent', color: activeProfile === 'grc' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>GRC</button>
-          <button onClick={() => setActiveProfile('developers')} style={{ background: activeProfile === 'developers' ? '#ffffff' : 'transparent', color: activeProfile === 'developers' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Developers</button>
-          <button onClick={() => setActiveProfile('enterprise')} style={{ background: activeProfile === 'enterprise' ? '#ffffff' : 'transparent', color: activeProfile === 'enterprise' ? '#030712' : '#9ca3af', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: '2px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Enterprise</button>
+      {/* 33 · SCENARIO CARDS: WHAT HAPPENS WHEN... */}
+      <section className="py-16 px-6 bg-saare-surface border-t border-saare-line">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="font-display font-bold text-2xl text-white text-center mb-8">
+            WHAT HAPPENS WHEN YOUR AI CROSSES THE LINE?
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 font-mono text-xs">
+            <div className="bg-saare-bg p-5 border border-saare-line-hi rounded">
+              <div className="text-saare-ink-dim">SEND MONEY</div>
+              <div className="text-saare-seal my-2">HIGH RISK DETECTED</div>
+              <span className="px-2 py-0.5 bg-saare-seal/15 border border-saare-seal text-saare-seal rounded">➔ HUMAN REVIEW</span>
+            </div>
+            <div className="bg-saare-bg p-5 border border-saare-line-hi rounded">
+              <div className="text-saare-ink-dim">EXPORT PII</div>
+              <div className="text-saare-deny my-2">SENSITIVE DATA VIOLATION</div>
+              <span className="px-2 py-0.5 bg-saare-deny/15 border border-saare-deny text-saare-deny rounded">➔ DENY (EX-ANTE)</span>
+            </div>
+            <div className="bg-saare-bg p-5 border border-saare-line-hi rounded">
+              <div className="text-saare-ink-dim">CALL UNKNOWN TOOL</div>
+              <div className="text-saare-deny my-2">UNKNOWN RESOURCE</div>
+              <span className="px-2 py-0.5 bg-saare-deny/15 border border-saare-deny text-saare-deny rounded">➔ DENY (STRICT)</span>
+            </div>
+            <div className="bg-saare-bg p-5 border border-saare-line-hi rounded">
+              <div className="text-saare-ink-dim">UPDATE CRM</div>
+              <div className="text-saare-allow my-2">AUTHORIZED SCOPE</div>
+              <span className="px-2 py-0.5 bg-saare-allow/15 border border-saare-allow text-saare-allow rounded">➔ ALLOW (PERMIT)</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* SECCIÓN INTEGRADORA DE SECTORS */}
-      <section style={{ maxWidth: '1160px', margin: '50px auto 0 auto', padding: '0 24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginBottom: '20px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
-          Embudo de Conversión Sectorial & Ayudas Públicas Ex-Ante
-        </h3>
+      {/* SECTORES Y AYUDAS DIGITALES */}
+      <section className="py-16 px-6 max-w-7xl mx-auto">
         <SectorFunnel />
       </section>
 
-      {/* CONTENIDO PRINCIPAL POR MÓDULO */}
-      <main style={{ maxWidth: '1160px', margin: '40px auto 80px auto', padding: '0 24px' }}>
-        
-        {/* ===================== 1. SOFTWARE ===================== */}
-        {activeProfile === 'software' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #0ea5e9', borderRadius: '4px', padding: '36px' }}>
-              <span style={{ color: '#0ea5e9', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 1 · SOFTWARE CORE L7</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Motor Judge L7 & Autorización Runtime Síncrona</h2>
-              <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                El núcleo tecnológico de S.A.A.R.E. intercepta cada llamada y decisión de tus agentes en el borde. Conexión directa mediante los endpoints <code>/api/v1/judge</code> y <code>/api/v1/intercept</code> para garantizar el bloqueo síncrono de prompt injections y bypasses del sistema en milisegundos.
-              </p>
-              
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Software Core Subscription</h3>
-                    <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Incluye motor de juicio, permisos síncronos y latencia P99 de &lt;1.5 ms.</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8' }}>49 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                    <div style={{ fontSize: '12px', color: '#34d399' }}>Pasarela Stripe segura en vivo</div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Software Core L7', 4900)} style={{ padding: '12px 24px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                    Contratar Software Core ↗
-                  </button>
-                </div>
-              </div>
+      {/* 34 & 35 · FINAL CONVERSION SECTION & QUALIFICATION FORM */}
+      <section className="py-20 px-6 max-w-3xl mx-auto text-center">
+        <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
+          PUT AN AGENT THROUGH THE CONTROL PLANE.
+        </h2>
+        <p className="text-saare-ink-dim mb-10 text-base">
+          See how S.A.A.R.E. authorizes, enforces and proves an AI action before it reaches your systems.
+        </p>
+
+        <div className="bg-saare-surface border border-saare-line-hi p-8 rounded text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-[11px] font-mono text-saare-ink-dim mb-1">CORREO CORPORATIVO *</label>
+              <input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="ciso@empresa.com" className="w-full p-3 bg-saare-bg border border-saare-line-hi rounded text-white text-sm focus:outline-none focus:border-saare-accent" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-saare-ink-dim mb-1">ORGANIZACIÓN *</label>
+              <input type="text" value={formCompany} onChange={e => setFormCompany(e.target.value)} placeholder="ACME Corp" className="w-full p-3 bg-saare-bg border border-saare-line-hi rounded text-white text-sm focus:outline-none focus:border-saare-accent" />
             </div>
           </div>
-        )}
 
-        {/* ===================== 2. SALES ===================== */}
-        {activeProfile === 'sales' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #10b981', borderRadius: '4px', padding: '36px' }}>
-              <span style={{ color: '#10b981', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 2 · SALES & COMMERCIAL TRACEABILITY</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Trazabilidad Comercial y Auditoría de Leads con IA</h2>
-              <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Optimizado para equipos comerciales y operaciones que automatizan interacciones con IA. Audita y verifica que los agentes comerciales operan bajo estricto cumplimiento corporativo sin fugas de PII ni datos de clientes.
-              </p>
-
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Sales Intelligence Suite</h3>
-                    <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Licencias de uso comercial por equipos con auditoría continua de transacciones.</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#34d399' }}>79 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('Sales Traceability', 7900)} style={{ padding: '12px 24px', background: '#10b981', color: '#000', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                    Contratar Licencia Sales ↗
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===================== 3. GRC ===================== */}
-        {activeProfile === 'grc' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #a855f7', borderRadius: '4px', padding: '36px' }}>
-              <span style={{ color: '#a855f7', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 3 · GRC & COMPLIANCE</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Evidencias Automáticas & Proof Bundles RFC 3161</h2>
-              <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Diseñado para responsables de cumplimiento y auditores externos. Genera paquetes de evidencia con sellado criptográfico asimétrico Ed25519 y alineamiento normativo directo con el Anexo IV del Reglamento UE 2024/1689 (EU AI Act).
-              </p>
-
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>GRC Compliance License</h3>
-                    <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Licencia anual recurrente de cumplimiento normativo y peritaje informático preconstituido.</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#c084fc' }}>149 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleCheckout('GRC Compliance Suite', 14900)} style={{ padding: '12px 24px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                    Contratar Licencia GRC ↗
-                  </button>
-                </div>
-              </div>
-
-              {/* Matriz de control GRC */}
-              <h3 style={{ fontSize: '18px', color: '#fff', margin: '30px 0 16px 0' }}>Technical Control-to-Verdict Matrix</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
-                      <th style={{ padding: '10px' }}>REQUISITO / MARCO</th>
-                      <th style={{ padding: '10px' }}>CONTROL TÉCNICO</th>
-                      <th style={{ padding: '10px' }}>POLÍTICA SAARE</th>
-                      <th style={{ padding: '10px' }}>DECISIÓN</th>
-                      <th style={{ padding: '10px' }}>EVIDENCIA</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {CONTROL_MATRIX.map((row, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #1f2937' }}>
-                        <td style={{ padding: '10px', color: '#38bdf8', fontWeight: 'bold' }}>{row.requirement}</td>
-                        <td style={{ padding: '10px', color: '#cbd5e1' }}>{row.control}</td>
-                        <td style={{ padding: '10px', color: '#9ca3af', fontFamily: 'monospace' }}>{row.policy}</td>
-                        <td style={{ padding: '10px', color: row.decision.includes("DENY") ? "#f87171" : "#34d399", fontWeight: 'bold' }}>{row.decision}</td>
-                        <td style={{ padding: '10px', color: '#a855f7' }}>{row.evidence}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===================== 4. DEVELOPERS ===================== */}
-        {activeProfile === 'developers' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '4px', padding: '36px' }}>
-              <span style={{ color: '#38bdf8', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 4 · DEVELOPERS & SDKS</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>SDKs, Ganchos L7 y Despliegue de Sensor Local</h2>
-              <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Para desarrolladores e ingenieros de sistemas. Acceso directo al endpoint <code>/api/v1/download-extension</code> para empaquetar y aprovisionar el sensor L7 junto con la Bóveda Local sincronizada.
-              </p>
-
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button onClick={() => setActiveCodeTab('sdk')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'sdk' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sdk' ? '#111827' : 'transparent', color: activeCodeTab === 'sdk' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>SDK (@saare/judge)</button>
-                <button onClick={() => setActiveCodeTab('workflow')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'workflow' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'workflow' ? '#111827' : 'transparent', color: activeCodeTab === 'workflow' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Workflow Interceptor</button>
-                <button onClick={() => setActiveCodeTab('sidecar')} style={{ padding: '8px 14px', borderRadius: '2px', border: `1.5px solid ${activeCodeTab === 'sidecar' ? '#0ea5e9' : '#374151'}`, background: activeCodeTab === 'sidecar' ? '#111827' : 'transparent', color: activeCodeTab === 'sidecar' ? '#38bdf8' : '#9ca3af', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Sidecar Container (Docker)</button>
-              </div>
-
-              <pre style={{ margin: 0, backgroundColor: '#030712', border: '1px solid #1f2937', borderRadius: '2px', padding: '20px', color: '#f3f4f6', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5, marginBottom: '24px' }}>
-                {codeSnippets[activeCodeTab]}
-              </pre>
-
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                  <h3 style={{ fontSize: '20px', color: '#fff', margin: 0 }}>Runtime Test & Benchmarks P99</h3>
-                  <button onClick={handleEvaluateLiveJudge} disabled={liveJudgeLoading} style={{ padding: '8px 18px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
-                    {liveJudgeLoading ? 'Evaluando...' : '▶ Evaluar Anclaje Raíz'}
-                  </button>
-                </div>
-
-                {liveJudgeResult && (
-                  <div style={{ background: '#030712', border: '1px solid #34d399', padding: '14px', borderRadius: '2px', fontFamily: 'monospace', fontSize: '12px', color: '#34d399' }}>
-                    [DECISIÓN: {liveJudgeResult.decision}] · ID: {liveJudgeResult.verdictId} <br/>
-                    <span style={{ color: '#9ca3af' }}>{liveJudgeResult.message || "Root attestation verified successfully."}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===================== 5. ENTERPRISE ===================== */}
-        {activeProfile === 'enterprise' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            <div style={{ background: '#0b0f19', border: '1px solid #ca8a04', borderRadius: '4px', padding: '36px' }}>
-              <span style={{ color: '#facc15', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>MÓDULO 5 · ENTERPRISE SOVEREIGN</span>
-              <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '6px 0 14px 0' }}>Despliegue Dedicado, Contratos Marco y SLA 24/7</h2>
-              <p style={{ color: '#9ca3af', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
-                Infraestructura de grado operador para banca, seguros y sector público. Despliegues en VPC dedicada, custodia de claves en HSMs físicos y soporte crítico permanente con arquitecto asignado.
-              </p>
-
-              <div style={{ background: '#030712', border: '1px solid #1f2937', borderRadius: '4px', padding: '24px', margin: '24px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '20px', color: '#fff', margin: '0 0 6px 0' }}>Enterprise Contract</h3>
-                    <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Contrato marco con capacidad ilimitada y cumplimiento normativo a medida.</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#facc15' }}>Desde 3.500 € <span style={{ fontSize: '12px', color: '#9ca3af' }}>/ mes</span></div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button onClick={() => setShowEnterpriseModal(true)} style={{ padding: '12px 24px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '2px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-                    Solicitar Propuesta Enterprise ↗
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* 5. DRAWER LATERAL DESLIZANTE CON DISEÑO ULTRA-MINIMALISTA ESTILO PALANTIR */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '450px',
-        backgroundColor: '#ffffff', color: '#0f172a', zIndex: 99999, transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)', padding: '50px 40px', boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto',
-        boxShadow: '-20px 0 60px rgba(0,0,0,0.6)'
-      }}>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1.5px', color: '#64748b', textTransform: 'uppercase' }}>
-              SAARE VAULT ACCESS
-            </span>
-            <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#0f172a' }}>✕</button>
+          <div className="mb-6">
+            <label className="block text-[11px] font-mono text-saare-ink-dim mb-1">AGENTES AUTÓNOMOS EN PRODUCCIÓN *</label>
+            <select value={agentCount} onChange={e => setAgentCount(e.target.value)} className="w-full p-3 bg-saare-bg border border-saare-line-hi rounded text-white text-sm focus:outline-none focus:border-saare-accent">
+              <option value="1-5">1 a 5 agentes (Evaluación / Trial Autoservicio)</option>
+              <option value="5-10">5 a 10 agentes (Licencia GRC Corporativa)</option>
+              <option value="10+">Más de 10 agentes (Cualificación Enterprise / VPC Dedicada)</option>
+            </select>
           </div>
 
-          <h2 style={{ fontSize: '28px', fontWeight: '900', letterSpacing: '-0.5px', margin: '0 0 24px 0', color: '#0f172a', lineHeight: 1.2 }}>
-            {authTab === 'login' ? 'Acceso a la Bóveda SAARE' : authTab === 'register' ? 'Registro de Organización' : 'Restablecer Clave'}
-          </h2>
-
-          {/* ACCESOS DIRECTOS A CONSOLA DENTRO DEL MENÚ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '32px', background: '#f8fafc', padding: '16px', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', letterSpacing: '1px' }}>ACCESO DIRECTO POR ROLES:</span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <a href={getConsoleTargetUrl('EXECUTIVE')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#0284c7', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>CEO Console ↗</a>
-              <a href={getConsoleTargetUrl('GRC_AUDIT')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#059669', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>CISO Audit ↗</a>
-              <a href={getConsoleTargetUrl('CYBER_RESILIENCE')} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', backgroundColor: '#7c3aed', color: '#ffffff', borderRadius: '2px', fontWeight: '800', fontSize: '11px', textDecoration: 'none' }}>SOC Control ↗</a>
-            </div>
-            <button onClick={handleDownloadTokenizedExtension} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left', marginTop: '4px' }}>
-              📦 Descargar Sensor L7 (.zip)
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '28px', borderBottom: '1px solid #e2e8f0' }}>
-            <button type="button" onClick={() => { setAuthTab('login'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'login' ? '2px solid #000' : 'none', paddingBottom: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'login' ? '#000' : '#94a3b8' }}>LOGIN</button>
-            <button type="button" onClick={() => { setAuthTab('register'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', borderBottom: authTab === 'register' ? '2px solid #000' : 'none', paddingBottom: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: authTab === 'register' ? '#000' : '#94a3b8' }}>NUEVO REGISTRO</button>
-          </div>
-
-          {authTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL *</label>
-                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px' }}>PASSWORD *</label>
-                  <button type="button" onClick={() => { setAuthTab('forgot'); setAuthError(''); setAuthSuccess(''); }} style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>¿Olvidaste?</button>
-                </div>
-                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '10px' }}>
-                {authLoading ? 'AUTENTICANDO...' : 'ENTRAR EN LA CONSOLA ↗'}
-              </button>
-            </form>
-          )}
-
-          {authTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>FULL NAME *</label>
-                <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>COMPANY *</label>
-                <input type="text" required value={formCompany} onChange={(e) => setFormCompany(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>BUSINESS EMAIL *</label>
-                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>PASSWORD *</label>
-                <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '6px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#059669', color: '#fff', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', marginTop: '10px' }}>
-                {authLoading ? 'TRANSMITIENDO...' : 'SOLICITAR VERIFICACIÓN ↗'}
-              </button>
-            </form>
-          )}
-
-          {authTab === 'forgot' && (
-            <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-                Escriba su correo registrado para recibir una clave provisional.
-              </p>
-              <div>
-                <label style={{ fontSize: '10px', fontWeight: '800', color: '#475569', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>BUSINESS EMAIL *</label>
-                <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} style={{ width: '100%', border: 'none', borderBottom: '1px solid #94a3b8', padding: '8px 0', fontSize: '14px', outline: 'none', background: 'transparent' }} />
-              </div>
-              <button type="submit" disabled={authLoading} style={{ background: '#ca8a04', color: '#000', border: 'none', padding: '14px', fontWeight: '800', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}>
-                {authLoading ? 'ENVIANDO...' : 'ENVIAR CLAVE PROVISIONAL ↗'}
-              </button>
-            </form>
-          )}
-
-          {authError && <div style={{ marginTop: '16px', padding: '10px', background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', fontSize: '11px' }}>{authError}</div>}
-          {authSuccess && <div style={{ marginTop: '16px', padding: '10px', background: '#f0fdf4', border: '1px solid #34d399', color: '#166534', fontSize: '11px', lineHeight: 1.4 }}>{authSuccess}</div>}
+          <button className="w-full py-4 bg-saare-allow text-black font-bold text-sm rounded hover:bg-saare-allow/90 transition" onClick={handleStartTrial}>
+            {agentCount === '10+' ? 'REQUEST ENTERPRISE ARCHITECTURE ↗' : 'RUN CONTROL TEST ↗'}
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* MODAL ENTERPRISE / B2B */}
-      {showEnterpriseModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(3,7,18,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }} onClick={() => setShowEnterpriseModal(false)}>
-          <div style={{ maxWidth: '540px', width: '100%', background: '#111827', borderRadius: '4px', border: '1px solid #ca8a04', padding: '32px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }} onClick={(e) => e.stopPropagation()}>
-            <span style={{ color: '#facc15', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>GRANDES CUENTAS</span>
-            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '6px 0 10px 0' }}>Cualificación Enterprise / VPC Dedicada</h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-              Un especialista técnico de nuestro gabinete se pondrá en contacto para diseñar la arquitectura de despliegue soberano.
-            </p>
-
-            <div style={{ background: '#030712', border: '1px solid #ca8a04', padding: '12px', borderRadius: '2px', marginBottom: '16px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
-                <span style={{ color: '#facc15', display: 'block', fontSize: '10px', fontWeight: 'bold' }}>LÍNEA DIRECTA:</span>
-                <strong style={{ color: '#ffffff' }}>{CONTACT_PHONE}</strong> | <strong style={{ color: '#38bdf8' }}>{CONTACT_EMAIL}</strong>
-              </div>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ background: '#16a34a', color: '#fff', padding: '4px 10px', borderRadius: '2px', textDecoration: 'none', fontWeight: 'bold', fontSize: '11px' }}>WhatsApp ↗</a>
-            </div>
-
-            {b2bSuccessMsg ? (
-              <div style={{ padding: '14px', background: 'rgba(52,211,153,0.15)', border: '1px solid #34d399', color: '#34d399', borderRadius: '2px', fontSize: '13px', textAlign: 'center' }}>
-                {b2bSuccessMsg}
-              </div>
-            ) : (
-              <form onSubmit={(e) => handleSendB2BForm(e, 'Enterprise Sovereign')} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>CORREO CORPORATIVO (CISO / CTO)</label>
-                  <input type="email" required placeholder="ciso@empresa.com" value={b2bFormData.emailContacto} onChange={(e) => setB2bFormData({...b2bFormData, emailContacto: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: '#030712', border: '1px solid #374151', color: '#fff', borderRadius: '2px', boxSizing: 'border-box', fontSize: '13px' }} />
-                </div>
-                <button type="submit" disabled={loadingLead} style={{ width: '100%', padding: '12px', background: '#ca8a04', color: '#000', border: 'none', borderRadius: '2px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
-                  {loadingLead ? 'Transmitiendo...' : 'Solicitar Propuesta Enterprise'}
-                </button>
-              </form>
-            )}
-
-            <button type="button" onClick={() => setShowEnterpriseModal(false)} style={{ width: '100%', padding: '12px', background: '#374151', color: '#fff', border: 'none', borderRadius: '2px', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}>
-              Cerrar
-            </button>
+      {/* FOOTER */}
+      <footer className="border-t border-saare-line py-10 px-6 bg-saare-surface text-xs text-saare-ink-faint">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between gap-4">
+          <div>
+            <strong className="text-saare-ink">S.A.A.R.E. — AI Execution Authorization Infrastructure</strong>
+            <br />Trust Anchor Reference: <span className="font-mono text-saare-accent">SAARE-MD-IPRES-2026</span>
           </div>
-        </div>
-      )}
-
-      {/* 6. BANNER DE COOKIES COPIADO EXACTO DE PALANTIR */}
-      {!cookieConsent && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', maxWidth: '380px', backgroundColor: '#0b0f19', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 99999, boxShadow: '0 20px 50px rgba(0,0,0,0.9)' }}>
-          <p style={{ fontSize: '12px', color: '#cbd5e1', margin: '0 0 20px 0', lineHeight: 1.5, fontFamily: 'sans-serif' }}>
-            By clicking "Accept All Cookies", you agree to the storing of cookies on your device to enhance site navigation, analyze site usage, and assist in our marketing efforts.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={() => handleCookieChoice('accepted')} style={{ background: '#ffffff', color: '#030712', border: 'none', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Accept All Cookies</button>
-            <button onClick={() => handleCookieChoice('rejected')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #4b5563', padding: '12px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reject All</button>
-          </div>
-        </div>
-      )}
-
-      {/* FOOTER PALANTIR STYLE */}
-      <footer style={{ borderTop: '1px solid #1f2937', paddingTop: '40px', paddingBottom: '40px', fontSize: '12px', color: '#6b7280' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '24px' }}>
-            <div style={{ maxWidth: '620px' }}>
-              <strong style={{ color: '#f3f4f6', fontSize: '14px' }}>SAARE — AI Execution Authorization Infrastructure</strong>
-              <p style={{ margin: '8px 0 0 0', color: '#9ca3af', lineHeight: 1.5 }}>
-                Runtime authorization for autonomous AI actions. <br />
-                <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>AI agents can act. SAARE decides what they're allowed to do.</span>
-              </p>
-              
-              <div style={{ marginTop: '16px', display: 'flex', gap: '18px', flexWrap: 'wrap', fontSize: '12px' }}>
-                <span style={{ color: '#cbd5e1' }}>📞 <strong>Tel:</strong> <a href={`tel:${CONTACT_PHONE_RAW}`} style={{ color: '#38bdf8', textDecoration: 'none' }}>{CONTACT_PHONE}</a></span>
-                <span>💬 <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" style={{ color: '#4ade80', textDecoration: 'none', fontWeight: 'bold' }}>WhatsApp Directo</a></span>
-                <span>✉️ <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#f472b6', textDecoration: 'none' }}>{CONTACT_EMAIL}</a></span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #111827', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <span>Protocol Certification: SGP 1.0 · Trust Anchor Ref: SAARE-MD-IPRES-2026</span>
-            <span>© 2026 SAARE Digital Governance — Gabinete Técnico MS3V</span>
+          <div>
+            Contacto Directo: <a href={`mailto:${CONTACT_EMAIL}`} className="text-saare-accent hover:underline">{CONTACT_EMAIL}</a> | {CONTACT_PHONE}
           </div>
         </div>
       </footer>

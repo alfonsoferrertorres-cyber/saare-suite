@@ -1,5 +1,5 @@
 // components/SectorFunnel.tsx
-import React, { useState } from 'react';
+import React from 'react';
 
 interface SectorCardProps {
   title: string;
@@ -42,19 +42,22 @@ const sectors: SectorCardProps[] = [
 
 export const SectorFunnel: React.FC = () => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-900 text-white rounded-xl">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-saare-surface border border-saare-line text-saare-ink rounded-xl">
       {sectors.map((sector, index) => (
-        <div key={index} className="border border-slate-700 p-5 rounded-lg bg-slate-800 flex flex-col justify-between">
+        <div 
+          key={index} 
+          className="border border-saare-line-hi p-6 rounded-lg bg-saare-surface-2 flex flex-col justify-between"
+        >
           <div>
-            <span className="text-xs font-bold bg-blue-600 px-2 py-1 rounded-full uppercase tracking-wide">
+            <span className="text-xs font-mono font-bold bg-saare-accent/15 border border-saare-accent text-saare-accent px-2.5 py-1 rounded-sm uppercase tracking-wider">
               {sector.focus}
             </span>
-            <h3 className="text-xl font-bold mt-3">{sector.title}</h3>
-            <p className="text-slate-300 text-sm mt-2">{sector.claim}</p>
+            <h3 className="font-display text-xl font-bold mt-4 text-white">{sector.title}</h3>
+            <p className="text-saare-ink-dim text-sm mt-2 leading-relaxed">{sector.claim}</p>
           </div>
           <button
             onClick={sector.onAction}
-            className="mt-5 w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold py-2 px-4 rounded transition-colors"
+            className="mt-6 w-full bg-saare-allow hover:bg-saare-allow/90 text-black font-bold py-2.5 px-4 text-xs rounded transition-all"
           >
             {sector.ctaText}
           </button>
