@@ -1,5 +1,5 @@
 /**
- * Configuración centralizada de red para S.A.A.R.E. (saare-suite)
+ * Configuración centralizada de red para S.A.A.R.E.
  */
 const ENV_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -8,9 +8,6 @@ export const API_BASE_URL =
     ? 'http://127.0.0.1:8787'
     : (ENV_URL || 'https://api.saare.es');
 
-/**
- * Helper optimizado para llamadas fetch hacia la API de S.A.A.R.E.
- */
 export async function saareFetch(endpoint, options = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${cleanEndpoint}`;

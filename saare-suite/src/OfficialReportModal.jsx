@@ -10,6 +10,13 @@ export default function OfficialReportModal({ onClose, sectorTitle }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-5">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; color: black !important; }
+        }
+      `}</style>
+      
       <div className="bg-white text-slate-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg p-8 shadow-2xl font-sans relative">
         
         {/* Encabezado / Membrete Oficial */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from './utils/api';
+import { API_BASE_URL, saareFetch } from './utils/api';
 import { SectorFunnel } from './components/SectorFunnel';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './OfficialReportModal';
@@ -37,8 +37,9 @@ export default function App() {
   const [activeNavTab, setActiveNavTab] = useState('software');
   const [activeCodeTab, setActiveCodeTab] = useState('sdk');
 
-  // Estado Modal de Informes Oficiales
+  // Modales
   const [selectedReportSector, setSelectedReportSector] = useState(null);
+  const [legalModalContent, setLegalModalContent] = useState(null);
 
   // Form states
   const [formEmail, setFormEmail] = useState('');
@@ -71,6 +72,14 @@ export default function App() {
       if (stored) setActiveSessionUser(JSON.parse(stored));
     } catch {}
   }, []);
+
+  const handleTabChange = (tabId) => {
+    setActiveNavTab(tabId);
+    const targetElement = document.getElementById('value-tabs-section');
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const getConsoleTargetUrl = (targetMode = "GRC_AUDIT", targetPath = "/") => {
     const baseConsole = CONSOLE_URL.endsWith('/') ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
@@ -112,7 +121,7 @@ export default function App() {
     setPublicVerifyResult(null);
 
     try {
-      const res = await fetch(`${API_BASE}/verify/${hashToVerify}`);
+      const res = await saareFetch(`/v1/verify/${hashToVerify}`);
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
@@ -142,9 +151,8 @@ export default function App() {
     setLiveJudgeResult(null);
 
     try {
-      const res = await fetch(`${API_BASE}/judge`, {
+      const res = await saareFetch('/v1/judge', {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject: simulatedAction.agent,
           action: simulatedAction.action,
@@ -264,7 +272,7 @@ services:
             ].map(tab => (
               <button 
                 key={tab.id}
-                onClick={() => setActiveNavTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`text-left pb-1 border-b-2 transition-colors ${
                   activeNavTab === tab.id ? 'border-saare-accent text-saare-accent' : 'border-transparent text-saare-ink-dim hover:text-saare-ink'
                 }`}
@@ -339,7 +347,7 @@ services:
         </p>
 
         <p className="text-saare-ink-dim text-base max-w-3xl mx-auto mb-6 leading-relaxed">
-          Autorización ex-ante y gobernanza runtime L7 para agentes autónomos, herramientas, APIs y acciones críticas. Protege tus agentes de IA, previene fugas de datos y cumple strictly con el EU AI Act y DORA.
+          Autorización ex-ante y gobernanza runtime L7 para agentes autónomos, herramientas, APIs y acciones críticas. Protege tus agentes de IA, previene fugas de datos y cumple estrictamente con el EU AI Act y DORA.
         </p>
 
         <div className="font-mono text-xs text-saare-seal mb-8 tracking-widest">
@@ -355,13 +363,13 @@ services:
           </button>
           <button 
             className="px-7 py-3.5 text-sm font-semibold rounded border border-saare-line-hi text-saare-ink hover:bg-saare-surface-2 transition"
-            onClick={() => setActiveNavTab('enterprise')}
+            onClick={() => handleTabChange('enterprise')}
           >
             VIEW ARCHITECTURE
           </button>
           <button 
             className="px-5 py-3.5 text-sm font-mono font-medium rounded border border-saare-accent/40 text-saare-accent bg-saare-accent/10 hover:bg-saare-accent/20 transition"
-            onClick={() => setActiveNavTab('developers')}
+            onClick={() => handleTabChange('developers')}
           >
             READ DEVELOPER DOCS
           </button>
@@ -397,7 +405,7 @@ services:
         />
       </section>
 
-      {/* 02 · TRUST STRIP */}
+      {/* 02 · TRUST STRIP MONOCROMATIZADO */}
       <section className="border-b border-saare-line bg-saare-surface py-4 px-6">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 font-mono text-xs text-saare-ink-dim tracking-wider">
           <div>L7 RUNTIME</div>
@@ -733,8 +741,8 @@ services:
         </div>
       </section>
 
-      {/* 15 - 19 · PESTAÑAS DE VALOR */}
-      <section className="py-20 px-6 max-w-7xl mx-auto">
+      {/* 15 - 19 · PESTAÑAS DE VALOR DE NAVEGACIÓN */}
+      <section id="value-tabs-section" className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
             ENTRY POINT: {activeNavTab.toUpperCase()}
@@ -957,7 +965,7 @@ services:
         </div>
       </section>
 
-      {/* SECTORES Y AYUDAS DIGITALES (CONECTADO A MODAL) */}
+      {/* SECTORES Y AYUDAS DIGITALES */}
       <section className="py-16 px-6 max-w-7xl mx-auto">
         <h2 className="font-display font-bold text-2xl text-white text-center mb-8">Informes Oficiales de Gobernanza por Sector</h2>
         <SectorFunnel onSelectSectorReport={(sectorTitle) => setSelectedReportSector(sectorTitle)} />
@@ -1007,13 +1015,59 @@ services:
         />
       )}
 
-      {/* FOOTER */}
+      {/* MODAL DE CUMPLIMIENTO LEGAL */}
+      {legalModalContent && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex justify-center items-center z-[9999] p-5">
+          <div className="bg-saare-surface border border-saare-line-hi text-saare-ink w-full max-w-2xl p-6 rounded-lg shadow-2xl font-sans">
+            <h3 className="text-xl font-bold text-white mb-4">{legalModalContent.title}</h3>
+            <p className="text-sm text-saare-ink-dim leading-relaxed mb-6">{legalModalContent.body}</p>
+            <button className="px-5 py-2 bg-saare-allow text-black font-bold text-xs rounded hover:opacity-90" onClick={() => setLegalModalContent(null)}>
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER CON ENLACES LEGALES COMPLETOS */}
       <footer className="border-t border-saare-line py-10 px-6 bg-saare-surface text-xs text-saare-ink-faint">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
           <div>
             <strong className="text-saare-ink">S.A.A.R.E. — AI Execution Authorization Infrastructure</strong>
             <br />Trust Anchor Reference: <span className="font-mono text-saare-accent">SAARE-MD-IPRES-2026</span>
           </div>
+
+          <div className="flex gap-4 font-mono text-[11px]">
+            <button 
+              onClick={() => setLegalModalContent({
+                title: "Política de Privacidad y RGPD",
+                body: "SAARE procesa peticiones en memoria volátil contigua sin almacenamiento en disco secundario (Zero-Disk Architecture). Cumple con el Art. 32 del RGPD y el principio de minimización de datos."
+              })} 
+              className="text-saare-ink-dim hover:text-saare-accent transition"
+            >
+              Privacidad (RGPD)
+            </button>
+            <span>·</span>
+            <button 
+              onClick={() => setLegalModalContent({
+                title: "Aviso Legal y Cumplimiento",
+                body: "SAARE SGP 1.0 opera como infraestructura de autorización ex-ante bajo directivas EU AI Act (Art. 15), DORA e ISO/IEC 27037:2012 para preconstitución de prueba documental."
+              })} 
+              className="text-saare-ink-dim hover:text-saare-accent transition"
+            >
+              Aviso Legal
+            </button>
+            <span>·</span>
+            <button 
+              onClick={() => setLegalModalContent({
+                title: "Términos de Servicio",
+                body: "El uso del plano de control garantiza disponibilidad bajo SLA Enterprise 99.99% con intercepción Fail-Closed automatizada en el borde."
+              })} 
+              className="text-saare-ink-dim hover:text-saare-accent transition"
+            >
+              Términos
+            </button>
+          </div>
+
           <div>
             Contacto Directo: <a href={`mailto:${CONTACT_EMAIL}`} className="text-saare-accent hover:underline">{CONTACT_EMAIL}</a> | {CONTACT_PHONE}
           </div>
