@@ -81,6 +81,7 @@ export default function App() {
     }
   };
 
+  // Generación de URL con contexto Zero-Friction SSO hacia la consola
   const getConsoleTargetUrl = (targetMode = "GRC_AUDIT", targetPath = "/") => {
     const baseConsole = CONSOLE_URL.endsWith('/') ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
     const params = new URLSearchParams();
@@ -94,6 +95,7 @@ export default function App() {
     return `${baseConsole}${targetPath.startsWith('/') ? targetPath : '/' + targetPath}?${params.toString()}`;
   };
 
+  // Flujo sin contraseñas: emite token efímero y transfiere al usuario a la consola
   const handleStartTrial = () => {
     if (agentCount === '10+') {
       window.open(WHATSAPP_URL, '_blank');
@@ -104,7 +106,7 @@ export default function App() {
       email: formEmail || "auditor.trial@empresa.com",
       name: "Auditor Compliance",
       tenantName: formCompany || "EMPRESA_EVALUACION",
-      apiKey: "sk_saare_trial_compliance_7d",
+      apiKey: `sk_saare_trial_${Math.random().toString(36).substring(2, 10)}`,
       role: "Compliance Auditor (7-Day Trial)",
       plan: "TRIAL_7D"
     };
@@ -242,7 +244,7 @@ services:
   return (
     <div className="bg-saare-bg text-saare-ink min-h-screen font-sans selection:bg-saare-allow selection:text-black">
       
-      {/* 00 · TOP EXECUTIVE ANNOUNCEMENT BANNER */}
+      {/* BANNER SUPERIOR DE ANUNCIO */}
       <div className="bg-saare-surface-2 border-b border-saare-line py-2 px-4 text-xs text-center relative z-50">
         <span className="text-saare-ink-dim">Read SAARE Executive Briefing: </span>
         <strong className="text-saare-accent ml-1">Sovereign AI Architecture & Legal Pre-Constituted Evidence</strong>
@@ -251,7 +253,7 @@ services:
         </span>
       </div>
 
-      {/* 00 · HEADER / NAVEGACIÓN */}
+      {/* HEADER Y NAVEGACIÓN */}
       <header className="sticky top-0 z-50 bg-[#030712]/90 backdrop-blur-md border-b border-saare-line">
         <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
           
@@ -301,7 +303,7 @@ services:
         </div>
       </header>
 
-      {/* 01 · HERO LIMPIO A PANTALLA COMPLETA ESTILO PALANTIR */}
+      {/* HERO PRINCIPAL */}
       <section className="relative h-[85vh] min-h-[600px] w-full flex items-center justify-center border-b border-saare-line overflow-hidden bg-black">
         <video
           autoPlay
@@ -332,7 +334,7 @@ services:
         </div>
       </section>
 
-      {/* 01.5 · BLOQUE DE PRESENTACIÓN Y CTAs */}
+      {/* PRESENTACIÓN Y CTAs */}
       <section className="py-20 px-6 max-w-5xl mx-auto text-center border-b border-saare-line">
         <div className="font-mono text-xs text-saare-accent uppercase tracking-widest mb-3">
           S.A.A.R.E. SGP 1.0 · GOVERNANCE CORE
@@ -394,7 +396,7 @@ services:
         </div>
       </section>
 
-      {/* PANEL DE GOBERNANZA INTEGRADO */}
+      {/* BARRA DE HERRAMIENTAS DE GOBERNANZA */}
       <section className="max-w-7xl mx-auto px-6">
         <GovernanceToolbar 
           onVerifySignature={() => console.log('Firma verificada')}
@@ -405,7 +407,7 @@ services:
         />
       </section>
 
-      {/* 02 · TRUST STRIP MONOCROMATIZADO */}
+      {/* STRIP DE NORMAS */}
       <section className="border-b border-saare-line bg-saare-surface py-4 px-6">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 font-mono text-xs text-saare-ink-dim tracking-wider">
           <div>L7 RUNTIME</div>
@@ -424,7 +426,7 @@ services:
         </div>
       </section>
 
-      {/* 03 · EL ENEMIGO CONCEPTUAL */}
+      {/* EL PROBLEMA ESTRUCTURAL */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <span className="font-mono text-xs font-bold text-saare-deny bg-saare-deny/10 border border-saare-deny px-3 py-1 rounded inline-block mb-3">
@@ -477,7 +479,7 @@ services:
         </div>
       </section>
 
-      {/* 04 · SECCIÓN CATEGORÍA: AI GATEWAY ≠ EXECUTION AUTHORITY */}
+      {/* AI GATEWAY VS EXECUTION AUTHORITY */}
       <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -528,7 +530,7 @@ services:
         </div>
       </section>
 
-      {/* 08 · LA SECCIÓN WOW: LIVE CONTROL TEST SIMULATOR */}
+      {/* SIMULADOR DE CONTROL EN VIVO */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
@@ -594,7 +596,7 @@ services:
         </div>
       </section>
 
-      {/* 10 · LAS 7 DIMENSIONES DE AUTORIZACIÓN */}
+      {/* LAS 7 DIMENSIONES */}
       <section className="py-16 px-6 bg-saare-surface border-t border-saare-line text-center">
         <div className="max-w-7xl mx-auto">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -613,7 +615,7 @@ services:
         </div>
       </section>
 
-      {/* 11 · LAS TRES DECISIONES */}
+      {/* LAS TRES DECISIONES */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <h2 className="font-display font-bold text-3xl text-white text-center mb-12">
           Tres Veredictos Deterministas
@@ -640,7 +642,7 @@ services:
         </div>
       </section>
 
-      {/* 12 · EXECUTION PERMIT SPECIFICATION */}
+      {/* EXECUTION PERMIT SPECIFICATION */}
       <section className="py-16 px-6 bg-saare-surface border-t border-b border-saare-line">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -664,7 +666,7 @@ services:
         </div>
       </section>
 
-      {/* 13 · ZERO-DISK ARCHITECTURE */}
+      {/* ZERO-DISK ARCHITECTURE */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -698,7 +700,7 @@ services:
         </div>
       </section>
 
-      {/* 14 · PROOF ARCHITECTURE & PUBLIC VERIFIER */}
+      {/* VERIFICADOR PÚBLICO */}
       <section className="py-20 px-6 bg-saare-surface border-t border-saare-line">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -741,7 +743,7 @@ services:
         </div>
       </section>
 
-      {/* 15 - 19 · PESTAÑAS DE VALOR DE NAVEGACIÓN */}
+      {/* PESTAÑAS DE VALOR DE NAVEGACIÓN */}
       <section id="value-tabs-section" className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <span className="font-mono text-xs font-bold text-saare-accent bg-saare-accent/15 border border-saare-accent px-3 py-1 rounded inline-block mb-3">
@@ -782,7 +784,7 @@ services:
         )}
       </section>
 
-      {/* 20 · RESILIENCIA FAIL-CLOSED */}
+      {/* RESILIENCIA FAIL-CLOSED */}
       <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line text-center">
         <div className="max-w-7xl mx-auto">
           <h2 className="font-display font-bold text-3xl text-white mb-3">
@@ -807,7 +809,7 @@ services:
         </div>
       </section>
 
-      {/* 23 · ROLES / BUYERS MATRIX */}
+      {/* MATRIZ DE ROLES Y COMPRADORES */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -838,7 +840,7 @@ services:
         </div>
       </section>
 
-      {/* 24 · OPERATING SURFACES */}
+      {/* SUPERFICIES OPERATIVAS */}
       <section className="py-20 px-6 bg-saare-surface border-t border-b border-saare-line">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -882,7 +884,7 @@ services:
         </div>
       </section>
 
-      {/* 21 · PRICING ARCHITECTURE */}
+      {/* PRICING */}
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="font-display font-bold text-3xl text-white mb-2">
@@ -933,7 +935,7 @@ services:
         </div>
       </section>
 
-      {/* 33 · SCENARIO CARDS */}
+      {/* SCENARIO CARDS */}
       <section className="py-16 px-6 bg-saare-surface border-t border-saare-line">
         <div className="max-w-7xl mx-auto">
           <h2 className="font-display font-bold text-2xl text-white text-center mb-8">
@@ -965,13 +967,13 @@ services:
         </div>
       </section>
 
-      {/* SECTORES Y AYUDAS DIGITALES */}
+      {/* SECTORES */}
       <section className="py-16 px-6 max-w-7xl mx-auto">
         <h2 className="font-display font-bold text-2xl text-white text-center mb-8">Informes Oficiales de Gobernanza por Sector</h2>
         <SectorFunnel onSelectSectorReport={(sectorTitle) => setSelectedReportSector(sectorTitle)} />
       </section>
 
-      {/* 34 & 35 · FORMULARIO DE FORMALIZACIÓN */}
+      {/* FORMULARIO DE ACCESO Y FORMALIZACIÓN */}
       <section className="py-20 px-6 max-w-3xl mx-auto text-center">
         <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
           PUT AN AGENT THROUGH THE CONTROL PLANE.
@@ -1007,7 +1009,7 @@ services:
         </div>
       </section>
 
-      {/* RENDERIZADO CONDICIONAL DEL MODAL DE INFORME OFICIAL */}
+      {/* MODAL DE INFORME OFICIAL */}
       {selectedReportSector && (
         <OfficialReportModal 
           sectorTitle={selectedReportSector} 
@@ -1028,7 +1030,7 @@ services:
         </div>
       )}
 
-      {/* FOOTER CON ENLACES LEGALES COMPLETOS */}
+      {/* FOOTER */}
       <footer className="border-t border-saare-line py-10 px-6 bg-saare-surface text-xs text-saare-ink-faint">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
           <div>
