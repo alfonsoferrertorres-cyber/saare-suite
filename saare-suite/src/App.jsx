@@ -5,8 +5,10 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { saareFetch } from "./utils/api";
+import Login from "./Login";
 
 /* ==========================================================================
    CONSTANTES GLOBALES, REGISTROS CRIPTOGRÁFICOS Y CONFIGURACIÓN SGP 1.0
@@ -19,10 +21,11 @@ const CONTACT_PHONE = "+34 633 886 506";
 const WHATSAPP_URL =
   "https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE%20SGP%201.0";
 
+/* Vídeo de cabecera del héroe. Sirve desde /public en la raíz del dominio. */
+const HERO_VIDEO_SRC = "/hero.mp4";
+
 /* --------------------------------------------------------------------------
    NAVEGACIÓN · 4 FAMILIAS DE PRODUCTO
-   Producto (consolas de cumplimiento) · Forense · Desarrolladores (tres modos)
-   · Canal. Los tres modos de despliegue viven DENTRO de Desarrolladores.
    -------------------------------------------------------------------------- */
 const NAV = [
   {
@@ -76,7 +79,6 @@ const DIMENSIONS = [
 
 /* --------------------------------------------------------------------------
    ESTRUCTURA DE LICENCIAMIENTO · por nodo y evidencia, nunca por asiento.
-   Tres tramos de nodo, dos servicios medidos y un canal.
    -------------------------------------------------------------------------- */
 const PRICING_STRUCTURE = {
   nodes: [
@@ -212,6 +214,11 @@ const SEO_CONFIG = {
     description:
       "Evaluación cualificada para desplegar el plano de control S.A.A.R.E. SGP 1.0 en su VPC o infraestructura privada.",
   },
+  login: {
+    title: "Acceso SOC | Consola de cumplimiento S.A.A.R.E.",
+    description:
+      "Acceso restringido a personal autorizado. Autenticación con registro firmado de cada inicio de sesión.",
+  },
 };
 
 function useSEO(pageKey = "home") {
@@ -252,6 +259,17 @@ function AppShell({ children }) {
   }, [location.pathname]);
 
   const activeGroup = NAV.find((n) => n.id === active);
+  const isAuthRoute = ["/login", "/auth", "/acceso"].includes(location.pathname);
+
+  /* Sesión activa: se refleja en la barra superior si existe un token guardado. */
+  const sessionUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("saare_session_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-sky-500 selection:text-black">
@@ -276,10 +294,29 @@ function AppShell({ children }) {
             <div className="flex items-center gap-2">
               <Link
                 to="/trial"
-                className="hidden sm:inline-flex px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-slate-700 text-white hover:bg-slate-800 transition"
+                className="hidden lg:inline-flex px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-slate-700 text-white hover:bg-slate-800 transition"
               >
                 PROBAR EL CONTROL
               </Link>
+
+              {/* Acceso directo al panel de control SOC */}
+              {sessionUser ? (
+                <Link
+                  to="/producto/cumplimiento"
+                  className="px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-sky-500/50 text-sky-300 hover:bg-sky-500/10 transition"
+                  title={`Sesión: ${sessionUser.email}`}
+                >
+                  CONSOLA · {String(sessionUser.email).split("@")[0].toUpperCase()}
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-sky-500/50 text-sky-300 hover:bg-sky-500/10 transition"
+                >
+                  ACCESO SOC ↗
+                </Link>
+              )}
+
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
@@ -312,7 +349,7 @@ function AppShell({ children }) {
             ))}
           </nav>
 
-          {activeGroup && activeGroup.children.length > 0 && (
+          {activeGroup && activeGroup.children.length > 0 && !isAuthRoute && (
             <div className="flex items-center gap-4 pt-2 border-t border-slate-800/60 text-[11px] font-mono overflow-x-auto">
               <span className="text-slate-600 uppercase tracking-wider shrink-0">
                 {active === "dev" ? "Modos:" : "Vistas:"}
@@ -500,6 +537,34 @@ function VerdictChip({ verdict }) {
   );
 }
 
+/* --------------------------------------------------------------------------
+   Fondo de vídeo del héroe. Reproduce en bucle, silenciado y en línea, con
+   dos capas superpuestas: el velo oscuro que garantiza el contraste del texto
+   y el degradado inferior que funde el vídeo con el fondo de la página.
+   -------------------------------------------------------------------------- */
+function HeroVideoBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        src={HERO_VIDEO_SRC}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        poster=""
+      />
+      {/* Velo de contraste */}
+      <div className="absolute inset-0 bg-[#030712]/82" />
+      {/* Degradado de fusión hacia el fondo de la página */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/60 via-[#030712]/40 to-[#030712]" />
+      {/* Retícula técnica sobre el vídeo */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b18_1px,transparent_1px),linear-gradient(to_bottom,#1e293b18_1px,transparent_1px)] bg-[size:32px_32px]" />
+    </div>
+  );
+}
+
 /* ==========================================================================
    PESTAÑA · AUDITORÍA PÚBLICA & MOTOR DE REFERENCIA
    ========================================================================== */
@@ -584,11 +649,11 @@ function TabAuditoriaPublica() {
 
   return (
     <main>
-      {/* ── Bloque A · Héroe y verificador público ── */}
+      {/* ── Bloque A · Héroe con vídeo de cabecera y verificador público ── */}
       <section className="relative border-b border-slate-800 bg-[#020617] overflow-hidden pt-12 pb-16">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <HeroVideoBackdrop />
         <div className="relative z-10 max-w-6xl mx-auto px-6">
-          <div className="bg-slate-900/90 border border-sky-500/30 p-8 rounded-xl backdrop-blur-md">
+          <div className="bg-slate-900/85 border border-sky-500/30 p-8 rounded-xl backdrop-blur-md">
             <span className="font-mono text-xs font-bold text-sky-400 uppercase tracking-widest bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
               MOTOR DE REFERENCIA · CERO TOKENS ADICIONALES
             </span>
@@ -1478,7 +1543,6 @@ function TrialPage() {
     try {
       const response = await saareFetch("/v1/trial", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, company, agents: Number(agents) }),
       });
       const data = await response.json().catch(() => ({}));
@@ -1660,6 +1724,14 @@ function CorporatePage({ variant }) {
 }
 
 /* ==========================================================================
+   PÁGINA · LOGIN (envuelve el componente importado y fija el SEO)
+   ========================================================================== */
+function LoginPage() {
+  useSEO("login");
+  return <Login />;
+}
+
+/* ==========================================================================
    PIE DE PÁGINA
    ========================================================================== */
 function Footer() {
@@ -1729,6 +1801,11 @@ function Footer() {
             <li>
               <Link to="/canal" className="hover:text-sky-400">
                 Programa de partners
+              </Link>
+            </li>
+            <li>
+              <Link to="/login" className="hover:text-sky-400">
+                Acceso SOC
               </Link>
             </li>
           </ul>
@@ -1805,6 +1882,7 @@ export default function App() {
           <Route path="/producto/executive" element={<TabCumplimiento vista="executive" />} />
           <Route path="/producto/grc" element={<TabCumplimiento vista="grc" />} />
           <Route path="/producto/cyber" element={<TabCumplimiento vista="cyber" />} />
+          <Route path="/producto/cumplimiento" element={<TabCumplimiento />} />
 
           {/* Forense */}
           <Route path="/forense" element={<TabForense />} />
@@ -1817,6 +1895,11 @@ export default function App() {
 
           {/* Canal */}
           <Route path="/canal" element={<TabVentas />} />
+
+          {/* Autenticación: /login, /auth y /acceso apuntan al mismo componente */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth" element={<LoginPage />} />
+          <Route path="/acceso" element={<LoginPage />} />
 
           {/* Cualificación y corporativo */}
           <Route path="/trial" element={<TrialPage />} />

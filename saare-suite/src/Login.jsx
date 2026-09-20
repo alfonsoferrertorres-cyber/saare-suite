@@ -1,258 +1,237 @@
-import React, { useState } from 'react';
-import { API_BASE_URL } from './utils/api';
+/* ==========================================================================
+   Login.jsx · Autenticación corporativa y acceso a la consola SOC
+   Componente exportado por defecto e integrado en App.jsx en /login, /auth
+   y /acceso. Al autenticarse correctamente redirige a la consola de
+   cumplimiento con el modo, el tenant y el rol del usuario en el query string.
+   ========================================================================== */
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { saareFetch } from "./utils/api";
 
-export default function Login({ onLoginSuccess }) {
-  const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER'
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+const CONSOLE_URL =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:5173"
+    : "https://console.saare.es";
 
-  const clearMessages = () => {
-    setErrorMsg('');
-    setSuccessMsg('');
-  };
+const CONTACT_EMAIL = "legal@saare.es";
 
-  const saveSessionAndProceed = (user, token) => {
-    localStorage.setItem('saare_token', token);
-    localStorage.setItem('saare_auth_token', token);
-    localStorage.setItem('saare_user_email', user.email);
-    localStorage.setItem('saare_tenant_domain', user.tenantName || 'ENTERPRISE');
-    localStorage.setItem('saare_session_user', JSON.stringify(user));
-    setLoading(false);
-    onLoginSuccess(user);
-  };
+/* Destino de la consola según el rol declarado por el backend. */
+function consoleTargetFor(role, mode = "GRC_AUDIT", path = "/compliance") {
+  const base = CONSOLE_URL.endsWith("/") ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
+  const params = new URLSearchParams();
+  params.set("mode", mode);
+  if (role) params.set("role", role);
+  return `${base}${path}?${params.toString()}`;
+}
 
-  // 1. Inicio de Sesión
-  const handleLoginSubmit = async (e) => {
+export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Si ya existe una sesión válida, no tiene sentido volver a pedir credenciales.
+  useEffect(() => {
+    const token =
+      localStorage.getItem("saare_token") || localStorage.getItem("saare_auth_token");
+    if (token) {
+      const params = new URLSearchParams(location.search);
+      const next = params.get("next") || "/producto/cumplimiento";
+      navigate(next, { replace: true });
+    }
+  }, [navigate, location.search]);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
-    clearMessages();
+    if (status === "loading") return;
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    setStatus("loading");
+    setMessage("");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
+      const response = await saareFetch("/v1/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          totp: totp.trim() || undefined,
+        }),
       });
-      const data = await res.json();
 
-      if (res.ok && data.success) {
-        saveSessionAndProceed(data.user, data.token || data.user.apiKey);
-      } else {
-        setErrorMsg(data.error || 'Credenciales de custodio inválidas o cuenta pendiente de verificación.');
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus("error");
+        setMessage(
+          data?.message ||
+            "Credenciales no válidas o cuenta sin autorización para la consola."
+        );
+        return;
       }
-    } catch (err) {
-      setErrorMsg('Error de conexión con el Control Plane de SAARE.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // 2. Registro de Usuario (Verificación por correo en 15 minutos)
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = name.trim() || cleanEmail;
-    const tenantName = company.trim() || (cleanEmail.includes('@') ? cleanEmail.split('@')[1].split('.')[0].toUpperCase() : 'ENTERPRISE');
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          email: cleanEmail, 
-          password: password.trim(), 
-          name: cleanName,
-          company: tenantName 
-        })
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setSuccessMsg(data.message || '📩 Registro recibido. Se ha enviado un correo desde legal@saare.es para verificar la cuenta (validez 15 minutos).');
-      } else {
-        setErrorMsg(data.error || 'No se pudo aprovisionar la cuenta en el sistema.');
+      // El contrato de sesión se persiste en ambas claves para compatibilidad
+      // con el wrapper saareFetch y con los componentes heredados.
+      const token = data?.token || data?.accessToken || data?.apiKey || "";
+      if (token) {
+        localStorage.setItem("saare_token", token);
+        localStorage.setItem("saare_auth_token", token);
       }
-    } catch (err) {
-      setErrorMsg('Fallo de red al registrar la organización en el Control Plane.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // 3. Solicitud de Recuperación
-  const handleRecoverSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
+      const sessionUser = {
+        email: email.trim(),
+        role: data?.role || "CISO_ADMIN",
+        tenantName: data?.tenantName || data?.tenant || "ORGANIZACION",
+        plan: data?.plan || "ENTERPRISE",
+      };
+      localStorage.setItem("saare_session_user", JSON.stringify(sessionUser));
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password-request`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
-      });
-      const data = await res.json();
+      setStatus("success");
+      setMessage("Acceso autorizado. Abriendo la consola de cumplimiento...");
 
-      if (res.ok && data.success) {
-        setSuccessMsg('Si el correo está registrado, se han enviado las instrucciones desde legal@saare.es.');
+      // Redirección a la consola externa manteniendo el contexto de sesión.
+      const params = new URLSearchParams(location.search);
+      const next = params.get("next");
+
+      if (next) {
+        navigate(next, { replace: true });
       } else {
-        setErrorMsg(data.error || 'No se pudo procesar la solicitud.');
+        const target = consoleTargetFor(
+          sessionUser.role,
+          data?.mode || "GRC_AUDIT",
+          "/compliance"
+        );
+        window.location.href = target;
       }
-    } catch (err) {
-      setErrorMsg('Error de red al conectar con el servicio de correo legal.');
-    } finally {
-      setLoading(false);
+    } catch {
+      setStatus("error");
+      setMessage(
+        "No se ha podido contactar con el Control Plane. Verifique su conexión o solicite acceso directo."
+      );
     }
-  };
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '16px' }}>
-      <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '36px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }}>
-        
-        {/* Cabecera */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '52px', height: '52px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', color: '#38bdf8', fontSize: '1.4rem' }}>
-            🛡️
-          </div>
-          <h2 style={{ margin: '0 0 6px 0', color: '#f8fafc', fontSize: '1.3rem', fontWeight: '900', letterSpacing: '0.02em' }}>
-            S.A.A.R.E. ACCESS GATE
-          </h2>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.78rem', fontWeight: '600' }}>
-            Infraestructura Soberana de Autorización y GRC
-          </p>
-        </div>
-
-        {/* Navegación de Modos */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', marginBottom: '20px' }}>
-          <button 
-            type="button" 
-            onClick={() => { setAuthMode('LOGIN'); clearMessages(); }} 
-            style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authMode === 'LOGIN' ? '2px solid #0284c7' : 'none', color: authMode === 'LOGIN' ? '#38bdf8' : '#94a3b8', fontWeight: 'bold', fontSize: '12.5px', cursor: 'pointer' }}
-          >
-            Iniciar Sesión
-          </button>
-          <button 
-            type="button" 
-            onClick={() => { setAuthMode('REGISTER'); clearMessages(); }} 
-            style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authMode === 'REGISTER' ? '2px solid #10b981' : 'none', color: authMode === 'REGISTER' ? '#34d399' : '#94a3b8', fontWeight: 'bold', fontSize: '12.5px', cursor: 'pointer' }}
-          >
-            Nuevo Usuario (Demo)
-          </button>
-        </div>
-
-        {/* Alertas */}
-        {errorMsg && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px 14px', borderRadius: '6px', fontSize: '0.78rem', marginBottom: '16px', fontWeight: '700' }}>
-            ⚠️ {errorMsg}
-          </div>
-        )}
-
-        {successMsg && (
-          <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', padding: '10px 14px', borderRadius: '6px', fontSize: '0.78rem', marginBottom: '16px', fontWeight: '700', lineHeight: 1.4 }}>
-            ✅ {successMsg}
-          </div>
-        )}
-
-        {/* LOGIN */}
-        {authMode === 'LOGIN' && (
-          <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Corporativo</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="operador@empresa.com" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Contraseña</label>
-                <button type="button" onClick={() => { setAuthMode('RECOVER'); clearMessages(); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}>¿Olvidó su contraseña?</button>
-              </div>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px', boxShadow: '0 4px 12px rgba(2,132,199,0.3)' }}>
-              {loading ? 'Verificando Custodia...' : 'Iniciar Sesión SOC ↗'}
-            </button>
-          </form>
-        )}
-
-        {/* REGISTRO */}
-        {authMode === 'REGISTER' && (
-          <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid #10b981', padding: '8px', borderRadius: '6px', fontSize: '11px', color: '#34d399', textAlign: 'center', fontWeight: 'bold' }}>
-              ⚡ Alta de Organización y Verificación por Correo (15 min)
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Nombre Completo</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Operador CISO" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Corporativo</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@empresa.com" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Organización / Tenant ID</label>
-              <input type="text" required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="ACME Corporation" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px' }}>
-              {loading ? 'Aprovisionando...' : 'Solicitar Verificación por Correo ↗'}
-            </button>
-          </form>
-        )}
-
-        {/* RECUPERACIÓN */}
-        {authMode === 'RECOVER' && (
-          <form onSubmit={handleRecoverSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: '1.4' }}>
-              Introduce tu correo electrónico corporativo registrado para recibir instrucciones desde <code>legal@saare.es</code>.
-            </p>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Electrónico</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="operador@empresa.com" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px' }}>
-              {loading ? 'Emitiendo...' : 'Solicitar Restablecimiento'}
-            </button>
-
-            <button type="button" onClick={() => { setAuthMode('LOGIN'); clearMessages(); }} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center' }}>
-              ← Volver al inicio de sesión
-            </button>
-          </form>
-        )}
-
-        {/* Pie */}
-        <div style={{ marginTop: '24px', borderTop: '1px solid #1e293b', paddingTop: '12px', textAlign: 'center' }}>
-          <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: '#64748b' }}>
-            Trust Anchor Node: SAARE-MD-IPRES-2026
+    <main className="min-h-[70vh] flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-md">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 font-mono text-xs">
+          <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+            CONTROL PLANE · ACCESO AUTORIZADO
           </span>
+          <h1 className="font-display text-2xl font-bold text-white mt-3 mb-2">
+            Consola de cumplimiento
+          </h1>
+          <p className="text-slate-400 text-[11px] leading-relaxed mb-6">
+            Acceso restringido a personal autorizado. Cada inicio de sesión queda registrado
+            y sellado con firma asimétrica.
+          </p>
+
+          {status === "success" ? (
+            <div className="bg-slate-950 border border-emerald-500/50 p-4 rounded">
+              <div className="text-emerald-400 font-bold mb-1">SESIÓN INICIADA</div>
+              <p className="text-slate-300 leading-relaxed">{message}</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="login-email" className="block text-sky-400 mb-2">
+                  CORREO CORPORATIVO (*)
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  required
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ciso@empresa.com"
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="login-password" className="block text-sky-400 mb-2">
+                  CONTRASEÑA (*)
+                </label>
+                <div className="relative">
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-slate-950 border border-slate-700 p-3 pr-20 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 hover:text-slate-300"
+                  >
+                    {showPassword ? "OCULTAR" : "MOSTRAR"}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="login-totp" className="block text-sky-400 mb-2">
+                  CÓDIGO TOTP <span className="text-slate-500">(si está habilitado)</span>
+                </label>
+                <input
+                  id="login-totp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={totp}
+                  onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 tracking-[0.4em] focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              {status === "error" && (
+                <div
+                  role="alert"
+                  className="text-red-400 bg-red-500/10 border border-red-500/30 p-3 rounded leading-relaxed"
+                >
+                  {message}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                className="w-full py-3.5 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition disabled:opacity-60"
+              >
+                {status === "loading" ? "AUTENTICANDO..." : "ACCEDER A LA CONSOLA"}
+              </button>
+
+              <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                ¿No dispone de credenciales?{" "}
+                <Link to="/trial" className="text-sky-400 hover:underline">
+                  Solicite una prueba de control
+                </Link>{" "}
+                o escriba a{" "}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="text-sky-400 hover:underline">
+                  {CONTACT_EMAIL}
+                </a>
+              </p>
+            </form>
+          )}
         </div>
 
+        <p className="text-[10px] text-slate-600 mt-6 text-center font-mono leading-relaxed">
+          Conexión cifrada TLS 1.3 · El contenido no abandona su perímetro · Protocolo SGP 1.0
+        </p>
       </div>
-    </div>
+    </main>
   );
 }
