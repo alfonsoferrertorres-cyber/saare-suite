@@ -17,11 +17,13 @@ const WHATSAPP_URL =
   "https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE";
 
 const NAV = [
-  { id: "software", label: "SOFTWARE", description: "Control de ejecución", path: "/software" },
-  { id: "sales", label: "VENTAS", description: "Gobierno comercial", path: "/sales" },
-  { id: "grc", label: "GRC", description: "Evidencia y auditoría", path: "/grc" },
-  { id: "developers", label: "DESARROLLADORES", description: "SDK y API", path: "/developers" },
-  { id: "enterprise", label: "EMPRESA", description: "Despliegue soberano", path: "/enterprise" },
+  { id: "audit", label: "AUDITORÍA", description: "Motor público", path: "/" },
+  { id: "compliance", label: "CUMPLIMIENTO", description: "Consola GRC", path: "/cumplimiento" },
+  { id: "forensic", label: "FORENSE", description: "Evidence Vault", path: "/forense" },
+  { id: "sales", label: "VENTAS", description: "Gobierno comercial", path: "/ventas" },
+  { id: "sdk", label: "SDK", description: "LabEngine", path: "/sdk" },
+  { id: "proxy", label: "PROXY", description: "PerimeterShield", path: "/proxy" },
+  { id: "daemon", label: "DAEMON", description: "On-premise", path: "/daemon" },
 ];
 
 const DIMENSIONS = [
@@ -168,7 +170,9 @@ function useSEO(page = "home") {
 
 function AppShell({ children }) {
   const location = useLocation();
-  const active = NAV.find((item) => location.pathname.startsWith(item.path))?.id || "home";
+  const active = location.pathname === "/"
+    ? "audit"
+    : NAV.find((item) => item.path !== "/" && location.pathname.startsWith(item.path))?.id || "home";
 
   return (
     <div className="min-h-screen bg-saare-bg text-saare-ink font-sans">
@@ -782,6 +786,71 @@ function DevelopersPage() {
   );
 }
 
+function ForensicPage() {
+  useSEO("grc");
+  return (
+    <PageLayout
+      label="FORENSE · EVIDENCE VAULT"
+      title="Cada decisión importante puede convertirse en evidencia verificable."
+      description="Aísla la custodia forense de la decisión runtime y construye paquetes verificables con digest, Merkle, firma Ed25519 y sellado temporal RFC 3161 según la configuración desplegada."
+    >
+      <EvidenceChain />
+      <div className="grid md:grid-cols-3 gap-5 mt-12">
+        <InfoCard title="Blind Vault" text="Custodia separada del nodo de decisión para conservar el material de evidencia según la arquitectura del cliente." />
+        <InfoCard title="Verificación independiente" text="Permite comprobar una cadena de evidencia sin depender de la interfaz operativa diaria." />
+        <InfoCard title="Exportación" text="Genera paquetes documentales verificables para auditoría, investigación y revisión técnica." />
+      </div>
+    </PageLayout>
+  );
+}
+
+function ProxyPage() {
+  useSEO("software");
+  return (
+    <PageLayout
+      label="PROXY · PERIMETERSHIELD"
+      title="Control L7 antes de que el tráfico llegue al exterior."
+      description="Gateway o sidecar para interceptar las llamadas de agentes y servicios de IA en el perímetro de la VPC, Kubernetes o red privada."
+    >
+      <ArchitectureFlow />
+      <div className="grid md:grid-cols-3 gap-5 mt-12">
+        <InfoCard title="Intercepción L7" text="Coloca el control en la ruta de ejecución, antes de alcanzar el recurso protegido." />
+        <InfoCard title="Política" text="Evalúa identidad, acción, contexto, recurso, datos, riesgo y política antes de permitir la operación." />
+        <InfoCard title="Fail-Closed" text="Define el comportamiento cuando el plano de decisión o la sincronización de políticas no están disponibles." />
+      </div>
+      <div className="mt-10">
+        <IntegrationCard title="DEPLOY" code="Docker / Kubernetes" text="Despliegue en VPC privada, sidecar o gateway perimetral." />
+      </div>
+    </PageLayout>
+  );
+}
+
+function DaemonPage() {
+  useSEO("enterprise");
+  return (
+    <PageLayout
+      label="DAEMON · ON-PREMISE / AIR-GAPPED"
+      title="El plano de decisión también puede vivir en la infraestructura local."
+      description="Servicio local para proteger LLMs privados, aplicaciones legacy y entornos aislados donde el despliegue externo no es una opción."
+    >
+      <div className="grid md:grid-cols-2 gap-5">
+        <InfoCard title="LLMs locales" text="Protege servicios internos de IA desplegados sobre la infraestructura del cliente." />
+        <InfoCard title="Legacy" text="Intercepción local para aplicaciones donde no resulta viable modificar el código fuente." />
+        <InfoCard title="Air-gapped" text="Opera con políticas locales firmadas en redes sin conectividad externa, según el modelo de despliegue." />
+        <InfoCard title="Claves del cliente" text="Integra la gestión criptográfica con los mecanismos definidos por la organización." />
+      </div>
+      <section className="mt-16">
+        <SectionTitle>Arquitectura soberana</SectionTitle>
+        <div className="grid md:grid-cols-3 gap-5 mt-8">
+          <ConsoleSurface title="DECISION NODE" audience="Runtime" accent="CYBER" items={["Policy", "Verdict", "Permit", "Fail-Closed"]} />
+          <ConsoleSurface title="CONTROL-PLANE" audience="Operación" accent="GRC" items={["Licencia", "Políticas", "Contadores", "Estado"]} />
+          <ConsoleSurface title="LOCAL INFRA" audience="Cliente" accent="EXECUTIVE" items={["VPC", "On-prem", "HSM", "Air-gapped"]} />
+        </div>
+      </section>
+    </PageLayout>
+  );
+}
+
 function EnterprisePage() {
   useSEO("enterprise");
   return (
@@ -1375,19 +1444,28 @@ function AppRoutes() {
     <AppShell>
       <ScrollHandler />
       <Routes>
+        {/* 7 pestañas principales */}
         <Route path="/" element={<Home />} />
-        <Route path="/software" element={<SoftwarePage />} />
+        <Route path="/cumplimiento" element={<GRCPage />} />
+        <Route path="/forense" element={<ForensicPage />} />
+        <Route path="/ventas" element={<SalesPage />} />
+        <Route path="/sdk" element={<DevelopersPage />} />
+        <Route path="/proxy" element={<ProxyPage />} />
+        <Route path="/daemon" element={<DaemonPage />} />
+
+        {/* Rutas legadas / SEO compatibles */}
+        <Route path="/software" element={<ProxyPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/grc" element={<GRCPage />} />
         <Route path="/developers" element={<DevelopersPage />} />
-        <Route path="/enterprise" element={<EnterprisePage />} />
+        <Route path="/enterprise" element={<DaemonPage />} />
         <Route path="/trial" element={<TrialPage />} />
         <Route path="/empresa" element={<CorporatePage variant="empresa" />} />
         <Route path="/buenas-practicas" element={<CorporatePage variant="buenas-practicas" />} />
         <Route path="/legal" element={<CorporatePage variant="legal" />} />
-        <Route path="/architecture" element={<SoftwarePage />} />
-        <Route path="/security" element={<EnterprisePage />} />
-        <Route path="/evidence" element={<GRCPage />} />
+        <Route path="/architecture" element={<ProxyPage />} />
+        <Route path="/security" element={<DaemonPage />} />
+        <Route path="/evidence" element={<ForensicPage />} />
         <Route path="*" element={<Home />} />
       </Routes>
     </AppShell>
