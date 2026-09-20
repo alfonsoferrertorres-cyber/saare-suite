@@ -19,14 +19,49 @@ const CONTACT_PHONE = "+34 633 886 506";
 const WHATSAPP_URL =
   "https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE%20SGP%201.0";
 
+/* --------------------------------------------------------------------------
+   NAVEGACIÓN · 4 FAMILIAS DE PRODUCTO
+   Producto (consolas de cumplimiento) · Forense · Desarrolladores (tres modos)
+   · Canal. Los tres modos de despliegue viven DENTRO de Desarrolladores.
+   -------------------------------------------------------------------------- */
 const NAV = [
-  { id: "audit", label: "1. AUDITORÍA", description: "Motor público", path: "/" },
-  { id: "compliance", label: "2. CUMPLIMIENTO", description: "Consola GRC", path: "/cumplimiento" },
-  { id: "forensic", label: "3. FORENSE", description: "Evidence Vault", path: "/forense" },
-  { id: "sales", label: "4. VENTAS", description: "Canal Partner", path: "/ventas" },
-  { id: "sdk", label: "5. SDK", description: "LabEngine", path: "/sdk" },
-  { id: "proxy", label: "6. PROXY", description: "PerimeterShield", path: "/proxy" },
-  { id: "daemon", label: "7. DAEMON", description: "On-Premise", path: "/daemon" },
+  {
+    id: "producto",
+    label: "PRODUCTO",
+    description: "Consolas de cumplimiento",
+    path: "/producto",
+    children: [
+      { id: "audit", label: "Auditoría pública", path: "/producto/auditoria" },
+      { id: "executive", label: "EXECUTIVE", path: "/producto/executive" },
+      { id: "grc", label: "GRC_AUDIT", path: "/producto/grc" },
+      { id: "cyber", label: "CYBER_RESILIENCE", path: "/producto/cyber" },
+    ],
+  },
+  {
+    id: "forense",
+    label: "FORENSE",
+    description: "Evidence Vault",
+    path: "/forense",
+    children: [],
+  },
+  {
+    id: "dev",
+    label: "DESARROLLADORES",
+    description: "SDK · Proxy · Daemon",
+    path: "/dev",
+    children: [
+      { id: "sdk", label: "SDK nativo", path: "/dev/sdk" },
+      { id: "proxy", label: "Proxy (PerimeterShield)", path: "/dev/proxy" },
+      { id: "daemon", label: "Daemon (On-Premise)", path: "/dev/daemon" },
+    ],
+  },
+  {
+    id: "canal",
+    label: "CANAL",
+    description: "Partners y Kit Consulting",
+    path: "/canal",
+    children: [],
+  },
 ];
 
 const DIMENSIONS = [
@@ -39,6 +74,10 @@ const DIMENSIONS = [
   ["DIM 07", "POLÍTICA", "Qué regla aplica. Verificación contra el motor de políticas firmado localmente y compilado a código nativo."],
 ];
 
+/* --------------------------------------------------------------------------
+   ESTRUCTURA DE LICENCIAMIENTO · por nodo y evidencia, nunca por asiento.
+   Tres tramos de nodo, dos servicios medidos y un canal.
+   -------------------------------------------------------------------------- */
 const PRICING_STRUCTURE = {
   nodes: [
     {
@@ -46,31 +85,33 @@ const PRICING_STRUCTURE = {
       name: "Nodo Base PEP L7",
       price: "149 €",
       suffix: "/mes",
-      description: "Contención L7 e intercepción determinista en tiempo real sobre memoria RAM volátil.",
+      description: "Contención L7 e intercepción determinista en tiempo real sobre memoria RAM volátil. Sin custodia persistente de evidencias.",
       features: [
-        "Motor de decisión en RAM (<1.16ms)",
+        "Motor de decisión en RAM (<1,16 ms)",
         "Intercepción L7 síncrona",
         "Veredictos ALLOW / REVIEW / DENY",
         "Evaluación de las 7 dimensiones de control",
         "Modo Fail-Closed configurable",
         "Sin custodia persistente de evidencias",
       ],
+      ctaText: "ACTIVAR NODO BASE ↗",
     },
     {
       id: "custody",
       name: "Nodo con Custodia Forense",
       price: "290 €",
       suffix: "/mes",
-      description: "Control continuo con sellado asimétrico y generación de evidencias probatorias exportables.",
+      description: "Control continuo con sellado asimétrico y generación de evidencias probatorias exportables. Incluye la consola de cumplimiento.",
       features: [
-        "Todo lo incluido en Nodo Base PEP L7",
+        "Todo lo incluido en el Nodo Base PEP L7",
         "Sellado continuo con firma Ed25519",
         "Estructuración en árbol de Merkle",
         "Marcado de tiempo eIDAS RFC 3161",
         "Dossier judicial exportable (Art. 326 LEC)",
-        "Integración con Public Trust Anchor",
+        "Consola de cumplimiento con las tres superficies RBAC",
       ],
       featured: true,
+      ctaText: "ACTIVAR NODO CON CUSTODIA ↗",
     },
     {
       id: "enterprise",
@@ -82,10 +123,11 @@ const PRICING_STRUCTURE = {
         "Despliegue en VPC privada o Air-Gapped",
         "Integración con HSM corporativo (PKCS#11)",
         "Claves de cifrado gestionadas por el cliente",
-        "SLA garantizado del 99.99% disponibilidad",
+        "SLA garantizado del 99,99 % de disponibilidad",
         "Soporte técnico dedicado 24/7 de Nivel 3",
-        "Despliegue en clusters de Kubernetes / Helm",
+        "Despliegue en clústeres de Kubernetes / Helm",
       ],
+      ctaText: "SOLICITAR PROPUESTA ENTERPRISE ↗",
     },
   ],
   services: [
@@ -94,8 +136,15 @@ const PRICING_STRUCTURE = {
       label: "EVIDENCIAS",
       name: "Paquete de Sellado eIDAS",
       price: "120 €",
-      suffix: "/mes (1.000 sellos)",
+      suffix: "/mes · 1.000 sellos",
       description: "Bono de marcado temporal cualificado RFC 3161 para auditorías de alta frecuencia.",
+      features: [
+        "1.000 sellos cualificados al mes",
+        "Exceso facturado por sello adicional",
+        "Descuento por volumen superior a un millón",
+        "Aplicable a cualquier nodo desplegado",
+      ],
+      ctaText: "CONTRATAR PAQUETE DE SELLOS ↗",
     },
     {
       id: "forensic_dossier",
@@ -104,6 +153,14 @@ const PRICING_STRUCTURE = {
       price: "1.200 €",
       suffix: "/año + 300 €/dossier",
       description: "Certificación judicial de evidencias procesales con tacha cero ante tribunales.",
+      features: [
+        "Verificación independiente sin confiar en el vendedor",
+        "Exportación de dossiers con sello RFC 3161",
+        "Acceso a la bóveda ciega y al validador Ed25519",
+        "Dossier de muestra descargable sin registro",
+      ],
+      ctaText: "SOLICITAR ACCESO PERICIAL ↗",
+      href: "/forense",
     },
     {
       id: "partner_channel",
@@ -111,43 +168,49 @@ const PRICING_STRUCTURE = {
       name: "Programa Partner Multi-Tenant",
       price: "Desde 450 €",
       suffix: "/cliente/año",
-      description: "Licenciamiento marca blanca para consultoras, MSPs y Agentes Digitalizadores (Kit Consulting).",
+      description: "Licenciamiento marca blanca para consultoras, MSP y Agentes Digitalizadores (Kit Consulting).",
+      features: [
+        "Portal multi-tenant con clientes ilimitados",
+        "Configuración de políticas por cliente",
+        "Documentación justificativa de ayudas generada automáticamente",
+        "Soporte técnico para su propio equipo",
+      ],
+      ctaText: "SOLICITAR KIT DE PARTNER ↗",
+      href: "/canal",
     },
   ],
 };
 
 const SEO_CONFIG = {
   home: {
-    title: "1. Auditoría Pública | S.A.A.R.E. SGP 1.0 Public Trust Anchor",
-    description: "Motor de referencia determinista ex-ante en memoria RAM. Cero tokens adicionales, latencia <1.16ms y verificador eIDAS RFC 3161.",
+    title: "S.A.A.R.E. SGP 1.0 · Autorización Ex-Ante para Agentes de IA",
+    description:
+      "Motor determinista en RAM: cero tokens adicionales, latencia inferior a 1,16 ms y prueba criptográfica verificable por un tercero. Contención L7 para agentes autónomos.",
   },
-  compliance: {
-    title: "2. Cumplimiento L7 | saare_console GRC (Board, DPO, CISO)",
-    description: "Consola unificada RBAC de cumplimiento L7 para gobernanza de IA bajo la EU AI Act, RGPD Art. 32 y DORA.",
+  producto: {
+    title: "Producto | Consolas de Cumplimiento L7 (EXECUTIVE, GRC, CYBER)",
+    description:
+      "Tres consolas de cumplimiento sobre el mismo motor: dirección ejecutiva, privacidad y resiliencia de ciberseguridad. Control de acceso por roles.",
   },
   forensic: {
-    title: "3. Legal-Forense | EvidenceVault & Validez Procesal Art. 326 LEC",
-    description: "Bóveda ciega de evidencias con firma Ed25519, sellado de tiempo eIDAS RFC 3161 y validez judicial con tacha cero.",
+    title: "Forense | Evidence Vault y validez procesal Art. 326 LEC",
+    description:
+      "Bóveda ciega de evidencias con firma Ed25519, sellado de tiempo eIDAS RFC 3161 y validez judicial con tacha cero.",
   },
-  sales: {
-    title: "4. Agentes de Venta & Canal Partner | Subvenciones Kit Consulting",
-    description: "Programa de partners MSP e integradores. Entregables técnicos eIDAS 100% justificables para ayudas públicas.",
+  dev: {
+    title: "Desarrolladores | SDK, Proxy y Daemon del motor S.A.A.R.E.",
+    description:
+      "Tres formas de desplegar el mismo motor: SDK nativo, proxy perimetral y daemon on-premise. El SDK es gratuito; se cobra la evaluación sellada.",
   },
-  sdk: {
-    title: "5. Modo SDK | LabEngine Context Slicing & Validaciones AST",
-    description: "Librería nativa @saare/sdk y pip install saare-sdk. Ahorro del 40% en tokens y validación de esquemas MCP.",
-  },
-  proxy: {
-    title: "6. Modo Proxy | PerimeterShield Gateway L7 & Docker/K8s Sidecar",
-    description: "Intercepción perimetral L7 en memoria volátil. Sanitización k-Anonymity y defensa contra Prompt Injections.",
-  },
-  daemon: {
-    title: "7. Modo Daemon | Servicio On-Premise, Ollama/vLLM & Air-Gapped",
-    description: "Servicio nativo systemd y Windows Service para protección de LLMs locales y redes aisladas con claves HSM.",
+  canal: {
+    title: "Canal | Partners, MSP y Kit Consulting",
+    description:
+      "Programa de partners MSP e integradores. Entregables técnicos eIDAS 100 % justificables para ayudas públicas.",
   },
   trial: {
-    title: "Prueba de Control | Someter Agente a Evaluación S.A.A.R.E.",
-    description: "Evaluación cualificada para desplegar el plano de control S.A.A.R.E. SGP 1.0 en su VPC o infraestructura privada.",
+    title: "Prueba de Control | Someta un agente a evaluación S.A.A.R.E.",
+    description:
+      "Evaluación cualificada para desplegar el plano de control S.A.A.R.E. SGP 1.0 en su VPC o infraestructura privada.",
   },
 };
 
@@ -155,6 +218,7 @@ function useSEO(pageKey = "home") {
   useEffect(() => {
     const data = SEO_CONFIG[pageKey] || SEO_CONFIG.home;
     document.title = data.title;
+
     let metaDesc = document.querySelector('meta[name="description"]');
     if (!metaDesc) {
       metaDesc = document.createElement("meta");
@@ -174,29 +238,36 @@ function useSEO(pageKey = "home") {
 }
 
 /* ==========================================================================
-   COMPONENTES UI REUTILIZABLES Y ESTRUCTURALES
+   COMPONENTES ESTRUCTURALES
    ========================================================================== */
 function AppShell({ children }) {
   const location = useLocation();
+
   const active = useMemo(() => {
-    if (location.pathname === "/") return "audit";
-    const found = NAV.find((item) => item.path !== "/" && location.pathname.startsWith(item.path));
-    return found ? found.id : "audit";
+    if (location.pathname === "/") return "producto";
+    const found = NAV.find(
+      (item) => item.path !== "/" && location.pathname.startsWith(item.path)
+    );
+    return found ? found.id : "producto";
   }, [location.pathname]);
+
+  const activeGroup = NAV.find((n) => n.id === active);
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-sky-500 selection:text-black">
-      {/* Banner Superior Corporativo de Estado */}
       <div className="border-b border-slate-800 bg-slate-950 px-4 py-2 text-center text-xs font-mono text-slate-400">
-        <span className="text-sky-400 font-bold">MS3V S.A.A.R.E. SL</span> · PLATAFORMA ISV SGP 1.0 · Interceptor PEP L7 en Memoria RAM Volátil (<code className="text-emerald-400">mlock</code> &lt;1.16ms)
+        <span className="text-sky-400 font-bold">MS3V S.A.A.R.E. SL</span> · PLATAFORMA
+        ISV SGP 1.0 · Interceptor PEP L7 en memoria RAM volátil (
+        <code className="text-emerald-400">mlock</code> &lt;1,16 ms)
       </div>
 
-      {/* Header Navegación Principal Sticky */}
       <header className="sticky top-0 z-50 bg-[#030712]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-4 mb-2">
             <Link to="/" className="flex items-center gap-3 shrink-0" aria-label="S.A.A.R.E. Inicio">
-              <span className="font-bold text-2xl tracking-tight text-white font-display">S.A.A.R.E.</span>
+              <span className="font-bold text-2xl tracking-tight text-white font-display">
+                S.A.A.R.E.
+              </span>
               <span className="font-mono text-[10px] bg-sky-500/10 border border-sky-500/30 text-sky-400 px-2 py-0.5 rounded font-bold">
                 SGP 1.0
               </span>
@@ -220,12 +291,15 @@ function AppShell({ children }) {
             </div>
           </div>
 
-          {/* Menú de Navegación de las 7 Pestañas Principales */}
-          <nav aria-label="Navegación por Pestañas Técnicas" className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none border-t border-slate-800/80 pt-2">
+          <nav
+            aria-label="Navegación principal"
+            className="flex items-center gap-1 overflow-x-auto pb-1 border-t border-slate-800/80 pt-2"
+          >
             {NAV.map((item) => (
               <Link
                 key={item.id}
                 to={item.path}
+                aria-current={active === item.id ? "page" : undefined}
                 className={`shrink-0 px-3 py-1.5 rounded transition-all text-left ${
                   active === item.id
                     ? "bg-sky-500/15 border border-sky-500/40 text-sky-300 font-bold"
@@ -237,13 +311,33 @@ function AppShell({ children }) {
               </Link>
             ))}
           </nav>
+
+          {activeGroup && activeGroup.children.length > 0 && (
+            <div className="flex items-center gap-4 pt-2 border-t border-slate-800/60 text-[11px] font-mono overflow-x-auto">
+              <span className="text-slate-600 uppercase tracking-wider shrink-0">
+                {active === "dev" ? "Modos:" : "Vistas:"}
+              </span>
+              {activeGroup.children.map((c) => (
+                <Link
+                  key={c.id}
+                  to={c.path}
+                  aria-current={location.pathname === c.path ? "page" : undefined}
+                  className={
+                    location.pathname === c.path
+                      ? "text-sky-400 font-bold border-b border-sky-400 shrink-0"
+                      : "text-slate-400 hover:text-slate-200 shrink-0"
+                  }
+                >
+                  {c.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Contenido Dinámico de la Pestaña Activa */}
       {children}
 
-      {/* Footer Institucional y B2B */}
       <Footer />
     </div>
   );
@@ -267,15 +361,54 @@ function PageHeader({ badge, title, description }) {
   );
 }
 
-function PriceCard({ tier, price, billingModel, overage, features, ctaText = "SOLICITAR PROPUESTA ENTERPRISE ↗" }) {
+function SectionTitle({ kicker, title, lead }) {
   return (
-    <div className="bg-slate-900/90 border border-sky-500/40 p-6 rounded-lg font-mono relative overflow-hidden flex flex-col justify-between">
+    <div className="mb-8">
+      {kicker && (
+        <span className="font-mono text-[11px] font-bold text-sky-400 uppercase tracking-widest">
+          {kicker}
+        </span>
+      )}
+      <h2 className="text-2xl font-bold text-white mt-2 font-display">{title}</h2>
+      {lead && (
+        <p className="text-xs text-slate-400 mt-2 font-mono leading-relaxed max-w-3xl">{lead}</p>
+      )}
+    </div>
+  );
+}
+
+function PriceCard({
+  tier,
+  price,
+  suffix,
+  description,
+  features,
+  ctaText = "SOLICITAR PROPUESTA ENTERPRISE ↗",
+  href = WHATSAPP_URL,
+  featured = false,
+}) {
+  const isExternal = href.startsWith("http");
+  return (
+    <div
+      className={`bg-slate-900/90 border p-6 rounded-lg font-mono relative overflow-hidden flex flex-col justify-between ${
+        featured ? "border-emerald-500/50" : "border-sky-500/40"
+      }`}
+    >
       <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl pointer-events-none" />
       <div>
-        <div className="text-xs font-bold text-sky-400 uppercase tracking-widest">{tier}</div>
-        <div className="text-3xl font-bold text-white mt-2">{price}</div>
-        <div className="text-xs text-slate-400 mt-1 mb-2">{billingModel}</div>
-        {overage && <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded mb-4 inline-block">{overage}</div>}
+        {featured && (
+          <span className="absolute top-4 right-4 text-[9px] font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 px-2 py-0.5 rounded">
+            RECOMENDADO
+          </span>
+        )}
+        <div className="text-xs font-bold text-sky-400 uppercase tracking-widest pr-24">{tier}</div>
+        <div className="text-3xl font-bold text-white mt-2">
+          {price}
+          {suffix && <span className="text-sm font-normal text-slate-400"> {suffix}</span>}
+        </div>
+        {description && (
+          <p className="text-[11px] text-slate-400 leading-relaxed mt-3 mb-4">{description}</p>
+        )}
         <ul className="space-y-2.5 text-xs text-slate-300 border-t border-slate-800 pt-4 mb-6">
           {features.map((f, i) => (
             <li key={i} className="flex items-start gap-2 leading-relaxed">
@@ -285,41 +418,54 @@ function PriceCard({ tier, price, billingModel, overage, features, ctaText = "SO
           ))}
         </ul>
       </div>
-      <a
-        href={WHATSAPP_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
-      >
-        {ctaText}
-      </a>
+      <div>
+        {isExternal ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
+          >
+            {ctaText}
+          </a>
+        ) : (
+          <Link
+            to={href}
+            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
+          >
+            {ctaText}
+          </Link>
+        )}
+        <p className="text-[10px] text-slate-500 text-center mt-3">
+          Sin coste de alta · Sin permanencia · Su VPC o Air-Gapped
+        </p>
+      </div>
     </div>
   );
 }
 
 function TechnicalCard({ title, badge, children }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg">
-      <span className="font-mono text-[10px] text-sky-400 font-bold uppercase tracking-wider bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-        {badge}
-      </span>
-      <h3 className="font-bold text-lg text-white mt-3">{title}</h3>
-      <div className="text-xs text-slate-400 mt-2 leading-relaxed space-y-2">
-        {children}
-      </div>
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
+      {badge && (
+        <span className="text-[10px] text-sky-400 font-bold uppercase tracking-widest">
+          {badge}
+        </span>
+      )}
+      <h3 className="text-white font-bold text-sm mt-2 mb-3">{title}</h3>
+      <div className="text-slate-400 space-y-2 leading-relaxed">{children}</div>
     </div>
   );
 }
 
-function CodePanel({ code, title = "INTEGRACIÓN TÉCNICA CÓDIGO NATIVO" }) {
+function CodePanel({ code, title = "INTEGRACIÓN TÉCNICA · CÓDIGO NATIVO" }) {
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden font-mono text-xs">
-      <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 text-slate-400 text-[10px] flex justify-between items-center">
-        <span>{title}</span>
-        <span className="text-sky-400">FAIL_CLOSED_MODE</span>
+    <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+      <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 font-mono text-[10px] text-sky-400 font-bold tracking-widest">
+        {title}
       </div>
-      <pre className="p-4 text-sky-300 overflow-x-auto leading-relaxed">
-        <code>{code}</code>
+      <pre className="p-4 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">
+        {code}
       </pre>
     </div>
   );
@@ -327,15 +473,35 @@ function CodePanel({ code, title = "INTEGRACIÓN TÉCNICA CÓDIGO NATIVO" }) {
 
 function DataRow({ label, value }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 border-b border-slate-800/80 pb-2.5">
-      <span className="w-36 shrink-0 text-slate-500 font-mono text-[11px] uppercase">{label}</span>
-      <span className="text-slate-200 font-mono text-xs break-all">{value}</span>
+    <div className="flex justify-between items-center border-b border-slate-800/70 pb-2 text-[11px] font-mono">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-200 text-right ml-4">{value}</span>
     </div>
   );
 }
 
+function VerdictChip({ verdict }) {
+  const map = {
+    ALLOW: "bg-emerald-500/15 border-emerald-500 text-emerald-400",
+    DENY: "bg-red-500/15 border-red-500 text-red-400",
+    REVIEW: "bg-amber-500/15 border-amber-500 text-amber-400",
+    VERIFIED: "bg-emerald-500/15 border-emerald-500 text-emerald-400",
+    UNVERIFIABLE: "bg-amber-500/15 border-amber-500 text-amber-400",
+    ERROR: "bg-red-500/15 border-red-500 text-red-400",
+  };
+  return (
+    <span
+      className={`inline-block font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${
+        map[verdict] || map.REVIEW
+      }`}
+    >
+      {verdict}
+    </span>
+  );
+}
+
 /* ==========================================================================
-   PESTAÑA 1: AUDITORÍA PÚBLICA & PUBLIC TRUST ANCHOR (`/`)
+   PESTAÑA · AUDITORÍA PÚBLICA & MOTOR DE REFERENCIA
    ========================================================================== */
 function TabAuditoriaPublica() {
   useSEO("home");
@@ -343,35 +509,44 @@ function TabAuditoriaPublica() {
   const [verifyResult, setVerifyResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Widget Demo Interactivo local
-  const [demoText, setDemoText] = useState("Analiza cliente DNI 12345678A, email legal@saare.es y teléfono +34 633 886 506 para orden de cobro ORD-8839 por importe 14.500 EUR.");
+  const [demoText, setDemoText] = useState(
+    "Analiza cliente DNI 12345678A, email legal@saare.es y teléfono +34 633 886 506 para orden de cobro ORD-8839 por importe 14.500 EUR."
+  );
   const [demoProcessed, setDemoProcessed] = useState("");
   const [demoMetrics, setDemoMetrics] = useState(null);
 
+  /* ------------------------------------------------------------------------
+     VERIFICADOR PÚBLICO HONESTO
+     Tres estados reales (VERIFIED / UNVERIFIABLE / ERROR). Solo marca VERIFIED
+     si el Trust Anchor lo confirma explícitamente. Nunca finge una verificación.
+     ------------------------------------------------------------------------ */
   async function handleVerify(e) {
     e.preventDefault();
     if (!hash.trim()) return;
     setLoading(true);
+    setVerifyResult(null);
 
     try {
       const response = await saareFetch(`/v1/verify/${encodeURIComponent(hash.trim())}`);
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      const confirmed = response.ok && data?.status === "VERIFIED";
+
       setVerifyResult({
-        status: response.ok && data?.status === "VERIFIED" ? "VERIFIED" : "VERIFIED",
+        status: confirmed ? "VERIFIED" : "UNVERIFIABLE",
         hash: hash.trim(),
-        timestamp: data?.timestamp || new Date().toISOString(),
-        standard: "eIDAS RFC 3161 / Art. 326 LEC / ISO 27037",
-        merkleRoot: data?.merkleRoot || hash.trim(),
+        timestamp: confirmed ? data?.timestamp || null : null,
+        standard: data?.standard || "eIDAS RFC 3161 / Art. 326 LEC / ISO 27037",
         algorithm: "Ed25519 / SHA-256",
+        reason: confirmed ? null : "El Trust Anchor no confirmó este registro.",
       });
     } catch {
       setVerifyResult({
-        status: "VERIFIED",
+        status: "ERROR",
         hash: hash.trim(),
-        timestamp: new Date().toISOString(),
+        timestamp: null,
         standard: "eIDAS RFC 3161 / Art. 326 LEC / ISO 27037",
-        merkleRoot: hash.trim(),
         algorithm: "Ed25519 / SHA-256",
+        reason: "No se pudo contactar con el Trust Anchor. El registro no ha sido verificado.",
       });
     } finally {
       setLoading(false);
@@ -380,7 +555,7 @@ function TabAuditoriaPublica() {
 
   function runInBrowserSanitizer() {
     const t0 = performance.now();
-    let sanitized = demoText
+    const sanitized = demoText
       .replace(/[0-9]{8}[A-Z]/gi, "[DNI_ANONYMIZED]")
       .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi, "[EMAIL_ANONYMIZED]")
       .replace(/\+?[0-9]{9,12}/gi, "[PHONE_ANONYMIZED]")
@@ -393,66 +568,107 @@ function TabAuditoriaPublica() {
       tokensCost: "0 €",
       memoryMode: "RAM (mlock volátil)",
       policy: "FAIL_CLOSED / ZERO_DISK",
-      verdict: demoText.includes("14.500") ? "REVIEW (Excede umbral 10.000€)" : "ALLOW",
+      verdict: demoText.includes("14.500") ? "REVIEW" : "ALLOW",
+      verdictNote: demoText.includes("14.500")
+        ? "Excede el umbral de 10.000 €"
+        : "Dentro de política",
     });
   }
 
+  const verifyBorder =
+    verifyResult?.status === "VERIFIED"
+      ? "border-emerald-500/50"
+      : verifyResult?.status === "UNVERIFIABLE"
+      ? "border-amber-500/50"
+      : "border-red-500/50";
+
   return (
     <main>
-      {/* Hero Principal Pestaña 1 */}
-      <section className="relative min-h-[520px] border-b border-slate-800 bg-[#020617] overflow-hidden pt-12 pb-16">
+      {/* ── Bloque A · Héroe y verificador público ── */}
+      <section className="relative border-b border-slate-800 bg-[#020617] overflow-hidden pt-12 pb-16">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:32px_32px]" />
         <div className="relative z-10 max-w-6xl mx-auto px-6">
           <div className="bg-slate-900/90 border border-sky-500/30 p-8 rounded-xl backdrop-blur-md">
             <span className="font-mono text-xs font-bold text-sky-400 uppercase tracking-widest bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
-              PESTAÑA 1 · AUDITORÍA PÚBLICA & PUBLIC TRUST ANCHOR
+              MOTOR DE REFERENCIA · CERO TOKENS ADICIONALES
             </span>
             <h1 className="font-bold text-3xl sm:text-5xl text-white mt-4 tracking-tight leading-tight font-display">
-              Motor Determinista L7 en Memoria RAM: <span className="text-sky-400">Gobernanza Empírica Ex-Ante</span>
+              Sus agentes de IA actúan.{" "}
+              <span className="text-sky-400">S.A.A.R.E. decide antes de que lo hagan.</span>
             </h1>
             <p className="mt-4 text-slate-300 text-sm sm:text-base max-w-4xl leading-relaxed">
-              El primer motor en memoria volátil (<code className="text-sky-300">mlock</code>) que blinda el uso de LLMs y agentes autónomos sin llamar a un segundo modelo de lenguaje probabilístico. Garantiza el cumplimiento estricto del RGPD, la EU AI Act y genera evidencias criptográficas inalterables con validez judicial conforme al Art. 326 LEC.
+              Contención determinista en el borde para agentes autónomos: veredicto binario
+              por debajo de 1,16 ms y prueba criptográfica verificable por un tercero. Sin
+              llamar a un segundo modelo de lenguaje, sin consumo de tokens y sin
+              persistencia en el nodo.
             </p>
 
-            {/* Formulario Public Trust Anchor */}
             <form onSubmit={handleVerify} className="mt-8 flex flex-col sm:flex-row gap-3">
               <input
                 value={hash}
                 onChange={(e) => setHash(e.target.value)}
-                placeholder="Introducir Merkle Root Hash para verificar evidencia eIDAS"
+                placeholder="Introduzca una Merkle Root o ID de evidencia para verificar"
+                aria-label="Hash Merkle o identificador de evidencia"
                 className="flex-1 bg-black/90 border border-slate-700 px-4 py-3 text-xs font-mono text-sky-300 rounded focus:border-sky-500 focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 bg-emerald-500 text-black font-mono font-bold text-xs rounded hover:bg-emerald-400 transition shrink-0"
+                className="px-6 py-3 bg-emerald-500 text-black font-mono font-bold text-xs rounded hover:bg-emerald-400 transition shrink-0 disabled:opacity-60"
               >
-                {loading ? "VERIFICANDO EN REGISTRO..." : "VERIFICAR SELLO CUALIFICADO EIDAS"}
+                {loading ? "VERIFICANDO..." : "VERIFICAR SELLO"}
               </button>
             </form>
 
             {verifyResult && (
-              <div className="mt-4 p-4 bg-slate-950 border border-emerald-500/50 rounded font-mono text-xs">
-                <div className="text-emerald-400 font-bold text-sm">✓ SELLO CUALIFICADO CONFIRMADO EN TRUST ANCHOR</div>
-                <div className="text-slate-300 text-[11px] break-all mt-2">Hash Verificado: {verifyResult.hash}</div>
-                <div className="text-slate-400 text-[10px] mt-1">Estándar: {verifyResult.standard} | Algoritmo: {verifyResult.algorithm} | Timestamp: {verifyResult.timestamp}</div>
+              <div className={`mt-4 p-4 bg-slate-950 rounded font-mono text-xs border ${verifyBorder}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <VerdictChip verdict={verifyResult.status} />
+                  <span className="text-slate-300">
+                    {verifyResult.status === "VERIFIED"
+                      ? "Sello verificado contra el Trust Anchor público"
+                      : verifyResult.status === "UNVERIFIABLE"
+                      ? "Registro no confirmado"
+                      : "Verificación no completada"}
+                  </span>
+                </div>
+                <div className="text-slate-400 text-[11px] break-all">Hash: {verifyResult.hash}</div>
+                {verifyResult.timestamp && (
+                  <div className="text-slate-400 text-[10px] mt-1">
+                    Timestamp: {verifyResult.timestamp}
+                  </div>
+                )}
+                <div className="text-slate-500 text-[10px] mt-1">
+                  Estándar: {verifyResult.standard} · Algoritmo: {verifyResult.algorithm}
+                </div>
+                {verifyResult.reason && (
+                  <div className="text-slate-500 text-[10px] mt-2 italic">{verifyResult.reason}</div>
+                )}
               </div>
             )}
+
+            <p className="mt-4 text-[10px] text-slate-500 font-mono">
+              Sin coste de alta · Sin permanencia · Despliegue en su VPC o Air-Gapped
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Demostrador Interactivo Local en Memoria RAM */}
+      {/* ── Bloque B · Demostrador empírico ── */}
       <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
-        <h2 className="text-2xl font-bold text-white mb-2 font-display">Demostración Empírica Local (Zero-Disk / Zero-Network)</h2>
-        <p className="text-xs text-slate-400 mb-6 font-mono">
-          Todo se procesa en memoria dentro de su propio navegador con el mismo runtime determinista que corre en producción.
-        </p>
+        <SectionTitle
+          kicker="DEMOSTRACIÓN EMPÍRICA LOCAL"
+          title="Zero-Disk · Zero-Network"
+          lead="Todo se procesa en memoria dentro de su propio navegador con el mismo runtime determinista que corre en producción."
+        />
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
-            <label className="block text-sky-400 font-bold mb-2">ENTRADA EN CLARO (PROMPT CON PII/PHI):</label>
+            <label className="block text-sky-400 font-bold mb-2" htmlFor="demo-input">
+              ENTRADA EN CLARO (PROMPT CON PII/PHI):
+            </label>
             <textarea
+              id="demo-input"
               value={demoText}
               onChange={(e) => setDemoText(e.target.value)}
               rows={5}
@@ -469,30 +685,50 @@ function TabAuditoriaPublica() {
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
             <div className="text-emerald-400 font-bold mb-2">SALIDA SANITIZADA EX-ANTE:</div>
             <div className="bg-slate-950 border border-slate-800 p-3 text-slate-300 rounded min-h-[110px] whitespace-pre-wrap leading-relaxed">
-              {demoProcessed || <span className="text-slate-600">Haz clic en ejecutar para ver la seudonimización determinista en memoria volátil...</span>}
+              {demoProcessed || (
+                <span className="text-slate-600">
+                  Haga clic en ejecutar para ver la seudonimización determinista en memoria
+                  volátil...
+                </span>
+              )}
             </div>
 
             {demoMetrics && (
               <div className="mt-4 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-                <div>Latencia de procesamiento: <span className="text-emerald-400 font-bold">{demoMetrics.latency} ms</span></div>
-                <div>Coste en tokens extras: <span className="text-emerald-400 font-bold">{demoMetrics.tokensCost}</span></div>
-                <div>Modo de memoria: <span className="text-sky-300">{demoMetrics.memoryMode}</span></div>
-                <div>Veredicto L7: <span className="text-amber-400 font-bold">{demoMetrics.verdict}</span></div>
+                <div>
+                  Latencia de procesamiento:{" "}
+                  <span className="text-emerald-400 font-bold">{demoMetrics.latency} ms</span>
+                </div>
+                <div>
+                  Coste en tokens extras:{" "}
+                  <span className="text-emerald-400 font-bold">{demoMetrics.tokensCost}</span>
+                </div>
+                <div>
+                  Modo de memoria: <span className="text-sky-300">{demoMetrics.memoryMode}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  Veredicto L7: <VerdictChip verdict={demoMetrics.verdict} />
+                  <span className="text-slate-500">{demoMetrics.verdictNote}</span>
+                </div>
               </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* Desarrollo de las 7 Dimensiones de Control */}
+      {/* ── Bloque C · Las 7 dimensiones ── */}
       <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
-        <h2 className="text-2xl font-bold text-white mb-2 font-display">Las 7 Dimensiones de Evaluación Ex-Ante</h2>
-        <p className="text-xs text-slate-400 mb-8 font-mono">
-          Cada llamada L7 es descompuesta y analizada sobre memoria volátil antes de autorizar la emisión del Execution Permit.
-        </p>
+        <SectionTitle
+          kicker="EVALUACIÓN EX-ANTE"
+          title="Las 7 Dimensiones de Control"
+          lead="Cada llamada L7 se descompone y analiza sobre memoria volátil antes de autorizar la emisión del Execution Permit."
+        />
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {DIMENSIONS.map(([code, title, desc]) => (
-            <div key={code} className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono text-xs">
+            <div
+              key={code}
+              className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono text-xs"
+            >
               <span className="text-sky-400 font-bold">{code}</span>
               <h3 className="text-white font-bold text-sm mt-2">{title}</h3>
               <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">{desc}</p>
@@ -501,46 +737,118 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* Matriz Comparativa Sistemática */}
-      <section className="max-w-6xl mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold text-white mb-6 font-display">Tesis de Disrupción: Determinista vs Probabilístico</h2>
+      {/* ── Bloque D · Comparativa ── */}
+      <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
+        <SectionTitle
+          kicker="DISRUPCIÓN"
+          title="Ya tiene un guardarraíl. No tiene una prueba."
+        />
         <div className="grid md:grid-cols-2 gap-6 font-mono text-xs">
           <div className="bg-slate-900/60 border border-red-500/30 p-6 rounded-lg">
-            <h3 className="text-red-400 font-bold text-sm mb-4">✖ GUARDARRAÍLES CLOUD PROBABILÍSTICOS (OTROS)</h3>
+            <h3 className="text-red-400 font-bold text-sm mb-4">
+              GUARDARRAÍLES CLOUD PROBABILÍSTICOS
+            </h3>
             <ul className="space-y-3 text-slate-400">
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Factura API:</span><span className="text-red-400">Doble Cobro (Prompt + Eval)</span></li>
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Latencia de red:</span><span className="text-red-400">+500 ms a +2.000 ms</span></li>
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Mecanismo de control:</span><span>Otra IA alucinando sobre la primera</span></li>
-              <li className="flex justify-between"><span>Persistencia de datos:</span><span className="text-red-400">Guarda textos en servidores Cloud</span></li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Factura API:</span>
+                <span className="text-red-400 text-right">Doble cobro (prompt + evaluación)</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Latencia añadida:</span>
+                <span className="text-red-400 text-right">+500 ms a +2.000 ms</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Mecanismo de control:</span>
+                <span className="text-right">Otra IA alucinando sobre la primera</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Persistencia:</span>
+                <span className="text-red-400 text-right">Guarda texto en servidores ajenos</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Air-gapped:</span>
+                <span className="text-red-400 text-right">No operativo</span>
+              </li>
+              <li className="flex justify-between gap-4">
+                <span>Producto en litigio:</span>
+                <span className="text-red-400 text-right">Un log interno, impugnable</span>
+              </li>
             </ul>
           </div>
 
           <div className="bg-slate-900/60 border border-emerald-500/40 p-6 rounded-lg">
-            <h3 className="text-emerald-400 font-bold text-sm mb-4">✔ S.A.A.R.E. SGP 1.0 (MOTOR RUNTIME EN RAM)</h3>
+            <h3 className="text-emerald-400 font-bold text-sm mb-4">
+              S.A.A.R.E. SGP 1.0 (MOTOR RUNTIME EN RAM)
+            </h3>
             <ul className="space-y-3 text-slate-300">
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Factura API:</span><span className="text-emerald-400 font-bold">0 TOKENS EXTRAS (0 €)</span></li>
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Latencia de red:</span><span className="text-emerald-400 font-bold">&lt; 1.16 ms (mlock en RAM)</span></li>
-              <li className="flex justify-between border-b border-slate-800 pb-2"><span>Mecanismo de control:</span><span>Código nativo C++/Rust L7</span></li>
-              <li className="flex justify-between"><span>Persistencia de datos:</span><span className="text-emerald-400 font-bold">Zero-Disk (Solo Hashes SHA-256)</span></li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Factura API:</span>
+                <span className="text-emerald-400 font-bold text-right">0 tokens extras (0 €)</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Latencia añadida:</span>
+                <span className="text-emerald-400 font-bold text-right">
+                  &lt; 1,16 ms (mlock en RAM)
+                </span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Mecanismo de control:</span>
+                <span className="text-right">Código nativo C++/Rust L7</span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Persistencia:</span>
+                <span className="text-emerald-400 font-bold text-right">
+                  Zero-Disk (solo hashes SHA-256)
+                </span>
+              </li>
+              <li className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                <span>Air-gapped:</span>
+                <span className="text-emerald-400 font-bold text-right">Nativo</span>
+              </li>
+              <li className="flex justify-between gap-4">
+                <span>Producto en litigio:</span>
+                <span className="text-emerald-400 font-bold text-right">
+                  Dossier verificable por un perito
+                </span>
+              </li>
             </ul>
           </div>
         </div>
       </section>
 
-      {/* Modelo Comercial General */}
-      <section className="max-w-6xl mx-auto px-6 py-12 border-t border-slate-800">
-        <h2 className="text-2xl font-bold text-white mb-2 font-display">Estructura General de Licenciamiento Nodos SGP 1.0</h2>
-        <p className="text-xs text-slate-400 mb-8 font-mono">
-          Modelos escalables según nivel de contención, custodia probatoria e integración soberana.
-        </p>
+      {/* ── Bloque E · Licenciamiento ── */}
+      <section className="max-w-6xl mx-auto px-6 py-12">
+        <SectionTitle
+          kicker="LICENCIAMIENTO"
+          title="Estructura por nodo y por evidencia"
+          lead="Se cobra por el eje que escala —nodo desplegado y evidencia sellada—, no por el número de personas. El SDK es gratuito."
+        />
         <div className="grid lg:grid-cols-3 gap-6">
           {PRICING_STRUCTURE.nodes.map((n) => (
             <PriceCard
               key={n.id}
               tier={n.name}
               price={n.price}
-              billingModel={n.suffix}
+              suffix={n.suffix}
+              description={n.description}
               features={n.features}
+              featured={n.featured}
+              ctaText={n.ctaText}
+            />
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 mt-6">
+          {PRICING_STRUCTURE.services.map((s) => (
+            <PriceCard
+              key={s.id}
+              tier={s.label}
+              price={s.price}
+              suffix={s.suffix}
+              description={s.description}
+              features={s.features}
+              ctaText={s.ctaText}
+              href={s.href || WHATSAPP_URL}
             />
           ))}
         </div>
@@ -550,116 +858,226 @@ function TabAuditoriaPublica() {
 }
 
 /* ==========================================================================
-   PESTAÑA 2: CUMPLIMIENTO L7 & SAARE_CONSOLE (`/cumplimiento`)
+   PESTAÑA · CONSOLAS DE CUMPLIMIENTO (una consola, tres superficies)
    ========================================================================== */
-function TabCumplimiento() {
-  useSEO("compliance");
+function TabCumplimiento({ vista = "todas" }) {
+  useSEO("producto");
+
+  const TODAS = [
+    {
+      id: "executive",
+      badge: "VISTA EXECUTIVE",
+      title: "Gobernanza cuantitativa y blindaje de responsabilidad",
+      owner: "CEO · Junta directiva · Dirección jurídica",
+      rows: [
+        ["AHORRO POR COMPRESIÓN", "Context Slicing activo"],
+        ["EXPOSICIÓN GLOBAL", "Índice bajo control"],
+        ["CERTIFICADO CORPORATIVO", "Exportable en 1 clic"],
+        ["GASTO POR DEPARTAMENTO", "Trazado por tipo de modelo"],
+      ],
+    },
+    {
+      id: "grc",
+      badge: "VISTA GRC_AUDIT",
+      title: "La prueba llegó antes que el litigio",
+      owner: "CISO · DPO · Auditoría externa",
+      rows: [
+        ["ENMASCARAMIENTO PII", "DNI · IBAN · Tarjetas · PHI"],
+        ["CLASIFICACIÓN AI ACT", "Inaceptable · Alto · Limitado"],
+        ["RGPD ART. 32", "Arquitectura Zero-Disk"],
+        ["REGISTRO EIPD", "Inmutable y firmado"],
+      ],
+    },
+    {
+      id: "cyber",
+      badge: "VISTA CYBER_RESILIENCE",
+      title: "Ve cada intercepción mientras ocurre",
+      owner: "SOC · SecOps · Threat hunters",
+      rows: [
+        ["PROMPT INJECTION L7", "Intercepción en tiempo real"],
+        ["SHADOW AI", "Descubrimiento automático"],
+        ["ESTADO FAIL-CLOSED", "100 % activo"],
+        ["TELEMETRÍA SIEM", "gRPC · HTTP"],
+      ],
+    },
+  ];
+
+  const VISTAS = TODAS.filter((v) => vista === "todas" || v.id === vista);
+  const cabecera = vista === "todas" ? TODAS[0].badge : VISTAS[0].badge;
 
   return (
     <main>
       <PageHeader
-        badge="PESTAÑA 2 · CUMPLIMIENTO L7"
-        title="Una Única Consola de Gobierno, Tres Superficies RBAC (saare_console)"
-        description="Plano unificado de control para dirección ejecutiva, cumplimiento de privacidad y resiliencia de ciberseguridad. Control de acceso basado en roles que adapta la interfaz según el perfil corporativo."
+        badge={`PRODUCTO · ${cabecera}`}
+        title="Una consola de gobierno, tres superficies por rol"
+        description="Plano unificado de control para dirección ejecutiva, cumplimiento de privacidad y resiliencia de ciberseguridad. El control de acceso basado en roles adapta la interfaz según el perfil, sobre el mismo motor de decisión."
       />
 
       <section className="max-w-6xl mx-auto px-6 py-6">
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <TechnicalCard title="Plano Ejecutivo (Board)" badge="VISTA EXECUTIVE">
-            <p>• Visibilidad en tiempo real del ahorro financiero obtenido por compresión de prompts (*Context Slicing*).</p>
-            <p>• Semáforo corporativo de índice de exposición frente a aseguradoras de ciberriesgos.</p>
-            <p>• Certificados de conformidad B2B exportables en 1 clic para auditores externos.</p>
-            <p>• Panel de control de gasto operativo por departamento y tipo de modelo.</p>
-          </TechnicalCard>
-
-          <TechnicalCard title="Plano de Privacidad (DPO)" badge="VISTA DPO / GRC">
-            <p>• Interruptores (*toggles*) para activar enmascaramiento in-RAM de DNI, IBAN, Tarjetas y Salud PHI.</p>
-            <p>• Clasificación automatizada de agentes de IA conforme a la matriz de riesgos de la EU AI Act.</p>
-            <p>• Auditoría continua del cumplimiento del RGPD Art. 32 (Zero-Disk Architecture).</p>
-            <p>• Registro inmutable de Evaluaciones de Impacto en Protección de Datos (EIPD).</p>
-          </TechnicalCard>
-
-          <TechnicalCard title="Plano de Ciberseguridad" badge="VISTA CISO / SECOPS">
-            <p>• Reglas deterministas L7 de intercepción en tiempo real contra Prompt Injections y Jailbreaks.</p>
-            <p>• Descubrimiento y contención automática del uso no autorizado de IA (*Shadow AI*).</p>
-            <p>• Monitorización del estado Fail-Closed y de la sincronización de políticas locales firmadas.</p>
-            <p>• Telemetría avanzada gRPC/HTTP para integración con SIEM (Splunk, Datadog, Sentinel).</p>
-          </TechnicalCard>
+          {VISTAS.map((v) => (
+            <TechnicalCard key={v.id} title={v.title} badge={v.badge}>
+              <p className="text-slate-500">{v.owner}</p>
+              <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                <DataRow label={v.rows[0][0]} value={v.rows[0][1]} />
+                <DataRow label={v.rows[1][0]} value={v.rows[1][1]} />
+                <DataRow label={v.rows[2][0]} value={v.rows[2][1]} />
+                <DataRow label={v.rows[3][0]} value={v.rows[3][1]} />
+              </div>
+            </TechnicalCard>
+          ))}
         </div>
 
-        {/* Panel Interactivo de Demostración Vista Consola */}
+        {/* Inventario unificado de nodos */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
-          <h3 className="text-sky-400 font-bold text-sm mb-4">SIMULACIÓN DE SUPERFICIE OPERATIVA SAARE_CONSOLE (RBAC)</h3>
-          <div className="bg-slate-950 p-6 rounded border border-slate-800 space-y-4">
-            <div className="flex justify-between border-b border-slate-800 pb-3 text-slate-400">
-              <span>ACTIVE_ROLE: <strong className="text-white">CISO_SECOPS_LEVEL_3</strong></span>
-              <span>NODE_STATUS: <strong className="text-emerald-400">ONLINE (0.84ms)</strong></span>
-            </div>
-            <div className="space-y-2">
-              <DataRow label="POLICY_STATE" value="SIGNED_BY_HSM_KEY_0x9F (v2.4.1)" />
-              <DataRow label="CONTAINMENT" value="FAIL_CLOSED (100% ACTIVE)" />
-              <DataRow label="SHADOW_AI_DISCOVERY" value="3 UNPROTECTED ENDPOINTS BLOCKED IN LAST 24H" />
-              <DataRow label="EXPOSURE_INDEX" value="LOW (98/100 AUDIT SCORE)" />
-            </div>
-          </div>
-        </div>
-
-        {/* Matriz Completa de Regulación y Evidencia */}
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
-          <h3 className="text-xl font-bold text-white mb-6 font-display">Matriz Regulatoria Integrada</h3>
+          <SectionTitle
+            kicker="ADMINISTRACIÓN"
+            title="Inventario unificado de nodos"
+            lead="Una sola consola gobierna los tres modos de despliegue. Las políticas se distribuyen globalmente o por etiquetas de alcance."
+          />
           <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
+            <table className="w-full text-left font-mono text-[11px]">
               <thead>
                 <tr className="border-b border-slate-800 text-sky-400">
-                  <th className="pb-3">MARCO NORMATIVO</th>
-                  <th className="pb-3">CONTROL REQUERIDO</th>
-                  <th className="pb-3">MECANISMO S.A.A.R.E.</th>
-                  <th className="pb-3">EVIDENCIA GENERADA</th>
+                  <th className="pb-3 pr-4">NODO / INSTANCIA</th>
+                  <th className="pb-3 pr-4">DESPLIEGUE</th>
+                  <th className="pb-3 pr-4">ENTORNO</th>
+                  <th className="pb-3 pr-4">ÁMBITO</th>
+                  <th className="pb-3">ESTADO</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 text-slate-300">
                 <tr>
-                  <td className="py-3 font-bold text-white">EU AI Act</td>
-                  <td>Supervisión humana &amp; Registro de eventos</td>
-                  <td>Execution Permit ex-ante + Interrupción Fail-Closed</td>
-                  <td>Logs de veredicto con sello eIDAS</td>
+                  <td className="py-3 pr-4">node-sdk-payment-api</td>
+                  <td className="py-3 pr-4">SDK nativo</td>
+                  <td className="py-3 pr-4">App Node.js / Lambda</td>
+                  <td className="py-3 pr-4">scope: microservices</td>
+                  <td className="py-3"><VerdictChip verdict="ALLOW" /></td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-bold text-white">RGPD Art. 32</td>
-                  <td>Minimización y Cifrado de datos PII</td>
-                  <td>Anonymization toggles in-RAM (Zero-Disk)</td>
-                  <td>Digest SHA-256 de payload sanitizado</td>
+                  <td className="py-3 pr-4">node-proxy-ingress-01</td>
+                  <td className="py-3 pr-4">Proxy (PerimeterShield)</td>
+                  <td className="py-3 pr-4">Docker / K8s</td>
+                  <td className="py-3 pr-4">scope: external-apis</td>
+                  <td className="py-3"><VerdictChip verdict="ALLOW" /></td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-bold text-white">DORA</td>
-                  <td>Resiliencia operacional digital &amp; Continuidad</td>
-                  <td>Políticas locales firmadas sin dependencia de red</td>
-                  <td>Certificado de autonomía de nodo</td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-bold text-white">ISO/IEC 27037</td>
-                  <td>Directrices para identificación de evidencia digital</td>
-                  <td>Cadena Merkle Tree + Firma asimétrica Ed25519</td>
-                  <td>Dossier forense verificable offline</td>
+                  <td className="py-3 pr-4">node-daemon-finance-srv</td>
+                  <td className="py-3 pr-4">Daemon (On-Premise)</td>
+                  <td className="py-3 pr-4">Ubuntu Server 22.04</td>
+                  <td className="py-3 pr-4">scope: core-banking</td>
+                  <td className="py-3"><VerdictChip verdict="ALLOW" /></td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
-        <div className="max-w-2xl mx-auto">
+        {/* Simulación de superficie operativa */}
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
+          <SectionTitle kicker="SUPERFICIE OPERATIVA" title="Simulación de consola RBAC" />
+          <div className="bg-slate-950 p-6 rounded border border-slate-800 space-y-4">
+            <div className="flex justify-between gap-4 border-b border-slate-800 pb-3 text-slate-400">
+              <span>
+                ACTIVE_ROLE: <strong className="text-white">CISO_SECOPS_LEVEL_3</strong>
+              </span>
+              <span>
+                NODE_STATUS: <strong className="text-emerald-400">ONLINE (0,84 ms)</strong>
+              </span>
+            </div>
+            <div className="space-y-2">
+              <DataRow label="POLICY_STATE" value="SIGNED_BY_HSM_KEY_0x9F (v2.4.1)" />
+              <DataRow label="CONTAINMENT" value="FAIL_CLOSED (100 % activo)" />
+              <DataRow
+                label="SHADOW_AI_DISCOVERY"
+                value="3 endpoints no protegidos bloqueados en 24 h"
+              />
+              <DataRow label="EXPOSURE_INDEX" value="LOW (98/100 audit score)" />
+            </div>
+          </div>
+        </div>
+
+        {/* Matriz regulatoria */}
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
+          <SectionTitle
+            kicker="CUMPLIMIENTO POR DISEÑO"
+            title="Matriz regulatoria integrada"
+          />
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-mono text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-sky-400">
+                  <th className="pb-3 pr-4">MARCO NORMATIVO</th>
+                  <th className="pb-3 pr-4">CONTROL REQUERIDO</th>
+                  <th className="pb-3 pr-4">MECANISMO S.A.A.R.E.</th>
+                  <th className="pb-3">EVIDENCIA GENERADA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">EU AI Act arts. 10 y 12</td>
+                  <td className="py-3 pr-4">Gobernanza de datos y registro de eventos</td>
+                  <td className="py-3 pr-4">Generalización ex-ante y registro en memoria</td>
+                  <td className="py-3">Huella criptográfica del veredicto</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">EU AI Act arts. 14 y 15</td>
+                  <td className="py-3 pr-4">Supervisión humana y robustez</td>
+                  <td className="py-3 pr-4">Cambio de política en vivo y contención fail-closed</td>
+                  <td className="py-3">Veredicto firmado con latencia</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">RGPD art. 32</td>
+                  <td className="py-3 pr-4">Minimización y cifrado de datos</td>
+                  <td className="py-3 pr-4">Sanitización en RAM y arquitectura Zero-Disk</td>
+                  <td className="py-3">Digest SHA-256 del payload</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">DORA</td>
+                  <td className="py-3 pr-4">Resiliencia operativa y continuidad</td>
+                  <td className="py-3 pr-4">Políticas locales firmadas sin dependencia de red</td>
+                  <td className="py-3">Certificado de autonomía de nodo</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">NIS 2</td>
+                  <td className="py-3 pr-4">Gestión de riesgo y notificación</td>
+                  <td className="py-3 pr-4">Telemetría determinista sin contenido ni PII</td>
+                  <td className="py-3">Contadores anónimos firmados</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">ISO/IEC 27037</td>
+                  <td className="py-3 pr-4">Identificación de evidencia digital</td>
+                  <td className="py-3 pr-4">Cadena de Merkle y firma asimétrica</td>
+                  <td className="py-3">Dossier forense verificable offline</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-bold text-white">Arts. 281 y 326 LEC</td>
+                  <td className="py-3 pr-4">Prueba documental preconstituida</td>
+                  <td className="py-3 pr-4">Sellado cualificado y cadena de custodia</td>
+                  <td className="py-3">Expediente aportable en sala</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Licenciamiento del producto */}
+        <div className="max-w-3xl mx-auto">
           <PriceCard
-            tier="TIER COMPLIANCE SUITE SGP 1.0"
-            price="490 €/mes"
-            billingModel="Suscripción por Consola Corporativa On-Premise / VPC (4.900 €/año)"
+            tier="CONSOLA DE CUMPLIMIENTO SGP 1.0"
+            price="290 €"
+            suffix="/mes"
+            description="Consola unificada sobre el Nodo con Custodia Forense. Administra las tres superficies RBAC y todos los nodos desplegados, sin tarifa por usuario."
             features={[
               "Acceso ilimitado para roles Executive, DPO y CISO bajo RBAC",
-              "Despliegue On-Premise / VPC sin transmisión externa de telemetría",
-              "Sincronización ilimitada con nodos interceptores (SDK, Proxy, Daemon)",
-              "Dossier de cumplimiento AEPD / AESIA autogenerado en tiempo real",
-              "SLA de soporte prioritario de 4 horas con CSM dedicado",
+              "Despliegue On-Premise / VPC sin transmisión externa de contenido",
+              "Administración de nodos SDK, Proxy y Daemon desde una sola consola",
+              "Distribución de políticas global o por etiquetas de alcance",
+              "Dossier de cumplimiento AEPD / AESIA autogenerado",
+              "SLA de soporte prioritario de 4 horas con gestor dedicado",
             ]}
+            featured
+            ctaText="ACTIVAR CONSOLA DE CUMPLIMIENTO ↗"
           />
         </div>
       </section>
@@ -668,98 +1086,77 @@ function TabCumplimiento() {
 }
 
 /* ==========================================================================
-   PESTAÑA 3: LEGAL-FORENSE & EVIDENCEVAULT (`/forense`)
+   PESTAÑA · LEGAL-FORENSE (Evidence Vault)
    ========================================================================== */
 function TabForense() {
   useSEO("forensic");
-
   return (
     <main>
       <PageHeader
-        badge="PESTAÑA 3 · LEGAL-FORENSE"
-        title="EvidenceVault: Bóveda Ciega de Evidencias y Validez Procesal"
-        description="Firma digital asimétrica Ed25519 en memoria RAM y sellado temporal cualificado eIDAS RFC 3161. Diseñada para peritos informáticos, analistas SOC y defensas judiciales con tacha cero ante tribunales."
+        badge="FORENSE · EVIDENCE VAULT"
+        title="Un log se alega. Un árbol de Merkle firmado se prueba."
+        description="Entorno pericial para jueces, peritos y despachos. Bóveda ciega, verificación independiente contra la clave pública del nodo y exportación del dossier conforme al Art. 326 LEC."
       />
 
       <section className="max-w-6xl mx-auto px-6 py-6">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs mb-12 space-y-4">
-          <div className="text-sky-400 font-bold text-sm">ESPECIFICACIÓN DE PRUEBA JUDICIAL (ART. 326 LEC):</div>
-          <div className="grid md:grid-cols-2 gap-6 text-slate-300">
-            <div>
-              <p className="font-bold text-white mb-1">1. Firma Asimétrica Ed25519:</p>
-              <p className="text-slate-400">Cada veredicto emitido en RAM se firma con una clave privada resguardada en enclave seguro o módulo HSM.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">2. Sellado eIDAS RFC 3161:</p>
-              <p className="text-slate-400">Inclusión de marcas de tiempo cualificadas emitidas por una Autoridad de Sellado de Tiempo (TSA) acreditada en la UE.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">3. Cadena de Custodia Inmutable:</p>
-              <p className="text-slate-400">Estructuración en árboles de Merkle. El digest resultante se audita en el Public Trust Anchor.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">4. Dossier Forense PDF/A + XAdES:</p>
-              <p className="text-slate-400">Exportación en 1 clic de expedientes técnicos listos para ratificación pericial en sede judicial.</p>
-            </div>
-          </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <TechnicalCard title="Bóveda ciega de conocimiento cero" badge="VERIFICACIÓN">
+            <p>• El perito inspecciona y valida sin ver el contenido en claro.</p>
+            <p>• Claves de custodia controladas por el cliente, nunca por S.A.A.R.E.</p>
+            <p>• Acceso por rol con registro de cada consulta firmado.</p>
+          </TechnicalCard>
+
+          <TechnicalCard title="Validador Ed25519 independiente" badge="CADENA DE CUSTODIA">
+            <p>• Contraste de la firma del nodo contra su clave pública.</p>
+            <p>• Verificación reproducible sin confiar en el emisor.</p>
+            <p>• Cadena eIDAS y sello cualificado RFC 3161 como certeza temporal.</p>
+          </TechnicalCard>
+
+          <TechnicalCard title="Dossier procesal exportable" badge="ART. 326 LEC">
+            <p>• Exportación del paquete .saare-proof con la cadena completa.</p>
+            <p>• Alineado con ISO/IEC 27037 para evidencia electrónica.</p>
+            <p>• Auditoría de propiedad intelectual contra la Ley 1/2019.</p>
+          </TechnicalCard>
         </div>
 
-        {/* Diagrama de Fases EvidenceVault */}
-        <div className="bg-slate-950 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
-          <h3 className="text-emerald-400 font-bold text-sm mb-6">FLUJO TÉCNICO DE GENERACIÓN DE EVIDENCIA EN MEMORIA:</h3>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-center">
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold">01</div>
-              <div className="text-slate-200 mt-1">Intercepción</div>
-            </div>
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold">02</div>
-              <div className="text-slate-200 mt-1">SHA-256 Digest</div>
-            </div>
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold">03</div>
-              <div className="text-slate-200 mt-1">Merkle Tree</div>
-            </div>
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold">04</div>
-              <div className="text-slate-200 mt-1">Firma Ed25519</div>
-            </div>
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold">05</div>
-              <div className="text-slate-200 mt-1">TSA RFC 3161</div>
-            </div>
-            <div className="bg-slate-900 p-3 rounded border border-slate-800">
-              <div className="text-emerald-400 font-bold">06</div>
-              <div className="text-slate-200 mt-1">ZIP / XAdES</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Muestra de Comando CLI Pericial */}
-        <div className="mb-12">
-          <CodePanel
-            code={`$ saare-forensics verify-bundle --bundle=EXP-2026-8819.zip --trust-anchor=https://saare.es/v1/verify
-[+] Extrayendo manifiesto XAdES y sellos de tiempo RFC 3161...
-[+] Verificando firma Ed25519 de clave pública 0x4A92... OK
-[+] Calculando Merkle Tree Root local... Match exacto con Trust Anchor
-[✔] AUDITORÍA AUDITORÍA CONFORME ART. 326 LEC: EVIDENCIA INTEGRA Y NO MANIPULADA.`}
-            title="VERIFICACIÓN PERICIAL OFFLINE EN CLI"
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
+          <SectionTitle
+            kicker="CADENA DE CUSTODIA"
+            title="Los tres requisitos del artículo 326 LEC"
+            lead="Cada requisito se responde con un mecanismo concreto, no con una afirmación."
           />
+          <div className="space-y-3">
+            <DataRow
+              label="AUTENTICIDAD DE ORIGEN"
+              value="Clave privada Ed25519 del nodo · AFT-2026-AUTH-X9"
+            />
+            <DataRow
+              label="INALTERABILIDAD"
+              value="Digest HMAC-SHA256 · un bit altera el hash"
+            />
+            <DataRow
+              label="CERTEZA TEMPORAL"
+              value="Sello cualificado RFC 3161 · art. 32 eIDAS"
+            />
+            <DataRow label="VERIFICACIÓN OFFLINE" value="CLI saare-evidence-cli sin conexión" />
+          </div>
         </div>
 
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
         <div className="max-w-2xl mx-auto">
           <PriceCard
-            tier="TIER EVIDENCEVAULT FORENSIC LEDGER"
-            price="290 €/mes"
-            billingModel="Licencia por Estación Forense / 1.000 expedientes (o 1.200 €/año por perito)"
+            tier="LICENCIA ESTACIÓN PERICIAL"
+            price="1.200 €"
+            suffix="/año + 300 €/dossier"
+            description="Licencia anual con emisión por caso. El perito cobra por caso; la suite se cobra por caso."
             features={[
-              "Bóveda ciega de evidencias con firma Ed25519 in-memory",
-              "Sellado de tiempo cualificado eIDAS RFC 3161 ilimitado",
-              "Exportación de dossiers judiciales cumpliendo el Art. 326 LEC",
-              "Herramienta CLI de verificación independiente offline",
-              "Formación acreditada de 8 horas para peritos e investigadores",
+              "Verificación independiente sin confiar en el vendedor",
+              "Exportación de dossiers con sello RFC 3161",
+              "Acceso a la bóveda ciega y al validador Ed25519",
+              "Dossier de muestra descargable sin registro",
+              "Soporte técnico para la ratificación en sala",
             ]}
+            featured
+            ctaText="SOLICITAR ACCESO PERICIAL ↗"
           />
         </div>
       </section>
@@ -768,162 +1165,99 @@ function TabForense() {
 }
 
 /* ==========================================================================
-   PESTAÑA 4: AGENTES VENTA & CANAL PARTNER (`/ventas`)
+   PESTAÑA · DESARROLLADORES (índice de los tres modos)
    ========================================================================== */
-function TabVentas() {
-  useSEO("sales");
-
+function TabDev() {
+  useSEO("dev");
   return (
     <main>
       <PageHeader
-        badge="PESTAÑA 4 · AGENTES DE VENTA & CANAL PARTNER"
-        title="Canal MSP & Justificación de Ayudas Kit Consulting / Kit Digital"
-        description="Programa de alianzas para consultoras GRC, Agentes Digitalizadores e integradores de sistemas. Justifique los fondos de subvención pública con entregables técnicos certificados eIDAS."
+        badge="DESARROLLADORES · TRES MODOS DE DESPLIEGUE"
+        title="Intégrelo en una tarde, o no lo integre en absoluto."
+        description="El SDK es gratuito. Se cobra la evaluación sellada, no el acceso. Tres formas de desplegar el mismo motor según dónde necesite la intercepción."
       />
-
-      <section className="max-w-6xl mx-auto px-6 py-6">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
-          <h3 className="font-bold text-white text-base mb-4 font-mono text-amber-400">
-            ENTREGABLES TÉCNICOS HOMOLOGADOS PARA KIT CONSULTING:
-          </h3>
-          <div className="grid md:grid-cols-3 gap-6 font-mono text-xs">
-            <div className="bg-slate-950 p-4 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold mb-2">Entregable 1: Diagnóstico</div>
-              <p className="text-slate-400">Informe de auditoría e inventario de IA no autorizada (*Shadow AI*) en la infraestructura cliente.</p>
-            </div>
-            <div className="bg-slate-950 p-4 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold mb-2">Entregable 2: Despliegue</div>
-              <p className="text-slate-400">Implantación de políticas activas en memoria RAM mediante el motor S.A.A.R.E. SGP 1.0.</p>
-            </div>
-            <div className="bg-slate-950 p-4 rounded border border-slate-800">
-              <div className="text-sky-400 font-bold mb-2">Entregable 3: Justificación</div>
-              <p className="text-slate-400">Expediente certificado con firma eIDAS para superar las inspecciones del 100% de la ayuda.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Casos de Gobierno Comercial */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12 font-mono text-xs">
-          <TechnicalCard title="Gobierno de Descuentos & Tarifas" badge="REVENUE OPS">
-            <p>Control estricto de variaciones de precio aplicadas por agentes comerciales automatizados.</p>
-          </TechnicalCard>
-          <TechnicalCard title="Protección de Mutaciones CRM" badge="SALES OPERATIONS">
-            <p>Validación ex-ante en cambios de propiedad de cuentas, contactos y estados de oportunidades.</p>
-          </TechnicalCard>
-          <TechnicalCard title="Límites de Pago & Transferencias" badge="FINANCIAL CONTROL">
-            <p>Aprobación requerida en operaciones financieras que superen los umbrales configurados.</p>
-          </TechnicalCard>
-        </div>
-
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
-        <div className="max-w-2xl mx-auto">
-          <PriceCard
-            tier="TIER PARTNER & AGENTE DIGITALIZADOR"
-            price="Desde 450 €/cliente/año"
-            billingModel="Tarifa Plana Canal Multi-tenant / Marca Blanca (White-Label)"
-            features={[
-              "Consola Multi-tenant centralizada con marca blanca personalizable",
-              "Informes y entregables técnicos autogenerados con firma eIDAS / TSA",
-              "Margen recurrente del 25% al 40% sobre la reventa de licencias",
-              "Onboarding Express: alta de nuevos clientes en menos de 15 minutos",
-              "Acceso al programa oficial de certificación de partner SAARE",
-            ]}
-          />
-        </div>
+      <section className="max-w-6xl mx-auto px-6 py-6 grid md:grid-cols-3 gap-6">
+        <TechnicalCard title="SDK nativo" badge="LabEngine">
+          <p>Autorización embebida en el código fuente del agente o microservicio.</p>
+          <p className="text-emerald-400 font-bold mt-2">Gratuito · se cobra el sellado</p>
+          <Link to="/dev/sdk" className="inline-block mt-3 text-sky-400 hover:underline">
+            Ver integración →
+          </Link>
+        </TechnicalCard>
+        <TechnicalCard title="Proxy perimetral" badge="PerimeterShield">
+          <p>Intercepción L7 en el borde de la red, por contenedor o clúster.</p>
+          <p className="text-emerald-400 font-bold mt-2">Por nodo proxy desplegado</p>
+          <Link to="/dev/proxy" className="inline-block mt-3 text-sky-400 hover:underline">
+            Ver despliegue →
+          </Link>
+        </TechnicalCard>
+        <TechnicalCard title="Daemon on-premise" badge="Servicio local">
+          <p>Servicio nativo para redes aisladas y LLMs locales, con claves HSM.</p>
+          <p className="text-emerald-400 font-bold mt-2">Por instancia ejecutada</p>
+          <Link to="/dev/daemon" className="inline-block mt-3 text-sky-400 hover:underline">
+            Ver despliegue →
+          </Link>
+        </TechnicalCard>
       </section>
     </main>
   );
 }
 
 /* ==========================================================================
-   PESTAÑA 5: MODO SDK / LABENGINE (`/sdk`)
+   PESTAÑA · SDK NATIVO
    ========================================================================== */
 function TabSDK() {
-  useSEO("sdk");
-
-  const tsCode = `import { SaareLabEngine } from "@saare/sdk";
-
-const saare = new SaareLabEngine({
-  apiKey: process.env.SAARE_API_KEY,
-  failPolicy: "FAIL_CLOSED",
-  timeoutMs: 15
-});
-
-// Intercepción y evaluación ex-ante en memoria RAM
-const permit = await saare.authorize({
-  agentId: "treasury-agent-01",
-  action: "MUTATE_DATABASE",
-  resource: "core-banking-api://transfers",
-  payload: userPrompt
-});
-
-if (permit.verdict === "ALLOW") {
-  await executeDatabaseMutation(permit.sanitizedPayload);
-}`;
-
-  const pythonCode = `from saare_sdk import SaareLabEngine, FailPolicy
-
-saare = SaareLabEngine(
-    api_key="SAARE_SEC_KEY_...",
-    fail_policy=FailPolicy.FAIL_CLOSED
-)
-
-permit = saare.authorize(
-    agent_id="finance-bot-02",
-    action="MUTATE_DATABASE",
-    resource="sql://production/invoices",
-    payload=incoming_prompt
-)
-
-if permit.verdict == "ALLOW":
-    execute_query(permit.sanitized_payload)`;
-
+  useSEO("dev");
   return (
     <main>
       <PageHeader
-        badge="PESTAÑA 5 · MODO SDK (LABENGINE)"
-        title="LabEngine SDK: Gobernanza Embebida en Código Fuente"
-        description="Librería nativa de ultra-alta velocidad para desarrolladores. Integre autorización ex-ante y compresión Context Slicing mediante `npm install @saare/sdk` o `pip install saare-sdk`."
+        badge="MODO SDK · LabEngine"
+        title="La autorización en el código fuente, antes de la acción de riesgo."
+        description="Biblioteca nativa @saare/sdk y pip install saare-sdk. Validación de esquemas MCP y autorización síncrona sin salir del proceso."
       />
+      <section className="max-w-4xl mx-auto px-6 py-6 space-y-8">
+        <CodePanel
+          title="PATRÓN DE INTEGRACIÓN · CLIENTE SDK"
+          code={`import { SaareJudgeClient } from '@saare/sdk';
 
-      <section className="max-w-6xl mx-auto px-6 py-6">
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <CodePanel code={tsCode} title="INTEGRACIÓN NODE.JS / TYPESCRIPT (@saare/sdk)" />
-          <CodePanel code={pythonCode} title="INTEGRACIÓN PYTHON (saare-sdk)" />
+const judge = new SaareJudgeClient({
+  apiKey: process.env.SAARE_API_KEY,
+  failPolicy: 'FAIL_CLOSED'
+});
+
+const result = await judge.authorize({
+  subject: "payment-agent-742",
+  action: "send_wire_transfer",
+  resource: "core-banking-api://transfers/sepa",
+  context: { amount_eur: 18420.00 }
+});
+
+if (result.decision !== "ALLOW") {
+  throw new Error('Bloqueo Ex-Ante S.A.A.R.E.: ' + result.reason);
+}
+
+// El payload ya viene sanitizado k-Anonymity
+await executeBankTransfer(result.executionPermit);`}
+        />
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs space-y-2">
+          <DataRow label="BENCHMARK EVALUACIÓN" value="P99 < 1,16 ms" />
+          <DataRow label="CONSUMO DE TOKENS" value="0 € (sin segundo modelo)" />
+          <DataRow label="AHORRO POR COMPRESIÓN" value="Context Slicing activo" />
+          <DataRow label="VALIDACIÓN DE ESQUEMAS" value="AST in-memory · soporte MCP" />
         </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs mb-12 space-y-4">
-          <div className="text-emerald-400 font-bold text-sm">VENTAJAS TÉCNICAS DE LABENGINE:</div>
-          <div className="grid md:grid-cols-3 gap-6 text-slate-300">
-            <div>
-              <p className="font-bold text-white mb-1">Algoritmo Context Slicing:</p>
-              <p className="text-slate-400">Reduce hasta un 40% el número de tokens enviados al LLM conservando el 100% de la precisión semántica.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">Validación de Esquemas AST:</p>
-              <p className="text-slate-400">Inspecciona el Árbol de Sintaxis Abstracta de las respuestas antes de permitir la ejecución de código.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">Compatibilidad MCP Protocol:</p>
-              <p className="text-slate-400">Soporte nativo para el estándar Model Context Protocol en arquitecturas multiagente.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
         <div className="max-w-2xl mx-auto">
           <PriceCard
-            tier="TIER SDK LABENGINE DEVELOPER"
-            price="99 €/mes"
-            billingModel="Licencia por Desarrollador / Incluye bloque de 100.000 llamadas/mes (990 €/año)"
-            overage="+0,001 € por evaluación API adicional"
+            tier="SDK NATIVO · ACCESO"
+            price="0 €"
+            suffix="/mes"
+            description="El SDK es gratuito. Lo que se paga es la evaluación sellada y la custodia probatoria."
             features={[
-              "Acceso completo a librerías SDK (@saare/sdk y Python saare-sdk)",
-              "Compresión determinista Context Slicing (ahorro directo de tokens)",
-              "Validación in-memory de Árboles de Sintaxis Abstracta (AST)",
-              "Soporte completo para conectores del protocolo MCP",
-              "Soporte por email con SLA de respuesta en 48 horas",
+              "Librería completa @saare/sdk y paquete pip sin coste",
+              "Autorización síncrona embebida en el proceso",
+              "Las 7 dimensiones de control disponibles en local",
+              "Se cobra solo la evidencia sellada (paquete de 1.000 sellos)",
             ]}
+            ctaText="DESCARGAR SDK ↗"
           />
         </div>
       </section>
@@ -932,70 +1266,52 @@ if permit.verdict == "ALLOW":
 }
 
 /* ==========================================================================
-   PESTAÑA 6: MODO PROXY / PERIMETERSHIELD (`/proxy`)
+   PESTAÑA · PROXY PERIMETRAL
    ========================================================================== */
 function TabProxy() {
-  useSEO("proxy");
-
-  const dockerYaml = `version: '3.8'
-services:
-  saare-perimetershield:
-    image: saare/perimetershield:1.0-release
-    ports:
-      - "8080:8080"
-      - "9090:9090"
-    environment:
-      - SAARE_NODE_MODE=PROXY_PEP_L7
-      - SAARE_MEMORY_LOCK=true # mlock activo
-      - SAARE_FAIL_POLICY=FAIL_CLOSED
-      - SAARE_ANONYMIZE_PII=true
-    deploy:
-      resources:
-        limits:
-          memory: 512M`;
-
+  useSEO("dev");
   return (
     <main>
       <PageHeader
-        badge="PESTAÑA 6 · MODO PROXY (PERIMETERSHIELD)"
-        title="PerimeterShield: Gateway L7 y Sidecar en Kubernetes"
-        description="Contenedor perimetral de alta disponibilidad para interceptar y sanitizar todo el tráfico saliente hacia proveedores de IA (OpenAI, Anthropic, Google) sin modificar el código de sus aplicaciones."
+        badge="MODO PROXY · PerimeterShield"
+        title="Intercepción L7 en el borde, antes de que el tráfico salga."
+        description="Contenedor Docker o despliegue Helm en Kubernetes. Sanitización k-anónima y defensa contra prompt injections sin tocar el código de los agentes."
       />
-
-      <section className="max-w-6xl mx-auto px-6 py-6">
-        <div className="grid md:grid-cols-3 gap-6 mb-12 font-mono text-xs">
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="text-sky-400 font-bold mb-2">1. Intercepción L7</div>
-            <p className="text-slate-400">Se coloca en la ruta de red (HTTP/gRPC) evaluando peticiones a &lt;1.16 ms en memoria RAM bloqueada (<code className="text-sky-300">mlock</code>).</p>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="text-emerald-400 font-bold mb-2">2. Sanitización k-Anonymity</div>
-            <p className="text-slate-400">Enmascara patrones de DNI, emails, teléfonos e IBANs en vuelo antes de abandonar el perímetro seguro de la VPC.</p>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="text-purple-400 font-bold mb-2">3. Defensa Injections</div>
-            <p className="text-slate-400">Neutraliza ataques de Prompt Injection y bloquea intentos de fuga de información por canales encubiertos.</p>
-          </div>
+      <section className="max-w-4xl mx-auto px-6 py-6 space-y-8">
+        <CodePanel
+          title="DESPLIEGUE · DOCKER COMPOSE"
+          code={`version: '3.8'
+services:
+  saare-shield:
+    image: registry.saare.es/perimeter-shield:v7.0.4
+    environment:
+      - SAARE_TENANT_KEY=\${SAARE_TENANT_KEY}
+      - SAARE_POLICY_MODE=STRICT_FAIL_CLOSED
+      - SAARE_SCOPE=external-apis
+    ports:
+      - "8765:8765"
+    restart: unless-stopped`}
+        />
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs space-y-2">
+          <DataRow label="PUNTO DE INTERCEPCIÓN" value="127.0.0.1:8765 (bucle local)" />
+          <DataRow label="ALCANCE DE POLÍTICA" value="scope: external-apis" />
+          <DataRow label="MODO DE FALLO" value="STRICT_FAIL_CLOSED" />
+          <DataRow label="SANITIZACIÓN" value="k-Anonymity in-RAM" />
         </div>
-
-        <div className="mb-12">
-          <CodePanel code={dockerYaml} title="CONFIGURACIÓN DOCKER COMPOSE PERIMETERSHIELD" />
-        </div>
-
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
         <div className="max-w-2xl mx-auto">
           <PriceCard
-            tier="TIER PERIMETERSHIELD PROXY GATEWAY"
-            price="350 €/mes"
-            billingModel="Licencia por Nodo Proxy / Cluster Sidecar (3.500 €/año)"
-            overage="+150 €/mes por nodo Proxy adicional"
+            tier="NODO PROXY"
+            price="290 €"
+            suffix="/mes"
+            description="Licenciamiento por nodo proxy desplegado, con evaluaciones ilimitadas dentro del nodo. Mismo tramo que el nodo con custodia forense."
             features={[
-              "Despliegue perimetral en contenedores Docker y Helm Charts Kubernetes",
-              "Intercepción física L7 en memoria volátil (<1.16 ms de latencia P99)",
-              "Sanitización k-Anonymity automatizada para datos PII/PHI",
-              "Garantía Zero-Disk: Cero persistencia de texto plano en almacenamiento",
-              "Sincronización de reglas en tiempo real desde saare_console",
+              "Contenedor Docker o Helm para Kubernetes",
+              "Evaluaciones ilimitadas en el nodo",
+              "Sanitización k-anónima de PII, PHI e IBAN",
+              "Escalado horizontal por réplicas",
+              "Custodia de evidencias incluida",
             ]}
+            ctaText="DESPLEGAR NODO PROXY ↗"
           />
         </div>
       </section>
@@ -1004,75 +1320,56 @@ services:
 }
 
 /* ==========================================================================
-   PESTAÑA 7: MODO DAEMON / ON-PREMISE (`/daemon`)
+   PESTAÑA · DAEMON ON-PREMISE
    ========================================================================== */
 function TabDaemon() {
-  useSEO("daemon");
-
-  const systemdService = `[Unit]
-Description=S.A.A.R.E. SGP 1.0 Runtime Daemon
+  useSEO("dev");
+  return (
+    <main>
+      <PageHeader
+        badge="MODO DAEMON · ON-PREMISE"
+        title="Servicio local para redes aisladas y modelos propios."
+        description="Demonio no privilegiado en C++/Rust, atado al bucle local. Para LLMs on-premise, arquitecturas air-gapped y claves gestionadas por HSM."
+      />
+      <section className="max-w-4xl mx-auto px-6 py-6 space-y-8">
+        <CodePanel
+          title="DESPLIEGUE · SYSTEMD UNIT"
+          code={`[Unit]
+Description=SAARE Decision Core (Zero-Disk L7)
 After=network.target
 
 [Service]
 Type=simple
-User=saare-runtime
-ExecStart=/usr/local/bin/saared --config=/etc/saare/daemon.conf --lock-ram
+ExecStart=/usr/local/bin/saare-daemon --bind 127.0.0.1:8765
+Environment=SAARE_TENANT_KEY=\${SAARE_TENANT_KEY}
+Environment=SAARE_MEMORY_MODE=MLOCK_VOLATILE
+Environment=SAARE_HSM_PKCS11=/etc/saare/hsm.so
 Restart=always
-RestartSec=3
-LimitMEMLOCK=infinity
-CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK
+NoNewPrivileges=true
 
 [Install]
-WantedBy=multi-user.target`;
-
-  return (
-    <main>
-      <PageHeader
-        badge="PESTAÑA 7 · MODO DAEMON (ON-PREMISE)"
-        title="Daemon On-Premise: Servicio Nativo para Entornos Aislados"
-        description="Servicio de fondo nativo (systemd en Linux o Servicio de Windows) para proteger servidores de IA locales (Ollama, vLLM, HuggingFace), aplicaciones legacy y redes aisladas sin conexión a internet (*Air-Gapped*)."
-      />
-
-      <section className="max-w-6xl mx-auto px-6 py-6">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs mb-12 space-y-4">
-          <div className="text-purple-400 font-bold text-sm">CASOS DE USO DE ALTA SOBERANÍA TÉCNICA:</div>
-          <div className="grid md:grid-cols-2 gap-6 text-slate-300">
-            <div>
-              <p className="font-bold text-white mb-1">• Filtrado de LLMs Locales:</p>
-              <p className="text-slate-400">Protege los endpoints de servidores Ollama y vLLM desplegados en las GPUs de la propia empresa.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">• Operación Air-Gapped:</p>
-              <p className="text-slate-400">Funciona en redes 100% desconectadas operando con políticas locales firmadas criptográficamente.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">• Integración HSM Corporativo:</p>
-              <p className="text-slate-400">Permite almacenar las claves privadas de firma en módulos criptográficos de hardware (HSM) del cliente.</p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-1">• Intercepción de Sockets Legacy:</p>
-              <p className="text-slate-400">Filtra llamadas a nivel de sistema operativo para aplicaciones herederas donde no se puede tocar el código.</p>
-            </div>
-          </div>
+WantedBy=multi-user.target`}
+        />
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs space-y-2">
+          <DataRow label="PRIVILEGIOS" value="Demonio no privilegiado" />
+          <DataRow label="MEMORIA" value="mlock · sin paginación a disco" />
+          <DataRow label="CLAVES" value="HSM corporativo (PKCS#11)" />
+          <DataRow label="REARRANQUE" value="Revinculación del socket en <500 ms" />
         </div>
-
-        <div className="mb-12">
-          <CodePanel code={systemdService} title="UNIDAD SYSTEMD LINUX DAEMON DE FONDO (/etc/systemd/system/saared.service)" />
-        </div>
-
-        {/* Tarjeta de Licenciamiento Específica de esta Pestaña */}
         <div className="max-w-2xl mx-auto">
           <PriceCard
-            tier="TIER DAEMON ON-PREMISE SOBERANO"
-            price="590 €/mes"
-            billingModel="Licencia por Servidor / Máquina Virtual On-Premise (5.900 €/año)"
+            tier="NODO SOBERANO ENTERPRISE"
+            price="3.500 €"
+            suffix="/mes"
+            description="Despliegue perimetral aislado con contrato marco, HSM dedicado y SLA garantizado."
             features={[
-              "Instaladores nativos en paquetes .deb, .rpm y Servicio de Windows",
-              "Protección local para servidores de IA privados (Ollama, vLLM, HuggingFace)",
-              "Soporte completo para arquitecturas aisladas 100% Air-Gapped",
-              "Integración de custodia criptográfica con módulos HSM del cliente",
-              "SLA de soporte técnico Enterprise de 4 horas",
+              "VPC privada o arquitectura air-gapped",
+              "Integración con HSM corporativo (PKCS#11)",
+              "SLA del 99,99 % de disponibilidad",
+              "Soporte 24/7 de Nivel 3 con gestor dedicado",
             ]}
+            featured
+            ctaText="SOLICITAR PROPUESTA ENTERPRISE ↗"
           />
         </div>
       </section>
@@ -1081,7 +1378,77 @@ WantedBy=multi-user.target`;
 }
 
 /* ==========================================================================
-   PÁGINAS CORPORATIVAS, FORMULARIO DE PRUEBA Y PIE DE PÁGINA
+   PESTAÑA · CANAL PARTNER (Kit Consulting)
+   ========================================================================== */
+function TabVentas() {
+  useSEO("canal");
+  return (
+    <main>
+      <PageHeader
+        badge="CANAL · PARTNERS Y KIT CONSULTING"
+        title="Venda gobernanza de IA sin construirla."
+        description="Programa multi-tenant para consultoras, MSP y Agentes Digitalizadores. Cada cliente gestionado con su política, su clave y su cadena de prueba independiente."
+      />
+      <section className="max-w-6xl mx-auto px-6 py-6">
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <TechnicalCard title="Marca blanca operativa" badge="MULTI-TENANT">
+            <p>El veredicto y la evidencia se generan en su infraestructura.</p>
+            <p>La relación comercial con su cliente permanece intacta.</p>
+          </TechnicalCard>
+          <TechnicalCard title="Justificación de ayudas" badge="KIT CONSULTING">
+            <p>Documentación técnica verificable para los programas de digitalización.</p>
+            <p>Expediente de entregables eIDAS listo para presentar.</p>
+          </TechnicalCard>
+          <TechnicalCard title="Precio por cartera" badge="MODELO">
+            <p>Pago por cliente gestionado, no por usuario del despacho.</p>
+            <p>Un consultor arrastra su cartera completa.</p>
+          </TechnicalCard>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
+          <SectionTitle
+            kicker="ENTREGABLES DEL CANAL"
+            title="Tres entregables homologados"
+            lead="El partner produce documentación técnica verificable, no una memoria descriptiva."
+          />
+          <div className="space-y-3">
+            <DataRow
+              label="1 · DIAGNÓSTICO"
+              value="Informe de auditoría de Shadow AI en la empresa cliente"
+            />
+            <DataRow
+              label="2 · DESPLIEGUE"
+              value="Políticas activas en RAM con la consola multi-tenant"
+            />
+            <DataRow
+              label="3 · EXPEDIENTE"
+              value="Cumplimiento certificado con firma eIDAS para la ayuda"
+            />
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto">
+          <PriceCard
+            tier="PROGRAMA PARTNER MULTI-TENANT"
+            price="Desde 450 €"
+            suffix="/cliente/año"
+            description="Licenciamiento marca blanca para consultoras, MSP y Agentes Digitalizadores."
+            features={[
+              "Portal multi-tenant con clientes ilimitados en la cuenta",
+              "Configuración de políticas iniciales por cliente",
+              "Documentación justificativa de ayudas generada automáticamente",
+              "Soporte técnico para su propio equipo en licitaciones",
+            ]}
+            ctaText="SOLICITAR KIT DE PARTNER ↗"
+          />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+/* ==========================================================================
+   PÁGINA · PRUEBA DE CONTROL (cualificación condicional)
    ========================================================================== */
 function TrialPage() {
   useSEO("trial");
@@ -1115,14 +1482,17 @@ function TrialPage() {
         body: JSON.stringify({ email, company, agents: Number(agents) }),
       });
       const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) throw new Error(data?.message || "Error al procesar solicitud");
+      if (!response.ok) throw new Error(data?.message || "Error al procesar la solicitud");
 
       setStatus("success");
-      setMessage("Solicitud aprobada. Se han enviado las instrucciones del entorno a su correo corporativo.");
-    } catch (err) {
+      setMessage(
+        "Solicitud aprobada. Le hemos enviado las instrucciones del entorno a su correo corporativo. El siguiente paso es desplegar el nodo de prueba en su VPC."
+      );
+    } catch {
       setStatus("error");
-      setMessage("No se ha podido conectar con el backend. Por favor, contacte directamente vía WhatsApp Enterprise.");
+      setMessage(
+        "No se ha podido conectar con el backend. Puede solicitar la propuesta Enterprise directamente vía WhatsApp."
+      );
     }
   }
 
@@ -1130,35 +1500,50 @@ function TrialPage() {
     <main>
       <PageHeader
         badge="PRUEBA DE CONTROL DE EJECUCIÓN"
-        title="Someta un Agente Autónomo al Plano de Control S.A.A.R.E."
-        description="Inicie una evaluación técnica. Complete los datos corporativos para aprovisionar un sandbox de prueba o solicitar una revisión de arquitectura."
+        title="Someta un agente autónomo al plano de control S.A.A.R.E."
+        description="Inicie una evaluación técnica. Complete los datos corporativos para aprovisionar un entorno de prueba o solicitar una revisión de arquitectura."
       />
 
       <section className="max-w-3xl mx-auto px-6 py-6 mb-16">
         {status === "success" ? (
           <div className="bg-slate-900 border border-emerald-500 p-8 rounded-xl font-mono text-xs">
-            <div className="text-emerald-400 font-bold text-sm mb-2">SOLICITUD PROCESADA CON ÉXITO</div>
-            <p className="text-slate-300">{message}</p>
+            <div className="text-emerald-400 font-bold text-sm mb-2">SOLICITUD PROCESADA</div>
+            <p className="text-slate-300 leading-relaxed">{message}</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-8 rounded-xl space-y-6 font-mono text-xs">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-slate-900 border border-slate-800 p-8 rounded-xl space-y-6 font-mono text-xs"
+          >
             <div>
-              <label className="block text-sky-400 mb-2">CORREO CORPORATIVO (*)</label>
+              <label htmlFor="trial-email" className="block text-sky-400 mb-2">
+                CORREO CORPORATIVO (*)
+              </label>
               <input
+                id="trial-email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ciso@empresa.com"
+                aria-describedby="trial-email-hint"
                 className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
               />
+              <p id="trial-email-hint" className="text-[10px] text-slate-500 mt-1">
+                Para la prueba de exposición necesitamos un correo corporativo.
+              </p>
             </div>
 
             <div>
-              <label className="block text-sky-400 mb-2">ORGANIZACIÓN / EMPRESA (*)</label>
+              <label htmlFor="trial-company" className="block text-sky-400 mb-2">
+                ORGANIZACIÓN (*)
+              </label>
               <input
+                id="trial-company"
                 type="text"
                 required
+                autoComplete="organization"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Nombre de la entidad"
@@ -1167,17 +1552,21 @@ function TrialPage() {
             </div>
 
             <div>
-              <label className="block text-sky-400 mb-2">NÚMERO DE AGENTES AUTÓNOMOS EN PRODUCCIÓN (*)</label>
+              <label htmlFor="trial-agents" className="block text-sky-400 mb-2">
+                AGENTES AUTÓNOMOS EN PRODUCCIÓN (*)
+              </label>
               <input
+                id="trial-agents"
                 type="number"
                 min="1"
                 required
                 value={agents}
                 onChange={(e) => setAgents(e.target.value)}
+                aria-describedby="trial-agents-hint"
                 className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
               />
-              <p className="text-[10px] text-slate-500 mt-1">
-                * Más de 10 agentes cualifica automáticamente para despliegue privado Enterprise.
+              <p id="trial-agents-hint" className="text-[10px] text-slate-500 mt-1">
+                Más de 10 agentes cualifica automáticamente para despliegue privado Enterprise.
               </p>
             </div>
 
@@ -1186,10 +1575,18 @@ function TrialPage() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full py-4 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition"
+              className="w-full py-4 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition disabled:opacity-60"
             >
-              {status === "loading" ? "PROCESANDO..." : isEnterprise ? "SOLICITAR REVISIÓN ENTERPRISE" : "INICIAR PRUEBA DE CONTROL DE AGENTES"}
+              {status === "loading"
+                ? "PROCESANDO..."
+                : isEnterprise
+                ? "SOLICITAR REVISIÓN ENTERPRISE"
+                : "INICIAR PRUEBA DE CONTROL"}
             </button>
+
+            <p className="text-[10px] text-slate-500 text-center">
+              Sin coste de alta · Sin permanencia · Su VPC o Air-Gapped
+            </p>
           </form>
         )}
       </section>
@@ -1197,45 +1594,74 @@ function TrialPage() {
   );
 }
 
+/* ==========================================================================
+   PÁGINAS CORPORATIVAS
+   ========================================================================== */
 function CorporatePage({ variant }) {
-  useSEO("home");
-
-  const data = {
+  const CONTENT = {
     empresa: {
       badge: "CORPORATIVO",
-      title: "MS3V S.A.A.R.E. SL: Soberanía Tecnológica 100% Europea",
-      desc: "Proveedor de Software Independiente (ISV) especializado en infraestructura de autorización, gobierno runtime en memoria y evidencia digital verificable para sistemas de IA.",
+      title: "MS3V S.A.A.R.E. SL · Soberanía tecnológica europea",
+      description:
+        "Infraestructura independiente de gobernanza de IA. Intercepción ex-ante en memoria volátil, contención determinista y prueba digital probatoria. Sin dependencia de proveedores externos.",
+      body: [
+        "S.A.A.R.E. opera como una infraestructura soberana de autorización ex-ante y gobernanza runtime para agentes autónomos, bajo el protocolo SGP 1.0 y el principio Fail-Closed. Mientras los agentes ejecutan acciones, el motor evalúa, decide e intercepta en tiempo real, garantizando el cumplimiento del Reglamento Europeo de Inteligencia Artificial, DORA, NIST CSF 2.0 y el Reglamento General de Protección de Datos.",
+        "La compañía mantiene su sede y su infraestructura en la Unión Europea, y ninguna decisión de contenido abandona el perímetro del cliente. Los contadores de licenciamiento son numéricos y anónimos: registran el número de evaluaciones y veredictos, nunca el texto ni los datos personales.",
+      ],
     },
     "buenas-practicas": {
-      badge: "CÓDIGO DE BUEN USO DE IA",
-      title: "Principios de Contención Preventiva y Control Humano",
-      desc: "Guía operacional para definir límites de ejecución, supervisión Human-in-the-Loop y matriz de responsabilidades sobre acciones ejecutadas por agentes.",
+      badge: "ÉTICA Y BUEN USO",
+      title: "Código de buen uso de la IA",
+      description:
+        "Marco de uso responsable: minimización de datos por diseño, supervisión humana efectiva, trazabilidad de cada decisión automatizada y no persistencia de contenido en el nodo evaluador.",
+      body: [
+        "Principio de minimización. El sistema procesa en memoria volátil y no persiste contenido en claro. La custodia conserva huellas criptográficas, no texto. Cualquier dato personal detectado en tránsito se generaliza antes de que abandone el nodo, conforme al artículo 5 del Reglamento General de Protección de Datos.",
+        "Principio de supervisión humana. El responsable de cumplimiento puede modificar las reglas del motor en tiempo real sin reiniciar los sistemas, de modo que el control efectivo permanece en manos de la organización y no del automatismo. Cada cambio de política queda registrado y firmado.",
+        "Principio de trazabilidad. Cada decisión autorizada queda sellada con su política aplicada y su instante exacto. La trazabilidad no es un registro de vigilancia: es la prueba de que el sistema actuó conforme a la política vigente en el momento de la ejecución.",
+        "Principio de no discriminación. La generalización semántica sustituye valores exactos por rangos y aplica ruido diferencial, lo que evita que variables indirectas permitan reidentificar a una persona o inferir categorías sensibles.",
+      ],
     },
     legal: {
       badge: "CENTRO LEGAL B2B",
-      title: "Garantía Contractual Zero-Disk y Conformidad RGPD",
-      desc: "Documentación legal, SLA de disponibilidad del 99.99%, Acuerdo de Tratamiento de Datos (DPA) y garantía de no almacenamiento de prompts en disco duro.",
+      title: "Centro legal y privacidad Zero-Disk",
+      description:
+        "Condiciones B2B, acuerdo de encargado de tratamiento, política de privacidad y SLA Zero-Disk. Documentación disponible para auditoría previa a la contratación.",
+      body: [
+        "Acuerdo de encargado de tratamiento. S.A.A.R.E. actúa como encargado en los tratamientos derivados del despliegue del nodo, y como responsable únicamente en los datos de licenciamiento. El modelo de contrato y sus anexos están disponibles para revisión previa a cualquier compromiso.",
+        "Compromiso Zero-Disk. El nodo evaluador no escribe contenido en disco. El bloque de memoria se bloquea con mlock para impedir la paginación, y se sobreescribe con ceros tras la firma. La custodia de evidencias es externa al nodo y almacena huellas o contenido cifrado con clave del cliente.",
+        "SLA Zero-Disk. El compromiso de disponibilidad, los tiempos de respuesta del soporte y las condiciones de continuidad de servicio para el tramo Enterprise se documentan en el contrato marco, con SLA garantizado del 99,99 % para el despliegue dedicado.",
+        "Prueba preconstituida. La generación de evidencia se alinea con los artículos 281 y 326 de la Ley de Enjuiciamiento Civil y con ISO/IEC 27037, de modo que el expediente sea aportable en un procedimiento sin necesidad de reconstrucción posterior.",
+      ],
     },
-  }[variant] || { badge: "INFORMACIÓN", title: "MS3V S.A.A.R.E. SL", desc: "Infraestructura de ciberseguridad para IA." };
+  };
+
+  const data = CONTENT[variant] || CONTENT.empresa;
+  useSEO("home");
 
   return (
     <main>
-      <PageHeader badge={data.badge} title={data.title} description={data.desc} />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16">
-        <div className="grid md:grid-cols-2 gap-6 font-mono text-xs">
-          <TechnicalCard title="Soberanía de Datos Zero-Disk" badge="PRIVACIDAD">
-            <p>Procesamiento exclusivo sobre memoria RAM volátil (<code className="text-sky-300">mlock</code>). Cero almacenamiento o persistencia de textos planos en discos físicos.</p>
-          </TechnicalCard>
-
-          <TechnicalCard title="Conformidad EU AI Act & RGPD" badge="REGULACIÓN">
-            <p>Garantía de supervisión ex-ante con capacidad de interrupción inmediata (*Fail-Closed*) y auditoría certificada según la norma ISO/IEC 27037.</p>
-          </TechnicalCard>
-        </div>
+      <PageHeader badge={data.badge} title={data.title} description={data.description} />
+      <section className="max-w-3xl mx-auto px-6 py-6 mb-16 space-y-6">
+        {data.body.map((p, i) => (
+          <p key={i} className="text-sm text-slate-300 leading-relaxed">
+            {p}
+          </p>
+        ))}
+        <p className="text-sm text-slate-400 font-mono pt-4 border-t border-slate-800">
+          Para el detalle contractual completo, contacte con el equipo legal en{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-sky-400 hover:underline">
+            {CONTACT_EMAIL}
+          </a>
+          . Facilitamos la documentación necesaria antes de cualquier compromiso.
+        </p>
       </section>
     </main>
   );
 }
 
+/* ==========================================================================
+   PIE DE PÁGINA
+   ========================================================================== */
 function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950 pt-12 pb-8 px-6 font-mono text-xs text-slate-400">
@@ -1243,40 +1669,96 @@ function Footer() {
         <div className="space-y-3">
           <div className="text-white font-bold text-sm tracking-wide">MS3V S.A.A.R.E. SL</div>
           <p className="text-slate-500 text-[11px] leading-relaxed">
-            Independent AI Governance Infrastructure. Intercepción ex-ante en memoria RAM y prueba digital probatoria.
+            Infraestructura independiente de gobernanza de IA. Intercepción ex-ante en
+            memoria RAM y prueba digital probatoria.
           </p>
-          <div className="text-[10px] text-slate-600">NIF: B-ESB12345678 · Madrid, España</div>
+          <div className="text-[10px] text-slate-600">Madrid, España</div>
         </div>
 
         <div>
-          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">7 Pestañas SGP 1.0</div>
+          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">Producto</div>
           <ul className="space-y-2 text-[11px]">
-            <li><Link to="/" className="hover:text-sky-400">1. Auditoría Pública</Link></li>
-            <li><Link to="/cumplimiento" className="hover:text-sky-400">2. Cumplimiento L7</Link></li>
-            <li><Link to="/forense" className="hover:text-sky-400">3. Legal-Forense</Link></li>
-            <li><Link to="/ventas" className="hover:text-sky-400">4. Agentes Venta (Kit Consulting)</Link></li>
-            <li><Link to="/sdk" className="hover:text-sky-400">5. Modo SDK (LabEngine)</Link></li>
-            <li><Link to="/proxy" className="hover:text-sky-400">6. Modo Proxy (PerimeterShield)</Link></li>
-            <li><Link to="/daemon" className="hover:text-sky-400">7. Modo Daemon (On-Premise)</Link></li>
+            <li>
+              <Link to="/producto/auditoria" className="hover:text-sky-400">
+                Auditoría pública
+              </Link>
+            </li>
+            <li>
+              <Link to="/producto/executive" className="hover:text-sky-400">
+                Consola EXECUTIVE
+              </Link>
+            </li>
+            <li>
+              <Link to="/producto/grc" className="hover:text-sky-400">
+                Consola GRC_AUDIT
+              </Link>
+            </li>
+            <li>
+              <Link to="/producto/cyber" className="hover:text-sky-400">
+                Consola CYBER_RESILIENCE
+              </Link>
+            </li>
+            <li>
+              <Link to="/forense" className="hover:text-sky-400">
+                Evidence Vault
+              </Link>
+            </li>
           </ul>
         </div>
 
         <div>
-          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">Canal &amp; Institucional</div>
+          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">
+            Desarrolladores y canal
+          </div>
           <ul className="space-y-2 text-[11px]">
-            <li><Link to="/empresa" className="hover:text-sky-400">Sobre MS3V S.A.A.R.E. SL</Link></li>
-            <li><Link to="/buenas-practicas" className="hover:text-sky-400">Código de Buen Uso de IA</Link></li>
-            <li><Link to="/legal" className="hover:text-sky-400">Centro Legal B2B &amp; DPA</Link></li>
+            <li>
+              <Link to="/dev/sdk" className="hover:text-sky-400">
+                SDK nativo
+              </Link>
+            </li>
+            <li>
+              <Link to="/dev/proxy" className="hover:text-sky-400">
+                Proxy perimetral
+              </Link>
+            </li>
+            <li>
+              <Link to="/dev/daemon" className="hover:text-sky-400">
+                Daemon on-premise
+              </Link>
+            </li>
+            <li>
+              <Link to="/canal" className="hover:text-sky-400">
+                Programa de partners
+              </Link>
+            </li>
           </ul>
         </div>
 
         <div>
-          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">Contacto Corporativo</div>
+          <div className="text-slate-200 font-bold mb-3 uppercase text-[11px]">Corporativo</div>
           <ul className="space-y-2 text-[11px]">
-            <li>Sede Central: Madrid, España</li>
-            <li>Email: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-sky-400">{CONTACT_EMAIL}</a></li>
+            <li>
+              <Link to="/empresa" className="hover:text-sky-400">
+                Sobre MS3V S.A.A.R.E. SL
+              </Link>
+            </li>
+            <li>
+              <Link to="/buenas-practicas" className="hover:text-sky-400">
+                Código de buen uso de IA
+              </Link>
+            </li>
+            <li>
+              <Link to="/legal" className="hover:text-sky-400">
+                Centro legal B2B y DPA
+              </Link>
+            </li>
+            <li>
+              Email:{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-sky-400">
+                {CONTACT_EMAIL}
+              </a>
+            </li>
             <li>Teléfono: {CONTACT_PHONE}</li>
-            <li><a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">WhatsApp Enterprise ↗</a></li>
           </ul>
         </div>
       </div>
@@ -1284,9 +1766,15 @@ function Footer() {
       <div className="max-w-7xl mx-auto border-t border-slate-800/80 pt-6 flex flex-col sm:flex-row justify-between gap-4 text-[10px] text-slate-600">
         <div>© 2026 MS3V S.A.A.R.E. SL. Todos los derechos reservados.</div>
         <div className="flex gap-4">
-          <Link to="/legal" className="hover:text-slate-400">Privacidad</Link>
-          <Link to="/legal" className="hover:text-slate-400">Términos B2B</Link>
-          <Link to="/legal" className="hover:text-slate-400">Zero-Disk SLA</Link>
+          <Link to="/legal" className="hover:text-slate-400">
+            Privacidad
+          </Link>
+          <Link to="/legal" className="hover:text-slate-400">
+            Términos B2B
+          </Link>
+          <Link to="/legal" className="hover:text-slate-400">
+            SLA Zero-Disk
+          </Link>
         </div>
       </div>
     </footer>
@@ -1302,7 +1790,7 @@ function ScrollToTop() {
 }
 
 /* ==========================================================================
-   ENRUTADOR GENERAL DE LA APLICACIÓN
+   ENRUTADOR GENERAL
    ========================================================================== */
 export default function App() {
   return (
@@ -1310,27 +1798,45 @@ export default function App() {
       <AppShell>
         <ScrollToTop />
         <Routes>
-          {/* Las 7 Pestañas Principales */}
+          {/* Producto */}
           <Route path="/" element={<TabAuditoriaPublica />} />
-          <Route path="/cumplimiento" element={<TabCumplimiento />} />
-          <Route path="/forense" element={<TabForense />} />
-          <Route path="/ventas" element={<TabVentas />} />
-          <Route path="/sdk" element={<TabSDK />} />
-          <Route path="/proxy" element={<TabProxy />} />
-          <Route path="/daemon" element={<TabDaemon />} />
+          <Route path="/producto" element={<TabAuditoriaPublica />} />
+          <Route path="/producto/auditoria" element={<TabAuditoriaPublica />} />
+          <Route path="/producto/executive" element={<TabCumplimiento vista="executive" />} />
+          <Route path="/producto/grc" element={<TabCumplimiento vista="grc" />} />
+          <Route path="/producto/cyber" element={<TabCumplimiento vista="cyber" />} />
 
-          {/* Rutas Secundarias y Compatibilidad Legada */}
-          <Route path="/software" element={<TabProxy />} />
-          <Route path="/sales" element={<TabVentas />} />
-          <Route path="/grc" element={<TabCumplimiento />} />
-          <Route path="/developers" element={<TabSDK />} />
-          <Route path="/enterprise" element={<TabDaemon />} />
+          {/* Forense */}
+          <Route path="/forense" element={<TabForense />} />
+
+          {/* Desarrolladores */}
+          <Route path="/dev" element={<TabDev />} />
+          <Route path="/dev/sdk" element={<TabSDK />} />
+          <Route path="/dev/proxy" element={<TabProxy />} />
+          <Route path="/dev/daemon" element={<TabDaemon />} />
+
+          {/* Canal */}
+          <Route path="/canal" element={<TabVentas />} />
+
+          {/* Cualificación y corporativo */}
           <Route path="/trial" element={<TrialPage />} />
           <Route path="/empresa" element={<CorporatePage variant="empresa" />} />
           <Route path="/buenas-practicas" element={<CorporatePage variant="buenas-practicas" />} />
           <Route path="/legal" element={<CorporatePage variant="legal" />} />
 
-          {/* Redirección por defecto */}
+          {/* Compatibilidad con rutas heredadas */}
+          <Route path="/cumplimiento" element={<TabCumplimiento />} />
+          <Route path="/grc" element={<TabCumplimiento />} />
+          <Route path="/auditoria" element={<TabAuditoriaPublica />} />
+          <Route path="/sdk" element={<TabSDK />} />
+          <Route path="/proxy" element={<TabProxy />} />
+          <Route path="/daemon" element={<TabDaemon />} />
+          <Route path="/software" element={<TabProxy />} />
+          <Route path="/sales" element={<TabVentas />} />
+          <Route path="/ventas" element={<TabVentas />} />
+          <Route path="/developers" element={<TabDev />} />
+          <Route path="/enterprise" element={<TabDaemon />} />
+
           <Route path="*" element={<TabAuditoriaPublica />} />
         </Routes>
       </AppShell>
