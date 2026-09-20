@@ -64,7 +64,7 @@ const DIMENSIONS = [
 ];
 
 /* ==========================================================================
-   CATÁLOGO COMERCIAL · seis tramos, cada uno con su propia página de detalle.
+   CATÁLOGO COMERCIAL · seis tramos con página de detalle propia.
    ========================================================================== */
 const CATALOGO = [
   {
@@ -221,6 +221,153 @@ const CATALOGO = [
   },
 ];
 
+/* ==========================================================================
+   CONTENIDO DE LAS TRES VISTAS DE CONSOLA
+   Cada vista tiene su propia matriz regulatoria, su propio inventario de
+   nodos, su propia superficie operativa y su propio tramo recomendado. No
+   comparten cuerpo: comparten motor, que es distinto.
+   ========================================================================== */
+const VISTAS_CONSOLA = {
+  executive: {
+    id: "executive",
+    badge: "VISTA EXECUTIVE",
+    titular: "Gobernanza cuantitativa y blindaje de responsabilidad",
+    pageTitle: "Cuánta responsabilidad está asumiendo su automatización",
+    pageDesc:
+      "Cuadro de mando de nivel C: riesgo operativo acumulado, consumo por área, continuidad de negocio y exposición legal derivada de cada agente autónomo en producción. Convierte el gobierno de IA en una cifra que el consejo puede leer.",
+    owner: "CEO · Junta directiva · Dirección jurídica",
+    rol: "BOARD_EXECUTIVE_LEVEL_1",
+    metricas: [
+      ["RIESGO ACUMULADO EX-ANTE", "0,02 %"],
+      ["TOKENS INTERCEPTADOS / MES", "142.800 €"],
+      ["AGENTES EN PRODUCCIÓN", "37 trazados"],
+      ["EXPOSICIÓN BAJO DORA", "MITIGADA"],
+    ],
+    seccionMatriz: "OBLIGACIÓN DE CONSEJO",
+    tituloMatriz: "Qué obligación cubre y qué puede demostrar",
+    leadMatriz: "Cada fila es una obligación que recae sobre la dirección, el control que la atiende y el documento que puede entregar ante un consejo, una aseguradora o un inversor.",
+    matriz: [
+      ["EU AI Act art. 14", "Supervisión humana efectiva", "Cambio de política en vivo sin reiniciar sistemas", "Registro de cambio de política firmado"],
+      ["EU AI Act art. 15", "Precisión y robustez del sistema", "Contención fail-closed y tolerancia estructural", "Veredicto firmado con su latencia"],
+      ["DORA art. 5", "Gobernanza y responsabilidad de la dirección", "Políticas locales firmadas sin dependencia de red", "Certificado de autonomía de nodo"],
+      ["DORA art. 9", "Protección y prevención de incidentes TIC", "Intercepción ex-ante contra vectores L7", "Registro de intercepción sellado"],
+      ["NIS 2 art. 20", "Responsabilidad de la alta dirección", "Telemetría determinista sin contenido ni PII", "Contadores anónimos firmados"],
+    ],
+    seccionInventario: "PARQUE AUTORIZADO",
+    tituloInventario: "Qué agentes están bajo control hoy",
+    leadInventario: "El consejo no necesita ver la infraestructura: necesita saber cuántos agentes operan, bajo qué política y con qué resultado. Cada nodo es una unidad de riesgo trazada.",
+    inventario: [
+      ["agent-treasury-01", "Autónomo financiero", "Core bancario", "scope: pagos", "ALLOW"],
+      ["agent-fraud-scoring-02", "Autónomo de riesgo", "VPC privada", "scope: scoring", "REVIEW"],
+      ["agent-reporting-cfo", "Asistente de dirección", "App interna", "scope: reporting", "ALLOW"],
+    ],
+    superficieSeccion: "CUADRO DE MANDO",
+    superficieTitulo: "Consolidado de nivel C",
+    superficie: [
+      ["PERIODO", "Últimos 30 días"],
+      ["AHORRO POR COMPRESIÓN", "Context Slicing activo"],
+      ["CERTIFICADO CORPORATIVO", "Exportable en 1 clic"],
+      ["GASTO POR DEPARTAMENTO", "Trazado por tipo de modelo"],
+      ["CONTINUIDAD DE NEGOCIO", "Sin interrupción registrada"],
+    ],
+    tramoRecomendado: "nodo-custodia",
+    tramoCta: "ACTIVAR NODO CON CUSTODIA ↗",
+  },
+
+  grc: {
+    id: "grc",
+    badge: "VISTA GRC_AUDIT",
+    titular: "La prueba llegó antes que el litigio",
+    pageTitle: "La prueba llegó antes que el litigio",
+    pageDesc:
+      "Matriz de trazabilidad normativa contra el EU AI Act, DORA, NIS 2, RGPD e ISO/IEC 27037, con exportación de Proof Bundles firmados y sellados con marca de tiempo cualificada. El expediente no se redacta cuando llega la inspección: se genera mientras el sistema opera.",
+    owner: "CISO · DPO · Auditoría externa",
+    rol: "DPO_GRC_LEVEL_2",
+    metricas: [
+      ["ENMASCARAMIENTO PII", "DNI · IBAN · Tarjetas · PHI"],
+      ["CLASIFICACIÓN AI ACT", "Inaceptable · Alto · Limitado"],
+      ["RGPD ART. 32", "Arquitectura Zero-Disk"],
+      ["REGISTRO EIPD", "Inmutable y firmado"],
+    ],
+    seccionMatriz: "TRAZABILIDAD NORMATIVA",
+    tituloMatriz: "Matriz de requisito a veredicto",
+    leadMatriz: "De la norma al veredicto, sin traducción manual. Cada fila mapea una obligación a un control ejecutable, a una política concreta y a la evidencia que queda firmada.",
+    matriz: [
+      ["EU AI Act art. 10", "Gobernanza de datos de contexto", "Generalización y seudonimización ex-ante", "Registro de política de datos aplicada"],
+      ["EU AI Act art. 12", "Registro automático de eventos", "Registro en memoria sin violar minimización", "Huella criptográfica del veredicto"],
+      ["RGPD art. 5", "Minimización de datos personales", "Zeroización tras la firma, sin persistencia", "Digest HMAC-SHA256 del payload"],
+      ["RGPD art. 32", "Seguridad y cifrado del tratamiento", "Sanitización en RAM y arquitectura Zero-Disk", "Registro de no exfiltración"],
+      ["ISO/IEC 27037", "Identificación de evidencia digital", "Cadena de Merkle y firma asimétrica", "Dossier forense verificable offline"],
+      ["Arts. 281 y 326 LEC", "Prueba documental preconstituida", "Sellado cualificado y cadena de custodia", "Expediente aportable en sala"],
+    ],
+    seccionInventario: "EXPEDIENTES BAJO CUSTODIA",
+    tituloInventario: "Evidencias selladas y verificables",
+    leadInventario: "Cada entrada es un expediente con su cadena de custodia completa. El verificador público permite al auditor comprobar la firma sin confiar en el emisor.",
+    inventario: [
+      ["VRD-2026-0917-88A1F", "Veredicto DENY", "policy: POL-EU-AIACT-ART15", "RFC 3161", "VERIFIED"],
+      ["VRD-2026-0916-4C09B", "Veredicto ALLOW", "policy: POL-LOG-IMMUTABLE", "RFC 3161", "VERIFIED"],
+      ["EIPD-2026-014", "Evaluación de impacto", "policy: POL-PII-EGRESS", "Firma Ed25519", "VERIFIED"],
+    ],
+    superficieSeccion: "SUPERFICIE DE AUDITORÍA",
+    superficieTitulo: "Estado del expediente",
+    superficie: [
+      ["POLICY_STATE", "SIGNED_BY_HSM_KEY_0x9F (v2.4.1)"],
+      ["COBERTURA NORMATIVA", "94 % de los requisitos mapeados"],
+      ["PROOF BUNDLES EMITIDOS", "1.284 este trimestre"],
+      ["ÚLTIMA VERIFICACIÓN EXTERNA", "Sin incidencias"],
+      ["PENDIENTE DE CIERRE", "2 requisitos en revisión"],
+    ],
+    tramoRecomendado: "nodo-custodia",
+    tramoCta: "ACTIVAR NODO CON CUSTODIA ↗",
+  },
+
+  cyber: {
+    id: "cyber",
+    badge: "VISTA CYBER_RESILIENCE",
+    titular: "Ve cada intercepción mientras ocurre",
+    pageTitle: "Ve cada intercepción mientras ocurre",
+    pageDesc:
+      "Monitorización síncrona de intercepciones de capa 7: inyección de prompt, fuga de PII y vectores del OWASP LLM Top 10, con inspección de cada veredicto y su latencia. Sin muestreo, sin retraso y sin puntos ciegos.",
+    owner: "SOC · SecOps · Threat hunters",
+    rol: "CISO_SECOPS_LEVEL_3",
+    metricas: [
+      ["PROMPT INJECTION L7", "Intercepción en tiempo real"],
+      ["SHADOW AI", "Descubrimiento automático"],
+      ["ESTADO FAIL-CLOSED", "100 % activo"],
+      ["LATENCIA DE APLICACIÓN", "1,18 ms"],
+    ],
+    seccionMatriz: "VECTORES NEUTRALIZADOS",
+    tituloMatriz: "Contención por vector de ataque",
+    leadMatriz: "Cada fila es un vector del OWASP LLM Top 10, el mecanismo determinista que lo neutraliza y la latencia real de la intercepción.",
+    matriz: [
+      ["LLM01 · Prompt Injection", "Manipulación directa del modelo", "Separación estricta de roles a nivel sintáctico", "0,8 ms"],
+      ["LLM02 · Insecure Output", "Salida no validada hacia sistemas", "Validación de integridad dicotómica", "1,4 ms"],
+      ["LLM06 · Sensitive Info", "Exfiltración de datos sensibles", "Sanitización k-anónima in-RAM", "1,2 ms"],
+      ["LLM08 · Excessive Agency", "Acciones fuera de política", "Puerta de ejecución ex-ante", "0,4 ms"],
+      ["LLM10 · Unbounded Consumption", "Consumo ilimitado de recursos", "Context Slicing y umbral determinista", "1,1 ms"],
+    ],
+    seccionInventario: "TRÁFICO INTERCEPTADO",
+    tituloInventario: "Intercepciones en las últimas 24 horas",
+    leadInventario: "Cada línea es una intercepción real con su vector, su nodo de origen y su resultado. La telemetría es numérica: nunca contiene el texto ni los datos personales.",
+    inventario: [
+      ["10:42:07.118", "node-proxy-ingress-01", "LLM01 · Inyección directa", "0,8 ms", "DENY"],
+      ["10:41:52.004", "node-sdk-payment-api", "LLM06 · Fuga de PII", "1,2 ms", "DENY"],
+      ["10:41:19.771", "node-daemon-finance", "LLM08 · Agencia excesiva", "0,4 ms", "DENY"],
+    ],
+    superficieSeccion: "TELEMETRÍA DE BORDE",
+    superficieTitulo: "Estado del motor en vivo",
+    superficie: [
+      ["NODE_STATUS", "ONLINE (0,84 ms)"],
+      ["INTERCEPCIONES 24 H", "4.891 bloqueadas"],
+      ["VECTORES ACTIVOS", "5 del OWASP LLM Top 10"],
+      ["CONMUTACIÓN FAIL-CLOSED", "Instantánea, sin reinicio"],
+      ["PUNTOS CIEGOS DETECTADOS", "0"],
+    ],
+    tramoRecomendado: "evidencias",
+    tramoCta: "CONTRATAR PAQUETE DE SELLOS ↗",
+  },
+};
+
 const SEO_CONFIG = {
   home: {
     title: "Auditoría Pública | Verifique un sello S.A.A.R.E. sin confiar en nosotros",
@@ -291,6 +438,9 @@ function AppShell({ children }) {
   const activeGroup = NAV.find((n) => n.id === active);
   const isAuthRoute = ["/login", "/auth", "/acceso"].includes(location.pathname);
 
+  /* La sesión se lee al navegar Y al montar. Si el token existe pero no hay
+     usuario, se persiste igualmente la lectura para no mostrar el botón de
+     acceso cuando en realidad hay sesión abierta. */
   const sessionUser = useMemo(() => {
     try {
       const raw = localStorage.getItem("saare_session_user");
@@ -299,6 +449,9 @@ function AppShell({ children }) {
       return null;
     }
   }, [location.pathname]);
+
+  const isTrialSession =
+    sessionUser && String(sessionUser.plan || "").toUpperCase().includes("TRIAL");
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-sky-500 selection:text-black">
@@ -315,13 +468,18 @@ function AppShell({ children }) {
             </Link>
 
             <div className="flex items-center gap-2">
-              <Link to="/trial" className="hidden lg:inline-flex px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-slate-700 text-white hover:bg-slate-800 transition">
-                PROBAR EL CONTROL
-              </Link>
-
               {sessionUser ? (
-                <Link to="/producto/cumplimiento" className="px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-sky-500/50 text-sky-300 hover:bg-sky-500/10 transition" title={`Sesión: ${sessionUser.email}`}>
-                  CONSOLA · {String(sessionUser.email).split("@")[0].toUpperCase()}
+                <Link
+                  to="/producto/cumplimiento"
+                  className={`px-3.5 py-1.5 text-xs font-mono font-bold rounded border transition ${
+                    isTrialSession
+                      ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
+                      : "border-sky-500/50 text-sky-300 hover:bg-sky-500/10"
+                  }`}
+                  title={`Sesión activa: ${sessionUser.email}`}
+                >
+                  {isTrialSession ? "PRUEBA · " : "CONSOLA · "}
+                  {String(sessionUser.email).split("@")[0].toUpperCase()}
                 </Link>
               ) : (
                 <Link to="/login" className="px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-sky-500/50 text-sky-300 hover:bg-sky-500/10 transition">
@@ -481,9 +639,9 @@ function CodePanel({ code, title = "INTEGRACIÓN TÉCNICA · CÓDIGO NATIVO" }) 
 
 function DataRow({ label, value }) {
   return (
-    <div className="flex justify-between items-center border-b border-slate-800/70 pb-2 text-[11px] font-mono">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-slate-200 text-right ml-4">{value}</span>
+    <div className="flex justify-between items-start gap-4 border-b border-slate-800/70 pb-2 text-[11px] font-mono">
+      <span className="text-slate-500 min-w-0">{label}</span>
+      <span className="text-slate-200 text-right break-words min-w-0">{value}</span>
     </div>
   );
 }
@@ -498,7 +656,7 @@ function VerdictChip({ verdict }) {
     ERROR: "bg-red-500/15 border-red-500 text-red-400",
   };
   return (
-    <span className={`inline-block font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${map[verdict] || map.REVIEW}`}>
+    <span className={`inline-block font-mono text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${map[verdict] || map.REVIEW}`}>
       {verdict}
     </span>
   );
@@ -544,12 +702,47 @@ function ComparativaGuardarrail() {
   );
 }
 
+/* --------------------------------------------------------------------------
+   Tabla de datos reutilizable. La primera columna nunca envuelve palabra,
+   las demás sí, y el contenedor mantiene scroll horizontal en móvil para
+   que una celda larga no rompa el ancho de la tabla.
+   -------------------------------------------------------------------------- */
+function DataTable({ headers, rows, renderLast }) {
+  return (
+    <div className="overflow-x-auto -mx-2 px-2">
+      <table className="w-full min-w-[720px] text-left font-mono text-xs border-collapse">
+        <thead>
+          <tr className="border-b border-slate-800 text-sky-400">
+            {headers.map((h, i) => (
+              <th key={i} className={`pb-3 pr-4 align-bottom ${i === 0 ? "whitespace-nowrap" : ""}`}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800 text-slate-300">
+          {rows.map((r, ri) => (
+            <tr key={ri}>
+              {r.map((cell, ci) => (
+                <td
+                  key={ci}
+                  className={`py-3 pr-4 align-top leading-relaxed ${
+                    ci === 0 ? "font-bold text-white whitespace-nowrap" : ""
+                  }`}
+                >
+                  {ci === r.length - 1 && renderLast ? renderLast(cell) : cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /* ==========================================================================
    PESTAÑA 1 · AUDITORÍA PÚBLICA
-   Enfoque: la puerta de entrada es el verificador. El visitante comprueba un
-   sello antes de que se le pida nada. Después se expone el mecanismo —qué es
-   un sello, qué dimensiones se evalúan— y solo al final, en una franja
-   compacta, el índice de licencias con enlace a cada página de detalle.
    ========================================================================== */
 function TabAuditoriaPublica() {
   useSEO("home");
@@ -621,54 +814,97 @@ function TabAuditoriaPublica() {
 
   return (
     <main>
-      {/* ── Héroe · el verificador es el protagonista ── */}
       <section className="relative border-b border-slate-800 bg-[#020617] overflow-hidden pt-12 pb-16">
         <HeroVideoBackdrop />
         <div className="relative z-10 max-w-6xl mx-auto px-6">
           <div className="bg-slate-900/85 border border-sky-500/30 p-8 rounded-xl backdrop-blur-md">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-mono text-xs font-bold text-sky-400 uppercase tracking-widest bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
-                PESTAÑA 1 · AUDITORÍA PÚBLICA
+                GOBERNANZA DE IA CON PRUEBA CRIPTOGRÁFICA
               </span>
               <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">
                 Trust Anchor · SAARE-MD-IPRES-2026
               </span>
             </div>
 
-            <h1 className="font-bold text-3xl sm:text-5xl text-white mt-4 tracking-tight leading-tight font-display">
-              Compruebe un sello ahora. <span className="text-sky-400">No hace falta que nos crea.</span>
-            </h1>
-            <p className="mt-4 text-slate-300 text-sm sm:text-base max-w-4xl leading-relaxed">
-              Pegue una raíz Merkle o un identificador de evidencia y verifíquelo contra el
-              Trust Anchor público. Sin registro, sin cuenta y sin depender de nuestra palabra:
-              solo la firma, la clave pública y la marca de tiempo cualificada.
+            {/* Identificación primero: responde al «¿esto es para mí?» antes que nada */}
+            <p className="mt-6 text-slate-300 text-sm sm:text-base max-w-4xl font-mono leading-relaxed">
+              <span className="text-sky-400 font-bold">Para quién:</span> organizaciones con
+              agentes de IA que ejecutan acciones irreversibles —pagos, borrados, expedientes—
+              y que hoy no pueden demostrar qué se decidió antes de cada una.
             </p>
 
-            <form onSubmit={handleVerify} className="mt-8 flex flex-col sm:flex-row gap-3">
-              <input
-                value={hash}
-                onChange={(e) => setHash(e.target.value)}
-                placeholder="Raíz Merkle o ID de evidencia"
-                aria-label="Raíz Merkle o identificador de evidencia"
-                className="flex-1 bg-black/90 border border-slate-700 px-4 py-3 text-xs font-mono text-sky-300 rounded focus:border-sky-500 focus:outline-none"
-              />
-              <button type="submit" disabled={loading} className="px-6 py-3 bg-emerald-500 text-black font-mono font-bold text-xs rounded hover:bg-emerald-400 transition shrink-0 disabled:opacity-60">
-                {loading ? "VERIFICANDO..." : "VERIFICAR SELLO"}
-              </button>
-            </form>
+            <h1 className="font-bold text-3xl sm:text-5xl text-white mt-4 tracking-tight leading-tight font-display">
+              Sus agentes de IA ejecutan.{" "}
+              <span className="text-sky-400">¿Puede probarlo?</span>
+            </h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-4 font-mono text-[10px] text-slate-500">
-              <button
-                type="button"
-                onClick={() => setHash(DEMO_ROOT_MERKLE_HASH)}
-                className="hover:text-sky-400 transition"
-              >
-                Cargar hash de demostración
-              </button>
-              <span>·</span>
-              <a href="#como-funciona" className="hover:text-sky-400 transition">
-                Cómo se genera un sello →
-              </a>
+            <p className="mt-5 text-slate-400 text-sm max-w-4xl leading-relaxed">
+              CISO, DPO, dirección jurídica y operaciones que responden ante auditoría,
+              regulador o aseguradora. Contención determinista en el borde, sin consumo de
+              tokens y sin persistencia en el nodo.
+            </p>
+
+            {/* Dos puertas: la técnica y la de negocio */}
+            <div className="mt-8 grid lg:grid-cols-2 gap-4">
+              {/* Puerta A · Verificar */}
+              <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-5">
+                <span className="font-mono text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+                  ¿Ya tiene un sello?
+                </span>
+                <h2 className="text-white font-bold text-sm mt-2 mb-3">
+                  Verifíquelo ahora. No hace falta que nos crea.
+                </h2>
+                <form onSubmit={handleVerify} className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    value={hash}
+                    onChange={(e) => setHash(e.target.value)}
+                    placeholder="Raíz Merkle o ID de evidencia"
+                    aria-label="Raíz Merkle o identificador de evidencia"
+                    className="flex-1 bg-black/90 border border-slate-700 px-4 py-3 text-xs font-mono text-sky-300 rounded focus:border-sky-500 focus:outline-none"
+                  />
+                  <button type="submit" disabled={loading} className="px-6 py-3 bg-emerald-500 text-black font-mono font-bold text-xs rounded hover:bg-emerald-400 transition shrink-0 disabled:opacity-60">
+                    {loading ? "VERIFICANDO..." : "VERIFICAR SELLO"}
+                  </button>
+                </form>
+                <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] text-slate-500">
+                  <button type="button" onClick={() => setHash(DEMO_ROOT_MERKLE_HASH)} className="hover:text-sky-400 transition">
+                    Cargar hash de demostración
+                  </button>
+                  <span>·</span>
+                  <a href="#como-funciona" className="hover:text-sky-400 transition">
+                    Cómo se genera un sello →
+                  </a>
+                </div>
+              </div>
+
+              {/* Puerta B · Prueba de exposición */}
+              <div className="bg-slate-950/70 border border-emerald-500/30 rounded-lg p-5 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                    ¿Todavía no tiene ninguno?
+                  </span>
+                  <h2 className="text-white font-bold text-sm mt-2 mb-3">
+                    Ejecute la prueba de exposición sobre sus propios agentes.
+                  </h2>
+                  <ul className="space-y-2 font-mono text-[11px] text-slate-400">
+                    <li>· Qué acciones se autorizarían hoy con su política</li>
+                    <li>· Cuáles se bloquearían antes de ejecutarse</li>
+                    <li>· Qué expediente de prueba generaría su operación</li>
+                  </ul>
+                </div>
+                <div className="mt-5">
+                  <Link
+                    to="/trial"
+                    className="block w-full text-center px-5 py-3 bg-emerald-500 text-black font-bold text-xs rounded hover:bg-emerald-400 transition"
+                  >
+                    SOLICITAR PRUEBA DE EXPOSICIÓN · 7 DÍAS →
+                  </Link>
+                  <p className="text-[10px] text-slate-500 text-center mt-3 font-mono">
+                    Sin coste · Sin integración previa · Resultado en su expediente
+                  </p>
+                </div>
+              </div>
             </div>
 
             {verifyResult && (
@@ -701,7 +937,6 @@ function TabAuditoriaPublica() {
             </p>
           </div>
 
-          {/* Los tres requisitos que prueba un sello */}
           <div className="grid md:grid-cols-3 gap-4 mt-6">
             <div className="bg-slate-900/70 border border-slate-800 p-5 rounded-lg font-mono text-xs">
               <span className="text-emerald-400 font-bold">AUTENTICIDAD DE ORIGEN</span>
@@ -716,7 +951,7 @@ function TabAuditoriaPublica() {
               </p>
             </div>
             <div className="bg-slate-900/70 border border-slate-800 p-5 rounded-lg font-mono text-xs">
-              <span className="text-gold-400 font-bold text-amber-400">CERTEZA TEMPORAL</span>
+              <span className="text-amber-400 font-bold">CERTEZA TEMPORAL</span>
               <p className="text-slate-400 mt-2 leading-relaxed text-[11px]">
                 El sello cualificado RFC 3161 de una autoridad acreditada, conforme al art. 32 eIDAS.
               </p>
@@ -725,7 +960,6 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ── Cómo se genera un sello ── */}
       <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
         <SectionTitle
           kicker="CADENA DE CUSTODIA"
@@ -758,7 +992,6 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ── Las 7 dimensiones ── */}
       <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
         <SectionTitle
           kicker="EVALUACIÓN EX-ANTE"
@@ -776,7 +1009,6 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ── Demostrador empírico local ── */}
       <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
         <SectionTitle
           kicker="DEMOSTRACIÓN EMPÍRICA LOCAL"
@@ -818,13 +1050,11 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ── Comparativa frente al guardarraíl ── */}
       <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
         <SectionTitle kicker="DISRUPCIÓN" title="Ya tiene un guardarraíl. No tiene una prueba." />
         <ComparativaGuardarrail />
       </section>
 
-      {/* ── Franja compacta de licencias: índice, no apilamiento ── */}
       <section id="licencias" className="max-w-6xl mx-auto px-6 py-12">
         <SectionTitle
           kicker="LICENCIAMIENTO"
@@ -1033,137 +1263,154 @@ ${item.id === "nodo-base" ? "// Sin custodia: solo el veredicto\nif (result.deci
 }
 
 /* ==========================================================================
-   PESTAÑA · CONSOLAS DE CUMPLIMIENTO
+   VISTA DE CONSOLA · una superficie diferenciada por rol
+   El cuerpo cambia por completo según la vista: matriz, inventario, superficie
+   operativa y tramo recomendado son propios de cada rol.
    ========================================================================== */
-function TabCumplimiento({ vista = "todas" }) {
+function VistaConsola({ vistaId }) {
+  const v = VISTAS_CONSOLA[vistaId];
+  useSEO("producto", { title: `${v.badge} | Consolas de Cumplimiento S.A.A.R.E.`, description: v.pageDesc.slice(0, 155) });
+
+  const esCyber = v.id === "cyber";
+
+  return (
+    <main>
+      <PageHeader badge={`PRODUCTO · ${v.badge}`} title={v.pageTitle} description={v.pageDesc} />
+
+      <section className="max-w-6xl mx-auto px-6 py-6">
+        {/* Identidad de la vista y sus cuatro indicadores */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-12">
+          <div className="lg:col-span-1 bg-slate-900/90 border border-sky-500/40 p-6 rounded-lg font-mono text-xs">
+            <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">{v.badge}</span>
+            <h3 className="text-white font-bold text-base mt-2">{v.titular}</h3>
+            <p className="text-slate-500 mt-2 leading-relaxed">{v.owner}</p>
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <DataRow label="ROL DE ACCESO" value={v.rol} />
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
+            {v.metricas.map(([label, value], i) => (
+              <div key={i} className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono text-xs flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
+                <span className="text-white font-bold text-lg mt-3 break-words">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Matriz propia de la vista */}
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
+          <SectionTitle kicker={v.seccionMatriz} title={v.tituloMatriz} lead={v.leadMatriz} />
+          <DataTable
+            headers={esCyber ? ["VECTOR OWASP", "MECANISMO DE EXPLOTACIÓN", "MITIGACIÓN DETERMINISTA", "LATENCIA"] : ["MARCO Y ARTÍCULO", "CONTROL REQUERIDO", "MECANISMO S.A.A.R.E.", "EVIDENCIA GENERADA"]}
+            rows={v.matriz}
+          />
+        </div>
+
+        {/* Inventario propio de la vista */}
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
+          <SectionTitle kicker={v.seccionInventario} title={v.tituloInventario} lead={v.leadInventario} />
+          <DataTable
+            headers={esCyber ? ["INSTANTE", "NODO DE ORIGEN", "VECTOR", "LATENCIA", "VEREDICTO"] : ["IDENTIFICADOR", "ELEMENTO", "POLÍTICA O ÁMBITO", "SELLO", "ESTADO"]}
+            rows={v.inventario}
+            renderLast={(cell) => <VerdictChip verdict={cell} />}
+          />
+        </div>
+
+        {/* Superficie operativa propia de la vista */}
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
+          <SectionTitle kicker={v.superficieSeccion} title={v.superficieTitulo} />
+          <div className="bg-slate-950 p-6 rounded border border-slate-800 space-y-3">
+            {v.superficie.map(([label, value], i) => (
+              <DataRow key={i} label={label} value={value} />
+            ))}
+          </div>
+        </div>
+
+        {/* Tramo recomendado para esta vista */}
+        <div className="max-w-2xl mx-auto mb-12">
+          <CatalogCard item={CATALOGO.find((c) => c.id === v.tramoRecomendado)} />
+        </div>
+
+        {/* Salto a las otras dos vistas */}
+        <div className="border-t border-slate-800 pt-10">
+          <SectionTitle kicker="OTRAS SUPERFICIES" title="Las otras vistas de la misma consola" />
+          <div className="grid md:grid-cols-3 gap-6">
+            {Object.values(VISTAS_CONSOLA)
+              .filter((o) => o.id !== v.id)
+              .map((o) => (
+                <TechnicalCard key={o.id} title={o.titular} badge={o.badge}>
+                  <p className="text-slate-500">{o.owner}</p>
+                  <Link to={`/producto/${o.id}`} className="inline-block mt-3 text-sky-400 hover:underline">
+                    Abrir vista →
+                  </Link>
+                </TechnicalCard>
+              ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+/* ==========================================================================
+   PESTAÑA · CONSOLAS DE CUMPLIMIENTO (índice de las tres vistas)
+   ========================================================================== */
+function TabCumplimiento() {
   useSEO("producto");
-
-  const TODAS = [
-    {
-      id: "executive",
-      badge: "VISTA EXECUTIVE",
-      title: "Gobernanza cuantitativa y blindaje de responsabilidad",
-      owner: "CEO · Junta directiva · Dirección jurídica",
-      rows: [
-        ["AHORRO POR COMPRESIÓN", "Context Slicing activo"],
-        ["EXPOSICIÓN GLOBAL", "Índice bajo control"],
-        ["CERTIFICADO CORPORATIVO", "Exportable en 1 clic"],
-        ["GASTO POR DEPARTAMENTO", "Trazado por tipo de modelo"],
-      ],
-    },
-    {
-      id: "grc",
-      badge: "VISTA GRC_AUDIT",
-      title: "La prueba llegó antes que el litigio",
-      owner: "CISO · DPO · Auditoría externa",
-      rows: [
-        ["ENMASCARAMIENTO PII", "DNI · IBAN · Tarjetas · PHI"],
-        ["CLASIFICACIÓN AI ACT", "Inaceptable · Alto · Limitado"],
-        ["RGPD ART. 32", "Arquitectura Zero-Disk"],
-        ["REGISTRO EIPD", "Inmutable y firmado"],
-      ],
-    },
-    {
-      id: "cyber",
-      badge: "VISTA CYBER_RESILIENCE",
-      title: "Ve cada intercepción mientras ocurre",
-      owner: "SOC · SecOps · Threat hunters",
-      rows: [
-        ["PROMPT INJECTION L7", "Intercepción en tiempo real"],
-        ["SHADOW AI", "Descubrimiento automático"],
-        ["ESTADO FAIL-CLOSED", "100 % activo"],
-        ["TELEMETRÍA SIEM", "gRPC · HTTP"],
-      ],
-    },
-  ];
-
-  const VISTAS = TODAS.filter((v) => vista === "todas" || v.id === vista);
-  const cabecera = vista === "todas" ? TODAS[0].badge : VISTAS[0].badge;
 
   return (
     <main>
       <PageHeader
-        badge={`PRODUCTO · ${cabecera}`}
+        badge="PRODUCTO · CONSOLAS DE CUMPLIMIENTO"
         title="Una consola de gobierno, tres superficies por rol"
-        description="Plano unificado de control para dirección ejecutiva, cumplimiento de privacidad y resiliencia de ciberseguridad. El control de acceso basado en roles adapta la interfaz según el perfil, sobre el mismo motor de decisión."
+        description="Plano unificado de control para dirección ejecutiva, cumplimiento de privacidad y resiliencia de ciberseguridad. El control de acceso basado en roles adapta la interfaz, la matriz y los indicadores según el perfil, sobre el mismo motor de decisión."
       />
 
       <section className="max-w-6xl mx-auto px-6 py-6">
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          {VISTAS.map((v) => (
-            <TechnicalCard key={v.id} title={v.title} badge={v.badge}>
+          {Object.values(VISTAS_CONSOLA).map((v) => (
+            <TechnicalCard key={v.id} title={v.titular} badge={v.badge}>
               <p className="text-slate-500">{v.owner}</p>
               <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
-                <DataRow label={v.rows[0][0]} value={v.rows[0][1]} />
-                <DataRow label={v.rows[1][0]} value={v.rows[1][1]} />
-                <DataRow label={v.rows[2][0]} value={v.rows[2][1]} />
-                <DataRow label={v.rows[3][0]} value={v.rows[3][1]} />
+                <DataRow label="INDICADOR CLAVE" value={`${v.metricas[0][0]} · ${v.metricas[0][1]}`} />
+                <DataRow label="ROL DE ACCESO" value={v.rol} />
               </div>
+              <Link to={`/producto/${v.id}`} className="inline-block mt-4 text-sky-400 hover:underline font-bold">
+                Abrir esta vista →
+              </Link>
             </TechnicalCard>
           ))}
         </div>
 
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
           <SectionTitle kicker="ADMINISTRACIÓN" title="Inventario unificado de nodos" lead="Una sola consola gobierna los tres modos de despliegue. Las políticas se distribuyen globalmente o por etiquetas de alcance." />
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-[11px]">
-              <thead>
-                <tr className="border-b border-slate-800 text-sky-400">
-                  <th className="pb-3 pr-4">NODO / INSTANCIA</th>
-                  <th className="pb-3 pr-4">DESPLIEGUE</th>
-                  <th className="pb-3 pr-4">ENTORNO</th>
-                  <th className="pb-3 pr-4">ÁMBITO</th>
-                  <th className="pb-3">ESTADO</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
-                <tr><td className="py-3 pr-4">node-sdk-payment-api</td><td className="py-3 pr-4">SDK nativo</td><td className="py-3 pr-4">App Node.js / Lambda</td><td className="py-3 pr-4">scope: microservices</td><td className="py-3"><VerdictChip verdict="ALLOW" /></td></tr>
-                <tr><td className="py-3 pr-4">node-proxy-ingress-01</td><td className="py-3 pr-4">Proxy (PerimeterShield)</td><td className="py-3 pr-4">Docker / K8s</td><td className="py-3 pr-4">scope: external-apis</td><td className="py-3"><VerdictChip verdict="ALLOW" /></td></tr>
-                <tr><td className="py-3 pr-4">node-daemon-finance-srv</td><td className="py-3 pr-4">Daemon (On-Premise)</td><td className="py-3 pr-4">Ubuntu Server 22.04</td><td className="py-3 pr-4">scope: core-banking</td><td className="py-3"><VerdictChip verdict="ALLOW" /></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
-          <SectionTitle kicker="SUPERFICIE OPERATIVA" title="Simulación de consola RBAC" />
-          <div className="bg-slate-950 p-6 rounded border border-slate-800 space-y-4">
-            <div className="flex justify-between gap-4 border-b border-slate-800 pb-3 text-slate-400">
-              <span>ACTIVE_ROLE: <strong className="text-white">CISO_SECOPS_LEVEL_3</strong></span>
-              <span>NODE_STATUS: <strong className="text-emerald-400">ONLINE (0,84 ms)</strong></span>
-            </div>
-            <div className="space-y-2">
-              <DataRow label="POLICY_STATE" value="SIGNED_BY_HSM_KEY_0x9F (v2.4.1)" />
-              <DataRow label="CONTAINMENT" value="FAIL_CLOSED (100 % activo)" />
-              <DataRow label="SHADOW_AI_DISCOVERY" value="3 endpoints no protegidos bloqueados en 24 h" />
-              <DataRow label="EXPOSURE_INDEX" value="LOW (98/100 audit score)" />
-            </div>
-          </div>
+          <DataTable
+            headers={["NODO / INSTANCIA", "DESPLIEGUE", "ENTORNO", "ÁMBITO", "ESTADO"]}
+            rows={[
+              ["node-sdk-payment-api", "SDK nativo", "App Node.js / Lambda", "scope: microservices", "ALLOW"],
+              ["node-proxy-ingress-01", "Proxy (PerimeterShield)", "Docker / K8s", "scope: external-apis", "ALLOW"],
+              ["node-daemon-finance-srv", "Daemon (On-Premise)", "Ubuntu Server 22.04", "scope: core-banking", "ALLOW"],
+            ]}
+            renderLast={(cell) => <VerdictChip verdict={cell} />}
+          />
         </div>
 
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
           <SectionTitle kicker="CUMPLIMIENTO POR DISEÑO" title="Matriz regulatoria integrada" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-sky-400">
-                  <th className="pb-3 pr-4">MARCO NORMATIVO</th>
-                  <th className="pb-3 pr-4">CONTROL REQUERIDO</th>
-                  <th className="pb-3 pr-4">MECANISMO S.A.A.R.E.</th>
-                  <th className="pb-3">EVIDENCIA GENERADA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
-                <tr><td className="py-3 pr-4 font-bold text-white">EU AI Act arts. 10 y 12</td><td className="py-3 pr-4">Gobernanza de datos y registro de eventos</td><td className="py-3 pr-4">Generalización ex-ante y registro en memoria</td><td className="py-3">Huella criptográfica del veredicto</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">EU AI Act arts. 14 y 15</td><td className="py-3 pr-4">Supervisión humana y robustez</td><td className="py-3 pr-4">Cambio de política en vivo y contención fail-closed</td><td className="py-3">Veredicto firmado con latencia</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">RGPD art. 32</td><td className="py-3 pr-4">Minimización y cifrado de datos</td><td className="py-3 pr-4">Sanitización en RAM y arquitectura Zero-Disk</td><td className="py-3">Digest SHA-256 del payload</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">DORA</td><td className="py-3 pr-4">Resiliencia operativa y continuidad</td><td className="py-3 pr-4">Políticas locales firmadas sin dependencia de red</td><td className="py-3">Certificado de autonomía de nodo</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">NIS 2</td><td className="py-3 pr-4">Gestión de riesgo y notificación</td><td className="py-3 pr-4">Telemetría determinista sin contenido ni PII</td><td className="py-3">Contadores anónimos firmados</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">ISO/IEC 27037</td><td className="py-3 pr-4">Identificación de evidencia digital</td><td className="py-3 pr-4">Cadena de Merkle y firma asimétrica</td><td className="py-3">Dossier forense verificable offline</td></tr>
-                <tr><td className="py-3 pr-4 font-bold text-white">Arts. 281 y 326 LEC</td><td className="py-3 pr-4">Prueba documental preconstituida</td><td className="py-3 pr-4">Sellado cualificado y cadena de custodia</td><td className="py-3">Expediente aportable en sala</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            headers={["MARCO NORMATIVO", "CONTROL REQUERIDO", "MECANISMO S.A.A.R.E.", "EVIDENCIA GENERADA"]}
+            rows={[
+              ["EU AI Act arts. 10 y 12", "Gobernanza de datos y registro de eventos", "Generalización ex-ante y registro en memoria", "Huella criptográfica del veredicto"],
+              ["EU AI Act arts. 14 y 15", "Supervisión humana y robustez", "Cambio de política en vivo y contención fail-closed", "Veredicto firmado con latencia"],
+              ["RGPD art. 32", "Minimización y cifrado de datos", "Sanitización en RAM y arquitectura Zero-Disk", "Digest SHA-256 del payload"],
+              ["DORA", "Resiliencia operativa y continuidad", "Políticas locales firmadas sin dependencia de red", "Certificado de autonomía de nodo"],
+              ["NIS 2", "Gestión de riesgo y notificación", "Telemetría determinista sin contenido ni PII", "Contadores anónimos firmados"],
+              ["ISO/IEC 27037", "Identificación de evidencia digital", "Cadena de Merkle y firma asimétrica", "Dossier forense verificable offline"],
+              ["Arts. 281 y 326 LEC", "Prueba documental preconstituida", "Sellado cualificado y cadena de custodia", "Expediente aportable en sala"],
+            ]}
+          />
         </div>
 
         <div className="max-w-2xl mx-auto">
@@ -1534,11 +1781,13 @@ function LoginPage() {
 
 /* ==========================================================================
    PIE DE PÁGINA
+   Cinco columnas en escritorio, tres en tablet y una en móvil. El salto
+   intermedio evita el apretado entre 768 y 1024 px.
    ========================================================================== */
 function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950 pt-12 pb-8 px-6 font-mono text-xs text-slate-400">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-8 mb-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-8 mb-10">
         <div className="space-y-3">
           <div className="text-white font-bold text-sm tracking-wide">MS3V S.A.A.R.E. SL</div>
           <p className="text-slate-500 text-[11px] leading-relaxed">Infraestructura independiente de gobernanza de IA. Intercepción ex-ante en memoria RAM y prueba digital probatoria.</p>
@@ -1619,15 +1868,14 @@ export default function App() {
       <AppShell>
         <ScrollToTop />
         <Routes>
-          {/* Pestaña 1 · Auditoría pública */}
           <Route path="/" element={<TabAuditoriaPublica />} />
           <Route path="/producto" element={<TabAuditoriaPublica />} />
           <Route path="/producto/auditoria" element={<TabAuditoriaPublica />} />
 
-          {/* Consolas de cumplimiento */}
-          <Route path="/producto/executive" element={<TabCumplimiento vista="executive" />} />
-          <Route path="/producto/grc" element={<TabCumplimiento vista="grc" />} />
-          <Route path="/producto/cyber" element={<TabCumplimiento vista="cyber" />} />
+          {/* Tres vistas de consola, cada una con su propia superficie */}
+          <Route path="/producto/executive" element={<VistaConsola vistaId="executive" />} />
+          <Route path="/producto/grc" element={<VistaConsola vistaId="grc" />} />
+          <Route path="/producto/cyber" element={<VistaConsola vistaId="cyber" />} />
           <Route path="/producto/cumplimiento" element={<TabCumplimiento />} />
 
           <Route path="/forense" element={<TabForense />} />
@@ -1639,7 +1887,6 @@ export default function App() {
 
           <Route path="/canal" element={<TabVentas />} />
 
-          {/* Las seis páginas de detalle de licencia */}
           {CATALOGO.map((c) => (
             <Route key={c.id} path={c.path} element={<DetalleLicencia id={c.id} />} />
           ))}
@@ -1654,7 +1901,7 @@ export default function App() {
           <Route path="/legal" element={<CorporatePage variant="legal" />} />
 
           <Route path="/cumplimiento" element={<TabCumplimiento />} />
-          <Route path="/grc" element={<TabCumplimiento />} />
+          <Route path="/grc" element={<VistaConsola vistaId="grc" />} />
           <Route path="/auditoria" element={<TabAuditoriaPublica />} />
           <Route path="/sdk" element={<TabSDK />} />
           <Route path="/proxy" element={<TabProxy />} />
