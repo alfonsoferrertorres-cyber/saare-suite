@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { SAARE_CONFIG } from '../config/saareState';
-import { ProofEngine } from '../services/proofEngine';
+import { SAARE_CONFIG } from './config/saareState';
+import { ProofEngine } from './services/proofEngine';
 
 export default function Login({ onLoginSuccess }) {
   const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'

@@ -473,7 +473,6 @@ function AppShell({ children }) {
   const activeGroup = NAV.find((n) => n.id === active);
   const isAuthRoute = ["/login", "/auth", "/acceso"].includes(location.pathname);
 
-  /* Restaurada la lógica de respaldo completa para leer claves de localStorage heredadas */
   const sessionUser = useMemo(() => {
     try {
       const raw = localStorage.getItem("saare_session_user");
@@ -871,7 +870,8 @@ function TabAuditoriaPublica() {
         algorithm: "Ed25519 / SHA-256",
         reason: "No se pudo contactar con el Trust Anchor. El registro no ha sido verificado.",
       });
-    } finally {
+    } font-mono
+    finally {
       setLoading(false);
     }
   }
@@ -1043,7 +1043,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* Sección interactiva de Sanitización PII in-RAM correctamente integrada */}
+      {/* Sección interactiva de Sanitización PII in-RAM */}
       <section className="max-w-6xl mx-auto px-6 py-8">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl font-mono text-xs">
           <SectionTitle 
@@ -1089,14 +1089,14 @@ function TabAuditoriaPublica() {
         <SectionTitle
           kicker="CADENA DE CUSTODIA"
           title="Cómo se genera el sello que acaba de verificar"
-          lead="Cada veredicto del motor entra en un árbol Merkle. La raíz se firma con Ed25519 y se sella con marca de tiempo RFC 3161. Lo que se conserva es la huella, nunca el contenido en claro."
+          lead="Cada veredicto del motor entra en un árbol Merkle. La raíz se sella con Ed25519 y marca de tiempo RFC 3161. Se conserva únicamente la huella criptográfica."
         />
 
         <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
           <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
           <p className="text-slate-300 mt-2 leading-relaxed">
-            Cuando le reclamen por una acción de su agente, usted no reconstruye nada:
-            entrega el sello. El expediente existe ya, sellado en el momento en que se decidió.
+            Cuando le reclamen por una acción de su agente, no reconstruye nada: entrega el sello.
+            El expediente se genera y sella de forma inmutable en tiempo real.
           </p>
         </div>
 
@@ -1139,8 +1139,7 @@ function TabAuditoriaPublica() {
         <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
           <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
           <p className="text-slate-300 mt-2 leading-relaxed">
-            No bloquea «la IA» en abstracto: decide sobre esta acción, de este agente, sobre
-            este recurso. Siete dimensiones que cubren lo que un filtro genérico deja pasar.
+            Decide sobre acciones específicas de un agente sobre recursos concretos a través de siete dimensiones de control determinista.
           </p>
         </div>
 
@@ -1160,8 +1159,7 @@ function TabAuditoriaPublica() {
           <div>
             <span className="text-[10px] text-slate-500 uppercase tracking-widest">Siguiente paso</span>
             <p className="text-slate-300 mt-2 leading-relaxed">
-              Ya ha visto qué se evalúa y cómo se prueba. Ahora vea qué le costaría tenerlo
-              en producción y cómo se compara con lo que ya usa.
+              Consulte las consolas de cumplimiento o revise el modelo de licenciamiento para producción.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
@@ -1185,7 +1183,7 @@ function TabAuditoriaPublica() {
         <SectionTitle
           kicker="LICENCIAMIENTO"
           title="Seis tramos, seis páginas"
-          lead="Se cobra por el eje que escala —nodo desplegado y evidencia sellada—, no por el número de personas. Cada tramo tiene su propio detalle y su propia superficie técnica."
+          lead="Licenciamiento estructurado por nodos desplegados y evidencias selladas."
         />
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {CATALOGO.map((item) => (
@@ -1204,8 +1202,7 @@ function TabAuditoriaPublica() {
             Cuando el agente decida, S.A.A.R.E. ya habrá respondido.
           </h2>
           <p className="mt-4 text-slate-300 text-sm sm:text-base max-w-3xl mx-auto leading-relaxed">
-            Empiece por donde le duele: verifique lo que ya tiene, o ejecute una prueba de
-            exposición sobre sus propios agentes y vea qué expediente generaría hoy su operación.
+            Inicie la verificación de un sello existente o ejecute una prueba de exposición en su propia infraestructura.
           </p>
 
           <div className="mt-10 grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
@@ -1226,12 +1223,12 @@ function TabAuditoriaPublica() {
           </div>
 
           <p className="mt-6 text-[10px] text-slate-500 font-mono">
-            Sin coste de alta · Sin permanencia · Despliegue en su VPC o Air-Gapped · Soporte en español
+            Sin coste de alta · Sin permanencia · Despliegue en VPC o Air-Gapped
           </p>
 
           <div className="mt-10 pt-8 border-t border-slate-800/60">
             <span className="font-mono text-[10px] text-slate-600 uppercase tracking-widest">
-              ¿Ya es cliente? Entre por su vista
+              Acceso a Vistas Especializadas
             </span>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 font-mono text-xs">
               <Link to="/producto/executive" className="text-slate-400 hover:text-sky-400 transition">
@@ -2028,7 +2025,7 @@ function ScrollToTop() {
 }
 
 /* ==========================================================================
-   ENRUTADOR GENERAL
+   ENRUTADOR GENERAL Y RUTAS INTEGRADAS
    ========================================================================== */
 export { STRIPE_PRICES, CATALOGO };
 

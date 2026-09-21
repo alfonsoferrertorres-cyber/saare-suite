@@ -14,5 +14,5 @@ control-plane/.wrangler/
 
 # Ignorar paquetes comprimidos
 *.zip
-!saare-console/public/saare-extension.zip
+!saare-console/public/*.zip
 .dev.vars
