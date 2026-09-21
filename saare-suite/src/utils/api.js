@@ -3,7 +3,8 @@
  * Alineado con App.jsx, Login.jsx y el Control Plane (worker.js).
  */
 
-const ENV_URL = import.meta.env.VITE_API_BASE_URL;
+// Sombra ambos nombres de variable para garantizar compatibilidad total
+const ENV_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
 
 export const API_BASE_URL =
   typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -21,7 +22,7 @@ function readSession() {
 }
 
 function isOwnApi(url) {
-  return url.startsWith(API_BASE_URL);
+  return url.startsWith(API_BASE_URL) || url.startsWith('https://api.saare.es');
 }
 
 export async function saareFetch(endpoint, options = {}) {
@@ -34,7 +35,7 @@ export async function saareFetch(endpoint, options = {}) {
     ? (localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token'))
     : null;
 
-  const sessionTenant = session?.tenantName || null;
+  const sessionTenant = session?.tenantName || session?.tenant || null;
 
   const defaultHeaders = {
     'Accept': 'application/json',
