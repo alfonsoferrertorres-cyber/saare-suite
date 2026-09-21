@@ -7,8 +7,8 @@ const ENV_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const API_BASE_URL =
   typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? '[127.0.0.1](http://127.0.0.1:8787)'
-    : (ENV_URL || '[api.saare.es](https://api.saare.es)');
+    ? 'http://127.0.0.1:8787'
+    : (ENV_URL || 'https://api.saare.es');
 
 function readSession() {
   if (typeof window === 'undefined') return null;

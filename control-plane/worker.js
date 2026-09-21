@@ -1,20 +1,22 @@
 // control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / v8.1 SRP)
-import crypto from 'node:crypto';
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
 import { ComplianceEngine } from "./complianceEngine.js";
 import { DistributedRateLimiter } from "./rateLimiter.js";
 import { runResilienceTests } from "./resilienceGate.js";
 
+import { handleStripeWebhook } from "./stripeWebhook.js";
+import { dispatchWebhookEvent } from "./subsidiesWebhook.js";
+import { TenantManager } from "./tenantManager.js";
+import { EnterpriseKeyManager } from "./keyManager.js";
+
+// Inicialización de subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const ramRunCache = [];
 const ramWebhookConfigCache = new Map();
 
 /* --------------------------------------------------------------------------
-   CORRECCIÓN 1 · Bóveda de respaldo bajo control explícito
-   Antes: si D1 no respondía, cualquiera con admin@saare.es entraba como
-   CISO_ADMIN. En producción eso era una puerta trasera silenciosa.
-   Ahora: solo se activa si el entorno lo autoriza con ALLOW_FALLBACK_VAULT="true".
+   Bóveda de respaldo bajo control explícito (Environment Driven)
    -------------------------------------------------------------------------- */
 const fallbackUserVault = {
   "admin@saare.es": {
@@ -42,59 +44,68 @@ function sanitizeEmail(email) {
 }
 
 /* --------------------------------------------------------------------------
-   CORRECCIÓN 2 · Contraseñas con hash y sal (PBKDF2-SHA256)
-   Antes: el login comparaba el hash contra la contraseña en claro y el
-   registro guardaba la contraseña sin cifrar.
-   Ahora: hash con sal aleatoria y comparación en tiempo constante.
-   Se mantiene compatibilidad con los usuarios de demostración existentes.
+   Seguridad y Criptografía Standard (Web Crypto API para Cloudflare Edge Runtime)
    -------------------------------------------------------------------------- */
 async function hashPassword(password) {
-  const salt = crypto.randomBytes(16);
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
   const derived = await crypto.subtle.deriveBits(
     { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
     key,
     256
   );
-  return `pbkdf2$100000$${Buffer.from(salt).toString("hex")}$${Buffer.from(derived).toString("hex")}`;
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const derivedHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `pbkdf2$100000$${saltHex}$${derivedHex}`;
 }
 
 async function verifyPassword(stored, candidate) {
-  if (!stored) return true;               // cuenta sin contraseña definida
+  if (!stored) return true;
   if (!candidate) return false;
-  // Compatibilidad con los usuarios de demostración previos
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
 
   const parts = stored.split("$");
   const iterations = parseInt(parts[1], 10);
-  const salt = Buffer.from(parts[2], "hex");
-  const expected = Buffer.from(parts[3], "hex");
+  const salt = new Uint8Array(parts[2].match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  const expectedHex = parts[3];
 
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(candidate), "PBKDF2", false, ["deriveBits"]);
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(candidate), "PBKDF2", false, ["deriveBits"]);
   const derived = await crypto.subtle.deriveBits(
     { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
     key,
     256
   );
-  const actual = Buffer.from(derived);
-  if (expected.length !== actual.length) return false;
-  return crypto.timingSafeEqual(expected, actual);
+  const actualHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  if (expectedHex.length !== actualHex.length) return false;
+  let result = 0;
+  for (let i = 0; i < expectedHex.length; i++) {
+    result |= expectedHex.charCodeAt(i) ^ actualHex.charCodeAt(i);
+  }
+  return result === 0;
 }
 
-function generateDeterministicEvidenceId(user, prompt, customId) {
+async function generateDeterministicEvidenceId(user, prompt, customId) {
   if (customId) return customId;
   const cleanUser = sanitizeEmail(user) || "operator_anonymous";
   const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
-  const timeBucket = new Date().toISOString().substring(0, 16); 
-  const hash = crypto.createHash('sha256')
-    .update(`${cleanUser}:${cleanPrompt}:${timeBucket}`)
-    .digest('hex')
+  const timeBucket = new Date().toISOString().substring(0, 16);
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${cleanUser}:${cleanPrompt}:${timeBucket}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
     .substring(0, 10)
     .toUpperCase();
-  return `EV-L7-${hash}`;
+
+  return `EV-L7-${hashHex}`;
 }
 
-function enrichEvidenceForGrant(rawEvidence) {
+async function enrichEvidenceForGrant(rawEvidence) {
   const isDeny = rawEvidence.decision === 'DENY' || rawEvidence.verdict === 'RECHAZADO';
   const category = String(rawEvidence.category || 'AUDITORIA_CONFORME').toUpperCase();
 
@@ -113,7 +124,10 @@ function enrichEvidenceForGrant(rawEvidence) {
     eligibleItem = "Evidencia Forense Inmutable ISO/IEC 27037";
   }
 
-  const payloadHash = crypto.createHash('sha256').update(JSON.stringify(rawEvidence.prompt || "")).digest('hex');
+  const encoder = new TextEncoder();
+  const payloadData = encoder.encode(JSON.stringify(rawEvidence.prompt || ""));
+  const payloadHashBuf = await crypto.subtle.digest('SHA-256', payloadData);
+  const payloadHash = Array.from(new Uint8Array(payloadHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
   const claimLevel = isDeny ? 'VERIFIED' : 'TESTED';
 
   return {
@@ -137,43 +151,9 @@ function enrichEvidenceForGrant(rawEvidence) {
   };
 }
 
-async function dispatchWebhookEvent(tenantId, payload, env) {
-  let config = null;
-
-  if (env.SAARE_VAULT_KV) {
-    try {
-      config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
-    } catch (e) {}
-  }
-  
-  if (!config) {
-    config = ramWebhookConfigCache.get(tenantId);
-  }
-
-  if (!config || !config.target_url) {
-    return { success: false, reason: "NOT_CONFIGURED" };
-  }
-
-  try {
-    const res = await fetch(config.target_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.secret_token || ''}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    return { success: res.ok, status_code: res.status };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-}
-
-// Envío transaccional vía API de Resend (con fallback a consola)
 async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
   const verifyLink = `https://api.saare.es/v1/auth/verify?token=${encodeURIComponent(token)}`;
-  
+
   if (env && env.RESEND_API_KEY) {
     try {
       await fetch('https://api.resend.com/emails', {
@@ -199,118 +179,17 @@ async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
 }
 
 /* ==========================================================================
-   WEBHOOK DE STRIPE · alta de tenant al completarse la compra
-   Firma verificada en tiempo constante + ventana anti-replay de 5 min.
+   Fetch Event Handler & Endpoint Router
    ========================================================================== */
-async function verifyStripeSignature(payload, signatureHeader, secret) {
-  if (!signatureHeader || !secret) return false;
-
-  const elements = signatureHeader.split(',');
-  const timestamp = elements.find(e => e.startsWith('t='))?.split('=')[1];
-  const signature = elements.find(e => e.startsWith('v1='))?.split('=')[1];
-  if (!timestamp || !signature) return false;
-
-  // Anti-replay: rechaza eventos con mas de 5 minutos de antiguedad.
-  const now = Math.floor(Date.now() / 1000);
-  const ts = parseInt(timestamp, 10);
-  if (!Number.isFinite(ts) || Math.abs(now - ts) > 300) return false;
-
-  const encoder = new TextEncoder();
-  const signedPayload = `${timestamp}.${payload}`;
-
-  const key = await crypto.subtle.importKey(
-    "raw", encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  const expected = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload))
-  );
-
-  // Hex de la firma recibida -> bytes, y comparacion en tiempo constante.
-  if (signature.length !== expected.length * 2) return false;
-  const received = new Uint8Array(expected.length);
-  for (let i = 0; i < received.length; i++) {
-    received[i] = parseInt(signature.substr(i * 2, 2), 16);
-  }
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ received[i];
-  return diff === 0;
-}
-
-async function handleStripeWebhook(request, env) {
-  const bodyText = await request.text();
-  const signature = request.headers.get("stripe-signature");
-
-  const isValid = await verifyStripeSignature(bodyText, signature, env.STRIPE_WEBHOOK_SECRET);
-  if (!isValid) {
-    return new Response(JSON.stringify({ error: "Firma de webhook invalida" }), { status: 401 });
-  }
-
-  let event;
-  try {
-    event = JSON.parse(bodyText);
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const customerEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase().trim();
-    const customerName = session.customer_details?.name || session.metadata?.organization || "Organizacion Suscrita";
-    const plan = session.metadata?.plan || "Software Core L7";
-    // Si el checkout ya traia un tenant (cliente existente), se respeta.
-    const tenantId = session.metadata?.tenant || `tenant_${crypto.randomUUID().slice(0, 8)}`;
-
-    const tenantRecord = {
-      tenantId, customerEmail, companyName: customerName,
-      status: "ACTIVE", plan,
-      priceId: session.metadata?.price_id || null,
-      stripeSessionId: session.id || null,
-      createdAt: new Date().toISOString()
-    };
-
-    if (env.SAARE_VAULT_KV) {
-      await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(tenantRecord));
-      await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantRecord));
-    }
-
-    if (env.DB && customerEmail) {
-      try {
-        await env.DB.exec(`
-          CREATE TABLE IF NOT EXISTS tenants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE,
-            name TEXT,
-            plan TEXT,
-            status TEXT,
-            updated_at TEXT
-          );
-        `);
-        await env.DB.prepare(`
-          INSERT INTO tenants (email, name, plan, status, updated_at)
-          VALUES (?, ?, ?, 'ACTIVE', datetime('now'))
-          ON CONFLICT(email) DO UPDATE SET plan = ?, status = 'ACTIVE', updated_at = datetime('now')
-        `).bind(customerEmail, customerName, plan, plan).run();
-      } catch (e) {
-        console.error("Error updating D1 on webhook:", e);
-      }
-    }
-
-    return new Response(JSON.stringify({ status: "PROVISIONED", tenantId }), {
-      status: 200, headers: { "Content-Type": "application/json" }
-    });
-  }
-
-  return new Response(JSON.stringify({ status: "IGNORED", type: event.type }), {
-    status: 200, headers: { "Content-Type": "application/json" }
-  });
-}
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/$/, '') || '/';
     const method = request.method;
+
+    // Inicialización contextualizada con las variables del runtime de Cloudflare
+    const tenantManager = new TenantManager(env);
+    const keyManager = new EnterpriseKeyManager(env);
 
     // 1. GESTIÓN CORS & PREFLIGHT
     const cors = handleCors(request);
@@ -358,7 +237,6 @@ export default {
 
           const token = crypto.randomUUID();
           const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-          // CORRECCIÓN: la contraseña se almacena con hash y sal
           const passwordHash = await hashPassword(password);
 
           if (env.DB) {
@@ -393,14 +271,12 @@ export default {
           const cleanPassword = body.password ? body.password.trim() : "";
           let userRecord = null;
 
-          // 1. Consulta en Cloudflare D1
           if (env.DB) {
             try {
               userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
             } catch (e) {}
           }
 
-          // 2. Fallback a bóveda estática — solo si el entorno lo autoriza
           if (!userRecord && fallbackVaultEnabled(env) && fallbackUserVault[cleanEmail]) {
             const fallback = fallbackUserVault[cleanEmail];
             userRecord = {
@@ -420,7 +296,6 @@ export default {
               }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
             }
 
-            // CORRECCIÓN: comparación con hash en tiempo constante
             const passwordOk = await verifyPassword(userRecord.password_hash, cleanPassword);
             if (!passwordOk) {
               return new Response(JSON.stringify({
@@ -432,7 +307,6 @@ export default {
           const tenantName = userRecord?.company || tenantId;
           const userRole = userRecord?.role || "CISO_ADMIN";
 
-          // Firmar Token JWT HMAC-SHA256 con el Secret central de entorno
           const jwtToken = await auth.signToken({
             sub: cleanEmail,
             email: cleanEmail,
@@ -440,7 +314,7 @@ export default {
             role: userRole
           });
 
-          const apiKey = "sk_saare_live_" + crypto.randomUUID().substring(0, 16);
+          const apiKey = "sk_saare_live_" + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
 
           return new Response(JSON.stringify({
             success: true,
@@ -459,9 +333,6 @@ export default {
 
       if (path === '/auth/reset-password-request' || path === '/v1/auth/reset-password-request' || path === '/api/v1/auth/reset-password-request') {
         if (method === 'POST') {
-          const body = await request.json().catch(() => ({}));
-          const cleanEmail = sanitizeEmail(body.email);
-
           return new Response(JSON.stringify({
             success: true,
             message: "Si el correo está registrado, se han enviado las instrucciones desde legal@saare.es."
@@ -498,9 +369,7 @@ export default {
       }
 
       // ==========================================
-      // NUEVA RUTA · PRUEBA DE CONTROL (/v1/trial)
-      // El frontend solicita el alta de la prueba de exposición en esta ruta.
-      // Reutiliza el registro de usuarios y devuelve el entorno aprovisionado.
+      // PRUEBA DE CONTROL DE ENTORNO (/v1/trial)
       // ==========================================
       if (path === '/v1/trial' || path === '/api/v1/trial' || path === '/trial') {
         if (method === 'POST') {
@@ -566,7 +435,7 @@ export default {
 
                 const { results } = await env.DB.prepare(query).bind(...bindings).all();
                 if (results?.length > 0) {
-                  initialEvidences = results.map(row => enrichEvidenceForGrant({
+                  initialEvidences = await Promise.all(results.map(row => enrichEvidenceForGrant({
                     id: row.evidence_id || row.id,
                     verdictId: row.verdictId || "VRD-LIVE-D1",
                     decision: row.decision || "ALLOW",
@@ -576,15 +445,17 @@ export default {
                     prompt: row.prompt || "(Sin prompt)",
                     responseOutput: row.responseOutput || "",
                     timestamp: row.created_at
-                  }));
+                  })));
                 }
               } catch (e) {}
             }
 
             if (initialEvidences.length === 0) {
-              initialEvidences = ramRunCache
-                .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
-                .map(item => enrichEvidenceForGrant(item));
+              initialEvidences = await Promise.all(
+                ramRunCache
+                  .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
+                  .map(item => enrichEvidenceForGrant(item))
+              );
             }
 
             await writer.write(encoder.encode(`data: ${JSON.stringify({ evidences: initialEvidences, vaultSource: env.DB ? "D1_HYBRID" : "RAM" })}\n\n`));
@@ -703,7 +574,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: EXPORTACIÓN DE DOSSIERS (.ZIP ENGINE)
+      // EXPORTACIÓN DE DOSSIERS (.ZIP ENGINE)
       // ==========================================
       if ((path === '/api/v7/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
         const body = await request.json().catch(() => ({}));
@@ -775,25 +646,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: HEALTHCHECK / RAÍZ DE LA API
-      // ==========================================
-      if (path === '/' || path === '/health' || path === '/api/v1') {
-        return new Response(JSON.stringify({
-          status: "ONLINE",
-          system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.1)",
-          node: "2607076315021",
-          trustAnchor: "SAARE-MD-IPRES-2026",
-          version: "v10.5.0",
-          srpVersion: "8.1.0",
-          timestamp: new Date().toISOString()
-        }), {
-          status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      // ==========================================
-      // RUTA: KPIS Y MÉTRICAS AGREGADAS (DORA / GRC)
+      // KPIS Y MÉTRICAS AGREGADAS (DORA / GRC)
       // ==========================================
       if (path === '/api/v1/metrics/kpis' && method === 'GET') {
         const startDate = url.searchParams.get('startDate');
@@ -859,7 +712,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: DETALLE DE EVIDENCIA PARA PDF
+      // DETALLE DE EVIDENCIA PARA PDF
       // ==========================================
       if (path.startsWith('/api/v1/evidence/') && path.endsWith('/pdf-data') && method === 'GET') {
         const evidenceId = path.split('/api/v1/evidence/')[1].replace('/pdf-data', '');
@@ -870,7 +723,7 @@ export default {
             const row = await env.DB.prepare(
               "SELECT * FROM runs WHERE (evidence_id = ? OR id = ?) AND tenant = ? LIMIT 1"
             ).bind(evidenceId, evidenceId, tenantId).first();
-            
+
             if (row) {
               let parsedPayload = {};
               try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
@@ -901,7 +754,7 @@ export default {
 
         return new Response(JSON.stringify({
           success: true,
-          evidence: enrichEvidenceForGrant(evidenceRecord),
+          evidence: await enrichEvidenceForGrant(evidenceRecord),
           trustAnchor: "SAARE-MD-IPRES-2026"
         }), {
           status: 200,
@@ -910,7 +763,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: INTEGRACIÓN SIEM / SOC
+      // INTEGRACIÓN SIEM / SOC
       // ==========================================
       if (path === '/api/v1/integrations/siem' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
@@ -942,7 +795,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: EVALUACIÓN FRIA AUTOMATIZADA (ART. 27 EU AI ACT)
+      // EVALUACIÓN FRIA AUTOMATIZADA (ART. 27 EU AI ACT)
       // ==========================================
       if (path === '/api/v1/fria/evaluate' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
@@ -986,7 +839,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA: SINCRONIZACIÓN DE NODO Y BÓVEDA
+      // SINCRONIZACIÓN DE NODO Y BÓVEDA
       // ==========================================
       if (path === '/api/v1/vault/sync' && method === 'GET') {
         return new Response(JSON.stringify({
@@ -1003,15 +856,20 @@ export default {
       }
 
       // ==========================================
-      // RUTA: VALIDACIÓN DE LICENCIAS CORPORATIVAS
+      // VALIDACIÓN DE LICENCIAS CORPORATIVAS
       // ==========================================
       if (path === '/api/v1/auth/verifylicense' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const targetTenant = body.tenant || tenantId;
         const targetUser = sanitizeEmail(body.user) || headerUser;
 
+        let tenantInfo = null;
+        try {
+          tenantInfo = await tenantManager.getTenant(targetTenant);
+        } catch (e) {}
+
         return new Response(JSON.stringify({
-          valid: true,
+          valid: tenantInfo ? tenantInfo.status === "ACTIVE" : true,
           success: true,
           tenant: targetTenant,
           user: targetUser,
@@ -1025,7 +883,7 @@ export default {
       }
 
       // ==========================================
-      // RUTAS: REGLAS PERSONALIZADAS (POLICY ENGINE KV)
+      // REGLAS PERSONALIZADAS (POLICY ENGINE KV)
       // ==========================================
       if (path === '/api/v1/custom-rules') {
         const tenantKey = `custom_rules_${tenantId}`;
@@ -1056,7 +914,7 @@ export default {
       }
 
       // ==========================================
-      // RUTA DE VERIFICACIÓN DE EVIDENCIA
+      // VERIFICACIÓN DE EVIDENCIA CON CERTIFICADO HTML
       // ==========================================
       if ((path.includes('/verify/') || path.startsWith('/verify')) && method === 'GET') {
         const merkleHash = path.split('/verify/')[1] || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
@@ -1151,7 +1009,7 @@ export default {
       }
 
       // ==========================================
-      // RUTAS: AUDITORÍA Y RESILIENCIA
+      // AUDITORÍA Y RESILIENCIA
       // ==========================================
       if ((path === "/api/v1/resilience/check" || path.endsWith("/resilience")) && method === "POST") {
         const report = await runResilienceTests();
@@ -1162,9 +1020,7 @@ export default {
       }
 
       // ==========================================
-      // RUTAS: INTERCEPT / JUDGE EX-ANTE
-      // CORRECCIÓN: se acepta la ruta completa /v1/judge y /v1/intercept, no
-      // cualquier ruta que termine en esas palabras.
+      // INTERCEPT / JUDGE EX-ANTE (COMPLIANCE ENGINE INTEGRATED)
       // ==========================================
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
@@ -1175,19 +1031,22 @@ export default {
         const tenant = body.tenant || identity?.tenantId || tenantId;
 
         const isDeny = typeof promptInput === 'string' && (promptInput.includes('PII') || promptInput.includes('SECRET') || promptInput.includes('HASH['));
-        const evalResult = {
-          decision: isDeny ? 'DENY' : 'ALLOW',
-          verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
-          category: isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME',
-          norma: isDeny ? 'EU Regulation 2022/2554 (DORA)' : 'EU AI Act Conforme',
-          reason: isDeny ? 'Detección ex-ante de datos sensibles en RAM' : 'Tráfico conforme verificado'
-        };
+        const verdictCode = isDeny ? 'REJECTED' : 'APPROVED';
 
-        const runId = generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
+        const evalResult = ComplianceEngine.mapExecutionToCompliance(
+          body.scenarioId || "banca_dora_pci_dss",
+          verdictCode,
+          isDeny ? 'Detección ex-ante de datos sensibles en RAM' : 'Tráfico conforme verificado'
+        );
+
+        evalResult.decision = isDeny ? 'DENY' : 'ALLOW';
+        evalResult.verdict = isDeny ? 'RECHAZADO' : 'PERMITIDO';
+
+        const runId = await generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
         const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
         const createdAt = body.timestamp || new Date().toISOString();
 
-        const fullRecord = enrichEvidenceForGrant({
+        const fullRecord = await enrichEvidenceForGrant({
           id: runId,
           evidence_id: runId,
           verdictId: verdictId,
@@ -1238,7 +1097,7 @@ export default {
       }
 
       // ==========================================
-      // RUTAS: CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs)
+      // CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs)
       // ==========================================
       if (path.includes('runs') || path.includes('telemetry')) {
         
@@ -1261,7 +1120,7 @@ export default {
               const { results } = await env.DB.prepare(query).bind(...bindings).all();
 
               if (results?.length > 0) {
-                evidencesList = results.map(row => {
+                evidencesList = await Promise.all(results.map(row => {
                   let parsedPayload = {};
                   try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
 
@@ -1279,7 +1138,7 @@ export default {
                   };
 
                   return enrichEvidenceForGrant(baseRecord);
-                });
+                }));
               }
             } catch (e) {
               console.warn("Fallo en consulta D1, activando fallback KV/RAM:", e);
@@ -1296,9 +1155,11 @@ export default {
           }
 
           if (evidencesList.length === 0) {
-            evidencesList = ramRunCache
-              .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
-              .map(item => enrichEvidenceForGrant(item));
+            evidencesList = await Promise.all(
+              ramRunCache
+                .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
+                .map(item => enrichEvidenceForGrant(item))
+            );
           }
 
           return new Response(JSON.stringify({ 
@@ -1318,11 +1179,11 @@ export default {
           const tenant = runPayload.tenant || identity?.tenantId || tenantId;
           const prompt = runPayload.prompt || runPayload.rawPrompt || runPayload.cleanPrompt || "";
           
-          const runId = generateDeterministicEvidenceId(user, prompt, runPayload.id || runPayload.evidence_id);
+          const runId = await generateDeterministicEvidenceId(user, prompt, runPayload.id || runPayload.evidence_id);
           const verdictId = runPayload.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
           const createdAt = runPayload.timestamp || new Date().toISOString();
 
-          const fullPayload = enrichEvidenceForGrant({
+          const fullPayload = await enrichEvidenceForGrant({
             ...runPayload,
             id: runId,
             evidence_id: runId,
@@ -1369,16 +1230,7 @@ export default {
       }
 
       // ==========================================
-      // PASARELA DE PAGO · STRIPE CHECKOUT (/v1/checkout)
-      // Recibe price=<price_id> y mode=<subscription|payment>, crea la
-      // sesion de pago con la API de Stripe y devuelve { url } para
-      // redirigir al Checkout hospedado. Si falta la clave o el price,
-      // falla cerrado con un 400/503 explicito.
-      // ==========================================
-      // ==========================================
-      // DIAGNOSTICO TEMPORAL (/v1/diag) — se elimina tras resolver.
-      // Revela si el worker que sirve el dominio recibe las variables de
-      // entorno de Stripe. No expone valores, solo presencia y nombres.
+      // DIAGNÓSTICO (/v1/diag)
       // ==========================================
       if (path === '/v1/diag' || path === '/api/v1/diag') {
         const envKeys = Object.keys(env || {});
@@ -1398,6 +1250,9 @@ export default {
         });
       }
 
+      // ==========================================
+      // CHECKOUT STRIPE (/v1/checkout)
+      // ==========================================
       if (path === '/v1/checkout' || path === '/api/v1/checkout' || path === '/checkout') {
         if (method === 'GET' || method === 'POST') {
           const qs = url.searchParams;
@@ -1408,19 +1263,12 @@ export default {
           const rawMode = (qs.get('mode') || bodyIn.mode || 'subscription').trim();
           const mode = rawMode === 'payment' ? 'payment' : 'subscription';
 
-          // Sin lista blanca de price_id: validamos solo el formato y Stripe
-          // confirma si el precio existe. Asi no hay IDs que mantener
-          // sincronizados (que se corrompian al editarlos) y el importe real
-          // lo dicta siempre Stripe, nunca la landing ni este archivo.
           if (!priceId || !/^price_[A-Za-z0-9]{10,}$/.test(priceId)) {
             return new Response(JSON.stringify({ error: 'PRICE_ID_INVALIDO', received: priceId || null }), {
               status: 400,
               headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
             });
           }
-
-          // El modo lo fija la peticion; Stripe valida el price real.
-          const canonicalMode = mode;
 
           const stripeKey = env.STRIPE_SECRET_KEY;
           if (!stripeKey) {
@@ -1434,16 +1282,14 @@ export default {
           const successUrl = (qs.get('success_url') || bodyIn.success_url || `${origin}/gracias?session_id={CHECKOUT_SESSION_ID}`);
           const cancelUrl = (qs.get('cancel_url') || bodyIn.cancel_url || `${origin}/#licencias`);
 
-          // Stripe espera application/x-www-form-urlencoded con notacion de corchetes.
           const form = new URLSearchParams();
-          form.set('mode', canonicalMode);
+          form.set('mode', mode);
           form.set('line_items[0][price]', priceId);
           form.set('line_items[0][quantity]', '1');
           form.set('success_url', successUrl);
           form.set('cancel_url', cancelUrl);
           if (tenantId && tenantId !== 'ENTERPRISE') form.set('client_reference_id', tenantId);
           if (identity?.email) form.set('customer_email', identity.email);
-          // Metadatos que viajan al webhook: que se vendio y a quien.
           form.set('metadata[price_id]', priceId);
           form.set('metadata[plan]', priceId);
           if (tenantId && tenantId !== 'ENTERPRISE') form.set('metadata[tenant]', tenantId);
@@ -1474,7 +1320,7 @@ export default {
             return new Response(JSON.stringify({
               url: session.url,
               sessionId: session.id,
-              mode: canonicalMode,
+              mode: mode,
               priceId
             }), {
               status: 200,
@@ -1490,11 +1336,28 @@ export default {
       }
 
       // ==========================================
-      // WEBHOOK DE STRIPE (/stripe/webhook)
-      // Stripe llama aqui al completarse el pago. Firma obligatoria.
+      // WEBHOOK DE STRIPE (DELEGADO A stripeWebhook.js)
       // ==========================================
       if ((path === '/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/api/v1/stripe/webhook') && method === 'POST') {
         return await handleStripeWebhook(request, env);
+      }
+
+      // ==========================================
+      // HEALTHCHECK / RAÍZ DE LA API
+      // ==========================================
+      if (path === '/' || path === '/health' || path === '/api/v1') {
+        return new Response(JSON.stringify({
+          status: "ONLINE",
+          system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.1)",
+          node: "2607076315021",
+          trustAnchor: "SAARE-MD-IPRES-2026",
+          version: "v10.5.0",
+          srpVersion: "8.1.0",
+          timestamp: new Date().toISOString()
+        }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
       }
 
       return new Response(JSON.stringify({ error: "Endpoint no encontrado" }), { 

@@ -1,10 +1,15 @@
 // saare-console/src/utils/api.js
 
+const ENV_URL = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 const isLocal = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 // Raíz base del API Gateway
-export const API_HOST = isLocal ? 'http://localhost:8787' : 'https://api.saare.es';
+export const API_HOST = isLocal ? 'http://127.0.0.1:8787' : (ENV_URL || 'https://api.saare.es');
 export const API_BASE_URL = `${API_HOST}/api/v1`;
+
+function isOwnApi(url) {
+  return url.startsWith(API_HOST) || url.startsWith(API_BASE_URL);
+}
 
 /**
  * Cliente HTTP universal para el Control Plane de S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
@@ -13,10 +18,11 @@ export const API_BASE_URL = `${API_HOST}/api/v1`;
  * @returns {Promise<Response>}
  */
 export async function saareFetch(endpoint, options = {}) {
+  const isAbsolute = typeof endpoint === 'string' && endpoint.startsWith('http');
   let cleanEndpoint = endpoint;
-  
+
   // 1. Normalización de URL y versionado (Prevención de duplicados de prefijo)
-  if (!cleanEndpoint.startsWith('http')) {
+  if (!isAbsolute) {
     if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
     
     // Antepone /api/v1 solo si no especifica una versión de API explícita (/api/...)
@@ -29,35 +35,35 @@ export async function saareFetch(endpoint, options = {}) {
 
   // 2. Extracción de credenciales y contexto desde la sesión unificada
   let token = null;
-  let currentUser = 'legal@saare.es';
-  let currentTenant = 'ENTERPRISE';
+  let currentUser = null;
+  let currentTenant = null;
 
   if (typeof window !== 'undefined') {
-    token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token');
+    token = localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token');
     
     try {
       const storedUser = localStorage.getItem('saare_session_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        currentUser = parsed.email || localStorage.getItem('saare_user_email') || currentUser;
-        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || currentTenant;
+        currentUser = parsed.email || localStorage.getItem('saare_user_email') || null;
+        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || null;
       } else {
-        currentUser = localStorage.getItem('saare_user_email') || currentUser;
-        currentTenant = localStorage.getItem('saare_tenant_domain') || currentTenant;
+        currentUser = localStorage.getItem('saare_user_email') || null;
+        currentTenant = localStorage.getItem('saare_tenant_domain') || null;
       }
     } catch (e) {
-      currentUser = localStorage.getItem('saare_user_email') || currentUser;
-      currentTenant = localStorage.getItem('saare_tenant_domain') || currentTenant;
+      currentUser = localStorage.getItem('saare_user_email') || null;
+      currentTenant = localStorage.getItem('saare_tenant_domain') || null;
     }
   }
 
-  // 3. Ensamblado de cabeceras universales de seguridad e identidad multi-tenant
+  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant (solo en API propia)
   const defaultHeaders = {
-    'Content-Type': 'application/json; charset=utf-8',
     'Accept': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    'x-saare-user': currentUser,
-    'x-saare-tenant': currentTenant,
+    ...(options.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
+    ...(token && isOwnApi(cleanEndpoint) ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(currentUser && isOwnApi(cleanEndpoint) ? { 'x-saare-user': currentUser } : {}),
+    ...(currentTenant && isOwnApi(cleanEndpoint) ? { 'x-saare-tenant': currentTenant } : {}),
     ...(options.headers || {})
   };
 
@@ -78,7 +84,7 @@ export async function saareFetch(endpoint, options = {}) {
     return response;
   } catch (error) {
     console.error('Error de conexión con SAARE Control Plane:', error);
-    throw error;
+    throw new Error(`Error de conexión con el Control Plane: ${error.message}`);
   }
 }
 

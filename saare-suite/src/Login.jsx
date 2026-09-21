@@ -5,8 +5,8 @@ import { saareFetch } from "./utils/api";
 const CONSOLE_URL =
   typeof window !== "undefined" &&
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-    ? "[localhost](http://localhost:5173)"
-    : "[console.saare.es](https://console.saare.es)";
+    ? "http://localhost:5173"
+    : "https://console.saare.es";
 
 const CONTACT_EMAIL = "legal@saare.es";
 
