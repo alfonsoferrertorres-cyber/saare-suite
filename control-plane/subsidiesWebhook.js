@@ -1,14 +1,24 @@
-// Memoria en caliente oKV para los endpoints (si usas D1/KV cámbialo aquí)
-const webhookConfigs = new Map();
+// control-plane/subsidiesWebhook.js — Módulo de Despacho e Integración de Webhooks
+const ramWebhookConfigCache = new Map();
 
 export async function dispatchWebhookEvent(tenantId, payload, env) {
   try {
-    // Buscar configuración de webhook en KV o caché
     let config = null;
-    if (env.SAARE_VAULT_KV) {
-      config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
+
+    // 1. Buscar configuración en Cloudflare KV
+    if (env && env.SAARE_VAULT_KV) {
+      try {
+        config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
+      } catch (e) {
+        console.warn("[Subsidies Webhook] Error leyendo KV:", e);
+      }
     }
-    
+
+    // 2. Fallback a memoria RAM si no está en KV
+    if (!config) {
+      config = ramWebhookConfigCache.get(tenantId);
+    }
+
     if (!config || !config.target_url) {
       return { success: false, reason: "No webhook target configured" };
     }
@@ -17,7 +27,8 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Saare-Signature': config.secret_token || ''
+        'X-Saare-Signature': config.secret_token || '',
+        'Authorization': config.secret_token ? `Bearer ${config.secret_token}` : ''
       },
       body: JSON.stringify(payload)
     });
@@ -29,14 +40,10 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
   }
 }
 
-  // POST /api/v1/subsidies/webhook/test (Probar envío)
+// Manejador opcional para pruebas directas si no se enruta desde worker.js
+export async function handleWebhookTestRoute(request, url, env) {
   if (url.pathname === '/api/v1/subsidies/webhook/test' && request.method === 'POST') {
     const tenantId = url.searchParams.get('tenant_id') || 'ENTERPRISE';
-    const config = webhookConfigs.get(tenantId);
-
-    if (!config) {
-      return new Response(JSON.stringify({ error: 'Webhook no configurado' }), { status: 404 });
-    }
 
     const payload = {
       event_type: 'TEST_PING',
@@ -45,23 +52,16 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
       status: 'OPERATIONAL'
     };
 
-    try {
-      const res = await fetch(config.target_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.secret_token}`
-        },
-        body: JSON.stringify(payload)
-      });
+    const result = await dispatchWebhookEvent(tenantId, payload, env);
 
-      return new Response(JSON.stringify({ success: res.ok, status_code: res.status }), {
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
-    }
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Access-Control-Allow-Origin': '*' 
+      }
+    });
   }
 
-  return null; // Si no coincide la ruta, pasa de largo
+  return null;
 }
