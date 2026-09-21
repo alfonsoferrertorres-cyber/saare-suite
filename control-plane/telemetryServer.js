@@ -15,7 +15,7 @@ export function setupTelemetryStream(app) {
         status: 'RUNTIME_ACTIVE'
       };
 
-      res.write(data: \n\n);
+      res.write(`data: ${JSON.stringify(telemetryEvent)}\n\n`);
     }, 2000);
 
     req.on('close', () => {

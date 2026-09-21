@@ -73,9 +73,16 @@ async function verifyPassword(stored, candidate) {
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
 
   const parts = stored.split("$");
-  const iterations = parseInt(parts[1], 10);
-  const salt = new Uint8Array(parts[2].match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  if (parts.length < 4) return false;
+
+  const iterations = parseInt(parts[1], 10) || 100000;
+  const saltHex = parts[2];
   const expectedHex = parts[3];
+
+  const saltMatches = saltHex.match(/.{1,2}/g);
+  if (!saltMatches) return false;
+
+  const salt = new Uint8Array(saltMatches.map(byte => parseInt(byte, 16)));
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey("raw", encoder.encode(candidate), "PBKDF2", false, ["deriveBits"]);

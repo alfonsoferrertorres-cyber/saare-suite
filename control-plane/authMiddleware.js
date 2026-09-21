@@ -104,7 +104,8 @@ export class AuthMiddleware {
       throw new Error("[AUTH_ERROR] Firma JWT inválida o manipulada");
     }
 
-    const payload = JSON.parse(decodeURIComponent(escape(base64UrlDecode(payloadB64))));
+    const payloadBytes = Uint8Array.from(base64UrlDecode(payloadB64), c => c.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
     
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
