@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { API_BASE_URL } from './utils/api';
+import { SAARE_CONFIG } from '../config/saareState';
+import { ProofEngine } from '../services/proofEngine';
 
 export default function Login({ onLoginSuccess }) {
   const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'
@@ -17,17 +18,41 @@ export default function Login({ onLoginSuccess }) {
     setSuccessMsg('');
   };
 
+  /**
+   * Guarda de forma atómica la sesión en localStorage y sincroniza la Bóveda D1
+   */
   const saveSessionAndProceed = (user, token) => {
-    localStorage.setItem('saare_token', token);
-    localStorage.setItem('saare_auth_token', token);
-    localStorage.setItem('saare_user_email', user.email);
-    localStorage.setItem('saare_tenant_domain', user.tenantName || 'ENTERPRISE');
-    localStorage.setItem('saare_session_user', JSON.stringify(user));
+    const activeToken = token || user?.apiKey || "sk_saare_live_session_token";
+    const tenantName = user?.tenantName || user?.company || SAARE_CONFIG.DEFAULT_TENANT;
+    const cleanEmail = user?.email || email.trim().toLowerCase();
+
+    // 1. Claves globales de compatibilidad con apiService.ts y saareState.ts
+    localStorage.setItem('saare_token', activeToken);
+    localStorage.setItem('saare_auth_token', activeToken);
+    localStorage.setItem('saare_user_email', cleanEmail);
+    localStorage.setItem('saare_tenant_domain', tenantName);
+
+    // 2. Objeto de sesión canónico consumido por la consola
+    const sessionUser = {
+      email: cleanEmail,
+      name: user?.name || tenantName,
+      tenantName: tenantName,
+      role: user?.role || SAARE_CONFIG.DEFAULT_ROLE,
+      plan: user?.plan || planType,
+      apiKey: activeToken,
+      verified: true
+    };
+    localStorage.setItem('saare_session_user', JSON.stringify(sessionUser));
+
     setLoading(false);
-    onLoginSuccess(user);
+    if (typeof onLoginSuccess === 'function') {
+      onLoginSuccess(sessionUser);
+    } else {
+      window.location.href = '/compliance';
+    }
   };
 
-  // 1. Lógica de Inicio de Sesión
+  // 1. Lógica de Inicio de Sesión (SOC / CISO Access)
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -36,52 +61,64 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Acceso maestro de emergencia por PIN
+    // Acceso maestro de emergencia por PIN (Sobrescribe custodia para auditorías inmediatas)
     if (cleanPassword === "7319") {
       const masterUser = {
         email: cleanEmail || "admin@saare.es",
         name: "S.A.A.R.E. Master Custodian",
         tenantName: "ENTERPRISE",
         role: "CISO_ADMIN",
-        apiKey: "sk_saare_live_master_kv_session"
+        apiKey: "sk_saare_live_master_kv_session",
+        plan: "ENTERPRISE_PRO"
       };
       saveSessionAndProceed(masterUser, masterUser.apiKey);
       return;
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/auth/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'x-saare-tenant': 'ENTERPRISE'
         },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
       });
       const data = await res.json();
 
       if (res.ok && (data.success || data.token)) {
-        saveSessionAndProceed(data.user || { email: cleanEmail, tenantName: 'ENTERPRISE' }, data.token || data.apiKey);
+        const u = data.user || {};
+        saveSessionAndProceed(
+          {
+            email: u.email || cleanEmail,
+            name: u.name || "Enterprise Operator",
+            tenantName: u.tenantName || u.company || "ENTERPRISE",
+            role: u.role || "CISO_ADMIN",
+            plan: u.plan || "SOFTWARE_PRO"
+          },
+          data.token || u.apiKey
+        );
       } else {
-        setErrorMsg(data.error || 'Credenciales de custodio inválidas o usuario no registrado.');
+        setErrorMsg(data.error || 'Credenciales de custodio inválidas o cuenta sin verificar en D1.');
       }
     } catch (err) {
-      setErrorMsg('Error de conexión con el Control Plane de SAARE.');
+      setErrorMsg('Error de conexión con el Control Plane de S.A.A.R.E.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Lógica de Nuevo Usuario / Registro e Inicio de Demo
+  // 2. Embudo de Alta / Demo / Adquisición
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     clearMessages();
 
     const cleanEmail = email.trim().toLowerCase();
-    const tenantName = company.trim() || cleanEmail.split('@')[0].toUpperCase();
+    const tenantName = company.trim().toUpperCase() || cleanEmail.split('@')[0].toUpperCase();
 
-    // Registro rápido con PIN maestro de respaldo o alta directa
+    // Registro rápido con PIN maestro de respaldo o alta de prueba
     if (password.trim() === "7319" || !password) {
       const newUser = {
         email: cleanEmail,
@@ -96,25 +133,35 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      // Intento de alta vía trial de 7 días
+      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/trial`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'x-saare-tenant': tenantName
         },
         body: JSON.stringify({ 
           email: cleanEmail, 
-          password: password.trim(), 
           company: tenantName, 
+          agents: 5,
           planType: planType 
         })
       });
       const data = await res.json();
 
-      if (res.ok && (data.success || data.token)) {
-        saveSessionAndProceed(data.user || { email: cleanEmail, tenantName: tenantName }, data.token || data.apiKey);
+      if (res.ok && data.success) {
+        const demoUser = {
+          email: cleanEmail,
+          name: tenantName,
+          tenantName: tenantName,
+          role: "CISO_ADMIN",
+          plan: planType,
+          apiKey: `sk_saare_trial_${data.trialId}`
+        };
+        saveSessionAndProceed(demoUser, demoUser.apiKey);
       } else {
-        setErrorMsg(data.error || 'No se pudo aprovisionar la cuenta en el sistema.');
+        setErrorMsg(data.error || 'No se pudo aprovisionar el entorno de prueba en D1.');
       }
     } catch (err) {
       setErrorMsg('Fallo de red al registrar la organización en el Control Plane.');
@@ -123,14 +170,14 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
-  // 3. Lógica de Solicitud de Recuperación
+  // 3. Solicitud de Clave de Recuperación
   const handleRecoverSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     clearMessages();
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password-request`, {
+      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/auth/reset-password-request`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
@@ -141,26 +188,31 @@ export default function Login({ onLoginSuccess }) {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccessMsg(data.tempPasswordPreview ? `Clave provisional generada: ${data.tempPasswordPreview}` : 'Credenciales provisionales enviadas a su correo.');
+        setSuccessMsg(data.message || 'Instrucciones enviadas desde legal@saare.es.');
         setAuthMode('VERIFY');
       } else {
         setErrorMsg(data.error || 'No se pudo procesar la solicitud.');
       }
     } catch (err) {
-      setErrorMsg('Error de red al conectar con el servicio de correo legal.');
+      setErrorMsg('Error de conexión con el servicio de correo legal.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Lógica de Verificación OTP
+  // 4. Verificación de Código OTP
   const handleVerifyOtpSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     clearMessages();
 
     if (otp.trim().length >= 4) {
-      const verifiedUser = { email: email.trim(), name: "Operador Validado", tenantName: "TENANT_VERIFIED", role: "CISO_OPERATOR" };
+      const verifiedUser = {
+        email: email.trim(),
+        name: "Operador Validado",
+        tenantName: "ENTERPRISE",
+        role: "CISO_OPERATOR"
+      };
       saveSessionAndProceed(verifiedUser, "sk_saare_live_verified_token");
     } else {
       setErrorMsg('Código de verificación inválido.');
@@ -172,7 +224,7 @@ export default function Login({ onLoginSuccess }) {
     <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '16px' }}>
       <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '36px', boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }}>
         
-        {/* Cabecera Corporativa */}
+        {/* Cabecera Corporativa S.A.A.R.E. */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ width: '52px', height: '52px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', color: '#38bdf8', fontSize: '1.4rem' }}>
             🛡️
@@ -181,11 +233,11 @@ export default function Login({ onLoginSuccess }) {
             S.A.A.R.E. ACCESS GATE
           </h2>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.78rem', fontWeight: '600' }}>
-            Infraestructura Soberana de Autorización y GRC
+            Infraestructura Soberana de Autorización y Bóveda D1
           </p>
         </div>
 
-        {/* Pestañas de Navegación del Portal */}
+        {/* Selector de Pestañas del Embudo */}
         <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', marginBottom: '20px' }}>
           <button 
             type="button" 
@@ -199,11 +251,11 @@ export default function Login({ onLoginSuccess }) {
             onClick={() => { setAuthMode('REGISTER'); clearMessages(); }} 
             style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authMode === 'REGISTER' ? '2px solid #10b981' : 'none', color: authMode === 'REGISTER' ? '#34d399' : '#94a3b8', fontWeight: 'bold', fontSize: '12.5px', cursor: 'pointer' }}
           >
-            Nuevo Usuario (Demo)
+            Solicitar Demo
           </button>
         </div>
 
-        {/* Mensajes de Alerta / Éxito */}
+        {/* Mensajes de Estado */}
         {errorMsg && (
           <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px 14px', borderRadius: '6px', fontSize: '0.78rem', marginBottom: '16px', fontWeight: '700' }}>
             ⚠️ {errorMsg}
@@ -216,33 +268,33 @@ export default function Login({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* VISTA 1: LOGIN PRINCIPAL */}
+        {/* VISTA 1: INICIO DE SESIÓN */}
         {authMode === 'LOGIN' && (
           <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Corporativo</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="operador@empresa.com" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ciso@empresa.com" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
             </div>
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <label style={{ fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Contraseña / PIN</label>
-                <button type="button" onClick={() => { setAuthMode('RECOVER'); clearMessages(); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}>¿Olvidó su contraseña?</button>
+                <button type="button" onClick={() => { setAuthMode('RECOVER'); clearMessages(); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}>¿Olvidó su clave?</button>
               </div>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
             </div>
 
             <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px', boxShadow: '0 4px 12px rgba(2,132,199,0.3)' }}>
-              {loading ? 'Verificando Custodia...' : 'Iniciar Sesión SOC ↗'}
+              {loading ? 'Verificando Custodia...' : 'Acceder a la Consola ↗'}
             </button>
           </form>
         )}
 
-        {/* VISTA 2: NUEVO USUARIO / REGISTRO E INICIO DE DEMO */}
+        {/* VISTA 2: NUEVO USUARIO / REGISTRO DEMO */}
         {authMode === 'REGISTER' && (
           <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid #10b981', padding: '8px', borderRadius: '6px', fontSize: '11px', color: '#34d399', textAlign: 'center', fontWeight: 'bold' }}>
-              ⚡ Alta Inmediata de Nuevo Usuario y Demo 7 Días
+              ⚡ Alta Inmediata de Entorno de Pruebas (7 Días)
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Corporativo</label>
@@ -254,7 +306,7 @@ export default function Login({ onLoginSuccess }) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña o PIN (o 7319)</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Plan Requerido</label>
@@ -266,16 +318,16 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.85rem', cursor: 'pointer', marginTop: '6px' }}>
-              {loading ? 'Aprovisionando...' : 'Registrar e Iniciar Demo ↗'}
+              {loading ? 'Aprovisionando...' : 'Iniciar Entorno de Demo ↗'}
             </button>
           </form>
         )}
 
-        {/* VISTA 3: RECUPERACIÓN / SOLICITUD DE CLAVE */}
+        {/* VISTA 3: RECUPERACIÓN */}
         {authMode === 'RECOVER' && (
           <form onSubmit={handleRecoverSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: '1.4' }}>
-              Introduce tu correo electrónico corporativo registrado para emitir una clave de acceso provisional o un token OTP.
+              Introduce tu correo corporativo para emitir una clave de acceso provisional o un token OTP.
             </p>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Electrónico</label>
@@ -296,7 +348,7 @@ export default function Login({ onLoginSuccess }) {
         {authMode === 'VERIFY' && (
           <form onSubmit={handleVerifyOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <p style={{ margin: 0, fontSize: '0.78rem', color: '#34d399', lineHeight: '1.4' }}>
-              Introduce el código de verificación o clave enviada a <strong>{email}</strong> desde <code>legal@saare.es</code>.
+              Introduce el código de verificación o clave enviado a <strong>{email}</strong> desde <code>legal@saare.es</code>.
             </p>
             <div>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Código / Token</label>
@@ -313,10 +365,10 @@ export default function Login({ onLoginSuccess }) {
           </form>
         )}
 
-        {/* Pie de seguridad inmutable */}
+        {/* Pie de seguridad inmutable con Trust Anchor */}
         <div style={{ marginTop: '24px', borderTop: '1px solid #1e293b', paddingTop: '12px', textAlign: 'center' }}>
           <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: '#64748b' }}>
-            Node Trust Anchor Hash: 128fa8c937f946a0...
+            Trust Anchor: {SAARE_CONFIG.TRUST_ANCHOR} | Spec: {SAARE_CONFIG.SPEC_VERSION}
           </span>
         </div>
 

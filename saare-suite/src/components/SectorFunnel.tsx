@@ -9,6 +9,7 @@ interface SectorCardProps {
 
 interface SectorFunnelProps {
   onSelectSectorReport?: (sectorTitle: string) => void;
+  onRequestTrial?: (sectorTitle: string) => void;
 }
 
 const sectors: SectorCardProps[] = [
@@ -38,7 +39,18 @@ const sectors: SectorCardProps[] = [
   },
 ];
 
-export const SectorFunnel: React.FC<SectorFunnelProps> = ({ onSelectSectorReport }) => {
+export const SectorFunnel: React.FC<SectorFunnelProps> = ({ onSelectSectorReport, onRequestTrial }) => {
+  const handleAction = (sectorTitle: string) => {
+    const token = localStorage.getItem('saare_token');
+    
+    // Si no hay sesión activa en D1, deriva al alta de prueba
+    if (!token && onRequestTrial) {
+      onRequestTrial(sectorTitle);
+    } else if (onSelectSectorReport) {
+      onSelectSectorReport(sectorTitle);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-saare-surface border border-saare-line text-saare-ink rounded-xl">
       {sectors.map((sector, index) => (
@@ -54,7 +66,7 @@ export const SectorFunnel: React.FC<SectorFunnelProps> = ({ onSelectSectorReport
             <p className="text-saare-ink-dim text-sm mt-2 leading-relaxed">{sector.claim}</p>
           </div>
           <button
-            onClick={() => onSelectSectorReport && onSelectSectorReport(sector.title)}
+            onClick={() => handleAction(sector.title)}
             className="mt-6 w-full bg-saare-allow hover:bg-saare-allow/90 text-black font-bold py-2.5 px-4 text-xs rounded transition-all"
           >
             {sector.ctaText}

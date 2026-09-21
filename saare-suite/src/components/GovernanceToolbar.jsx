@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { API_BASE_URL, saareFetch } from '../utils/api';
 
 export default function GovernanceToolbar({
@@ -21,7 +21,7 @@ export default function GovernanceToolbar({
   const handleVerify = () => {
     const sampleHash = "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     const cleanApi = API_BASE_URL.replace(/\/$/, '');
-    window.open(`${cleanApi}/v1/verify/${sampleHash}`, '_blank');
+    window.open(`${cleanApi}/verify/${sampleHash}`, '_blank');
     
     triggerAction(
       'Sello criptográfico Ed25519 verificado. Dictamen inalterado conforme a ISO/IEC 27037:2012.',
@@ -30,9 +30,11 @@ export default function GovernanceToolbar({
   };
 
   const handleExportCustodyJSON = () => {
+    const sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
     const custodyPayload = {
       trustAnchor: "SAARE-MD-IPRES-2026",
       standard: "ISO/IEC 27037:2012",
+      tenant: sessionUser.tenantName || "ENTERPRISE",
       merkleRoot: "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
       tsaRecord: "RFC3161-EIDAS-QUALIFIED-2026",
       signatureAlg: "Ed25519",

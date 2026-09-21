@@ -1,8 +1,10 @@
 import React from 'react';
 
 export default function OfficialReportModal({ onClose, sectorTitle }) {
-  const userEmail = localStorage.getItem('saare_user_email') || 'legal@saare.es';
-  const tenantDomain = localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+  // 1. Lectura unificada de sesión desde el embudo D1
+  const sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
+  const userEmail = sessionUser.email || localStorage.getItem('saare_user_email') || 'legal@saare.es';
+  const tenantDomain = sessionUser.tenantName || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
 
   const handlePrint = () => {
     window.print();

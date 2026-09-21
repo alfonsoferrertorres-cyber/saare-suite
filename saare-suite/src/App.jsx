@@ -65,9 +65,6 @@ const DIMENSIONS = [
 
 /* ==========================================================================
    PASARELA DE PAGO · STRIPE · IDENTIFICADORES CANÓNICOS
-   Cada tramo del catálogo queda atado a su price_id real. Es la única
-   fuente de verdad del precio: la landing muestra "precio" y el checkout
-   cobra lo que dice "priceId". Si divergen, gana Stripe.
    ========================================================================== */
 const STRIPE_PRICES = {
   "nodo-base": {
@@ -101,7 +98,7 @@ const STRIPE_PRICES = {
 };
 
 /* ==========================================================================
-   CATÁLOGO COMERCIAL · seis tramos con página de detalle propia.
+   CATÁLOGO COMERCIAL · Seis tramos con página de detalle propia.
    ========================================================================== */
 const CATALOGO = [
   {
@@ -264,9 +261,6 @@ const CATALOGO = [
 
 /* ==========================================================================
    CONTENIDO DE LAS TRES VISTAS DE CONSOLA
-   Cada vista tiene su propia matriz regulatoria, su propio inventario de
-   nodos, su propia superficie operativa y su propio tramo recomendado. No
-   comparten cuerpo: comparten motor, que es distinto.
    ========================================================================== */
 const VISTAS_CONSOLA = {
   executive: {
@@ -479,24 +473,29 @@ function AppShell({ children }) {
   const activeGroup = NAV.find((n) => n.id === active);
   const isAuthRoute = ["/login", "/auth", "/acceso"].includes(location.pathname);
 
-  /* La sesión se lee al navegar Y al montar. Si el token existe pero no hay
-     usuario, se persiste igualmente la lectura para no mostrar el botón de
-     acceso cuando en realidad hay sesión abierta.
-
-     CORRECCIÓN: se normalizan las claves y se usa el nombre real del tenant,
-     que antes se ignoraba. El botón de la barra muestra el tenant cuando el
-     plan no es una prueba, para que un usuario multi-tenant se reconozca. */
+  /* Restaurada la lógica de respaldo completa para leer claves de localStorage heredadas */
   const sessionUser = useMemo(() => {
     try {
       const raw = localStorage.getItem("saare_session_user");
-      if (!raw) return null;
+      if (!raw) {
+        const fallbackToken = localStorage.getItem("saare_token") || localStorage.getItem("saare_auth_token");
+        if (!fallbackToken) return null;
+        return {
+          email: localStorage.getItem("saare_user_email") || "ciso@empresa.com",
+          name: "CISO Operator",
+          role: "CISO_ADMIN",
+          tenantName: localStorage.getItem("saare_tenant_domain") || "ENTERPRISE",
+          apiKey: fallbackToken,
+          plan: "ENTERPRISE",
+        };
+      }
       const parsed = JSON.parse(raw);
       return {
-        email: parsed.email || "",
+        email: parsed.email || localStorage.getItem("saare_user_email") || "",
         name: parsed.name || "",
         role: parsed.role || "CISO_ADMIN",
-        tenantName: parsed.tenantName || parsed.tenant || "ORGANIZACION",
-        apiKey: parsed.apiKey || "",
+        tenantName: parsed.tenantName || parsed.tenant || localStorage.getItem("saare_tenant_domain") || "ORGANIZACION",
+        apiKey: parsed.apiKey || localStorage.getItem("saare_token") || "",
         plan: parsed.plan || "ENTERPRISE",
       };
     } catch {
@@ -623,11 +622,6 @@ function SectionTitle({ kicker, title, lead }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   BOTÓN DE CHECKOUT · Abre la sesión de pago con el price_id del tramo.
-   Se apoya en GET /v1/checkout?price=... (el backend crea la sesión con
-   STRIPE_SECRET_KEY). Si no hay backend vivo, cae al destino de contacto.
-   -------------------------------------------------------------------------- */
 function CheckoutButton({ stripe, ctaText }) {
   const [estado, setEstado] = useState("idle");
 
@@ -641,10 +635,10 @@ function CheckoutButton({ stripe, ctaText }) {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.url) throw new Error("checkout");
-      window.location.href = data.url; // Stripe Checkout hospedado
+      window.location.href = data.url;
     } catch {
       setEstado("idle");
-      window.location.href = WHATSAPP_URL; // respaldo: propuesta por WhatsApp
+      window.location.href = WHATSAPP_URL;
     }
   }
 
@@ -800,11 +794,6 @@ function ComparativaGuardarrail() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   Tabla de datos reutilizable. La primera columna nunca envuelve palabra,
-   las demás sí, y el contenedor mantiene scroll horizontal en móvil para
-   que una celda larga no rompa el ancho de la tabla.
-   -------------------------------------------------------------------------- */
 function DataTable({ headers, rows, renderLast }) {
   return (
     <div className="overflow-x-auto -mx-2 px-2">
@@ -925,7 +914,6 @@ function TabAuditoriaPublica() {
               </span>
             </div>
 
-            {/* Identificación primero: responde al «¿esto es para mí?» antes que nada */}
             <p className="mt-6 text-slate-300 text-sm sm:text-base max-w-4xl font-mono leading-relaxed">
               <span className="text-sky-400 font-bold">Para quién:</span> organizaciones con
               agentes de IA que ejecutan acciones irreversibles —pagos, borrados, expedientes—
@@ -943,9 +931,7 @@ function TabAuditoriaPublica() {
               tokens y sin persistencia en el nodo.
             </p>
 
-            {/* Dos puertas: la técnica y la de negocio */}
             <div className="mt-8 grid lg:grid-cols-2 gap-4">
-              {/* Puerta A · Verificar */}
               <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-5">
                 <span className="font-mono text-[10px] font-bold text-sky-400 uppercase tracking-widest">
                   ¿Ya tiene un sello?
@@ -976,7 +962,6 @@ function TabAuditoriaPublica() {
                 </div>
               </div>
 
-              {/* Puerta B · Prueba de exposición */}
               <div className="bg-slate-950/70 border border-emerald-500/30 rounded-lg p-5 flex flex-col justify-between">
                 <div>
                   <span className="font-mono text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
@@ -1058,6 +1043,48 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
+      {/* Sección interactiva de Sanitización PII in-RAM correctamente integrada */}
+      <section className="max-w-6xl mx-auto px-6 py-8">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl font-mono text-xs">
+          <SectionTitle 
+            kicker="PRUEBA EN NAVEGADOR" 
+            title="Sanitización PII in-RAM (Demo SGP 1.0)" 
+            lead="Compruebe cómo se anonimizan PII/PHI en tiempo real sin enviar datos a un modelo externo."
+          />
+          <div className="space-y-4">
+            <textarea
+              value={demoText}
+              onChange={(e) => setDemoText(e.target.value)}
+              className="w-full h-20 bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+            />
+            <button
+              type="button"
+              onClick={runInBrowserSanitizer}
+              className="px-4 py-2 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition"
+            >
+              EJECUTAR SANITIZACIÓN EX-ANTE
+            </button>
+
+            {demoProcessed && (
+              <div className="mt-4 p-4 bg-slate-950 rounded border border-slate-800 space-y-2">
+                <div className="text-emerald-400 font-bold">TEXTO SANITIZADO:</div>
+                <p className="text-slate-300">{demoProcessed}</p>
+                {demoMetrics && (
+                  <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-500 flex flex-wrap gap-4">
+                    <span>Latencia: {demoMetrics.latency} ms</span>
+                    <span>Coste Tokens: {demoMetrics.tokensCost}</span>
+                    <span>Modo: {demoMetrics.memoryMode}</span>
+                    <span>
+                      Veredicto: <VerdictChip verdict={demoMetrics.verdict} />
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
         <SectionTitle
           kicker="CADENA DE CUSTODIA"
@@ -1065,7 +1092,6 @@ function TabAuditoriaPublica() {
           lead="Cada veredicto del motor entra en un árbol Merkle. La raíz se firma con Ed25519 y se sella con marca de tiempo RFC 3161. Lo que se conserva es la huella, nunca el contenido en claro."
         />
 
-        {/* Línea de encaje */}
         <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
           <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
           <p className="text-slate-300 mt-2 leading-relaxed">
@@ -1110,7 +1136,6 @@ function TabAuditoriaPublica() {
           lead="Cada llamada L7 se descompone y analiza sobre memoria volátil antes de autorizar la emisión del Execution Permit."
         />
 
-        {/* Línea de encaje */}
         <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
           <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
           <p className="text-slate-300 mt-2 leading-relaxed">
@@ -1130,7 +1155,6 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* El argumento comercial no vive en auditoría: se remite a producto */}
       <section className="max-w-6xl mx-auto px-6 py-10 border-b border-slate-800">
         <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-6 font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -1170,7 +1194,6 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* Bloque de cierre: el momento de mayor intención de la página */}
       <section className="relative border-t border-slate-800 bg-[#020617] overflow-hidden py-16">
         <HeroVideoBackdrop />
         <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
@@ -1206,7 +1229,6 @@ function TabAuditoriaPublica() {
             Sin coste de alta · Sin permanencia · Despliegue en su VPC o Air-Gapped · Soporte en español
           </p>
 
-          {/* Tres accesos por rol para quien ya es cliente */}
           <div className="mt-10 pt-8 border-t border-slate-800/60">
             <span className="font-mono text-[10px] text-slate-600 uppercase tracking-widest">
               ¿Ya es cliente? Entre por su vista
@@ -1419,9 +1441,7 @@ ${item.id === "nodo-base" ? "// Sin custodia: solo el veredicto\nif (result.deci
 }
 
 /* ==========================================================================
-   VISTA DE CONSOLA · una superficie diferenciada por rol
-   El cuerpo cambia por completo según la vista: matriz, inventario, superficie
-   operativa y tramo recomendado son propios de cada rol.
+   VISTA DE CONSOLA · Una superficie diferenciada por rol
    ========================================================================== */
 function VistaConsola({ vistaId }) {
   const v = VISTAS_CONSOLA[vistaId];
@@ -1434,7 +1454,6 @@ function VistaConsola({ vistaId }) {
       <PageHeader badge={`PRODUCTO · ${v.badge}`} title={v.pageTitle} description={v.pageDesc} />
 
       <section className="max-w-6xl mx-auto px-6 py-6">
-        {/* Identidad de la vista y sus cuatro indicadores */}
         <div className="grid lg:grid-cols-3 gap-6 mb-12">
           <div className="lg:col-span-1 bg-slate-900/90 border border-sky-500/40 p-6 rounded-lg font-mono text-xs">
             <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">{v.badge}</span>
@@ -1455,7 +1474,6 @@ function VistaConsola({ vistaId }) {
           </div>
         </div>
 
-        {/* Matriz propia de la vista */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12">
           <SectionTitle kicker={v.seccionMatriz} title={v.tituloMatriz} lead={v.leadMatriz} />
           <DataTable
@@ -1464,7 +1482,6 @@ function VistaConsola({ vistaId }) {
           />
         </div>
 
-        {/* Inventario propio de la vista */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
           <SectionTitle kicker={v.seccionInventario} title={v.tituloInventario} lead={v.leadInventario} />
           <DataTable
@@ -1474,7 +1491,6 @@ function VistaConsola({ vistaId }) {
           />
         </div>
 
-        {/* Superficie operativa propia de la vista */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl mb-12 font-mono text-xs">
           <SectionTitle kicker={v.superficieSeccion} title={v.superficieTitulo} />
           <div className="bg-slate-950 p-6 rounded border border-slate-800 space-y-3">
@@ -1484,12 +1500,10 @@ function VistaConsola({ vistaId }) {
           </div>
         </div>
 
-        {/* Tramo recomendado para esta vista */}
         <div className="max-w-2xl mx-auto mb-12">
           <CatalogCard item={CATALOGO.find((c) => c.id === v.tramoRecomendado)} />
         </div>
 
-        {/* Salto a las otras dos vistas */}
         <div className="border-t border-slate-800 pt-10">
           <SectionTitle kicker="OTRAS SUPERFICIES" title="Las otras vistas de la misma consola" />
           <div className="grid md:grid-cols-3 gap-6">
@@ -1893,7 +1907,7 @@ function CorporatePage({ variant }) {
       body: [
         "Principio de minimización. El sistema procesa en memoria volátil y no persiste contenido en claro. La custodia conserva huellas criptográficas, no texto. Cualquier dato personal detectado en tránsito se generaliza antes de que abandone el nodo, conforme al artículo 5 del Reglamento General de Protección de Datos.",
         "Principio de supervisión humana. El responsable de cumplimiento puede modificar las reglas del motor en tiempo real sin reiniciar los sistemas, de modo que el control efectivo permanece en manos de la organización y no del automatismo. Cada cambio de política queda registrado y firmado.",
-        "Principio de trazabilidad. Cada decisión autorizada queda sellada con su política aplicada y su instante exacto. La trazabilidad no es un registro de vigilancia: es la prueba de que el sistema actuó conforme a la política vigente en el momento de la ejecución.",
+        "Principio de trazabilidad. Cada decisión autorizada queda sellada con su política applied e instante exacto. La trazabilidad no es un registro de vigilancia: es la prueba de que el sistema actuó conforme a la política vigente en el momento de la ejecución.",
         "Principio de no discriminación. La generalización semántica sustituye valores exactos por rangos y aplica ruido diferencial, lo que evita que variables indirectas permitan reidentificar a una persona o inferir categorías sensibles.",
       ],
     },
@@ -1937,8 +1951,6 @@ function LoginPage() {
 
 /* ==========================================================================
    PIE DE PÁGINA
-   Cinco columnas en escritorio, tres en tablet y una en móvil. El salto
-   intermedio evita el apretado entre 768 y 1024 px.
    ========================================================================== */
 function Footer() {
   return (
@@ -2030,7 +2042,6 @@ export default function App() {
           <Route path="/producto" element={<TabAuditoriaPublica />} />
           <Route path="/producto/auditoria" element={<TabAuditoriaPublica />} />
 
-          {/* Tres vistas de consola, cada una con su propia superficie */}
           <Route path="/producto/executive" element={<VistaConsola vistaId="executive" />} />
           <Route path="/producto/grc" element={<VistaConsola vistaId="grc" />} />
           <Route path="/producto/cyber" element={<VistaConsola vistaId="cyber" />} />
