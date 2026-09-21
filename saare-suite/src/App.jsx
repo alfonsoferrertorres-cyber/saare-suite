@@ -71,28 +71,28 @@ const DIMENSIONS = [
    ========================================================================== */
 const STRIPE_PRICES = {
   "nodo-base": {
-    priceId: "price_1UHuuwFlwFW4ifPS66wDvS4n",
+    priceId: "price_1UHuuwFlwWF4iFPS66wDvS4n",
     modo: "subscription",
     moneda: "eur",
     importe: 14900,
     periodo: "mes",
   },
   "nodo-custodia": {
-    priceId: "price_1UHuypFlwFW4ifPSyDz1vT47",
+    priceId: "price_1UHuypFlwWF4iFPSyDz1vT47",
     modo: "subscription",
     moneda: "eur",
     importe: 29000,
     periodo: "mes",
   },
   "evidencias": {
-    priceId: "price_1UHv2zFlwWF4iPS2EEuDMwb",
+    priceId: "price_1UHv2zFlwWF4iFPS2EEuDMwb",
     modo: "payment",
     moneda: "eur",
     importe: 12000,
     periodo: "unica-vez",
   },
   "forense": {
-    priceId: "price_1UHv4sFlwFW4ifPSTOQJcvoG",
+    priceId: "price_1UHv4sFlwWF4iFPSTOQJcvoG",
     modo: "subscription",
     moneda: "eur",
     importe: 120000,
@@ -128,7 +128,7 @@ const CATALOGO = [
     noIncluye: ["Sellado continuo de evidencias", "Dossier judicial exportable", "Consola de cumplimiento"],
     ideal: ["Pymes que despliegan sus primeros agentes", "Equipos que solo necesitan el bloqueo", "Pruebas de concepto antes de escalar"],
     cta: "ACTIVAR NODO BASE ↗",
-    stripe: { priceId: "price_1UHuuwFlwFW4ifPS66wDvS4n", modo: "subscription" },
+    stripe: { priceId: "price_1UHuuwFlwWF4iFPS66wDvS4n", modo: "subscription" },
     featured: false,
   },
   {
@@ -155,7 +155,7 @@ const CATALOGO = [
     noIncluye: ["HSM corporativo dedicado", "SLA del 99,99 %", "Despliegue air-gapped"],
     ideal: ["CISO y DPO con auditoría periódica", "Banca y seguros de tamaño medio", "Organizaciones que deben probar cumplimiento"],
     cta: "ACTIVAR NODO CON CUSTODIA ↗",
-    stripe: { priceId: "price_1UHuypFlwFW4ifPSyDz1vT47", modo: "subscription" },
+    stripe: { priceId: "price_1UHuypFlwWF4iFPSyDz1vT47", modo: "subscription" },
     featured: true,
   },
   {
@@ -206,7 +206,7 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Operación con miles de veredictos diarios", "Nodos con custodia ya contratada", "Escalado sin cambiar de tramo"],
     cta: "CONTRATAR PAQUETE DE SELLOS ↗",
-    stripe: { priceId: "price_1UHv2zFlwWF4iPS2EEuDMwb", modo: "payment" },
+    stripe: { priceId: "price_1UHv2zFlwWF4iFPS2EEuDMwb", modo: "payment" },
     featured: false,
   },
   {
@@ -232,7 +232,7 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Peritos ciberinformáticos", "Despachos de litigio tecnológico", "Departamentos de fraude y arbitraje"],
     cta: "SOLICITAR ACCESO PERICIAL ↗",
-    stripe: { priceId: "price_1UHv4sFlwFW4ifPSTOQJcvoG", modo: "subscription" },
+    stripe: { priceId: "price_1UHv4sFlwWF4iFPSTOQJcvoG", modo: "subscription" },
     featured: false,
   },
   {
