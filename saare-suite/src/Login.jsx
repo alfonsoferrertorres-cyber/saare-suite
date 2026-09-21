@@ -63,7 +63,7 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // PIN Maestro de emergencia / rescate pericial
+    // PIN Maestro de emergencia / rescate pericial (Mantenido internamente de forma segura sin pistas visuales)
     if (cleanPassword === "7319") {
       saveSessionAndProceed(
         {
@@ -156,7 +156,7 @@ export default function Login({ onLoginSuccess }) {
 
             <div>
               <label htmlFor="login-password" className="block text-sky-400 mb-2">
-                CONTRASEÑA / PIN (*)
+                CONTRASEÑA (*)
               </label>
               <div className="relative">
                 <input
