@@ -440,11 +440,24 @@ function AppShell({ children }) {
 
   /* La sesión se lee al navegar Y al montar. Si el token existe pero no hay
      usuario, se persiste igualmente la lectura para no mostrar el botón de
-     acceso cuando en realidad hay sesión abierta. */
+     acceso cuando en realidad hay sesión abierta.
+
+     CORRECCIÓN: se normalizan las claves y se usa el nombre real del tenant,
+     que antes se ignoraba. El botón de la barra muestra el tenant cuando el
+     plan no es una prueba, para que un usuario multi-tenant se reconozca. */
   const sessionUser = useMemo(() => {
     try {
       const raw = localStorage.getItem("saare_session_user");
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return {
+        email: parsed.email || "",
+        name: parsed.name || "",
+        role: parsed.role || "CISO_ADMIN",
+        tenantName: parsed.tenantName || parsed.tenant || "ORGANIZACION",
+        apiKey: parsed.apiKey || "",
+        plan: parsed.plan || "ENTERPRISE",
+      };
     } catch {
       return null;
     }
@@ -476,10 +489,15 @@ function AppShell({ children }) {
                       ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
                       : "border-sky-500/50 text-sky-300 hover:bg-sky-500/10"
                   }`}
-                  title={`Sesión activa: ${sessionUser.email}`}
+                  title={`Sesión activa: ${sessionUser.email} · Tenant: ${sessionUser.tenantName}`}
                 >
-                  {isTrialSession ? "PRUEBA · " : "CONSOLA · "}
-                  {String(sessionUser.email).split("@")[0].toUpperCase()}
+                  {isTrialSession
+                    ? `PRUEBA · ${String(sessionUser.email).split("@")[0].toUpperCase()}`
+                    : `CONSOLA · ${String(
+                        sessionUser.tenantName || sessionUser.email.split("@")[0]
+                      )
+                        .toUpperCase()
+                        .slice(0, 14)}`}
                 </Link>
               ) : (
                 <Link to="/login" className="px-3.5 py-1.5 text-xs font-mono font-bold rounded border border-sky-500/50 text-sky-300 hover:bg-sky-500/10 transition">
@@ -966,6 +984,16 @@ function TabAuditoriaPublica() {
           title="Cómo se genera el sello que acaba de verificar"
           lead="Cada veredicto del motor entra en un árbol Merkle. La raíz se firma con Ed25519 y se sella con marca de tiempo RFC 3161. Lo que se conserva es la huella, nunca el contenido en claro."
         />
+
+        {/* Línea de encaje */}
+        <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
+          <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
+          <p className="text-slate-300 mt-2 leading-relaxed">
+            Cuando le reclamen por una acción de su agente, usted no reconstruye nada:
+            entrega el sello. El expediente existe ya, sellado en el momento en que se decidió.
+          </p>
+        </div>
+
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs mb-8">
           <div className="space-y-3">
             <DataRow label="1 · VEREDICTO" value="ALLOW o DENY con sujeto, política e instante" />
@@ -978,14 +1006,17 @@ function TabAuditoriaPublica() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <TechnicalCard title="Bóveda ciega" badge="CONOCIMIENTO CERO">
+            <p className="text-emerald-400 font-bold">Demuestra quién autorizó la acción, sin exponer el contenido.</p>
             <p>El verificador inspecciona sin ver el contenido en claro.</p>
             <p>Las claves de custodia las controla el cliente, nunca S.A.A.R.E.</p>
           </TechnicalCard>
           <TechnicalCard title="Verificación offline" badge="SIN CONEXIÓN">
+            <p className="text-emerald-400 font-bold">Puede probarlo aunque no haya red, y sin pedirnos permiso.</p>
             <p>La CLI saare-evidence-cli reproduce la cadena sin internet.</p>
             <p>Alineado con ISO/IEC 27037 para evidencia electrónica.</p>
           </TechnicalCard>
           <TechnicalCard title="Dossier exportable" badge="ART. 326 LEC">
+            <p className="text-emerald-400 font-bold">El documento que un perito acepta sin discutir su origen.</p>
             <p>Exportación del paquete .saare-proof con la cadena completa.</p>
             <p>Aportable en un procedimiento sin reconstrucción posterior.</p>
           </TechnicalCard>
@@ -998,6 +1029,16 @@ function TabAuditoriaPublica() {
           title="Qué se evalúa antes de autorizar"
           lead="Cada llamada L7 se descompone y analiza sobre memoria volátil antes de autorizar la emisión del Execution Permit."
         />
+
+        {/* Línea de encaje */}
+        <div className="bg-slate-950/60 border-l-2 border-sky-500/60 pl-4 py-3 mb-8 font-mono text-xs">
+          <span className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">Qué le resuelve</span>
+          <p className="text-slate-300 mt-2 leading-relaxed">
+            No bloquea «la IA» en abstracto: decide sobre esta acción, de este agente, sobre
+            este recurso. Siete dimensiones que cubren lo que un filtro genérico deja pasar.
+          </p>
+        </div>
+
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {DIMENSIONS.map(([code, title, desc]) => (
             <div key={code} className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono text-xs">
@@ -1009,50 +1050,31 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
-        <SectionTitle
-          kicker="DEMOSTRACIÓN EMPÍRICA LOCAL"
-          title="Zero-Disk · Zero-Network"
-          lead="Todo se procesa en memoria dentro de su propio navegador con el mismo runtime determinista que corre en producción."
-        />
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
-            <label className="block text-sky-400 font-bold mb-2" htmlFor="demo-input">
-              ENTRADA EN CLARO (PROMPT CON PII/PHI):
-            </label>
-            <textarea
-              id="demo-input"
-              value={demoText}
-              onChange={(e) => setDemoText(e.target.value)}
-              rows={5}
-              className="w-full bg-slate-950 border border-slate-700 p-3 text-slate-200 rounded focus:outline-none focus:border-sky-500 font-mono text-xs leading-relaxed"
-            />
-            <button onClick={runInBrowserSanitizer} className="mt-4 w-full py-3 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition">
-              EJECUTAR INTERCEPCIÓN EN RAM Y EVALUAR SGP 1.0
-            </button>
+      {/* El argumento comercial no vive en auditoría: se remite a producto */}
+      <section className="max-w-6xl mx-auto px-6 py-10 border-b border-slate-800">
+        <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-6 font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest">Siguiente paso</span>
+            <p className="text-slate-300 mt-2 leading-relaxed">
+              Ya ha visto qué se evalúa y cómo se prueba. Ahora vea qué le costaría tenerlo
+              en producción y cómo se compara con lo que ya usa.
+            </p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
-            <div className="text-emerald-400 font-bold mb-2">SALIDA SANITIZADA EX-ANTE:</div>
-            <div className="bg-slate-950 border border-slate-800 p-3 text-slate-300 rounded min-h-[110px] whitespace-pre-wrap leading-relaxed">
-              {demoProcessed || (
-                <span className="text-slate-600">Haga clic en ejecutar para ver la seudonimización determinista en memoria volátil...</span>
-              )}
-            </div>
-            {demoMetrics && (
-              <div className="mt-4 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-                <div>Latencia de procesamiento: <span className="text-emerald-400 font-bold">{demoMetrics.latency} ms</span></div>
-                <div>Coste en tokens extras: <span className="text-emerald-400 font-bold">{demoMetrics.tokensCost}</span></div>
-                <div>Modo de memoria: <span className="text-sky-300">{demoMetrics.memoryMode}</span></div>
-                <div className="flex items-center gap-2">Veredicto L7: <VerdictChip verdict={demoMetrics.verdict} /><span className="text-slate-500">{demoMetrics.verdictNote}</span></div>
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <Link
+              to="/producto/cumplimiento"
+              className="text-center px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition whitespace-nowrap"
+            >
+              VER LAS TRES CONSOLAS →
+            </Link>
+            <a
+              href="#licencias"
+              className="text-center px-5 py-3 border border-slate-700 text-slate-300 font-bold rounded hover:bg-slate-800 transition whitespace-nowrap"
+            >
+              VER LICENCIAMIENTO ↓
+            </a>
           </div>
         </div>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-6 py-12 border-b border-slate-800">
-        <SectionTitle kicker="DISRUPCIÓN" title="Ya tiene un guardarraíl. No tiene una prueba." />
-        <ComparativaGuardarrail />
       </section>
 
       <section id="licencias" className="max-w-6xl mx-auto px-6 py-12">
@@ -1066,13 +1088,63 @@ function TabAuditoriaPublica() {
             <CatalogCard key={item.id} item={item} />
           ))}
         </div>
-        <div className="mt-8 text-center">
-          <Link
-            to="/trial"
-            className="inline-block px-6 py-3 border border-emerald-500/50 text-emerald-400 font-mono font-bold text-xs rounded hover:bg-emerald-500/10 transition"
-          >
-            O EMPIECE POR UNA PRUEBA DE CONTROL · 7 DÍAS →
-          </Link>
+      </section>
+
+      {/* Bloque de cierre: el momento de mayor intención de la página */}
+      <section className="relative border-t border-slate-800 bg-[#020617] overflow-hidden py-16">
+        <HeroVideoBackdrop />
+        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+          <span className="font-mono text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+            Cierre
+          </span>
+          <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mt-4 tracking-tight leading-tight">
+            Cuando el agente decida, S.A.A.R.E. ya habrá respondido.
+          </h2>
+          <p className="mt-4 text-slate-300 text-sm sm:text-base max-w-3xl mx-auto leading-relaxed">
+            Empiece por donde le duele: verifique lo que ya tiene, o ejecute una prueba de
+            exposición sobre sus propios agentes y vea qué expediente generaría hoy su operación.
+          </p>
+
+          <div className="mt-10 grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            <Link
+              to="/trial"
+              className="block w-full text-center px-6 py-4 bg-emerald-500 text-black font-mono font-bold text-sm rounded hover:bg-emerald-400 transition"
+            >
+              SOLICITAR PRUEBA DE EXPOSICIÓN · 7 DÍAS →
+            </Link>
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full text-center px-6 py-4 border border-sky-500/50 text-sky-300 font-mono font-bold text-sm rounded hover:bg-sky-500/10 transition"
+            >
+              SOLICITAR PROPUESTA ENTERPRISE ↗
+            </a>
+          </div>
+
+          <p className="mt-6 text-[10px] text-slate-500 font-mono">
+            Sin coste de alta · Sin permanencia · Despliegue en su VPC o Air-Gapped · Soporte en español
+          </p>
+
+          {/* Tres accesos por rol para quien ya es cliente */}
+          <div className="mt-10 pt-8 border-t border-slate-800/60">
+            <span className="font-mono text-[10px] text-slate-600 uppercase tracking-widest">
+              ¿Ya es cliente? Entre por su vista
+            </span>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 font-mono text-xs">
+              <Link to="/producto/executive" className="text-slate-400 hover:text-sky-400 transition">
+                EXECUTIVE
+              </Link>
+              <span className="text-slate-700">·</span>
+              <Link to="/producto/grc" className="text-slate-400 hover:text-sky-400 transition">
+                GRC_AUDIT
+              </Link>
+              <span className="text-slate-700">·</span>
+              <Link to="/producto/cyber" className="text-slate-400 hover:text-sky-400 transition">
+                CYBER_RESILIENCE
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -1910,7 +1982,7 @@ export default function App() {
           <Route path="/sales" element={<TabVentas />} />
           <Route path="/ventas" element={<TabVentas />} />
           <Route path="/developers" element={<TabDev />} />
-          <Route path="/enterprise" element={<TabDaemon />} />
+          <Route path="/enterprise" element={<VistaConsola vistaId="executive" />} />
 
           <Route path="*" element={<TabAuditoriaPublica />} />
         </Routes>

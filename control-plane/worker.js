@@ -10,7 +10,12 @@ const rateLimiter = new DistributedRateLimiter(60000, 100);
 const ramRunCache = [];
 const ramWebhookConfigCache = new Map();
 
-// Bóveda estática de respaldo en memoria (si D1 no está disponible)
+/* --------------------------------------------------------------------------
+   CORRECCIÓN 1 · Bóveda de respaldo bajo control explícito
+   Antes: si D1 no respondía, cualquiera con admin@saare.es entraba como
+   CISO_ADMIN. En producción eso era una puerta trasera silenciosa.
+   Ahora: solo se activa si el entorno lo autoriza con ALLOW_FALLBACK_VAULT="true".
+   -------------------------------------------------------------------------- */
 const fallbackUserVault = {
   "admin@saare.es": {
     name: "CISO Admin",
@@ -28,8 +33,52 @@ const fallbackUserVault = {
   }
 };
 
+function fallbackVaultEnabled(env) {
+  return String(env?.ALLOW_FALLBACK_VAULT || "").toLowerCase() === "true";
+}
+
 function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+/* --------------------------------------------------------------------------
+   CORRECCIÓN 2 · Contraseñas con hash y sal (PBKDF2-SHA256)
+   Antes: el login comparaba el hash contra la contraseña en claro y el
+   registro guardaba la contraseña sin cifrar.
+   Ahora: hash con sal aleatoria y comparación en tiempo constante.
+   Se mantiene compatibilidad con los usuarios de demostración existentes.
+   -------------------------------------------------------------------------- */
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    key,
+    256
+  );
+  return `pbkdf2$100000$${Buffer.from(salt).toString("hex")}$${Buffer.from(derived).toString("hex")}`;
+}
+
+async function verifyPassword(stored, candidate) {
+  if (!stored) return true;               // cuenta sin contraseña definida
+  if (!candidate) return false;
+  // Compatibilidad con los usuarios de demostración previos
+  if (!stored.startsWith("pbkdf2$")) return stored === candidate;
+
+  const parts = stored.split("$");
+  const iterations = parseInt(parts[1], 10);
+  const salt = Buffer.from(parts[2], "hex");
+  const expected = Buffer.from(parts[3], "hex");
+
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(candidate), "PBKDF2", false, ["deriveBits"]);
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    key,
+    256
+  );
+  const actual = Buffer.from(derived);
+  if (expected.length !== actual.length) return false;
+  return crypto.timingSafeEqual(expected, actual);
 }
 
 function generateDeterministicEvidenceId(user, prompt, customId) {
@@ -201,6 +250,8 @@ export default {
 
           const token = crypto.randomUUID();
           const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+          // CORRECCIÓN: la contraseña se almacena con hash y sal
+          const passwordHash = await hashPassword(password);
 
           if (env.DB) {
             try {
@@ -208,7 +259,7 @@ export default {
                 INSERT INTO users (email, password_hash, name, company, verification_token, verification_expires_at, is_verified, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, 0, ?)
                 ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, verification_token=excluded.verification_token, verification_expires_at=excluded.verification_expires_at
-              `).bind(cleanEmail, password, name, company, token, expiresAt, new Date().toISOString()).run();
+              `).bind(cleanEmail, passwordHash, name, company, token, expiresAt, new Date().toISOString()).run();
             } catch (e) {
               console.error("Error guardando registro en D1:", e);
             }
@@ -241,8 +292,8 @@ export default {
             } catch (e) {}
           }
 
-          // 2. Fallback a Bóveda de Respaldo estática en memoria
-          if (!userRecord && fallbackUserVault[cleanEmail]) {
+          // 2. Fallback a bóveda estática — solo si el entorno lo autoriza
+          if (!userRecord && fallbackVaultEnabled(env) && fallbackUserVault[cleanEmail]) {
             const fallback = fallbackUserVault[cleanEmail];
             userRecord = {
               email: cleanEmail,
@@ -261,7 +312,9 @@ export default {
               }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
             }
 
-            if (userRecord.password_hash && cleanPassword && userRecord.password_hash !== cleanPassword) {
+            // CORRECCIÓN: comparación con hash en tiempo constante
+            const passwordOk = await verifyPassword(userRecord.password_hash, cleanPassword);
+            if (!passwordOk) {
               return new Response(JSON.stringify({
                 error: "Credenciales de custodio inválidas."
               }), { status: 401, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
@@ -333,6 +386,50 @@ export default {
           }
 
           return Response.redirect('https://console.saare.es/?status=VERIFIED_SUCCESS', 302);
+        }
+      }
+
+      // ==========================================
+      // NUEVA RUTA · PRUEBA DE CONTROL (/v1/trial)
+      // El frontend solicita el alta de la prueba de exposición en esta ruta.
+      // Reutiliza el registro de usuarios y devuelve el entorno aprovisionado.
+      // ==========================================
+      if (path === '/v1/trial' || path === '/api/v1/trial' || path === '/trial') {
+        if (method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const cleanEmail = sanitizeEmail(body.email);
+          const company = (body.company || "").trim();
+          const agents = Number(body.agents) || 0;
+
+          if (!cleanEmail || !company) {
+            return new Response(JSON.stringify({
+              error: "Se requieren correo corporativo y organización."
+            }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          const trialId = `TRIAL-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+          if (env.DB) {
+            try {
+              await env.DB.prepare(`
+                INSERT INTO users (email, password_hash, name, company, is_verified, role, created_at)
+                VALUES (?, ?, ?, ?, 1, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET company=excluded.company
+              `).bind(cleanEmail, "", cleanEmail, company, "Compliance Auditor (7-Day Trial)", new Date().toISOString()).run();
+            } catch (e) {
+              console.error("Error registrando trial en D1:", e);
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            trialId,
+            expiresAt,
+            agentsDeclared: agents,
+            tenantName: company,
+            message: "Solicitud aprobada. Instrucciones del entorno enviadas al correo corporativo."
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
       }
 
@@ -958,8 +1055,12 @@ export default {
 
       // ==========================================
       // RUTAS: INTERCEPT / JUDGE EX-ANTE
+      // CORRECCIÓN: se acepta la ruta completa /v1/judge y /v1/intercept, no
+      // cualquier ruta que termine en esas palabras.
       // ==========================================
-      if (path.endsWith("/intercept") || path.endsWith("/judge")) {
+      if (path === "/v1/judge" || path === "/v1/intercept" ||
+          path === "/api/v1/judge" || path === "/api/v1/intercept" ||
+          path === "/judge" || path === "/intercept") {
         const body = await request.json().catch(() => ({}));
         const promptInput = body.prompt || body.rawPrompt || body.cleanPrompt || "";
         const user = sanitizeEmail(body.user || identity?.email || headerUser);

@@ -1,8 +1,8 @@
 /* ==========================================================================
    Login.jsx · Autenticación corporativa y acceso a la consola SOC
-   Componente exportado por defecto e integrado en App.jsx en /login, /auth
-   y /acceso. Al autenticarse correctamente redirige a la consola de
-   cumplimiento con el modo, el tenant y el rol del usuario en el query string.
+   Integrado en App.jsx en /login, /auth y /acceso. Al autenticarse
+   correctamente redirige a la consola de cumplimiento con el modo, el tenant
+   y el rol del usuario en el query string.
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -16,12 +16,13 @@ const CONSOLE_URL =
 
 const CONTACT_EMAIL = "legal@saare.es";
 
-/* Destino de la consola según el rol declarado por el backend. */
-function consoleTargetFor(role, mode = "GRC_AUDIT", path = "/compliance") {
+/* Destino de la consola según el rol y el tenant declarados por el backend. */
+function consoleTargetFor(role, tenant, mode = "GRC_AUDIT", path = "/compliance") {
   const base = CONSOLE_URL.endsWith("/") ? CONSOLE_URL.slice(0, -1) : CONSOLE_URL;
   const params = new URLSearchParams();
   params.set("mode", mode);
   if (role) params.set("role", role);
+  if (tenant) params.set("tenant", tenant);
   return `${base}${path}?${params.toString()}`;
 }
 
@@ -69,25 +70,38 @@ export default function Login() {
       if (!response.ok) {
         setStatus("error");
         setMessage(
-          data?.message ||
+          data?.error ||
+            data?.message ||
             "Credenciales no válidas o cuenta sin autorización para la consola."
         );
         return;
       }
 
-      // El contrato de sesión se persiste en ambas claves para compatibilidad
-      // con el wrapper saareFetch y con los componentes heredados.
-      const token = data?.token || data?.accessToken || data?.apiKey || "";
+      // El token se persiste en ambas claves: el wrapper lo lee de una y los
+      // componentes heredados de la otra.
+      const token = data?.token || data?.accessToken || data?.user?.apiKey || "";
       if (token) {
         localStorage.setItem("saare_token", token);
         localStorage.setItem("saare_auth_token", token);
       }
 
+      /* ------------------------------------------------------------------
+         CORRECCIÓN · Lectura del contrato de sesión
+         El Control Plane devuelve los datos del usuario DENTRO de `user`:
+           { success, token, user: { email, name, tenantName, apiKey, role } }
+         Antes se leían en la raíz, así que el rol, el tenant y la clave API
+         llegaban undefined y todo usuario entraba como CISO_ADMIN de un
+         tenant genérico. Se acepta también la forma plana por compatibilidad
+         con versiones anteriores del backend.
+         ------------------------------------------------------------------ */
+      const u = data?.user || data;
       const sessionUser = {
-        email: email.trim(),
-        role: data?.role || "CISO_ADMIN",
-        tenantName: data?.tenantName || data?.tenant || "ORGANIZACION",
-        plan: data?.plan || "ENTERPRISE",
+        email: u?.email || email.trim(),
+        name: u?.name || "",
+        role: u?.role || "CISO_ADMIN",
+        tenantName: u?.tenantName || u?.tenant || "ORGANIZACION",
+        apiKey: u?.apiKey || "",
+        plan: u?.plan || "ENTERPRISE",
       };
       localStorage.setItem("saare_session_user", JSON.stringify(sessionUser));
 
@@ -103,6 +117,7 @@ export default function Login() {
       } else {
         const target = consoleTargetFor(
           sessionUser.role,
+          sessionUser.tenantName,
           data?.mode || "GRC_AUDIT",
           "/compliance"
         );
@@ -180,22 +195,27 @@ export default function Login() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="login-totp" className="block text-sky-400 mb-2">
-                  CÓDIGO TOTP <span className="text-slate-500">(si está habilitado)</span>
-                </label>
-                <input
-                  id="login-totp"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  value={totp}
-                  onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
-                  placeholder="000000"
-                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 tracking-[0.4em] focus:outline-none focus:border-sky-500"
-                />
-              </div>
+              {/* El segundo factor se muestra solo si el backend lo soporta.
+                  Hasta entonces queda oculto para no prometer una verificación
+                  que no ocurre. Se activa con VITE_TOTP_ENABLED=true. */}
+              {import.meta.env.VITE_TOTP_ENABLED === "true" && (
+                <div>
+                  <label htmlFor="login-totp" className="block text-sky-400 mb-2">
+                    CÓDIGO TOTP
+                  </label>
+                  <input
+                    id="login-totp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 tracking-[0.4em] focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+              )}
 
               {status === "error" && (
                 <div
