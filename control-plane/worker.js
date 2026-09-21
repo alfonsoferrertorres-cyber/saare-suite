@@ -152,7 +152,7 @@ async function enrichEvidenceForGrant(rawEvidence) {
 }
 
 async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
-  const verifyLink = `https://api.saare.es/v1/auth/verify?token=${encodeURIComponent(token)}`;
+  const verifyLink = `https://api.saare.es/api/v1/auth/verify?token=${encodeURIComponent(token)}`;
 
   if (env && env.RESEND_API_KEY) {
     try {
@@ -187,7 +187,6 @@ export default {
     const path = url.pathname.replace(/\/$/, '') || '/';
     const method = request.method;
 
-    // Inicialización contextualizada con las variables del runtime de Cloudflare
     const tenantManager = new TenantManager(env);
     const keyManager = new EnterpriseKeyManager(env);
 
