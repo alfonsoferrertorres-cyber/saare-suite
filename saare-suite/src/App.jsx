@@ -870,8 +870,7 @@ function TabAuditoriaPublica() {
         algorithm: "Ed25519 / SHA-256",
         reason: "No se pudo contactar con el Trust Anchor. El registro no ha sido verificado.",
       });
-    } font-mono
-    finally {
+    } finally {
       setLoading(false);
     }
   }
