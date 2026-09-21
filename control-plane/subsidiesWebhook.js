@@ -1,21 +1,33 @@
 // Memoria en caliente oKV para los endpoints (si usas D1/KV cámbialo aquí)
 const webhookConfigs = new Map();
 
-export async function handleWebhookRoutes(request, env) {
-  const url = new URL(request.url);
+export async function dispatchWebhookEvent(tenantId, payload, env) {
+  try {
+    // Buscar configuración de webhook en KV o caché
+    let config = null;
+    if (env.SAARE_VAULT_KV) {
+      config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
+    }
+    
+    if (!config || !config.target_url) {
+      return { success: false, reason: "No webhook target configured" };
+    }
 
-  // POST /api/v1/subsidies/webhook/config (Guardar URL)
-  if (url.pathname === '/api/v1/subsidies/webhook/config' && request.method === 'POST') {
-    const body = await request.json();
-    webhookConfigs.set(body.tenant_id || 'ENTERPRISE', {
-      target_url: body.target_url,
-      secret_token: body.secret_token
+    const response = await fetch(config.target_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Saare-Signature': config.secret_token || ''
+      },
+      body: JSON.stringify(payload)
     });
 
-    return new Response(JSON.stringify({ status: 'success', message: 'Webhook guardado' }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
+    return { success: response.ok, status: response.status };
+  } catch (err) {
+    console.error("[Subsidies Webhook] Error dispatching event:", err);
+    return { success: false, error: err.message };
   }
+}
 
   // POST /api/v1/subsidies/webhook/test (Probar envío)
   if (url.pathname === '/api/v1/subsidies/webhook/test' && request.method === 'POST') {
