@@ -198,6 +198,114 @@ async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
   console.log(`[SAARE Mail Engine - Fallback] Link de verificación para ${recipientEmail}: ${verifyLink}`);
 }
 
+/* ==========================================================================
+   WEBHOOK DE STRIPE · alta de tenant al completarse la compra
+   Firma verificada en tiempo constante + ventana anti-replay de 5 min.
+   ========================================================================== */
+async function verifyStripeSignature(payload, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+
+  const elements = signatureHeader.split(',');
+  const timestamp = elements.find(e => e.startsWith('t='))?.split('=')[1];
+  const signature = elements.find(e => e.startsWith('v1='))?.split('=')[1];
+  if (!timestamp || !signature) return false;
+
+  // Anti-replay: rechaza eventos con mas de 5 minutos de antiguedad.
+  const now = Math.floor(Date.now() / 1000);
+  const ts = parseInt(timestamp, 10);
+  if (!Number.isFinite(ts) || Math.abs(now - ts) > 300) return false;
+
+  const encoder = new TextEncoder();
+  const signedPayload = `${timestamp}.${payload}`;
+
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const expected = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload))
+  );
+
+  // Hex de la firma recibida -> bytes, y comparacion en tiempo constante.
+  if (signature.length !== expected.length * 2) return false;
+  const received = new Uint8Array(expected.length);
+  for (let i = 0; i < received.length; i++) {
+    received[i] = parseInt(signature.substr(i * 2, 2), 16);
+  }
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ received[i];
+  return diff === 0;
+}
+
+async function handleStripeWebhook(request, env) {
+  const bodyText = await request.text();
+  const signature = request.headers.get("stripe-signature");
+
+  const isValid = await verifyStripeSignature(bodyText, signature, env.STRIPE_WEBHOOK_SECRET);
+  if (!isValid) {
+    return new Response(JSON.stringify({ error: "Firma de webhook invalida" }), { status: 401 });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(bodyText);
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const customerEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase().trim();
+    const customerName = session.customer_details?.name || session.metadata?.organization || "Organizacion Suscrita";
+    const plan = session.metadata?.plan || "Software Core L7";
+    // Si el checkout ya traia un tenant (cliente existente), se respeta.
+    const tenantId = session.metadata?.tenant || `tenant_${crypto.randomUUID().slice(0, 8)}`;
+
+    const tenantRecord = {
+      tenantId, customerEmail, companyName: customerName,
+      status: "ACTIVE", plan,
+      priceId: session.metadata?.price_id || null,
+      stripeSessionId: session.id || null,
+      createdAt: new Date().toISOString()
+    };
+
+    if (env.SAARE_VAULT_KV) {
+      await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(tenantRecord));
+      await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantRecord));
+    }
+
+    if (env.DB && customerEmail) {
+      try {
+        await env.DB.exec(`
+          CREATE TABLE IF NOT EXISTS tenants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE,
+            name TEXT,
+            plan TEXT,
+            status TEXT,
+            updated_at TEXT
+          );
+        `);
+        await env.DB.prepare(`
+          INSERT INTO tenants (email, name, plan, status, updated_at)
+          VALUES (?, ?, ?, 'ACTIVE', datetime('now'))
+          ON CONFLICT(email) DO UPDATE SET plan = ?, status = 'ACTIVE', updated_at = datetime('now')
+        `).bind(customerEmail, customerName, plan, plan).run();
+      } catch (e) {
+        console.error("Error updating D1 on webhook:", e);
+      }
+    }
+
+    return new Response(JSON.stringify({ status: "PROVISIONED", tenantId }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  return new Response(JSON.stringify({ status: "IGNORED", type: event.type }), {
+    status: 200, headers: { "Content-Type": "application/json" }
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1258,6 +1366,135 @@ export default {
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
         }
+      }
+
+      // ==========================================
+      // PASARELA DE PAGO · STRIPE CHECKOUT (/v1/checkout)
+      // Recibe price=<price_id> y mode=<subscription|payment>, crea la
+      // sesion de pago con la API de Stripe y devuelve { url } para
+      // redirigir al Checkout hospedado. Si falta la clave o el price,
+      // falla cerrado con un 400/503 explicito.
+      // ==========================================
+      // ==========================================
+      // DIAGNOSTICO TEMPORAL (/v1/diag) — se elimina tras resolver.
+      // Revela si el worker que sirve el dominio recibe las variables de
+      // entorno de Stripe. No expone valores, solo presencia y nombres.
+      // ==========================================
+      if (path === '/v1/diag' || path === '/api/v1/diag') {
+        const envKeys = Object.keys(env || {});
+        return new Response(JSON.stringify({
+          worker: env.WORKER_NAME || 'control-plane',
+          environment: env.ENVIRONMENT || null,
+          hasStripeSecretKey: !!env.STRIPE_SECRET_KEY,
+          hasStripeWebhookSecret: !!env.STRIPE_WEBHOOK_SECRET,
+          stripeKeyPrefix: env.STRIPE_SECRET_KEY ? String(env.STRIPE_SECRET_KEY).slice(0, 8) : null,
+          hasKV: !!env.SAARE_VAULT_KV,
+          hasDB: !!env.DB,
+          envKeys,
+          ts: new Date().toISOString()
+        }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      if (path === '/v1/checkout' || path === '/api/v1/checkout' || path === '/checkout') {
+        if (method === 'GET' || method === 'POST') {
+          const qs = url.searchParams;
+          let bodyIn = {};
+          if (method === 'POST') bodyIn = await request.json().catch(() => ({}));
+
+          const priceId = (qs.get('price') || bodyIn.price || '').trim();
+          const rawMode = (qs.get('mode') || bodyIn.mode || 'subscription').trim();
+          const mode = rawMode === 'payment' ? 'payment' : 'subscription';
+
+          // Sin lista blanca de price_id: validamos solo el formato y Stripe
+          // confirma si el precio existe. Asi no hay IDs que mantener
+          // sincronizados (que se corrompian al editarlos) y el importe real
+          // lo dicta siempre Stripe, nunca la landing ni este archivo.
+          if (!priceId || !/^price_[A-Za-z0-9]{10,}$/.test(priceId)) {
+            return new Response(JSON.stringify({ error: 'PRICE_ID_INVALIDO', received: priceId || null }), {
+              status: 400,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+
+          // El modo lo fija la peticion; Stripe valida el price real.
+          const canonicalMode = mode;
+
+          const stripeKey = env.STRIPE_SECRET_KEY;
+          if (!stripeKey) {
+            return new Response(JSON.stringify({ error: 'STRIPE_NO_CONFIGURADO' }), {
+              status: 503,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+
+          const origin = request.headers.get('Origin') || 'https://saare.es';
+          const successUrl = (qs.get('success_url') || bodyIn.success_url || `${origin}/gracias?session_id={CHECKOUT_SESSION_ID}`);
+          const cancelUrl = (qs.get('cancel_url') || bodyIn.cancel_url || `${origin}/#licencias`);
+
+          // Stripe espera application/x-www-form-urlencoded con notacion de corchetes.
+          const form = new URLSearchParams();
+          form.set('mode', canonicalMode);
+          form.set('line_items[0][price]', priceId);
+          form.set('line_items[0][quantity]', '1');
+          form.set('success_url', successUrl);
+          form.set('cancel_url', cancelUrl);
+          if (tenantId && tenantId !== 'ENTERPRISE') form.set('client_reference_id', tenantId);
+          if (identity?.email) form.set('customer_email', identity.email);
+          // Metadatos que viajan al webhook: que se vendio y a quien.
+          form.set('metadata[price_id]', priceId);
+          form.set('metadata[plan]', priceId);
+          if (tenantId && tenantId !== 'ENTERPRISE') form.set('metadata[tenant]', tenantId);
+
+          try {
+            const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${stripeKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Stripe-Version': '2024-06-20'
+              },
+              body: form.toString()
+            });
+
+            const session = await stripeRes.json();
+
+            if (!stripeRes.ok || !session.url) {
+              return new Response(JSON.stringify({
+                error: 'STRIPE_CHECKOUT_FALLIDO',
+                message: session?.error?.message || 'No se pudo crear la sesion de pago'
+              }), {
+                status: 502,
+                headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+              });
+            }
+
+            return new Response(JSON.stringify({
+              url: session.url,
+              sessionId: session.id,
+              mode: canonicalMode,
+              priceId
+            }), {
+              status: 200,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          } catch (e) {
+            return new Response(JSON.stringify({ error: 'STRIPE_ERROR_RED', message: e.message }), {
+              status: 502,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      }
+
+      // ==========================================
+      // WEBHOOK DE STRIPE (/stripe/webhook)
+      // Stripe llama aqui al completarse el pago. Firma obligatoria.
+      // ==========================================
+      if ((path === '/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/api/v1/stripe/webhook') && method === 'POST') {
+        return await handleStripeWebhook(request, env);
       }
 
       return new Response(JSON.stringify({ error: "Endpoint no encontrado" }), { 
