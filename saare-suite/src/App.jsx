@@ -64,6 +64,43 @@ const DIMENSIONS = [
 ];
 
 /* ==========================================================================
+   PASARELA DE PAGO · STRIPE · IDENTIFICADORES CANÓNICOS
+   Cada tramo del catálogo queda atado a su price_id real. Es la única
+   fuente de verdad del precio: la landing muestra "precio" y el checkout
+   cobra lo que dice "priceId". Si divergen, gana Stripe.
+   ========================================================================== */
+const STRIPE_PRICES = {
+  "nodo-base": {
+    priceId: "price_1UHuwuFlwWF4iPS66wDvS4n",
+    modo: "subscription",
+    moneda: "eur",
+    importe: 14900,
+    periodo: "mes",
+  },
+  "nodo-custodia": {
+    priceId: "price_1UHuyPFlwWF4iPSyDz1vT47",
+    modo: "subscription",
+    moneda: "eur",
+    importe: 29000,
+    periodo: "mes",
+  },
+  "evidencias": {
+    priceId: "price_1UHv2zFlwWF4iPS2EEuDMwb",
+    modo: "payment",
+    moneda: "eur",
+    importe: 12000,
+    periodo: "unica-vez",
+  },
+  "forense": {
+    priceId: "price_1UHv4sFlwWF4iPSTOQJcvoG",
+    modo: "subscription",
+    moneda: "eur",
+    importe: 120000,
+    periodo: "ano",
+  },
+};
+
+/* ==========================================================================
    CATÁLOGO COMERCIAL · seis tramos con página de detalle propia.
    ========================================================================== */
 const CATALOGO = [
@@ -91,6 +128,7 @@ const CATALOGO = [
     noIncluye: ["Sellado continuo de evidencias", "Dossier judicial exportable", "Consola de cumplimiento"],
     ideal: ["Pymes que despliegan sus primeros agentes", "Equipos que solo necesitan el bloqueo", "Pruebas de concepto antes de escalar"],
     cta: "ACTIVAR NODO BASE ↗",
+    stripe: { priceId: "price_1UHuwuFlwWF4iPS66wDvS4n", modo: "subscription" },
     featured: false,
   },
   {
@@ -117,6 +155,7 @@ const CATALOGO = [
     noIncluye: ["HSM corporativo dedicado", "SLA del 99,99 %", "Despliegue air-gapped"],
     ideal: ["CISO y DPO con auditoría periódica", "Banca y seguros de tamaño medio", "Organizaciones que deben probar cumplimiento"],
     cta: "ACTIVAR NODO CON CUSTODIA ↗",
+    stripe: { priceId: "price_1UHuyPFlwWF4iPSyDz1vT47", modo: "subscription" },
     featured: true,
   },
   {
@@ -167,6 +206,7 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Operación con miles de veredictos diarios", "Nodos con custodia ya contratada", "Escalado sin cambiar de tramo"],
     cta: "CONTRATAR PAQUETE DE SELLOS ↗",
+    stripe: { priceId: "price_1UHv2zFlwWF4iPS2EEuDMwb", modo: "payment" },
     featured: false,
   },
   {
@@ -192,6 +232,7 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Peritos ciberinformáticos", "Despachos de litigio tecnológico", "Departamentos de fraude y arbitraje"],
     cta: "SOLICITAR ACCESO PERICIAL ↗",
+    stripe: { priceId: "price_1UHv4sFlwWF4iPSTOQJcvoG", modo: "subscription" },
     featured: false,
   },
   {
@@ -579,6 +620,45 @@ function SectionTitle({ kicker, title, lead }) {
       <h2 className="text-2xl font-bold text-white mt-2 font-display">{title}</h2>
       {lead && <p className="text-xs text-slate-400 mt-2 font-mono leading-relaxed max-w-3xl">{lead}</p>}
     </div>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   BOTÓN DE CHECKOUT · Abre la sesión de pago con el price_id del tramo.
+   Se apoya en GET /v1/checkout?price=... (el backend crea la sesión con
+   STRIPE_SECRET_KEY). Si no hay backend vivo, cae al destino de contacto.
+   -------------------------------------------------------------------------- */
+function CheckoutButton({ stripe, ctaText }) {
+  const [estado, setEstado] = useState("idle");
+
+  async function abrirCheckout() {
+    if (!stripe || !stripe.priceId) return;
+    setEstado("loading");
+    try {
+      const res = await saareFetch(
+        `/v1/checkout?price=${encodeURIComponent(stripe.priceId)}&mode=${stripe.modo}`,
+        { method: "GET" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) throw new Error("checkout");
+      window.location.href = data.url; // Stripe Checkout hospedado
+    } catch {
+      setEstado("idle");
+      window.location.href = WHATSAPP_URL; // respaldo: propuesta por WhatsApp
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={abrirCheckout}
+      data-stripe-price={stripe.priceId}
+      data-stripe-mode={stripe.modo}
+      disabled={estado === "loading"}
+      className="w-full py-4 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition disabled:opacity-60 font-mono text-xs"
+    >
+      {estado === "loading" ? "ABRIENDO PAGO SEGURO..." : ctaText}
+    </button>
   );
 }
 
@@ -1224,7 +1304,11 @@ function DetalleLicencia({ id }) {
               </div>
             </div>
             <div className="mt-8">
-              <CtaButton ctaText={item.cta} />
+              {item.stripe ? (
+                <CheckoutButton stripe={item.stripe} ctaText={item.cta} />
+              ) : (
+                <CtaButton ctaText={item.cta} />
+              )}
               <p className="text-[10px] text-slate-500 text-center mt-3">Sin coste de alta · Sin permanencia · Su VPC o Air-Gapped</p>
             </div>
           </div>
@@ -1934,6 +2018,8 @@ function ScrollToTop() {
 /* ==========================================================================
    ENRUTADOR GENERAL
    ========================================================================== */
+export { STRIPE_PRICES, CATALOGO };
+
 export default function App() {
   return (
     <BrowserRouter>
