@@ -3,7 +3,6 @@
  * Alineado con App.jsx, Login.jsx y el Control Plane (worker.js).
  */
 
-// Sombra ambos nombres de variable para garantizar compatibilidad total
 const ENV_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
 
 export const API_BASE_URL =
