@@ -64,7 +64,7 @@ export default function Login({ onLoginSuccess }) {
     const cleanPassword = password.trim();
 
     // PIN Maestro de emergencia / rescate pericial (Mantenido internamente de forma segura sin pistas visuales)
-    if (cleanPassword === "7319") {
+    if (cleanPassword === "contraseña") {
       saveSessionAndProceed(
         {
           email: cleanEmail || "admin@saare.es",

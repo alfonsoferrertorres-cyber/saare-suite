@@ -62,7 +62,7 @@ export default function Login({ onLoginSuccess }) {
     const cleanPassword = password.trim();
 
     // Acceso maestro de emergencia por PIN (Validación interna y silenciosa sin pistas públicas)
-    if (cleanPassword === "7319") {
+    if (cleanPassword === "contraseña") {
       const masterUser = {
         email: cleanEmail || "admin@saare.es",
         name: "S.A.A.R.E. Master Custodian",
@@ -119,7 +119,7 @@ export default function Login({ onLoginSuccess }) {
     const tenantName = company.trim().toUpperCase() || cleanEmail.split('@')[0].toUpperCase();
 
     // Registro rápido con PIN maestro de respaldo o alta de prueba
-    if (password.trim() === "7319" || !password) {
+    if (password.trim() === "contraseña" || !password) {
       const newUser = {
         email: cleanEmail,
         name: tenantName,
