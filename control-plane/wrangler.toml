@@ -14,7 +14,7 @@ APP_URL = "https://console.saare.es"
 
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"
-id = "13d8703a3b374170a24d4c994e5779fa"
+id = "8dbfe21019834fc1bdefd9b66e4e810b"
 
 [[d1_databases]]
 binding = "DB"
