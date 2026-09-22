@@ -1,5 +1,16 @@
 ﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.0 */
 (function() {
+  // Aislamiento Global de Excepciones para prevenir la desactivación del script
+  window.addEventListener("error", (event) => {
+    console.warn("[SAARE Immunity] Excepción capturada en RAM:", event.error);
+    event.preventDefault();
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    console.warn("[SAARE Immunity] Promesa rechazada ignorada:", event.reason);
+    event.preventDefault();
+  });
+
   let lastLoggedHash = "";
   let lastLoggedTime = 0;
   let dynamicCustomRules = [];
@@ -14,6 +25,42 @@
     return SAARE_SYSTEM_PROMPT_PREFIX + userPrompt;
   }
 
+  // --- OBSERVER DEL TESTIGO VISUAL NORMATIVO (DOM - SEGURA PARA GEMINI) ---
+  function observeAIResponses() {
+    const observer = new MutationObserver(() => {
+      const chatNodes = document.querySelectorAll('.model-response-text, div[data-message-author-role="assistant"], div[class*="response-content"]');
+      
+      chatNodes.forEach(node => {
+        if (node.textContent.includes("<🧠AUDITANDO🧠>") && !node.getAttribute("data-saare-witnessed")) {
+          node.setAttribute("data-saare-witnessed", "true");
+          
+          const badgeContainer = document.createElement("div");
+          badgeContainer.style.cssText = "margin-bottom: 8px; display: block;";
+          
+          const badge = document.createElement("span");
+          badge.style.cssText = "display: inline-block; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; font-family: monospace;";
+          badge.textContent = "🛡️ VERIFICADO S.A.A.R.E. L7";
+          
+          badgeContainer.appendChild(badge);
+          
+          if (node.firstChild) {
+            node.insertBefore(badgeContainer, node.firstChild);
+          } else {
+            node.appendChild(badgeContainer);
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", observeAIResponses);
+  } else {
+    observeAIResponses();
+  }
+
   window.addEventListener("message", (event) => {
     if (event.data && event.data.type === "SAARE_UPDATE_CUSTOM_RULES") {
       if (Array.isArray(event.data.payload)) {
@@ -25,7 +72,7 @@
   window.postMessage({ type: "SAARE_FETCH_CUSTOM_RULES_REQUEST" }, "*");
 
   const DLP = {
-    dni: /(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/i,
+    dni: /(?:\b\d{7,8}[-\s]?[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[-\s]?[A-Za-z]?\b)/i,
     iban: /\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/i,
     card: /(?:\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|6(?:011|5[0-9]{2})[0-9]{12}|3[47][0-9]{13})\b|\b(?:\d[ -]*?){13,19}\b)/
   };
@@ -70,15 +117,18 @@
     }
 
     const trimmed = rawText.trim();
+
     if (
+      trimmed === "{}" ||
+      trimmed === "[]" ||
       trimmed.startsWith("[[") || 
+      trimmed.startsWith("[658,") ||
+      trimmed.includes("CAMS6w") ||
       trimmed.includes('"0":31') || 
       trimmed.includes("count=") || 
-      trimmed.includes("gemini.google.com") ||
       trimmed.includes("br1aem") ||
       trimmed.includes("connectiondurationms") ||
-      trimmed.includes("documentrequestid") ||
-      trimmed.startsWith("https://")
+      trimmed.includes("documentrequestid")
     ) {
       return "";
     }
@@ -116,13 +166,13 @@
     } catch {}
 
     const decoded = decodeURIComponent(rawText.replace(/\+/g, " ")).trim();
-    return decoded.startsWith("[[") ? "" : decoded;
+    return (decoded.startsWith("[[") || decoded.startsWith("[658,") || decoded === "{}") ? "" : decoded;
   }
 
   function sanitizePromptText(text) {
     if (!text) return "";
     let clean = text
-      .replace(/(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/gi, "[DNI_REDACTED]")
+      .replace(/(?:\b\d{7,8}[-\s]?[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[-\s]?[A-Za-z]?\b)/gi, "[DNI_REDACTED]")
       .replace(/\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/gi, "[IBAN_REDACTED]")
       .replace(/(?:\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|6(?:011|5[0-9]{2})[0-9]{12}|3[47][0-9]{13})\b|\b(?:\d[ -]*?){13,19}\b)/gi, "[FINANCIAL_CARD_REDACTED]")
       .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[EMAIL_REDACTED]")
@@ -140,58 +190,64 @@
     return clean;
   }
 
+  // --- RENDERIZADO NATIVO DEL MODAL (BYPASS COMPLETO A TRUSTEDHTML) ---
   function renderGuardrailModal(activeCheck) {
     const existingModal = document.getElementById("saare-guardrail-overlay");
     if (existingModal) existingModal.remove();
 
     const overlay = document.createElement("div");
     overlay.id = "saare-guardrail-overlay";
-    overlay.style.cssText = `
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(3, 7, 18, 0.94); backdrop-filter: blur(10px);
-      z-index: 9999999; display: flex; align-items: center; justify-content: center;
-      font-family: system-ui, -apple-system, sans-serif; color: #f8fafc;
-    `;
+    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(3, 7, 18, 0.94); backdrop-filter: blur(10px); z-index: 9999999; display: flex; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif; color: #f8fafc;";
 
-    overlay.innerHTML = `
-      <div style="background: #0b0f19; border: 1px solid #ef4444; border-radius: 12px; width: 90%; max-width: 580px; padding: 24px; box-shadow: 0 20px 30px -5px rgba(239, 68, 68, 0.4);">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <span style="font-size: 1.8rem;">🛡️</span>
-          <div>
-            <h3 style="margin: 0; color: #ef4444; font-size: 1.1rem; font-weight: 900; letter-spacing: 0.5px;">
-              BLOQUEO EX-ANTE — RESILIENCIA FINANCIERA & PII (DORA)
-            </h3>
-            <span style="font-size: 0.75rem; color: #94a3b8;">S.A.A.R.E. Zero-Submission Enforcer</span>
-          </div>
-        </div>
+    const card = document.createElement("div");
+    card.style.cssText = "background: #0b0f19; border: 1px solid #ef4444; border-radius: 12px; width: 90%; max-width: 580px; padding: 24px; box-shadow: 0 20px 30px -5px rgba(239, 68, 68, 0.4);";
 
-        <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
-          Se ha suspendido la transmisión del prompt. Se detectaron posibles infracciones normativas o de gobernanza en RAM:
-          <br/><strong style="color: #f87171;">${activeCheck.norma}</strong> (${activeCheck.category})
-        </p>
+    const header = document.createElement("div");
+    header.style.cssText = "display: flex; align-items: center; gap: 12px; margin-bottom: 16px;";
+    
+    const icon = document.createElement("span");
+    icon.style.fontSize = "1.8rem";
+    icon.textContent = "🛡️";
 
-        <div style="background: #020617; border: 1px solid #1e293b; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.78rem; color: #fca5a5; margin-bottom: 20px; word-break: break-all; max-height: 120px; overflow-y: auto;">
-          ${activeCheck.sanitizedPrompt}
-        </div>
+    const headerText = document.createElement("div");
+    const title = document.createElement("h3");
+    title.style.cssText = "margin: 0; color: #ef4444; font-size: 1.1rem; font-weight: 900; letter-spacing: 0.5px;";
+    title.textContent = "BLOQUEO EX-ANTE — RESILIENCIA FINANCIERA & PII (DORA)";
+    
+    const subtitle = document.createElement("span");
+    subtitle.style.cssText = "font-size: 0.75rem; color: #94a3b8;";
+    subtitle.textContent = "S.A.A.R.E. Zero-Submission Enforcer";
 
-        <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
-          <button id="saare-btn-cancel" style="padding: 10px 16px; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
-            Cancelar Envío
-          </button>
-          <button id="saare-btn-sanitize" style="padding: 10px 18px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-            ✨ Sanitizar y Reinsertar
-          </button>
-        </div>
-      </div>
-    `;
+    headerText.appendChild(title);
+    headerText.appendChild(subtitle);
+    header.appendChild(icon);
+    header.appendChild(headerText);
 
-    document.body.appendChild(overlay);
+    const desc = document.createElement("p");
+    desc.style.cssText = "font-size: 0.82rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;";
+    desc.textContent = "Se ha suspendido la transmisión del prompt. Se detectaron posibles infracciones normativas o de gobernanza en RAM: ";
+    
+    const normStrong = document.createElement("strong");
+    normStrong.style.color = "#f87171";
+    normStrong.textContent = `${activeCheck.norma || 'Normativa de Seguridad'} (${activeCheck.category || 'RESTRICCION'})`;
+    desc.appendChild(normStrong);
 
-    document.getElementById("saare-btn-cancel").addEventListener("click", () => {
-      overlay.remove();
-    });
+    const promptBox = document.createElement("div");
+    promptBox.style.cssText = "background: #020617; border: 1px solid #1e293b; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.78rem; color: #fca5a5; margin-bottom: 20px; word-break: break-all; max-height: 120px; overflow-y: auto;";
+    promptBox.textContent = activeCheck.sanitizedPrompt || activeCheck.cleanPrompt;
 
-    document.getElementById("saare-btn-sanitize").addEventListener("click", () => {
+    const btnContainer = document.createElement("div");
+    btnContainer.style.cssText = "display: flex; gap: 12px; justify-content: flex-end; align-items: center;";
+
+    const btnCancel = document.createElement("button");
+    btnCancel.style.cssText = "padding: 10px 16px; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;";
+    btnCancel.textContent = "Cancelar Envío";
+    btnCancel.addEventListener("click", () => overlay.remove());
+
+    const btnSanitize = document.createElement("button");
+    btnSanitize.style.cssText = "padding: 10px 18px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);";
+    btnSanitize.textContent = "✨ Sanitizar y Reinsertar";
+    btnSanitize.addEventListener("click", () => {
       overlay.remove();
       const inputBox = document.querySelector('div[contenteditable="true"], textarea');
       if (inputBox) {
@@ -203,6 +259,17 @@
         inputBox.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
+
+    btnContainer.appendChild(btnCancel);
+    btnContainer.appendChild(btnSanitize);
+
+    card.appendChild(header);
+    card.appendChild(desc);
+    card.appendChild(promptBox);
+    card.appendChild(btnContainer);
+    overlay.appendChild(card);
+
+    document.body.appendChild(overlay);
   }
 
   async function processAndEvaluate(cleanPrompt, url) {
@@ -267,40 +334,55 @@
     return activeCheck;
   }
 
-  // HOOK 1: FETCH CON INYECCIÓN DE BLINDAJE SIN BLOQUEAR TECLA ENTER NATIVA
+  // RESPUESTA MOCK FLUIDA PARA EVITAR CUELGUES DE INTERFAZ EN GEMINI
+  function createMockBlockedResponse(norma, category) {
+    const textMessage = `\n\n🛡️ [S.A.A.R.E. ENFORCER]: Transmisión bloqueada en RAM por directiva de Gobernanza (${norma} - ${category}). El prompt no fue enviado al modelo.`;
+    const geminiMockBody = `)]}'\n\n[["wmd","${textMessage}"]]\n`;
+
+    return new Response(geminiMockBody, {
+      status: 200,
+      statusText: "OK (SAARE Policy Enforced)",
+      headers: { "Content-Type": "text/plain; charset=utf-8" }
+    });
+  }
+
+  // HOOK 1: FETCH INTERCEPTOR
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
-    const url = typeof resource === "string" ? resource : (resource?.url || "");
-    if (!isIgnoredUrl(url) && config && config.body) {
-      const cleanPrompt = extractCleanPrompt(config.body);
-      if (cleanPrompt) {
-        const check = await processAndEvaluate(cleanPrompt, url);
-        if (check && check.shouldBlock) {
-          return new Response(JSON.stringify({
-            error: "SAARE_EX_ANTE_BLOCK",
-            message: "Transmisión bloqueada por el enforcer de gobernanza S.A.A.R.E. en RAM."
-          }), { status: 403, statusText: "Forbidden (SAARE Policy Enforced)" });
-        }
-
-        try {
-          let bodyData = JSON.parse(config.body);
-          if (bodyData.messages && Array.isArray(bodyData.messages)) {
-            const lastIdx = bodyData.messages.length - 1;
-            if (bodyData.messages[lastIdx]?.content) {
-              bodyData.messages[lastIdx].content = applyBlindajeToPrompt(bodyData.messages[lastIdx].content);
-              config.body = JSON.stringify(bodyData);
-            }
-          } else if (bodyData.prompt && typeof bodyData.prompt === 'string') {
-            bodyData.prompt = applyBlindajeToPrompt(bodyData.prompt);
-            config.body = JSON.stringify(bodyData);
+    try {
+      const url = typeof resource === "string" ? resource : (resource?.url || "");
+      if (!isIgnoredUrl(url) && config && config.body) {
+        const cleanPrompt = extractCleanPrompt(config.body);
+        if (cleanPrompt) {
+          const check = await processAndEvaluate(cleanPrompt, url);
+          if (check && check.shouldBlock) {
+            return createMockBlockedResponse(check.norma, check.category);
           }
-        } catch (e) {}
+
+          try {
+            if (!url.includes("gemini.google.com")) {
+              let bodyData = JSON.parse(config.body);
+              if (bodyData.messages && Array.isArray(bodyData.messages)) {
+                const lastIdx = bodyData.messages.length - 1;
+                if (bodyData.messages[lastIdx]?.content) {
+                  bodyData.messages[lastIdx].content = applyBlindajeToPrompt(bodyData.messages[lastIdx].content);
+                  config.body = JSON.stringify(bodyData);
+                }
+              } else if (bodyData.prompt && typeof bodyData.prompt === 'string') {
+                bodyData.prompt = applyBlindajeToPrompt(bodyData.prompt);
+                config.body = JSON.stringify(bodyData);
+              }
+            }
+          } catch (e) {}
+        }
       }
+    } catch (err) {
+      console.warn("[SAARE Fetch Safe] Continuación por excepción:", err);
     }
     return rawFetch.apply(this, arguments);
   };
 
-  // HOOK 2: XHR ASÍNCRONO SIN BLOQUEO DEL EVENTO ENTER
+  // HOOK 2: XHR INTERCEPTOR
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
     try {
@@ -309,7 +391,14 @@
         if (cleanPrompt) {
           processAndEvaluate(cleanPrompt, "xhr_batch").then(check => {
             if (check && check.shouldBlock) {
-              this.abort();
+              Object.defineProperty(this, 'readyState', { writable: true, value: 4 });
+              Object.defineProperty(this, 'status', { writable: true, value: 200 });
+              Object.defineProperty(this, 'responseText', { 
+                writable: true, 
+                value: `🛡️ [S.A.A.R.E.]: Transmisión cancelada en memoria por directiva corporativa.` 
+              });
+              this.dispatchEvent(new Event('readystatechange'));
+              this.dispatchEvent(new Event('load'));
             }
           });
         }

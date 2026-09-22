@@ -40,7 +40,6 @@ function renderActivityWitnessBadge() {
     <span id="saare-witness-text">S.A.A.R.E. L7</span>
   `;
 
-  // Expansión al hacer Hover (no molesta en pantalla)
   badge.addEventListener("mouseenter", () => {
     badge.style.opacity = "1";
     document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO";
@@ -53,6 +52,14 @@ function renderActivityWitnessBadge() {
 
   (document.body || document.documentElement).appendChild(badge);
 }
+
+// BUCLE DE REINYECCIÓN AUTOMÁTICA EN NAVEGACIÓN SPA
+setInterval(() => {
+  const witnessBadge = document.getElementById("saare-witness-badge");
+  if (!witnessBadge) {
+    renderActivityWitnessBadge();
+  }
+}, 3000);
 
 function updateDomContext(settings, userEmail, tenantDomain) {
   if (settings) document.documentElement.setAttribute("data-saare-settings", JSON.stringify(settings));

@@ -1,14 +1,14 @@
-﻿{
+{
   "saare_user_email": {
-    "Value": "el.abuelo.del.punk@gmail.com",
-    "Description": "Email del operador autorizado."
+    "Value": "",
+    "Description": "Email del operador. Si está vacío, se solicitará en el primer uso."
   },
   "saare_tenant_domain": {
-    "Value": "ENTERPRISE",
+    "Value": "DEMO_TENANT",
     "Description": "Tenant canónico de la Bóveda."
   },
   "saare_token": {
-    "Value": "sk_saare_live_8c4f2b2e-73a7-49",
-    "Description": "Token Bearer de sincronización."
+    "Value": "",
+    "Description": "Token Bearer dinámico. No incluir claves maestras en el instalador."
   }
 }
