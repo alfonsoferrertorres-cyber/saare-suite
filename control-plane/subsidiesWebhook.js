@@ -40,7 +40,6 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
   }
 }
 
-// Manejador opcional para pruebas directas si no se enruta desde worker.js
 export async function handleWebhookTestRoute(request, url, env) {
   if (url.pathname === '/api/v1/subsidies/webhook/test' && request.method === 'POST') {
     const tenantId = url.searchParams.get('tenant_id') || 'ENTERPRISE';

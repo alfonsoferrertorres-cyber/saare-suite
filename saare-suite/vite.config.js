@@ -1,6 +1,6 @@
 ﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { fileURLToPath, URL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
@@ -16,8 +16,13 @@ export default defineConfig({
     host: true,
     cors: true,
     proxy: {
+      '/v1': {
+        target: 'https://api.saare.es',
+        changeOrigin: true,
+        secure: true
+      },
       '/api': {
-        target: 'http://127.0.0.1:8787',
+        target: 'http://127.0.0.1:8787', // Cambia a 'https://api.saare.es' si prefieres apuntar directamente a producción
         changeOrigin: true,
         secure: false,
       },
@@ -25,20 +30,6 @@ export default defineConfig({
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
         secure: false,
-      },
-    },
-  },
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    sourcemap: false,
-    chunkSizeWarningLimit: 1200,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          graphics: ['three', '@react-three/fiber', '@react-three/drei']
-        }
       }
     }
   }

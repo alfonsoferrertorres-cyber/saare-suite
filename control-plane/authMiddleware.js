@@ -21,8 +21,9 @@ export class AuthMiddleware {
     this.jwtSecret = jwtSecret;
     this.roleMapping = {
       "saare-ciso-group": "CISO_ADMIN",
-      "saare-ops-group": "Operator",
-      "saare-eng-group": "Engineer"
+      "saare-secops-group": "CISO_SECOPS_LEVEL_3",
+      "saare-grc-group": "DPO_GRC_LEVEL_2",
+      "saare-exec-group": "BOARD_EXECUTIVE_LEVEL_1"
     };
   }
 
@@ -112,7 +113,7 @@ export class AuthMiddleware {
     }
 
     const userGroups = payload.groups || [];
-    let assignedRole = payload.role || "Business"; 
+    let assignedRole = payload.role || "OPERATIONAL_AGENT_USER"; 
     for (const group of userGroups) {
       if (this.roleMapping[group]) {
         assignedRole = this.roleMapping[group];

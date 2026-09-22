@@ -10,6 +10,7 @@ export default function Login({ onLoginSuccess }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("BOARD_EXECUTIVE_LEVEL_1");
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +19,7 @@ export default function Login({ onLoginSuccess }) {
     const token = localStorage.getItem("saare_token") || localStorage.getItem("saare_auth_token");
     if (token) {
       const params = new URLSearchParams(location.search);
-      const next = params.get("next") || "/compliance";
+      const next = params.get("next") || "/producto/executive";
       navigate(next, { replace: true });
     }
   }, [navigate, location.search]);
@@ -27,18 +28,20 @@ export default function Login({ onLoginSuccess }) {
     const activeToken = token || "sk_saare_live_session_token";
     const cleanEmail = user.email || email.trim().toLowerCase();
     const tenantName = user.tenantName || user.company || "ENTERPRISE";
+    const activeRole = user.role || role;
 
-    // 1. Guardar claves de persistencia D1
+    // 1. Guardar claves de persistencia y contexto de rol
     localStorage.setItem("saare_token", activeToken);
     localStorage.setItem("saare_auth_token", activeToken);
     localStorage.setItem("saare_user_email", cleanEmail);
     localStorage.setItem("saare_tenant_domain", tenantName);
+    localStorage.setItem("saare_user_role", activeRole);
 
-    // 2. Objeto canónico
+    // 2. Objeto canónico de sesión
     const sessionUser = {
       email: cleanEmail,
       name: user.name || tenantName,
-      role: user.role || "CISO_ADMIN",
+      role: activeRole,
       tenantName: tenantName,
       apiKey: activeToken,
       plan: user.plan || "ENTERPRISE",
@@ -49,7 +52,11 @@ export default function Login({ onLoginSuccess }) {
       onLoginSuccess(sessionUser);
     } else {
       const params = new URLSearchParams(location.search);
-      const next = params.get("next") || "/compliance";
+      const defaultRoute = 
+        activeRole === "DPO_GRC_LEVEL_2" ? "/producto/grc" :
+        activeRole === "CISO_SECOPS_LEVEL_3" ? "/producto/cyber" : "/producto/executive";
+      
+      const next = params.get("next") || defaultRoute;
       navigate(next, { replace: true });
     }
   };
@@ -63,14 +70,14 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // PIN Maestro de emergencia / rescate pericial (Mantenido internamente de forma segura sin pistas visuales)
+    // PIN Maestro de emergencia / rescate pericial
     if (cleanPassword === "contraseña") {
       saveSessionAndProceed(
         {
           email: cleanEmail || "admin@saare.es",
           name: "S.A.A.R.E. Master Custodian",
           tenantName: "ENTERPRISE",
-          role: "CISO_ADMIN",
+          role: role || "CISO_ADMIN",
           plan: "ENTERPRISE_PRO",
         },
         "sk_saare_live_master_kv_session"
@@ -81,7 +88,11 @@ export default function Login({ onLoginSuccess }) {
     try {
       const response = await saareFetch("/v1/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+        body: JSON.stringify({ 
+          email: cleanEmail, 
+          password: cleanPassword,
+          role: role 
+        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -106,7 +117,7 @@ export default function Login({ onLoginSuccess }) {
             email: u?.email || cleanEmail,
             name: u?.name || "CISO Operator",
             tenantName: u?.tenantName || u?.tenant || "ENTERPRISE",
-            role: u?.role || "CISO_ADMIN",
+            role: u?.role || role,
             plan: u?.plan || "ENTERPRISE",
           },
           token
@@ -176,6 +187,23 @@ export default function Login({ onLoginSuccess }) {
                   {showPassword ? "OCULTAR" : "MOSTRAR"}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="login-role" className="block text-sky-400 mb-2">
+                ROL Y NIVEL DE PERMISO (RBAC) (*)
+              </label>
+              <select
+                id="login-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+              >
+                <option value="BOARD_EXECUTIVE_LEVEL_1">Nivel 1 · EXECUTIVE (CEO / Consejo)</option>
+                <option value="DPO_GRC_LEVEL_2">Nivel 2 · GRC & AUDIT (DPO / Compliance)</option>
+                <option value="CISO_SECOPS_LEVEL_3">Nivel 3 · CYBER & RESILIENCE (SOC / CISO)</option>
+                <option value="CISO_ADMIN">Nivel 4 · CISO_ADMIN (Superadministrador)</option>
+              </select>
             </div>
 
             {status === "error" && (

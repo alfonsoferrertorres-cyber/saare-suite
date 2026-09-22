@@ -13,7 +13,7 @@ import { generatePdfFromElement } from './services/pdfGeneratorService';
 
 import cabeceraImg from './assets/cabecera.png';
 
-// TAXONOMÍA CANÓNICA DE CLAIMS (SAARE v8.1 / SGP 1.0)
+// TAXONOMÍA CANÓNICA DE CLAIMS Y ROLES RBAC (SAARE v8.1 / SGP 1.0)
 const SAARE_CLAIM_LEVELS = {
   DECLARED: { level: 1, label: 'DECLARED', desc: 'Afirmación de existencia del control' },
   IMPLEMENTED: { level: 2, label: 'IMPLEMENTED', desc: 'Control desplegado en código/runtime' },
@@ -21,6 +21,19 @@ const SAARE_CLAIM_LEVELS = {
   VERIFIED: { level: 4, label: 'VERIFIED', desc: 'Verificación matemática independiente PASS/FAIL' },
   CERTIFIED: { level: 5, label: 'CERTIFIED', desc: 'Acreditación jurídica/normativa formal' }
 };
+
+const ROLE_RANKS = {
+  "OPERATIONAL_AGENT_USER": 0,
+  "BOARD_EXECUTIVE_LEVEL_1": 1,
+  "DPO_GRC_LEVEL_2": 2,
+  "CISO_SECOPS_LEVEL_3": 3,
+  "CISO_ADMIN": 4
+};
+
+function hasRequiredRank(role, minRank) {
+  const rank = ROLE_RANKS[role] !== undefined ? ROLE_RANKS[role] : 0;
+  return rank >= minRank;
+}
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -31,11 +44,15 @@ export default function App() {
     return localStorage.getItem('saare_user_email') || '';
   });
 
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
+  });
+
   const [tenantId, setTenantId] = useState(() => {
     return localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG.DEFAULT_TENANT;
   });
 
-  // VISTAS COMERCIALES: 'EXECUTIVE' (CEO) | 'GRC_AUDIT' (CISO/DPO) | 'CYBER_RESILIENCE' (SOC)
+  // VISTAS COMERCIALES: 'EXECUTIVE' | 'GRC_AUDIT' | 'CYBER_RESILIENCE'
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
@@ -89,7 +106,6 @@ export default function App() {
     }
   }, []);
 
-  // MAPEO UNIFICADO DE EVIDENCIAS Y CONSTRUCCIÓN DE PROOF BUNDLE
   const mapEvidences = (remoteEvidences) => {
     if (!Array.isArray(remoteEvidences)) return [];
     return remoteEvidences.map((item, idx) => {
@@ -138,16 +154,7 @@ export default function App() {
 
   const fetchTelemetryOnce = async () => {
     try {
-      const token = localStorage.getItem('saare_token');
-      const res = await saareFetch(`/api/v1/runs?t=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          'x-saare-tenant': tenantId,
-          'x-saare-user': userEmail,
-          'Accept': 'application/json'
-        }
-      });
+      const res = await saareFetch(`/api/v1/runs?t=${Date.now()}`, { method: 'GET' });
 
       if (res.status === 401) {
         handleLogout();
@@ -176,15 +183,7 @@ export default function App() {
 
     const fetchCustomRules = async () => {
       try {
-        const token = localStorage.getItem('saare_token');
-        const res = await saareFetch('/api/v1/custom-rules', {
-          method: 'GET',
-          headers: {
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'x-saare-tenant': tenantId,
-            'x-saare-user': userEmail
-          }
-        });
+        const res = await saareFetch('/api/v1/custom-rules', { method: 'GET' });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.rules)) setCustomFilters(data.rules);
@@ -197,7 +196,6 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
-    // INTEGRACIÓN DE CANAL SSE (SERVER-SENT EVENTS)
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
     
     try {
@@ -230,7 +228,7 @@ export default function App() {
         eventSourceRef.current.close();
       }
     };
-  }, [isAuthenticated, userEmail, tenantId]);
+  }, [isAuthenticated, userEmail, tenantId, userRole]);
 
   const totalInspecciones = evidences.length;
   const totalDeny = evidences.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
@@ -254,35 +252,37 @@ export default function App() {
     }, 300);
   };
 
-  const handleExportToSiem = (ev) => {
-    const siemPayload = {
-      event: "SAARE_EX_ANTE_SECURITY_BLOCK",
-      severity: "HIGH",
-      timestamp: ev.rawTimestamp,
-      evidenceId: ev.id,
-      tenant: ev.tenant,
-      operator: ev.user,
-      blockedPayload: ev.prompt,
-      verdict: ev.decision,
-      merkleRoot: ev.merkleRoot,
-      proofBundle: ev.proofBundle,
-      policyEngineRule: ev.cat
-    };
+  const handleExportToSiem = async (ev) => {
+    if (!hasRequiredRank(userRole, 3)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      return;
+    }
 
-    const blob = new Blob([JSON.stringify(siemPayload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `SIEM_Event_${ev.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    triggerGovernance(`Evento SIEM exportado en formato Syslog/JSON para ${ev.id}.`);
+    try {
+      await saareFetch('/api/v1/integrations/siem', {
+        method: 'POST',
+        body: JSON.stringify({
+          evidenceId: ev.id,
+          tenant: ev.tenant,
+          operator: ev.user,
+          blockedPayload: ev.prompt,
+          verdict: ev.decision,
+          merkleRoot: ev.merkleRoot,
+          policyEngineRule: ev.cat
+        })
+      });
+      triggerGovernance(`Evento SIEM notificado para ${ev.id}.`);
+    } catch (e) {
+      triggerGovernance(`Error enviando a SIEM: ${e.message}`);
+    }
   };
 
   const handleGenerateFriaDocument = (friaConfig) => {
+    if (!hasRequiredRank(userRole, 2)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      return;
+    }
+
     const deniedEvidences = evidences.filter(e => e.verdict === 'RECHAZADO' || e.decision === 'DENY');
     const sampleMerkle = evidences[0]?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
@@ -331,13 +331,8 @@ export default function App() {
 
   const handleVerifyLicense = async () => {
     try {
-      const token = localStorage.getItem('saare_token');
       const res = await saareFetch('/api/v1/auth/verifylicense', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
         body: JSON.stringify({ tenant: tenantId, user: userEmail, scope: 'all' })
       });
       const data = await res.json();
@@ -370,15 +365,8 @@ export default function App() {
     const t0 = performance.now();
 
     try {
-      const token = localStorage.getItem('saare_token');
       const res = await saareFetch('/api/v1/intercept', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-saare-tenant': tenantId,
-          'x-saare-user': userEmail,
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
         body: JSON.stringify({
           prompt: testPrompt,
           user: userEmail,
@@ -441,6 +429,11 @@ export default function App() {
   };
 
   const executeResilienceSimulation = async (scenario) => {
+    if (!hasRequiredRank(userRole, 3)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      return;
+    }
+
     setSimulationRunning(true);
     triggerGovernance(`Ejecutando escenario de resiliencia: ${scenario}...`);
     try {
@@ -458,9 +451,6 @@ export default function App() {
     }
   };
 
-  // =========================================================================
-  // LÓGICA DE VERIFICACIÓN CRIPTOGRÁFICA CORREGIDA (SIN FALSOS POSITIVOS)
-  // =========================================================================
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
     
@@ -471,7 +461,7 @@ export default function App() {
         if (syncData.source) setVaultSource(syncData.source);
       }
 
-      const verifyRes = await saareFetch(`/api/v1/verify/${encodeURIComponent(hashToVerify)}`, { method: 'GET' });
+      const verifyRes = await saareFetch(`/verify/${encodeURIComponent(hashToVerify)}`, { method: 'GET' });
       const verifyData = await verifyRes.json();
 
       if (verifyRes.ok && (verifyData.verified || verifyData.status === 'VERIFIED')) {
@@ -512,6 +502,11 @@ export default function App() {
   };
 
   const handleAddCustomFilter = async () => {
+    if (!hasRequiredRank(userRole, 3)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      return;
+    }
+
     if (!newRuleName || !newRulePattern) {
       triggerGovernance("Especifique un nombre y una regla sintáctica válida.");
       return;
@@ -528,15 +523,8 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      const token = localStorage.getItem('saare_token');
       await saareFetch('/api/v1/custom-rules', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          'x-saare-tenant': tenantId,
-          'x-saare-user': userEmail
-        },
         body: JSON.stringify({ rules: updated })
       });
       triggerGovernance(`Filtro "${newRuleName}" activado en el Policy Engine.`);
@@ -550,19 +538,17 @@ export default function App() {
   };
 
   const handleDeleteCustomFilter = async (id) => {
+    if (!hasRequiredRank(userRole, 3)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      return;
+    }
+
     const updated = customFilters.filter(f => f.id !== id);
     setCustomFilters(updated);
 
     try {
-      const token = localStorage.getItem('saare_token');
       await saareFetch('/api/v1/custom-rules', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          'x-saare-tenant': tenantId,
-          'x-saare-user': userEmail
-        },
         body: JSON.stringify({ rules: updated })
       });
       triggerGovernance("Filtro eliminado del perfil del Tenant.");
@@ -572,6 +558,11 @@ export default function App() {
   };
 
   const handleRunResilienceCheck = async () => {
+    if (!hasRequiredRank(userRole, 3)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      return;
+    }
+
     try {
       triggerGovernance("Iniciando verificación de resiliencia ex-ante...");
       const res = await saareFetch('/api/v1/resilience/check', { method: 'POST' });
@@ -640,6 +631,11 @@ export default function App() {
   };
 
   const handleExportGrantDossier = () => {
+    if (!hasRequiredRank(userRole, 2)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      return;
+    }
+
     const grantReport = {
       expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
       tenantId: tenantId,
@@ -681,6 +677,7 @@ export default function App() {
     const custodyData = JSON.stringify({
       organization: tenantId,
       user: userEmail,
+      role: userRole,
       timestamp: new Date().toISOString(),
       standard: "ISO/IEC 27037:2012 / DORA / EU AI Act",
       activeDirectives: directives.filter(d => d.active).length,
@@ -724,9 +721,11 @@ export default function App() {
     }
     localStorage.removeItem('saare_token');
     localStorage.removeItem('saare_user_email');
+    localStorage.removeItem('saare_user_role');
     localStorage.removeItem('saare_tenant_domain');
     setIsAuthenticated(false);
     setUserEmail('');
+    setUserRole('OPERATIONAL_AGENT_USER');
     setEvidences([]);
   };
 
@@ -751,7 +750,6 @@ export default function App() {
   });
 
   const activeDirectivesCount = directives.filter(d => d.active).length;
-  const disabledDirectivesCount = directives.filter(d => !d.active).length;
 
   if (!isAuthenticated || !userEmail) {
     return (
@@ -762,12 +760,15 @@ export default function App() {
               localStorage.setItem('saare_token', data.token);
             }
             const email = data.email || data.user?.email;
+            const role = data.role || data.user?.role || 'CISO_ADMIN';
             const tDomain = data.tenantName || data.user?.tenantName || SAARE_CONFIG.DEFAULT_TENANT;
             
             setUserEmail(email);
+            setUserRole(role);
             setTenantId(tDomain);
             
             localStorage.setItem('saare_user_email', email);
+            localStorage.setItem('saare_user_role', role);
             localStorage.setItem('saare_tenant_domain', tDomain);
           }
           setIsAuthenticated(true);
@@ -803,8 +804,8 @@ export default function App() {
             <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG.SPEC_VERSION}</span>
           </div>
 
-          {/* SELECTOR DE PERFILES COMERCIALES S.A.A.R.E. */}
-          <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+          {/* SELECTOR DE PERFILES COMERCIALES Y CONMUTADOR DE ROL RBAC */}
+          <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center' }}>
             <button
               onClick={() => setViewMode('EXECUTIVE')}
               style={{
@@ -852,6 +853,32 @@ export default function App() {
               }}>
               🟥 CYBER & RESILIENCE (SOC)
             </button>
+
+            {/* SIMULADOR / SELECTOR RÁPIDO DE ROL EN INTERFAZ */}
+            <select
+              value={userRole}
+              onChange={(e) => {
+                const selected = e.target.value;
+                setUserRole(selected);
+                localStorage.setItem('saare_user_role', selected);
+                triggerGovernance(`Rol de operador actualizado a: ${selected}`);
+              }}
+              style={{
+                background: '#0f172a',
+                color: '#38bdf8',
+                border: '1px solid #334155',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '0.72rem',
+                fontWeight: '800',
+                cursor: 'pointer'
+              }}>
+              <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+              <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+              <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+              <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+              <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
+            </select>
           </div>
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
@@ -866,7 +893,7 @@ export default function App() {
 
           {/* 1. PERFIL EXECUTIVE (CEO / DIRECCIÓN) */}
           {viewMode === 'EXECUTIVE' && (
-            <ExecutiveView tenantId={tenantId} evidences={evidences} />
+            <ExecutiveView tenantId={tenantId} evidences={evidences} userRole={userRole} />
           )}
 
           {/* 2. PERFILES GRC & AUDIT O CYBER & RESILIENCE */}
@@ -878,7 +905,7 @@ export default function App() {
                     {viewMode === 'CYBER_RESILIENCE' ? 'S.A.A.R.E. CYBER & RESILIENCE LAB (SECOPS / SOC)' : 'PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA'}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#94a3b8', lineHeight: '1.4' }}>
-                    ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>{tenantId}</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | DIRECTIVAS BASE: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | <span style={{ color: '#f87171', fontWeight: '900' }}>{disabledDirectivesCount} DESHABILITADAS</span> | FILTROS PERS.: <span style={{ color: '#38bdf8', fontWeight: '900' }}>{customFilters.length}</span>
+                    ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>{tenantId}</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | ROL: <span style={{ color: '#a78bfa', fontWeight: '900' }}>{userRole}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | FILTROS PERS.: <span style={{ color: '#38bdf8', fontWeight: '900' }}>{customFilters.length}</span>
                   </p>
                 </div>
 
@@ -891,7 +918,8 @@ export default function App() {
 
                   <button
                     onClick={handleRunResilienceCheck}
-                    style={{ padding: '10px 14px', background: '#8b5cf6', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)' }}>
+                    style={{ padding: '10px 14px', background: hasRequiredRank(userRole, 3) ? '#8b5cf6' : '#334155', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', textAlign: 'center', boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)' }}
+                    title={!hasRequiredRank(userRole, 3) ? "Requiere rol SecOps/CISO (Nivel 3)" : ""}>
                     🧪 Invariant Audit
                   </button>
 
@@ -965,7 +993,13 @@ export default function App() {
                 onDownloadTeaser={handleDownloadTeaser}
                 onVerifySignature={() => handleSyncVaultAndVerify()}
                 onExportGrantDossier={handleExportGrantDossier}
-                onOpenFriaModal={() => setShowFriaModal(true)}
+                onOpenFriaModal={() => {
+                  if (!hasRequiredRank(userRole, 2)) {
+                    triggerGovernance("❌ Requiere rol GRC / DPO (Nivel 2).");
+                    return;
+                  }
+                  setShowFriaModal(true);
+                }}
                 onExecuteEnforcementCheck={handleExecuteTestExAnte}
               />
 
@@ -1092,8 +1126,8 @@ export default function App() {
                                     {isRejected && (
                                       <button 
                                         onClick={() => handleExportToSiem(ev)} 
-                                        style={{ padding: '4px 8px', background: '#7c3aed', border: 'none', color: '#ffffff', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}
-                                        title="Exportar evento DENY a SIEM / SOC">
+                                        style={{ padding: '4px 8px', background: hasRequiredRank(userRole, 3) ? '#7c3aed' : '#334155', border: 'none', color: '#ffffff', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed' }}
+                                        title={!hasRequiredRank(userRole, 3) ? "Requiere SecOps/CISO (L3)" : "Exportar evento DENY a SIEM / SOC"}>
                                         🚨 SIEM
                                       </button>
                                     )}
@@ -1214,26 +1248,26 @@ export default function App() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '16px' }}>
                         <button 
                           onClick={() => executeResilienceSimulation('PROMPT_INJECTION')} 
-                          disabled={simulationRunning}
-                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
+                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
                           💥 Jailbreak / Prompt Injection
                         </button>
                         <button 
                           onClick={() => executeResilienceSimulation('PII_EXFILTRATION')} 
-                          disabled={simulationRunning}
-                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
+                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
                           🔐 Fuga de PII / DNI / IBAN
                         </button>
                         <button 
                           onClick={() => executeResilienceSimulation('LLM_PROVIDER_OUTAGE')} 
-                          disabled={simulationRunning}
-                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
+                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
                           ⚡ Caída de LLM / Provider
                         </button>
                         <button 
                           onClick={() => executeResilienceSimulation('FAIL_CLOSED_TEST')} 
-                          disabled={simulationRunning}
-                          style={{ background: '#0f172a', border: '1px solid #059669', color: '#34d399', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
+                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                          style={{ background: '#0f172a', border: '1px solid #059669', color: '#34d399', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
                           🛡️ Test Fail-Closed Gate
                         </button>
                       </div>
@@ -1249,7 +1283,7 @@ export default function App() {
 
                   <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
                     <div>[POLICY ENGINE - {timeStr}] Listening on SSE Telemetry Channel ({API_BASE_URL}/telemetry/stream)...</div>
-                    <div>[AUTH LAYER] Credenciales vinculadas para: {userEmail}. API Endpoint: /api/v1/intercept.</div>
+                    <div>[AUTH LAYER] Credenciales vinculadas para: {userEmail} (Rol: {userRole}). API Endpoint: /api/v1/intercept.</div>
                     <div>[ENFORCEMENT] Directivas cargadas: {activeDirectivesCount}/8 base | {customFilters.length} filtros dinámicos. Zero-Noise Guard Enforcement.</div>
                   </div>
                 </div>
@@ -1264,8 +1298,14 @@ export default function App() {
                         <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Define palabras clave, frases confidenciales o expresiones regulares (/regex/i) para bloqueo ex-ante en tiempo real.</p>
                       </div>
                       <button 
-                        onClick={() => setShowAddFilterModal(true)}
-                        style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
+                        onClick={() => {
+                          if (!hasRequiredRank(userRole, 3)) {
+                            triggerGovernance("❌ Requiere rol SecOps / CISO (Nivel 3).");
+                            return;
+                          }
+                          setShowAddFilterModal(true);
+                        }}
+                        style={{ padding: '10px 18px', background: hasRequiredRank(userRole, 3) ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#334155', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.8rem', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
                         + AÑADIR BLOQUEO
                       </button>
                     </div>
@@ -1309,6 +1349,10 @@ export default function App() {
                         </div>
                         <button
                           onClick={() => {
+                            if (!hasRequiredRank(userRole, 3)) {
+                              triggerGovernance("❌ Requiere rol SecOps / CISO (Nivel 3).");
+                              return;
+                            }
                             setDirectives(directives.map(d => d.id === dir.id ? { ...d, active: !d.active } : d));
                             triggerGovernance(`Directiva "${dir.name}" ${!dir.active ? 'activada' : 'desactivada'}.`);
                           }}

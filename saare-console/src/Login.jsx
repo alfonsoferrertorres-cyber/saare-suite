@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { SAARE_CONFIG } from './config/saareState';
-import { ProofEngine } from './services/proofEngine';
 
 export default function Login({ onLoginSuccess }) {
   const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'
@@ -19,17 +18,19 @@ export default function Login({ onLoginSuccess }) {
   };
 
   /**
-   * Guarda de forma atómica la sesión en localStorage y sincroniza la Bóveda D1
+   * Guarda de forma atómica la sesión en localStorage y sincroniza la Bóveda D1 / KV
    */
   const saveSessionAndProceed = (user, token) => {
     const activeToken = token || user?.apiKey || "sk_saare_live_session_token";
-    const tenantName = user?.tenantName || user?.company || SAARE_CONFIG.DEFAULT_TENANT;
+    const tenantName = user?.tenantName || user?.company || SAARE_CONFIG.DEFAULT_TENANT || "ENTERPRISE";
     const cleanEmail = user?.email || email.trim().toLowerCase();
+    const assignedRole = user?.role || SAARE_CONFIG.DEFAULT_ROLE || "CISO_ADMIN";
 
-    // 1. Claves globales de compatibilidad con apiService.ts y saareState.ts
+    // 1. Claves globales requeridas por apiService.ts, App.jsx y la cabecera x-saare-role
     localStorage.setItem('saare_token', activeToken);
     localStorage.setItem('saare_auth_token', activeToken);
     localStorage.setItem('saare_user_email', cleanEmail);
+    localStorage.setItem('saare_user_role', assignedRole); // 👈 Sincronización indispensable para RBAC
     localStorage.setItem('saare_tenant_domain', tenantName);
 
     // 2. Objeto de sesión canónico consumido por la consola
@@ -37,7 +38,7 @@ export default function Login({ onLoginSuccess }) {
       email: cleanEmail,
       name: user?.name || tenantName,
       tenantName: tenantName,
-      role: user?.role || SAARE_CONFIG.DEFAULT_ROLE,
+      role: assignedRole,
       plan: user?.plan || planType,
       apiKey: activeToken,
       verified: true
@@ -61,7 +62,7 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Acceso maestro de emergencia por PIN (Validación interna y silenciosa sin pistas públicas)
+    // Acceso maestro de emergencia por PIN
     if (cleanPassword === "contraseña") {
       const masterUser = {
         email: cleanEmail || "admin@saare.es",
@@ -100,7 +101,7 @@ export default function Login({ onLoginSuccess }) {
           data.token || u.apiKey
         );
       } else {
-        setErrorMsg(data.error || 'Credenciales de custodio inválidas o cuenta sin verificar en D1.');
+        setErrorMsg(data.error || 'Credenciales de custodio inválidas o cuenta sin verificar.');
       }
     } catch (err) {
       setErrorMsg('Error de conexión con el Control Plane de S.A.A.R.E.');
@@ -118,7 +119,6 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const tenantName = company.trim().toUpperCase() || cleanEmail.split('@')[0].toUpperCase();
 
-    // Registro rápido con PIN maestro de respaldo o alta de prueba
     if (password.trim() === "contraseña" || !password) {
       const newUser = {
         email: cleanEmail,
@@ -133,7 +133,6 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      // Intento de alta vía trial de 7 días
       const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/trial`, {
         method: 'POST',
         headers: { 
@@ -155,13 +154,13 @@ export default function Login({ onLoginSuccess }) {
           email: cleanEmail,
           name: tenantName,
           tenantName: tenantName,
-          role: "CISO_ADMIN",
+          role: "BOARD_EXECUTIVE_LEVEL_1",
           plan: planType,
           apiKey: `sk_saare_trial_${data.trialId}`
         };
         saveSessionAndProceed(demoUser, demoUser.apiKey);
       } else {
-        setErrorMsg(data.error || 'No se pudo aprovisionar el entorno de prueba en D1.');
+        setErrorMsg(data.error || 'No se pudo aprovisionar el entorno de prueba.');
       }
     } catch (err) {
       setErrorMsg('Fallo de red al registrar la organización en el Control Plane.');
@@ -211,7 +210,7 @@ export default function Login({ onLoginSuccess }) {
         email: email.trim(),
         name: "Operador Validado",
         tenantName: "ENTERPRISE",
-        role: "CISO_OPERATOR"
+        role: "CISO_SECOPS_LEVEL_3"
       };
       saveSessionAndProceed(verifiedUser, "sk_saare_live_verified_token");
     } else {
@@ -237,7 +236,7 @@ export default function Login({ onLoginSuccess }) {
           </p>
         </div>
 
-        {/* Selector de Pestañas del Embudo */}
+        {/* Selector de Pestañas */}
         <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', marginBottom: '20px' }}>
           <button 
             type="button" 
@@ -365,10 +364,10 @@ export default function Login({ onLoginSuccess }) {
           </form>
         )}
 
-        {/* Pie de seguridad inmutable con Trust Anchor */}
+        {/* Pie de seguridad inmutable */}
         <div style={{ marginTop: '24px', borderTop: '1px solid #1e293b', paddingTop: '12px', textAlign: 'center' }}>
           <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: '#64748b' }}>
-            Trust Anchor: {SAARE_CONFIG.TRUST_ANCHOR} | Spec: {SAARE_CONFIG.SPEC_VERSION}
+            Trust Anchor: {SAARE_CONFIG?.TRUST_ANCHOR || "SAARE-MD-IPRES-2026"} | Spec: {SAARE_CONFIG?.SPEC_VERSION || "SGP 1.0"}
           </span>
         </div>
 

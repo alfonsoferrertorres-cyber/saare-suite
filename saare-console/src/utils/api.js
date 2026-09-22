@@ -33,13 +33,15 @@ export async function saareFetch(endpoint, options = {}) {
     cleanEndpoint = `${API_HOST}${cleanEndpoint}`;
   }
 
-  // 2. Extracción de credenciales y contexto desde la sesión unificada
+  // 2. Extracción de credenciales, rol y contexto desde la sesión unificada
   let token = null;
   let currentUser = null;
   let currentTenant = null;
+  let currentRole = 'CISO_ADMIN';
 
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token');
+    currentRole = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
     
     try {
       const storedUser = localStorage.getItem('saare_session_user');
@@ -47,6 +49,7 @@ export async function saareFetch(endpoint, options = {}) {
         const parsed = JSON.parse(storedUser);
         currentUser = parsed.email || localStorage.getItem('saare_user_email') || null;
         currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || null;
+        if (parsed.role) currentRole = parsed.role;
       } else {
         currentUser = localStorage.getItem('saare_user_email') || null;
         currentTenant = localStorage.getItem('saare_tenant_domain') || null;
@@ -57,13 +60,14 @@ export async function saareFetch(endpoint, options = {}) {
     }
   }
 
-  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant (solo en API propia)
+  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant RBAC
   const defaultHeaders = {
     'Accept': 'application/json',
     ...(options.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
     ...(token && isOwnApi(cleanEndpoint) ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(currentUser && isOwnApi(cleanEndpoint) ? { 'x-saare-user': currentUser } : {}),
     ...(currentTenant && isOwnApi(cleanEndpoint) ? { 'x-saare-tenant': currentTenant } : {}),
+    ...(currentRole && isOwnApi(cleanEndpoint) ? { 'x-saare-role': currentRole } : {}),
     ...(options.headers || {})
   };
 
@@ -79,6 +83,7 @@ export async function saareFetch(endpoint, options = {}) {
       localStorage.removeItem('saare_session_user');
       localStorage.removeItem('saare_token');
       localStorage.removeItem('saare_user_email');
+      localStorage.removeItem('saare_user_role');
     }
 
     return response;
@@ -105,10 +110,8 @@ export const api = {
   }),
   delete: (endpoint, options = {}) => saareFetch(endpoint, { ...options, method: 'DELETE' }),
   
-  // Helper especializado para recuperar el Manifiesto SRP v8.1
   getSrpManifest: () => saareFetch('/manifest/srp', { method: 'GET' }),
   
-  // Helper especializado para obtener KPIs de auditoría
   getKpis: (startDate, endDate) => {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
     return saareFetch(`/metrics/kpis${query}`, { method: 'GET' });

@@ -16,6 +16,22 @@ const ramRunCache = [];
 const ramWebhookConfigCache = new Map();
 
 /* --------------------------------------------------------------------------
+   JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC)
+   -------------------------------------------------------------------------- */
+const ROLE_RANKS = {
+  "OPERATIONAL_AGENT_USER": 0,
+  "BOARD_EXECUTIVE_LEVEL_1": 1,
+  "DPO_GRC_LEVEL_2": 2,
+  "CISO_SECOPS_LEVEL_3": 3,
+  "CISO_ADMIN": 4
+};
+
+function hasRequiredRank(userRole, minRank) {
+  const rank = ROLE_RANKS[userRole] !== undefined ? ROLE_RANKS[userRole] : 0;
+  return rank >= minRank;
+}
+
+/* --------------------------------------------------------------------------
    Bóveda de respaldo bajo control explícito (Environment Driven)
    -------------------------------------------------------------------------- */
 const fallbackUserVault = {
@@ -221,7 +237,7 @@ export default {
         });
       }
 
-      // 3. IDENTIDAD JWT & RESOLUCIÓN DE CABECERAS MULTI-TENANT
+      // 3. IDENTIDAD JWT & RESOLUCIÓN DE ROL MULTI-TENANT RBAC
       const authHeader = request.headers.get("Authorization") || "";
       const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || url.searchParams.get("user"));
       const auth = new AuthMiddleware(env.JWT_SECRET || "enterprise_oidc_secret_key_v3");
@@ -230,6 +246,9 @@ export default {
       if (authHeader) {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
       }
+
+      // Prioridad del rol: JWT verificado -> Cabecera HTTP explícita -> Default AGENT
+      const activeUserRole = identity?.role || request.headers.get("x-saare-role") || "OPERATIONAL_AGENT_USER";
 
       // ==========================================
       // RUTAS DE AUTENTICACIÓN Y VERIFICACIÓN
@@ -241,6 +260,7 @@ export default {
           const name = body.name || cleanEmail;
           const company = body.company || "ENTERPRISE";
           const password = body.password || "";
+          const requestedRole = body.role || "CISO_ADMIN";
 
           if (!cleanEmail || !password) {
             return new Response(JSON.stringify({
@@ -255,10 +275,10 @@ export default {
           if (env.DB) {
             try {
               await env.DB.prepare(`
-                INSERT INTO users (email, password_hash, name, company, verification_token, verification_expires_at, is_verified, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                INSERT INTO users (email, password_hash, name, company, role, verification_token, verification_expires_at, is_verified, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
                 ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, verification_token=excluded.verification_token, verification_expires_at=excluded.verification_expires_at
-              `).bind(cleanEmail, passwordHash, name, company, token, expiresAt, new Date().toISOString()).run();
+              `).bind(cleanEmail, passwordHash, name, company, requestedRole, token, expiresAt, new Date().toISOString()).run();
             } catch (e) {
               console.error("Error guardando registro en D1:", e);
             }
@@ -282,6 +302,7 @@ export default {
           const body = await request.json().catch(() => ({}));
           const cleanEmail = sanitizeEmail(body.email);
           const cleanPassword = body.password ? body.password.trim() : "";
+          const requestedRole = body.role;
           let userRecord = null;
 
           if (env.DB) {
@@ -302,7 +323,6 @@ export default {
             };
           }
 
-          // Auto-verificación en tiempo de ejecución para evitar bloqueo 403 en entornos de prueba / demo
           if (userRecord && userRecord.is_verified === 0) {
             if (env.DB) {
               try {
@@ -330,7 +350,7 @@ export default {
           }
 
           const tenantName = userRecord?.company || tenantId;
-          const userRole = userRecord?.role || "CISO_ADMIN";
+          const userRole = userRecord?.role || requestedRole || "CISO_ADMIN";
 
           const jwtToken = await auth.signToken({
             sub: cleanEmail,
@@ -418,7 +438,7 @@ export default {
                 INSERT INTO users (email, password_hash, name, company, is_verified, role, created_at)
                 VALUES (?, ?, ?, ?, 1, ?, ?)
                 ON CONFLICT(email) DO UPDATE SET company=excluded.company
-              `).bind(cleanEmail, "", cleanEmail, company, "Compliance Auditor (7-Day Trial)", new Date().toISOString()).run();
+              `).bind(cleanEmail, "", cleanEmail, company, "BOARD_EXECUTIVE_LEVEL_1", new Date().toISOString()).run();
             } catch (e) {
               console.error("Error registrando trial en D1:", e);
             }
@@ -432,6 +452,78 @@ export default {
             tenantName: company,
             message: "Solicitud aprobada. Instrucciones del entorno enviadas al correo corporativo."
           }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      // ==========================================
+      // GESTIÓN DE ASIENTOS Y ROLES (CAPA EXECUTIVE / NIVEL 1)
+      // ==========================================
+      if (path === '/api/v1/executive/seats' || path === '/v1/executive/seats') {
+        if (!hasRequiredRank(activeUserRole, 1)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol Ejecutivo (Nivel 1) o superior." }), { 
+            status: 403, 
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        if (method === 'GET') {
+          let usersList = [];
+          if (env.DB) {
+            try {
+              const { results } = await env.DB.prepare(
+                "SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?"
+              ).bind(tenantId).all();
+              usersList = results || [];
+            } catch (e) {}
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            tenant: tenantId,
+            maxSeats: 10,
+            usedSeats: usersList.length,
+            users: usersList
+          }), {
+            status: 200,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        if (method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const targetEmail = sanitizeEmail(body.email);
+          const assignedRole = body.role || "DPO_GRC_LEVEL_2";
+          const userName = body.name || targetEmail;
+
+          if (!targetEmail) {
+            return new Response(JSON.stringify({ error: "Se requiere un correo electrónico válido." }), {
+              status: 400,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+
+          if (env.DB) {
+            try {
+              await env.DB.prepare(`
+                INSERT INTO users (email, password_hash, name, company, role, is_verified, created_at)
+                VALUES (?, 'demo', ?, ?, ?, 1, ?)
+                ON CONFLICT(email) DO UPDATE SET role=excluded.role, name=excluded.name, company=excluded.company
+              `).bind(targetEmail, userName, tenantId, assignedRole, new Date().toISOString()).run();
+            } catch (e) {
+              return new Response(JSON.stringify({ error: "Error al actualizar asiento en D1" }), { 
+                status: 500, 
+                headers: { ...cors.corsHeaders, "Content-Type": "application/json" } 
+              });
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Asiento asignado correctamente a ${targetEmail} con rol ${assignedRole}.`
+          }), {
+            status: 200,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
         }
       }
 
@@ -550,9 +642,13 @@ export default {
       }
 
       // ==========================================
-      // RUTAS: CONFIGURACIÓN Y PRUEBA DE WEBHOOKS
+      // RUTAS: CONFIGURACIÓN Y PRUEBA DE WEBHOOKS (NIVEL 3)
       // ==========================================
       if ((path === '/api/v1/subsidies/webhook/config' || path === '/api/v7/subsidies/webhook/config') && method === 'POST') {
+        if (!hasRequiredRank(activeUserRole, 3)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const body = await request.json().catch(() => ({}));
         const targetTenant = body.tenant_id || identity?.tenantId || tenantId;
 
@@ -581,6 +677,10 @@ export default {
       }
 
       if ((path === '/api/v1/subsidies/webhook/test' || path === '/api/v7/subsidies/webhook/test') && method === 'POST') {
+        if (!hasRequiredRank(activeUserRole, 3)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const targetTenant = url.searchParams.get('tenant_id') || identity?.tenantId || tenantId;
 
         const testPayload = {
@@ -599,9 +699,13 @@ export default {
       }
 
       // ==========================================
-      // EXPORTACIÓN DE DOSSIERS (.ZIP ENGINE)
+      // EXPORTACIÓN DE DOSSIERS (.ZIP ENGINE - CAPA GRC / NIVEL 2)
       // ==========================================
       if ((path === '/api/v7/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
+        if (!hasRequiredRank(activeUserRole, 2)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol GRC/DPO (Nivel 2) o superior." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const body = await request.json().catch(() => ({}));
         const targetTenant = body.tenantId || body.tenant || identity?.tenantId || tenantId;
         const grantType = body.grantType || "KIT_CONSULTING";
@@ -637,7 +741,7 @@ export default {
             'FRIA_EU_AI_Act_Art27.json',
             'SOA_ISO42001.yaml'
           ],
-          downloadUrl: `https://api.saare.io/v7/exports/${complianceCode}.zip`
+          downloadUrl: `https://api.saare.es/v7/exports/${complianceCode}.zip`
         };
 
         const webhookPayload = {
@@ -671,9 +775,13 @@ export default {
       }
 
       // ==========================================
-      // KPIS Y MÉTRICAS AGREGADAS (DORA / GRC)
+      // KPIS Y MÉTRICAS AGREGADAS (CAPA EXECUTIVE / NIVEL 1)
       // ==========================================
       if (path === '/api/v1/metrics/kpis' && method === 'GET') {
+        if (!hasRequiredRank(activeUserRole, 1)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol Ejecutivo (Nivel 1) o superior." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const startDate = url.searchParams.get('startDate');
         const endDate = url.searchParams.get('endDate');
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -788,9 +896,13 @@ export default {
       }
 
       // ==========================================
-      // INTEGRACIÓN SIEM / SOC
+      // INTEGRACIÓN SIEM / SOC (CAPA CYBER / NIVEL 3)
       // ==========================================
       if (path === '/api/v1/integrations/siem' && method === 'POST') {
+        if (!hasRequiredRank(activeUserRole, 3)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const body = await request.json().catch(() => ({}));
         const targetTenant = body.tenant || identity?.tenantId || tenantId;
 
@@ -820,9 +932,13 @@ export default {
       }
 
       // ==========================================
-      // EVALUACIÓN FRIA AUTOMATIZADA (ART. 27 EU AI ACT)
+      // EVALUACIÓN FRIA AUTOMATIZADA (CAPA GRC / NIVEL 2)
       // ==========================================
       if (path === '/api/v1/fria/evaluate' && method === 'POST') {
+        if (!hasRequiredRank(activeUserRole, 2)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol GRC/DPO (Nivel 2) o superior." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const body = await request.json().catch(() => ({}));
         const user = sanitizeEmail(body.user || identity?.email || headerUser);
         const tenant = body.tenant || identity?.tenantId || tenantId;
@@ -908,7 +1024,7 @@ export default {
       }
 
       // ==========================================
-      // REGLAS PERSONALIZADAS (POLICY ENGINE KV)
+      // REGLAS PERSONALIZADAS (POLICY ENGINE KV / CAPA CYBER - NIVEL 3)
       // ==========================================
       if (path === '/api/v1/custom-rules') {
         const tenantKey = `custom_rules_${tenantId}`;
@@ -927,6 +1043,10 @@ export default {
         }
 
         if (method === 'POST') {
+          if (!hasRequiredRank(activeUserRole, 3)) {
+            return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }
+
           const body = await request.json().catch(() => ({ rules: [] }));
           if (env.SAARE_VAULT_KV) {
             await env.SAARE_VAULT_KV.put(tenantKey, JSON.stringify(body.rules || []));
@@ -1034,9 +1154,13 @@ export default {
       }
 
       // ==========================================
-      // AUDITORÍA Y RESILIENCIA
+      // AUDITORÍA Y RESILIENCIA (CAPA CYBER / NIVEL 3)
       // ==========================================
       if ((path === "/api/v1/resilience/check" || path.endsWith("/resilience")) && method === "POST") {
+        if (!hasRequiredRank(activeUserRole, 3)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const report = await runResilienceTests();
         return new Response(JSON.stringify(report), {
           status: 200,
@@ -1335,7 +1459,7 @@ export default {
             if (!stripeRes.ok || !session.url) {
               return new Response(JSON.stringify({
                 error: 'STRIPE_CHECKOUT_FALLIDO',
-                message: session?.error?.message || 'No se pudo crear la sesion de pago'
+                message: session?.error?.message || 'No se pudo crear la sesión de pago'
               }), {
                 status: 502,
                 headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
