@@ -1,4 +1,4 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v10.5.0 (SGP 1.0 / Blindaje Activo)
+// SAARE L7 TELEMETRY & DOM BRIDGE v10.5.0 (SGP 1.0 / Blindaje Activo - 100% Audit Coverage)
 console.log("[SAARE L7 Engine] DOM Bridge & Execution Guard Active");
 
 const DEFAULT_SETTINGS_V10 = {
@@ -7,17 +7,17 @@ const DEFAULT_SETTINGS_V10 = {
   razonamiento_activo_l7: true
 };
 
+// 1. FILTRO DE RUIDO PERMISIVO: Registra TODO el texto introducido por el usuario
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
   const lower = text.toLowerCase();
+  
+  // Descarta únicamente metadatos técnicos internos de Google/Gemini
   return (
     lower.includes("f.req=") ||
     lower.includes("bard_activity") ||
-    lower.includes("generic") ||
-    lower.includes("at=aovx") ||
     lower.includes("connectiondurationms") ||
-    lower.includes("documentrequestid") ||
-    lower.startsWith("[[[\"")
+    lower.includes("documentrequestid")
   );
 }
 

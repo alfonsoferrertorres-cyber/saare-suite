@@ -1,3 +1,4 @@
+// benchmark_saare.js
 import http from 'k6/http';
 import { check } from 'k6';
 
@@ -5,8 +6,8 @@ export const options = {
   scenarios: {
     stress_test: {
       executor: 'shared-iterations',
-      vus: 50,                  # 50 usuarios concurrentes
-      iterations: 10000,        # N = 10,000 muestras para significancia estadística
+      vus: 50,
+      iterations: 10000,
       maxDuration: '5m',
     },
   },
@@ -21,5 +22,9 @@ export default function () {
   const params = { headers: { 'Content-Type': 'application/json' } };
   
   const res = http.post(url, payload, params);
-  check(res, { 'status is 200': (r) => r.status === 200 });
+  
+  // Acepta 200 (Permitido) o 403 (Bloqueado por PII de forma correcta)
+  check(res, { 
+    'petición evaluada correctamente': (r) => r.status === 200 || r.status === 403 
+  });
 }

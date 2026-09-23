@@ -1,6 +1,6 @@
-﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.0 */
+﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.0 (Clean & Unified) */
 (function() {
-  // Aislamiento Global de Excepciones para prevenir la desactivación del script
+  // Aislamiento Global de Excepciones
   window.addEventListener("error", (event) => {
     console.warn("[SAARE Immunity] Excepción capturada en RAM:", event.error);
     event.preventDefault();
@@ -11,14 +11,11 @@
     event.preventDefault();
   });
 
-  let lastLoggedHash = "";
-  let lastLoggedTime = 0;
   let dynamicCustomRules = [];
 
   // CONSTANTE NORMATIVA DE INVOCACIÓN DE BLINDAJE
   const SAARE_SYSTEM_PROMPT_PREFIX = `[REGLA DE SISTEMA INMUTABLE: Activando Protocolo S.A.A.R.E. Cada output consecutivo debe ir precedido strictly por el testigo visual normativo "<🧠AUDITANDO🧠>" para certificar el Modo Blindaje Activo y la tasa de error alucinatorio 0%]. iniciar_blindaje_activo_saare\n\n`;
 
-  // Auto-Blindaje Inmutable: Aplica la regla automáticamente sin intervención manual del usuario
   function applyBlindajeToPrompt(userPrompt) {
     if (!userPrompt || typeof userPrompt !== "string") return userPrompt;
     if (userPrompt.includes("iniciar_blindaje_activo_saare")) {
@@ -27,29 +24,18 @@
     return SAARE_SYSTEM_PROMPT_PREFIX + userPrompt;
   }
 
-  // --- OBSERVER DEL TESTIGO VISUAL NORMATIVO EN EL DOM (PERÍMETRO SELLADO) ---
+  // --- OBSERVER DEL TESTIGO VISUAL NORMATIVO EN EL DOM (SIMPLE Y DISCRETO) ---
   function observeAIResponses() {
     const observer = new MutationObserver(() => {
       const chatNodes = document.querySelectorAll('.model-response-text, div[data-message-author-role="assistant"], div[class*="response-content"]');
       
       chatNodes.forEach(node => {
-        // Detecta el testigo o marca la respuesta como auditada por S.A.A.R.E. L7
         if (!node.getAttribute("data-saare-witnessed")) {
           node.setAttribute("data-saare-witnessed", "true");
           
-          const badgeContainer = document.createElement("div");
-          badgeContainer.style.cssText = "margin-bottom: 8px; display: block;";
-          
-          const badge = document.createElement("span");
-          badge.style.cssText = "display: inline-block; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-size: 0.75rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; font-family: monospace;";
-          badge.textContent = "🛡️ VERIFICADO S.A.A.R.E. L7 (PERÍMETRO SELLADO)";
-          
-          badgeContainer.appendChild(badge);
-          
           if (node.firstChild) {
-            node.insertBefore(badgeContainer, node.firstChild);
-          } else {
-            node.appendChild(badgeContainer);
+            const witnessTag = document.createTextNode("<🧠AUDITANDO🧠> ");
+            node.insertBefore(witnessTag, node.firstChild);
           }
         }
       });
@@ -146,7 +132,7 @@
             const inner = JSON.parse(outer[1]);
             if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
               const prompt = inner[0][0];
-              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!") && prompt.length > 1) {
+              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
                 return prompt.trim();
               }
             }
@@ -193,7 +179,6 @@
     return clean;
   }
 
-  // --- RENDERIZADO NATIVO DEL MODAL (BYPASS COMPLETO A TRUSTEDHTML) ---
   function renderGuardrailModal(activeCheck) {
     const existingModal = document.getElementById("saare-guardrail-overlay");
     if (existingModal) existingModal.remove();
@@ -275,17 +260,9 @@
     document.body.appendChild(overlay);
   }
 
+  // AUDITORÍA SIN FILTROS DE TIEMPO NI LONGITUD
   async function processAndEvaluate(cleanPrompt, url) {
-    if (!cleanPrompt || cleanPrompt.length < 2) return { shouldBlock: false };
-
-    const currentHash = cleanPrompt + url;
-    const now = Date.now();
-    if (currentHash === lastLoggedHash && (now - lastLoggedTime) < 3000) {
-      return { shouldBlock: false };
-    }
-
-    lastLoggedHash = currentHash;
-    lastLoggedTime = now;
+    if (!cleanPrompt) return { shouldBlock: false };
 
     const digitsOnly = cleanPrompt.replace(/[\s-]/g, '');
     const isDni = DLP.dni.test(cleanPrompt);
@@ -337,7 +314,6 @@
     return activeCheck;
   }
 
-  // RESPUESTA MOCK FLUIDA PARA EVITAR CUELGUES DE INTERFAZ EN GEMINI
   function createMockBlockedResponse(norma, category) {
     const textMessage = `\n\n🛡️ [S.A.A.R.E. ENFORCER]: Transmisión bloqueada en RAM por directiva de Gobernanza (${norma} - ${category}). El prompt no fue enviado al modelo.`;
     const geminiMockBody = `)]}'\n\n[["wmd","${textMessage}"]]\n`;
@@ -349,7 +325,7 @@
     });
   }
 
-  // HOOK 1: FETCH INTERCEPTOR (INYECCIÓN AUTOMÁTICA DEL BLINDAJE EN RAM)
+  // HOOK 1: FETCH INTERCEPTOR
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     try {
@@ -362,7 +338,6 @@
             return createMockBlockedResponse(check.norma, check.category);
           }
 
-          // Inyección automática del prompt inmutable en la llamada saliente
           try {
             if (!url.includes("gemini.google.com")) {
               let bodyData = JSON.parse(config.body);
@@ -399,7 +374,7 @@
               Object.defineProperty(this, 'status', { writable: true, value: 200 });
               Object.defineProperty(this, 'responseText', { 
                 writable: true, 
-                value: `🛡️ [S.A.A.R.E.]: Transmisión cancelada en memoria por directiva corporativa.` 
+                value: `🧠 [S.A.A.R.E.]: Transmisión cancelada en memoria por directiva corporativa.` 
               });
               this.dispatchEvent(new Event('readystatechange'));
               this.dispatchEvent(new Event('load'));

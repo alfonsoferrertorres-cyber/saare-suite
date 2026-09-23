@@ -2,6 +2,7 @@
   "name": "saare-monorepo-root",
   "private": true,
   "packageManager": "pnpm@12.3.4",
+  "type": "module",
   "scripts": {
     "clean": "powershell -Command \"Remove-Item -Recurse -Force **/dist -ErrorAction SilentlyContinue\"",
     "dev": "pnpm --parallel run dev",
