@@ -1,6 +1,5 @@
 /* ==========================================================================
-   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE
-   PARTE 1 · IMPORTS, CONSTANTES GLOBALES Y CAPA DE DATOS
+   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE COMPLETA CON BOTONES DE COBRO
    ========================================================================== */
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -10,7 +9,7 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import { saareFetch } from "./utils/api";
+import { saareFetch, saareCheckout } from "./utils/api";
 import Login from "./Login";
 
 /* ==========================================================================
@@ -24,14 +23,6 @@ const CONTACT_PHONE = "+34 633 886 506";
 const WHATSAPP_URL =
   "https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE%20SGP%201.0";
 
-/* --------------------------------------------------------------------------
-   ETIQUETADO DE MÉTRICAS · REGLA GLOBAL DE HONESTIDAD OPERATIVA
-   Toda cifra visible en la landing debe declarar su naturaleza:
-   · DEMO       → dato ilustrativo del entorno de demostración
-   · BENCHMARK  → medición de laboratorio sobre banco de pruebas
-   · REFERENCE  → ejemplo de referencia documental
-   · LIVE       → dato real del tenant activo (solo en consola autenticada)
-   -------------------------------------------------------------------------- */
 const METRIC_LABELS = {
   DEMO: { text: "DEMO", cls: "bg-slate-500/10 border-slate-500/40 text-slate-400" },
   BENCHMARK: { text: "BENCHMARK", cls: "bg-sky-500/10 border-sky-500/40 text-sky-300" },
@@ -39,9 +30,7 @@ const METRIC_LABELS = {
   LIVE: { text: "LIVE", cls: "bg-emerald-500/10 border-emerald-500/40 text-emerald-300" },
 };
 
-/* --------------------------------------------------------------------------
-   NAVEGACIÓN · 7 ENTRADAS COMERCIALES
-   -------------------------------------------------------------------------- */
+/* NAVEGACIÓN AGRUPADA */
 const NAV = [
   { id: "auditoria", label: "1. AUDITORÍA PÚBLICA", description: "Motor de referencia", path: "/" },
   { id: "cumplimiento", label: "2. CUMPLIMIENTO L7", description: "Board · GRC · CISO", path: "/producto/cumplimiento" },
@@ -52,9 +41,6 @@ const NAV = [
   { id: "daemon", label: "7. MODO DAEMON", description: "On-Premise", path: "/daemon" },
 ];
 
-/* --------------------------------------------------------------------------
-   SIETE DIMENSIONES DE CONTROL · MODELO MENTAL DEL MOTOR
-   -------------------------------------------------------------------------- */
 const DIMENSIONS = [
   ["DIM 01", "IDENTIDAD", "Quién solicita la acción. Verificación asimétrica de firmas Ed25519 del agente o token JWT del sistema originador."],
   ["DIM 02", "ACCIÓN", "Qué quiere ejecutar. Inspección L7 de comandos (READ, MUTATE_DATABASE, SEND_PAYMENT, DELETE, EXECUTE_CODE)."],
@@ -65,9 +51,6 @@ const DIMENSIONS = [
   ["DIM 07", "POLÍTICA", "Qué regla aplica. Verificación contra el motor de políticas firmado localmente y compilado a código nativo."],
 ];
 
-/* --------------------------------------------------------------------------
-   DECISION PATH · DEL INTENTO A LA PRUEBA
-   -------------------------------------------------------------------------- */
 const DECISION_PATH = [
   ["01", "INTENTO DE ACCIÓN", "El agente emite un comando contra un recurso protegido.", "INTERCEPTED"],
   ["02", "NORMALIZACIÓN", "NFKC, decodificación y tokenizado del payload en RAM.", "PARSED"],
@@ -77,9 +60,6 @@ const DECISION_PATH = [
   ["06", "EVIDENCIA", "Digest sellado, firmado y anclado al árbol de Merkle.", "SEALED"],
 ];
 
-/* --------------------------------------------------------------------------
-   CADENA DE EVIDENCIA · CUATRO ESLABONES CRIPTOGRÁFICOS
-   -------------------------------------------------------------------------- */
 const EVIDENCE_CHAIN = [
   ["DIGEST", "SHA-256", "Huella del veredicto y de su contexto mínimo. El contenido sensible nunca se persiste: solo su representación criptográfica."],
   ["MERKLE", "ÁRBOL DE MERKLE", "Los digests del periodo se agregan en una raíz única. Alterar un solo veredicto invalida la raíz publicada."],
@@ -87,9 +67,6 @@ const EVIDENCE_CHAIN = [
   ["TIEMPO", "RFC 3161 · eIDAS", "Una autoridad de sellado de tiempo cualificada fija el momento exacto de la firma. La evidencia gana valor procesal."],
 ];
 
-/* --------------------------------------------------------------------------
-   DEFENSA ACTIVA · VECTORES OWASP LLM TOP 10 Y MITIGACIÓN DETERMINISTA
-   -------------------------------------------------------------------------- */
 const DEFENSE_VECTORS = [
   ["LLM01 · Prompt Injection", "Manipulación directa o indirecta del modelo para alterar su comportamiento.", "Separación estricta de roles a nivel sintáctico; AST de comandos permitidos.", "0,8 ms", "BENCHMARK"],
   ["LLM02 · Insecure Output Handling", "Salida del modelo consumida sin validación por sistemas posteriores.", "Validación de integridad dicotómica antes de la ejecución.", "1,4 ms", "BENCHMARK"],
@@ -98,9 +75,6 @@ const DEFENSE_VECTORS = [
   ["LLM10 · Unbounded Consumption", "Consumo ilimitado de tokens, cómputo o presupuesto.", "Context Slicing y umbrales deterministas por política.", "1,1 ms", "BENCHMARK"],
 ];
 
-/* --------------------------------------------------------------------------
-   INTEROPERABILIDAD · AGNÓSTICO AL MODELO, AGNÓSTICO AL PROVEEDOR
-   -------------------------------------------------------------------------- */
 const INTEROP = [
   ["OPENAI", "GPT-4 · GPT-5 · o-series", "Intercepta las llamadas salientes hacia la API antes de que el prompt abandone su perímetro.", "PROXY / SDK"],
   ["ANTHROPIC", "Claude family", "Control de herramientas (tool-use) y de acciones autónomas sobre recursos corporativos.", "PROXY / SDK"],
@@ -108,9 +82,6 @@ const INTEROP = [
   ["MODELOS LOCALES", "Llama · Mistral · DeepSeek", "Daemon local para inferencia privada: el control vive donde vive el modelo.", "DAEMON"],
 ];
 
-/* --------------------------------------------------------------------------
-   DESPLIEGUE · CUATRO TOPOLOGÍAS SOBERANAS
-   -------------------------------------------------------------------------- */
 const DEPLOYMENT = [
   ["VPC PRIVADA", "El nodo se despliega dentro de su nube virtual. Sus claves, sus políticas, su red.", "Nodo con Custodia"],
   ["PRIVATE CLOUD", "Clúster Kubernetes gestionado por su equipo con Helm chart firmado.", "Nodo con Custodia / Enterprise"],
@@ -118,9 +89,6 @@ const DEPLOYMENT = [
   ["AIR-GAPPED", "Red aislada sin salida a Internet. Actualización de políticas por paquete firmado offline.", "Enterprise"],
 ];
 
-/* --------------------------------------------------------------------------
-   TELEMETRÍA · QUÉ SALE Y QUÉ NO SALE DEL NODO
-   -------------------------------------------------------------------------- */
 const TELEMETRIA_SALE = [
   "Contadores numéricos de veredictos (ALLOW / DENY / REVIEW)",
   "Estado y versión de la política activa",
@@ -136,20 +104,6 @@ const TELEMETRIA_NO_SALE = [
   "Topología interna de su infraestructura",
 ];
 
-/* --------------------------------------------------------------------------
-   COMPARATIVA TÉCNICA SOBRIA · SOLO EJES DEMOSTRABLES
-   -------------------------------------------------------------------------- */
-const COMPARATIVA = [
-  ["Momento del control", "Antes o después, según el punto de integración de la API evaluadora", "Ex-ante, en el punto exacto de ejecución de la acción"],
-  ["Mecanismo de decisión", "Evaluación adicional mediante modelo o prompt secundario", "Regla determinista compilada a código nativo"],
-  ["Dependencia operativa", "Llamada saliente requerida al servicio evaluador", "Motor local en RAM; autonomía según despliegue"],
-  ["Generación de evidencia", "Depende del sistema de registro del proveedor", "Cadena criptográfica verificable cuando la custodia está contratada"],
-  ["Entornos aislados", "Sujeto a la arquitectura del proveedor", "Modalidad diseñada para despliegue air-gapped"],
-];
-
-/* --------------------------------------------------------------------------
-   BUEN USO Y GOBERNANZA · PRINCIPIOS NO NEGOCIABLES
-   -------------------------------------------------------------------------- */
 const BUEN_USO = [
   ["HUMAN-IN-THE-LOOP", "El veredicto REVIEW deriva la acción a un operador humano. Ninguna decisión de alto impacto se automatiza sin vía de escalado."],
   ["GOBERNANZA VIVA", "Las políticas se versionan y firman. Cada cambio queda registrado con autoría y marca de tiempo: la gobernanza es auditable."],
@@ -157,28 +111,24 @@ const BUEN_USO = [
   ["TRANSPARENCIA RADICAL", "Todo dato mostrado declara su naturaleza (DEMO, BENCHMARK, REFERENCE, LIVE). Ningún ejemplo se presenta como promesa universal."],
 ];
 
-/* --------------------------------------------------------------------------
-   CANAL PARTNER · KIT CONSULTING COMO CANAL, NUNCA COMO TESIS
-   Jerarquía: S.A.A.R.E. (producto) → solución técnica → canal partner → ayudas.
-   -------------------------------------------------------------------------- */
 const PARTNER_ENTREGABLES = [
   ["ENTREGABLE 01", "Informe de gobernanza de IA", "Documento técnico que acredita la implantación del plano de control, firmado y verificable."],
   ["ENTREGABLE 02", "Matriz de cumplimiento operativo", "Trazabilidad de obligaciones (EU AI Act, DORA, NIS 2, RGPD) a controles ejecutables con evidencia asociada."],
   ["ENTREGABLE 03", "Expediente de evidencia sellada", "Muestra de la cadena de custodia del cliente: raíz Merkle, firma Ed25519 y sello RFC 3161."],
 ];
 
-/* ==========================================================================
-   CATÁLOGO COMERCIAL · 6 TRAMOS OFICIALES
-   ========================================================================== */
+/* CATÁLOGO DE LICENCIAS CON CONFIGURACIÓN DE PAGO DIRECTO */
 const CATALOGO = [
   {
     id: "nodo-base",
+    priceId: "price_nodo_base_149eur",
     path: "/licencias/nodo-base",
     grupo: "NODOS",
     etiqueta: "NODO BASE",
     nombre: "Nodo Base PEP L7",
     claim: "Contención determinista sin custodia de evidencias.",
     precio: "149 €",
+    priceAmount: 149,
     sufijo: "/mes",
     unidad: "Por nodo desplegado",
     comprador: "Quien despliega agentes propios",
@@ -194,17 +144,20 @@ const CATALOGO = [
     ],
     noIncluye: ["Sellado continuo de evidencias", "Dossier judicial exportable", "Consola de cumplimiento"],
     ideal: ["Pymes que despliegan sus primeros agentes", "Equipos que solo necesitan el bloqueo", "Pruebas de concepto antes de escalar"],
-    cta: "ACTIVAR NODO BASE ↗",
+    cta: "COMPRAR NODO BASE (149 €/mes) 💳",
+    type: "checkout",
     featured: false,
   },
   {
     id: "nodo-custodia",
+    priceId: "price_nodo_custodia_290eur",
     path: "/licencias/nodo-custodia",
     grupo: "NODOS",
     etiqueta: "NODO CON CUSTODIA",
     nombre: "Nodo con Custodia Forense",
     claim: "Control continuo con prueba exportable.",
     precio: "290 €",
+    priceAmount: 290,
     sufijo: "/mes",
     unidad: "Por nodo con sellado continuo",
     comprador: "Quien responde ante auditoría periódica",
@@ -220,17 +173,20 @@ const CATALOGO = [
     ],
     noIncluye: ["HSM corporativo dedicado", "SLA del 99,99 %", "Despliegue air-gapped"],
     ideal: ["CISO y DPO con auditoría periódica", "Banca y seguros de tamaño medio", "Organizaciones que deben probar cumplimiento"],
-    cta: "ACTIVAR NODO CON CUSTODIA ↗",
+    cta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
+    type: "checkout",
     featured: true,
   },
   {
     id: "nodo-enterprise",
+    priceId: "price_nodo_enterprise_custom",
     path: "/licencias/nodo-enterprise",
     grupo: "NODOS",
     etiqueta: "ENTERPRISE",
     nombre: "Nodo Soberano Enterprise",
     claim: "Despliegue aislado con contrato marco y SLA.",
     precio: "3.500 €",
+    priceAmount: 3500,
     sufijo: "/mes",
     unidad: "Por nodo con HSM y SLA",
     comprador: "Sector regulado, banca, defensa y público",
@@ -247,16 +203,19 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Infraestructuras críticas y defensa", "Administraciones públicas", "Entidades bajo contrato marco"],
     cta: "SOLICITAR PROPUESTA ENTERPRISE ↗",
+    type: "contact",
     featured: false,
   },
   {
     id: "evidencias",
+    priceId: "price_sellos_120eur",
     path: "/licencias/evidencias",
     grupo: "MEDICIÓN",
     etiqueta: "EVIDENCIAS",
     nombre: "Paquete de Sellado eIDAS",
     claim: "Consumo medido en veredictos sellados.",
     precio: "120 €",
+    priceAmount: 120,
     sufijo: "/mes · 1.000 sellos",
     unidad: "Por paquete de 1.000 sellos",
     comprador: "Volumen alto de veredictos sellados",
@@ -270,17 +229,20 @@ const CATALOGO = [
     ],
     noIncluye: [],
     ideal: ["Operación con miles de veredictos diarios", "Nodos con custodia ya contratada", "Escalado sin cambiar de tramo"],
-    cta: "CONTRATAR PAQUETE DE SELLOS ↗",
+    cta: "COMPRAR SELLOS (120 €/mes) 💳",
+    type: "checkout",
     featured: false,
   },
   {
     id: "forense",
+    priceId: "price_pericial_1200eur",
     path: "/licencias/forense",
     grupo: "PERICIAL",
     etiqueta: "FORENSE",
     nombre: "Licencia Estación Pericial",
     claim: "Verificación independiente, cobrada por caso.",
     precio: "1.200 €",
+    priceAmount: 1200,
     sufijo: "/año + 300 €/dossier",
     unidad: "Licencia anual más emisión",
     comprador: "Peritos, despachos y asesoría jurídica",
@@ -295,17 +257,20 @@ const CATALOGO = [
     ],
     noIncluye: [],
     ideal: ["Peritos ciberinformáticos", "Despachos de litigio tecnológico", "Departamentos de fraude y arbitraje"],
-    cta: "SOLICITAR ACCESO PERICIAL ↗",
+    cta: "CONTRATAR LICENCIA ANUAL (1.200 €) 💳",
+    type: "checkout",
     featured: false,
   },
   {
     id: "canal",
+    priceId: "price_partner_450eur",
     path: "/licencias/canal",
     grupo: "DISTRIBUCIÓN",
     etiqueta: "CANAL",
     nombre: "Programa Partner Multi-Tenant",
     claim: "Venda gobernanza de IA sin construirla.",
     precio: "Desde 450 €",
+    priceAmount: 450,
     sufijo: "/cliente/año",
     unidad: "Por cliente gestionado",
     comprador: "Consultoras, MSP y agentes digitalizadores",
@@ -320,15 +285,12 @@ const CATALOGO = [
     ],
     noIncluye: [],
     ideal: ["Agentes digitalizadores del Kit Consulting", "Consultoras de cumplimiento normativo", "Integradores con cartera pyme"],
-    cta: "SOLICITAR KIT DE PARTNER ↗",
+    cta: "ACTIVAR PROGRAMA PARTNER (450 €) 💳",
+    type: "checkout",
     featured: false,
   },
 ];
-/* ==========================================================================
-   PARTE 2 · VISTAS DE CONSOLA (saare_console)
-   CUATRO LECTURAS DEL MISMO SISTEMA:
-   MISMO MOTOR · MISMAS DECISIONES · MISMA EVIDENCIA · DISTINTA INTERPRETACIÓN
-   ========================================================================== */
+
 const VISTAS_CONSOLA = {
   executive: {
     id: "executive",
@@ -376,9 +338,8 @@ const VISTAS_CONSOLA = {
       ["CONTINUIDAD DE NEGOCIO", "Sin interrupción registrada"],
     ],
     tramoRecomendado: "nodo-custodia",
-    tramoCta: "ACTIVAR NODO CON CUSTODIA ↗",
+    tramoCta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
   },
-
   grc: {
     id: "grc",
     badge: "VISTA GRC / PRIVACIDAD",
@@ -425,9 +386,8 @@ const VISTAS_CONSOLA = {
       ["PENDIENTE DE CIERRE", "2 requisitos en revisión"],
     ],
     tramoRecomendado: "nodo-custodia",
-    tramoCta: "ACTIVAR NODO CON CUSTODIA ↗",
+    tramoCta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
   },
-
   cyber: {
     id: "cyber",
     badge: "VISTA CISO / RESILIENCIA",
@@ -474,9 +434,8 @@ const VISTAS_CONSOLA = {
       ["PUNTOS CIEGOS DETECTADOS", "0"],
     ],
     tramoRecomendado: "evidencias",
-    tramoCta: "CONTRATAR PAQUETE DE SELLOS ↗",
+    tramoCta: "COMPRAR SELLOS (120 €/mes) 💳",
   },
-
   forense: {
     id: "forense",
     badge: "VISTA FORENSE / PERICIAL",
@@ -520,13 +479,10 @@ const VISTAS_CONSOLA = {
       ["SOPORTE EN SALA", "Incluido en la licencia anual"],
     ],
     tramoRecomendado: "forense",
-    tramoCta: "SOLICITAR ACCESO PERICIAL ↗",
+    tramoCta: "CONTRATAR LICENCIA ANUAL (1.200 €) 💳",
   },
 };
 
-/* ==========================================================================
-   SEO · CONFIGURACIÓN POR PÁGINA
-   ========================================================================== */
 const SEO_CONFIG = {
   home: {
     title: "S.A.A.R.E. SGP 1.0 | Infraestructura de Autorización Ex-Ante para IA",
@@ -587,13 +543,7 @@ function useSEO(pageKey = "home", custom = null) {
     canonical.setAttribute("href", `${window.location.origin}${window.location.pathname}`);
   }, [pageKey, custom]);
 }
-/* ==========================================================================
-   PARTE 3 · COMPONENTES ESTRUCTURALES
-   ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   ETIQUETA DE NATURALEZA DEL DATO · DEMO / BENCHMARK / REFERENCE / LIVE
-   -------------------------------------------------------------------------- */
 function DataLabel({ type }) {
   const conf = METRIC_LABELS[type] || METRIC_LABELS.DEMO;
   return (
@@ -603,9 +553,6 @@ function DataLabel({ type }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   TARJETA DE MÉTRICA CON ETIQUETADO OBLIGATORIO
-   -------------------------------------------------------------------------- */
 function MetricCard({ label, value, tag = "DEMO" }) {
   return (
     <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono">
@@ -618,9 +565,6 @@ function MetricCard({ label, value, tag = "DEMO" }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   SHELL GENERAL · CABECERA, NAVEGACIÓN Y SESIÓN
-   -------------------------------------------------------------------------- */
 function AppShell({ children }) {
   const location = useLocation();
 
@@ -748,9 +692,6 @@ function AppShell({ children }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   COMPONENTES TIPOGRÁFICOS Y DE ESTRUCTURA
-   -------------------------------------------------------------------------- */
 function PageHeader({ badge, title, description }) {
   return (
     <div className="border-b border-slate-800 bg-slate-950/60 py-12 mb-10">
@@ -775,7 +716,18 @@ function SectionTitle({ kicker, title, lead }) {
   );
 }
 
-function CtaButton({ ctaText, href = WHATSAPP_URL, full = true }) {
+function CtaButton({ ctaText, item, href = WHATSAPP_URL, full = true }) {
+  if (item && item.type === "checkout") {
+    return (
+      <button
+        onClick={() => saareCheckout(item.id)}
+        className={`${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-emerald-500 text-black font-bold text-xs rounded hover:bg-emerald-400 transition cursor-pointer`}
+      >
+        {ctaText}
+      </button>
+    );
+  }
+
   const isExternal = href.startsWith("http");
   const cls = `${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition`;
   if (isExternal) {
@@ -794,6 +746,14 @@ function CtaButton({ ctaText, href = WHATSAPP_URL, full = true }) {
 
 function CatalogCard({ item }) {
   if (!item) return null;
+
+  const handleAction = (e) => {
+    if (item.type === "checkout") {
+      e.preventDefault();
+      saareCheckout(item.id);
+    }
+  };
+
   return (
     <div
       className={`bg-slate-900/90 border p-6 rounded-lg font-mono relative overflow-hidden flex flex-col justify-between ${
@@ -817,12 +777,29 @@ function CatalogCard({ item }) {
         </div>
         <p className="text-[10px] text-slate-500 mt-1">{item.unidad}</p>
       </div>
-      <div className="mt-6">
+      <div className="mt-6 space-y-2">
+        {item.type === "checkout" ? (
+          <button
+            onClick={handleAction}
+            className="block w-full text-center px-5 py-3 bg-emerald-500 text-black font-bold text-xs rounded hover:bg-emerald-400 transition cursor-pointer"
+          >
+            {item.cta}
+          </button>
+        ) : (
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
+          >
+            {item.cta}
+          </a>
+        )}
         <Link
           to={item.path}
-          className="block w-full text-center px-5 py-3 border border-sky-500/50 text-sky-300 font-bold text-xs rounded hover:bg-sky-500/10 transition"
+          className="block w-full text-center px-5 py-2 border border-slate-700 text-slate-400 hover:text-slate-200 font-bold text-[10px] rounded hover:bg-slate-800/50 transition"
         >
-          VER DETALLE COMPLETO →
+          VER DETALLE TÉCNICO →
         </Link>
       </div>
     </div>
@@ -873,34 +850,6 @@ function VerdictChip({ verdict }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   COMPARATIVA TÉCNICA SOBRIA · SOLO EJES DEMOSTRABLES
-   -------------------------------------------------------------------------- */
-function ComparativaGuardarrail() {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left font-mono text-xs border-collapse">
-        <thead>
-          <tr className="border-b border-slate-800 text-sky-400">
-            <th className="pb-3 pr-4">EJE TÉCNICO</th>
-            <th className="pb-3 pr-4 text-slate-400">GUARDARRAÍL BASADO EN EVALUACIÓN</th>
-            <th className="pb-3 text-emerald-400">S.A.A.R.E. · CONTROL EJECUTABLE EN EL PUNTO DE ACCIÓN</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-800/60 text-slate-300">
-          {COMPARATIVA.map(([eje, externo, saare]) => (
-            <tr key={eje}>
-              <td className="py-3 pr-4 font-bold text-white">{eje}</td>
-              <td className="py-3 pr-4 text-slate-400">{externo}</td>
-              <td className="py-3 text-emerald-300">{saare}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function DataTable({ headers, rows, renderLast }) {
   return (
     <div className="overflow-x-auto -mx-2 px-2">
@@ -930,9 +879,6 @@ function DataTable({ headers, rows, renderLast }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   SUPERFICIES REALES · MINI INTERFACES DEL PRODUCTO
-   -------------------------------------------------------------------------- */
 function PolicyEnginePanel() {
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
@@ -978,28 +924,8 @@ function EvidenceChainPanel() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   FLUJO HORIZONTAL · POLÍTICA → REGLA → DECISIÓN → EJECUCIÓN → EVIDENCIA
-   -------------------------------------------------------------------------- */
-function FlowSteps({ steps }) {
-  return (
-    <div className="grid md:grid-cols-5 gap-3 font-mono text-center">
-      {steps.map(([num, title, desc], idx) => (
-        <div key={num} className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative">
-          <div className="text-[10px] text-sky-400 font-bold">{num}</div>
-          <div className="text-white font-bold text-sm mt-2">{title}</div>
-          <div className="text-[10px] text-slate-500 mt-1">{desc}</div>
-          {idx < steps.length - 1 && (
-            <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10 text-slate-700">→</div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
 /* ==========================================================================
-   PARTE 4 · LANDING PRINCIPAL / MOTOR DE REFERENCIA
-   ESTRUCTURA DEFINITIVA EN 18 SECCIONES
+   LANDING PRINCIPAL / MOTOR DE REFERENCIA
    ========================================================================== */
 function TabAuditoriaPublica() {
   useSEO("home");
@@ -1049,10 +975,7 @@ function TabAuditoriaPublica() {
 
   return (
     <main>
-      {/* ================================================================
-          01 · MOTOR DE REFERENCIA — HERO + DECISION TRACE
-          Un solo mensaje por pantalla. La demostración antes que la explicación.
-          ================================================================ */}
+      {/* 01 · HERO + DECISION TRACE */}
       <section className="relative overflow-hidden border-b border-slate-800 bg-[#020617]">
         <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#1e293b22_1px,transparent_1px),linear-gradient(to_bottom,#1e293b22_1px,transparent_1px)] bg-[size:48px_48px]" />
 
@@ -1089,7 +1012,6 @@ function TabAuditoriaPublica() {
               </div>
             </div>
 
-            {/* DECISION TRACE · superﬁcie real del producto */}
             <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5 bg-slate-900/50">
                 <span className="font-mono text-[10px] tracking-widest text-slate-400">S.A.A.R.E. / DECISION TRACE</span>
@@ -1114,10 +1036,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          02 · PUBLIC TRUST ANCHOR — NO CONFÍE EN NOSOTROS
-          La filosofía criptográfica convertida en experiencia de usuario.
-          ================================================================ */}
+      {/* 02 · PUBLIC TRUST ANCHOR */}
       <section id="trust-anchor" className="border-b border-slate-800 bg-black py-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-[.85fr_1.15fr] gap-8 items-center">
@@ -1137,7 +1056,7 @@ function TabAuditoriaPublica() {
                   placeholder="Merkle Root o ID de evidencia"
                   className="flex-1 bg-slate-950 border border-slate-700 px-4 py-3 text-xs font-mono text-slate-200 rounded focus:outline-none focus:border-amber-400"
                 />
-                <button type="submit" disabled={loading} className="px-5 py-3 rounded bg-amber-400 text-black font-mono text-xs font-bold hover:bg-amber-300 disabled:opacity-60 transition">
+                <button type="submit" disabled={loading} className="px-5 py-3 rounded bg-amber-400 text-black font-mono text-xs font-bold hover:bg-amber-300 disabled:opacity-60 transition cursor-pointer">
                   {loading ? "CONSULTANDO..." : "VERIFICAR"}
                 </button>
               </form>
@@ -1161,9 +1080,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          03 · DE PAPEL A ENFORCEMENT — ANTES / CON S.A.A.R.E.
-          ================================================================ */}
+      {/* 03 · DE PAPEL A ENFORCEMENT */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1221,9 +1138,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          04 · EL PROBLEMA — TESIS CENTRAL DE MARCA
-          ================================================================ */}
+      {/* 04 · EL PROBLEMA */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
@@ -1249,10 +1164,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          05 · COMPOSICIÓN DE LA ISV — "ESTO ES LO QUE REALMENTE COMPRAN"
-          Producto / modo de ejecución / infraestructura / evidencia, separados.
-          ================================================================ */}
+      {/* 05 · COMPOSICIÓN DE LA ISV */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1261,7 +1173,6 @@ function TabAuditoriaPublica() {
             lead="Arquitectura unificada alrededor de un único Runtime PEP L7 determinista. Los modos de ejecución no son productos distintos: son el mismo motor viviendo en puntos distintos de su infraestructura."
           />
 
-          {/* DIAGRAMA ARQUITECTURA */}
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs mb-10 overflow-x-auto">
             <div className="min-w-[650px] text-center space-y-4">
               <div className="inline-block bg-sky-500/10 border border-sky-500/40 text-sky-300 px-4 py-2 rounded font-bold">
@@ -1289,35 +1200,6 @@ function TabAuditoriaPublica() {
             </div>
           </div>
 
-          {/* SEPARACIÓN CONCEPTUAL */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10 font-mono text-[11px]">
-            <div className="border border-slate-800 bg-slate-900/50 p-4 rounded-lg">
-              <div className="text-sky-400 font-bold text-[10px] tracking-widest">PRODUCTOS</div>
-              <div className="text-slate-300 mt-2 space-y-1">
-                <div>LabEngine</div><div>PerimeterShield</div><div>EvidenceVault</div><div>ComplianceSuite</div>
-              </div>
-            </div>
-            <div className="border border-slate-800 bg-slate-900/50 p-4 rounded-lg">
-              <div className="text-emerald-400 font-bold text-[10px] tracking-widest">MODOS DE EJECUCIÓN</div>
-              <div className="text-slate-300 mt-2 space-y-1">
-                <div>SDK (in-process)</div><div>Proxy (perímetro)</div><div>Daemon (servidor)</div>
-              </div>
-            </div>
-            <div className="border border-slate-800 bg-slate-900/50 p-4 rounded-lg">
-              <div className="text-amber-400 font-bold text-[10px] tracking-widest">INFRAESTRUCTURA</div>
-              <div className="text-slate-300 mt-2 space-y-1">
-                <div>Control Plane</div><div>saare_console</div><div>Sensor L7</div>
-              </div>
-            </div>
-            <div className="border border-slate-800 bg-slate-900/50 p-4 rounded-lg">
-              <div className="text-purple-400 font-bold text-[10px] tracking-widest">EVIDENCIA</div>
-              <div className="text-slate-300 mt-2 space-y-1">
-                <div>Digest SHA-256</div><div>Merkle</div><div>Ed25519</div><div>RFC 3161</div>
-              </div>
-            </div>
-          </div>
-
-          {/* PAQUETES DE SOFTWARE */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {softwarePackages.map(([num, name, type, target]) => (
               <div key={name} className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono">
@@ -1333,9 +1215,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          06 · UN MOTOR — TRES MODOS: DÓNDE VIVE EL CONTROL
-          ================================================================ */}
+      {/* 06 · DECISIÓN ARQUITECTÓNICA */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1396,9 +1276,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          07 · SIETE DIMENSIONES DE CONTROL
-          ================================================================ */}
+      {/* 07 · SIETE DIMENSIONES */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1427,9 +1305,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          08 · DECISION PATH — DEL INTENTO A LA PRUEBA
-          ================================================================ */}
+      {/* 08 · DECISION PATH */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1457,9 +1333,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          09 · saare_console — CUATRO LECTURAS DEL MISMO SISTEMA
-          ================================================================ */}
+      {/* 09 · saare_console */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1496,9 +1370,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          10 · EVIDENCE CHAIN — CUATRO ESLABONES CRIPTOGRÁFICOS
-          ================================================================ */}
+      {/* 10 · EVIDENCE CHAIN */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-10 items-start">
@@ -1509,7 +1381,7 @@ function TabAuditoriaPublica() {
                 lead="Cada veredicto puede convertirse en una prueba verificable por un tercero, sin necesidad de confiar en S.A.A.R.E. ni en su infraestructura."
               />
               <div className="space-y-3 font-mono text-xs">
-                {EVIDENCE_CHAIN.map(([tag, name, desc], i) => (
+                {EVIDENCE_CHAIN.map(([tag, name, desc]) => (
                   <div key={tag} className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="text-[9px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 rounded">{tag}</span>
@@ -1531,9 +1403,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          11 · CONTROL PLANE — SECURITY / ARCHITECTURE BRIEF VISUAL
-          ================================================================ */}
+      {/* 11 · SECURITY / ARCHITECTURE BRIEF */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1580,9 +1450,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          12 · DEFENSA ACTIVA — OWASP LLM TOP 10
-          ================================================================ */}
+      {/* 12 · DEFENSA ACTIVA */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1614,9 +1482,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          13 · INTEROPERABILIDAD
-          ================================================================ */}
+      {/* 13 · INTEROPERABILIDAD */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1637,9 +1503,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          14 · DESPLIEGUE SOBERANO
-          ================================================================ */}
+      {/* 14 · DESPLIEGUE SOBERANO */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1661,9 +1525,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          15 · MONETIZACIÓN — FLUJO ECONÓMICO DE EXPANSIÓN
-          ================================================================ */}
+      {/* 15 · ESCALADO DE LICENCIAMIENTO CON ACCIÓN DIRECTA */}
       <section id="licencias" className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1672,40 +1534,80 @@ function TabAuditoriaPublica() {
             lead="Cuatro líneas económicas principales. La expansión del cliente sigue el crecimiento de su parque de agentes y de su exigencia probatoria."
           />
 
-          {/* FLUJO ECONÓMICO VISUAL */}
           <div className="grid md:grid-cols-5 gap-3 mt-10 font-mono text-xs">
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative">
-              <div className="text-sky-400 font-bold">CONTROL</div>
-              <div className="text-white font-bold text-lg mt-2">149 € <span className="text-slate-500 text-xs">/mes</span></div>
-              <p className="text-[10px] text-slate-500 mt-2">Nodo Base. Contención L7 sin custodia.</p>
-              <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10 text-slate-700">→</div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
+              <div>
+                <div className="text-sky-400 font-bold">CONTROL</div>
+                <div className="text-white font-bold text-lg mt-2">149 € <span className="text-slate-500 text-xs">/mes</span></div>
+                <p className="text-[10px] text-slate-500 mt-2">Nodo Base. Contención L7 sin custodia.</p>
+              </div>
+              <button
+                onClick={() => saareCheckout("nodo-base")}
+                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
+              >
+                COMPRAR (149 €) 💳
+              </button>
             </div>
-            <div className="bg-slate-900 border border-emerald-500/40 p-5 rounded-lg relative">
-              <div className="text-emerald-400 font-bold">CONTROL + CUSTODIA</div>
-              <div className="text-white font-bold text-lg mt-2">290 € <span className="text-slate-500 text-xs">/mes</span></div>
-              <p className="text-[10px] text-slate-500 mt-2">Sellado Ed25519 + Consola de cumplimiento.</p>
-              <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10 text-slate-700">→</div>
+
+            <div className="bg-slate-900 border border-emerald-500/40 p-5 rounded-lg relative flex flex-col justify-between">
+              <div>
+                <div className="text-emerald-400 font-bold">CONTROL + CUSTODIA</div>
+                <div className="text-white font-bold text-lg mt-2">290 € <span className="text-slate-500 text-xs">/mes</span></div>
+                <p className="text-[10px] text-slate-500 mt-2">Sellado Ed25519 + Consola de cumplimiento.</p>
+              </div>
+              <button
+                onClick={() => saareCheckout("nodo-custodia")}
+                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
+              >
+                COMPRAR (290 €) 💳
+              </button>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative">
-              <div className="text-amber-400 font-bold">ESCALA DE EVIDENCIA</div>
-              <div className="text-white font-bold text-lg mt-2">120 € <span className="text-slate-500 text-xs">/mes</span></div>
-              <p className="text-[10px] text-slate-500 mt-2">Paquetes de 1.000 sellos eIDAS.</p>
-              <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10 text-slate-700">→</div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
+              <div>
+                <div className="text-amber-400 font-bold">ESCALA DE EVIDENCIA</div>
+                <div className="text-white font-bold text-lg mt-2">120 € <span className="text-slate-500 text-xs">/mes</span></div>
+                <p className="text-[10px] text-slate-500 mt-2">Paquetes de 1.000 sellos eIDAS.</p>
+              </div>
+              <button
+                onClick={() => saareCheckout("evidencias")}
+                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
+              >
+                COMPRAR (120 €) 💳
+              </button>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative">
-              <div className="text-sky-400 font-bold">FORENSE</div>
-              <div className="text-white font-bold text-lg mt-2">1.200 € <span className="text-slate-500 text-xs">/año</span></div>
-              <p className="text-[10px] text-slate-500 mt-2">Estación pericial + 300 €/dossier.</p>
-              <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10 text-slate-700">→</div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
+              <div>
+                <div className="text-sky-400 font-bold">FORENSE</div>
+                <div className="text-white font-bold text-lg mt-2">1.200 € <span className="text-slate-500 text-xs">/año</span></div>
+                <p className="text-[10px] text-slate-500 mt-2">Estación pericial + 300 €/dossier.</p>
+              </div>
+              <button
+                onClick={() => saareCheckout("forense")}
+                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
+              >
+                CONTRATAR (1.200 €) 💳
+              </button>
             </div>
-            <div className="bg-slate-900 border border-purple-500/40 p-5 rounded-lg">
-              <div className="text-purple-400 font-bold">ENTERPRISE</div>
-              <div className="text-white font-bold text-lg mt-2">3.500 € <span className="text-slate-500 text-xs">/mes</span></div>
-              <p className="text-[10px] text-slate-500 mt-2">VPC / Air-Gapped con HSM y SLA.</p>
+
+            <div className="bg-slate-900 border border-purple-500/40 p-5 rounded-lg flex flex-col justify-between">
+              <div>
+                <div className="text-purple-400 font-bold">ENTERPRISE</div>
+                <div className="text-white font-bold text-lg mt-2">3.500 € <span className="text-slate-500 text-xs">/mes</span></div>
+                <p className="text-[10px] text-slate-500 mt-2">VPC / Air-Gapped con HSM y SLA.</p>
+              </div>
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 block w-full text-center px-3 py-2 bg-sky-500 text-black font-bold text-[10px] rounded hover:bg-sky-400 transition"
+              >
+                PROPUESTA ↗
+              </a>
             </div>
           </div>
 
-          {/* CATÁLOGO COMPLETO */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
             {CATALOGO.map((item) => (
               <CatalogCard key={item.id} item={item} />
@@ -1714,9 +1616,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          16 · PARTNERS — KIT CONSULTING COMO CANAL, NUNCA COMO TESIS
-          ================================================================ */}
+      {/* 16 · PARTNERS */}
       <section className="border-b border-slate-800 bg-[#020617] py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1750,9 +1650,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          17 · SEGURIDAD / BUEN USO — PRINCIPIOS NO NEGOCIABLES
-          ================================================================ */}
+      {/* 17 · SEGURIDAD Y BUEN USO */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
@@ -1769,7 +1667,6 @@ function TabAuditoriaPublica() {
             ))}
           </div>
 
-          {/* TELEMETRÍA: QUÉ SALE Y QUÉ NO SALE */}
           <div className="grid md:grid-cols-2 gap-6 mt-12 font-mono text-xs">
             <div className="bg-slate-900/80 border border-emerald-500/30 p-6 rounded-xl">
               <div className="text-emerald-400 font-bold mb-4">✓ SALE DEL NODO (TELEMETRÍA MÍNIMA)</div>
@@ -1791,9 +1688,7 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* ================================================================
-          18 · CTA FINAL — UNA ELECCIÓN, NO UN BOTÓN
-          ================================================================ */}
+      {/* 18 · CTA FINAL CONSOLIDADO */}
       <section className="relative overflow-hidden bg-[#020617] py-24 text-center border-t border-slate-800">
         <div className="max-w-4xl mx-auto px-6 font-mono">
           <span className="text-xs text-sky-400 font-bold tracking-widest uppercase">S.A.A.R.E. SGP 1.0</span>
@@ -1820,13 +1715,10 @@ function TabAuditoriaPublica() {
     </main>
   );
 }
-/* ==========================================================================
-   PARTE 5 · PÁGINAS SECUNDARIAS DESARROLLADAS
-   ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   DETALLE DE LICENCIA · COMPLETO (alcance, exclusiones, perfil, CTA)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   PÁGINAS SECUNDARIAS DESARROLLADAS
+   ========================================================================== */
 function DetalleLicencia({ id }) {
   const item = CATALOGO.find((c) => c.id === id);
   useSEO("home", item ? { title: `${item.nombre} | Licenciamiento S.A.A.R.E.`, description: item.descripcion.slice(0, 155) } : null);
@@ -1888,7 +1780,7 @@ function DetalleLicencia({ id }) {
               <p className="text-[11px] text-slate-400 mt-6 leading-relaxed border-t border-slate-800 pt-4">{item.claim}</p>
             </div>
             <div className="mt-8 space-y-3">
-              <CtaButton ctaText={item.cta} />
+              <CtaButton ctaText={item.cta} item={item} />
               <Link to="/trial" className="block w-full text-center px-5 py-3 border border-slate-700 text-slate-300 font-bold text-xs rounded hover:bg-slate-800 transition">
                 PROBAR ANTES EN /trial →
               </Link>
@@ -1900,10 +1792,6 @@ function DetalleLicencia({ id }) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   VISTA DE CONSOLA · COMPLETA (métricas etiquetadas, matriz, inventario,
-   superficie y tramo recomendado)
-   -------------------------------------------------------------------------- */
 function VistaConsola({ vistaId }) {
   const v = VISTAS_CONSOLA[vistaId];
   useSEO("producto", { title: `${v.badge} | saare_console`, description: v.pageDesc.slice(0, 155) });
@@ -1915,8 +1803,6 @@ function VistaConsola({ vistaId }) {
     <main>
       <PageHeader badge={v.badge} title={v.pageTitle} description={v.pageDesc} />
       <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-
-        {/* PREGUNTA DEL ROL + IDENTIDAD RBAC */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between gap-4">
           <div>
             <div className="text-[10px] text-slate-500 tracking-widest">PREGUNTA QUE RESPONDE ESTA VISTA</div>
@@ -1929,14 +1815,12 @@ function VistaConsola({ vistaId }) {
           </div>
         </div>
 
-        {/* MÉTRICAS ETIQUETADAS */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {v.metricas.map(([label, value, tag]) => (
             <MetricCard key={label} label={label} value={value} tag={tag} />
           ))}
         </div>
 
-        {/* MATRIZ */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
           <SectionTitle kicker={v.seccionMatriz} title={v.tituloMatriz} lead={v.leadMatriz} />
           <DataTable
@@ -1951,7 +1835,6 @@ function VistaConsola({ vistaId }) {
           />
         </div>
 
-        {/* INVENTARIO */}
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
           <SectionTitle kicker={v.seccionInventario} title={v.tituloInventario} lead={v.leadInventario} />
           <DataTable
@@ -1967,7 +1850,6 @@ function VistaConsola({ vistaId }) {
           />
         </div>
 
-        {/* SUPERFICIE + TRAMO RECOMENDADO */}
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs">
             <SectionTitle kicker={v.superficieSeccion} title={v.superficieTitulo} />
@@ -1988,7 +1870,7 @@ function VistaConsola({ vistaId }) {
                 <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">{tramo.claim}</p>
               </div>
               <div className="mt-6 space-y-3">
-                <CtaButton ctaText={v.tramoCta} />
+                <CtaButton ctaText={v.tramoCta} item={tramo} />
                 <Link to={tramo.path} className="block text-center text-[10px] text-slate-500 hover:text-slate-300">
                   ver ficha completa del tramo →
                 </Link>
@@ -2006,17 +1888,11 @@ function TabCumplimiento() {
   return <VistaConsola vistaId="grc" />;
 }
 
-/* --------------------------------------------------------------------------
-   FORENSE · PÁGINA COMPLETA (vista forense + verificador + cadena)
-   -------------------------------------------------------------------------- */
 function TabForense() {
   useSEO("forensic");
   return <VistaConsola vistaId="forense" />;
 }
 
-/* --------------------------------------------------------------------------
-   DESARROLLADORES · HUB DE LOS TRES MODOS
-   -------------------------------------------------------------------------- */
 function TabDev() {
   useSEO("dev");
   return (
@@ -2052,9 +1928,6 @@ function TabDev() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   MODO SDK · LABENGINE
-   -------------------------------------------------------------------------- */
 function TabSDK() {
   useSEO("dev");
   return (
@@ -2080,35 +1953,31 @@ function TabSDK() {
           <div className="space-y-6">
             <CodePanel
               title="INTEGRACIÓN · PYTHON (REFERENCE)"
-              code={
-"from saare import LabEngine\n" +
-"\n" +
-"engine = LabEngine(\n" +
-"    node_key='NODE_KEY_HSM',\n" +
-"    policy='FIN-PAYMENT-042',\n" +
-"    fail_closed=True,\n" +
-")\n" +
-"\n" +
-"@engine.guard(action='SEND_PAYMENT',\n" +
-"              resource='core-banking://transfers')\n" +
-"def send_payment(amount, iban):\n" +
-"    # Solo se ejecuta si el veredicto es ALLOW\n" +
-"    return banking_api.transfer(amount, iban)"
-              }
+              code={`from saare import LabEngine
+
+engine = LabEngine(
+    node_key='NODE_KEY_HSM',
+    policy='FIN-PAYMENT-042',
+    fail_closed=True,
+)
+
+@engine.guard(action='SEND_PAYMENT',
+              resource='core-banking://transfers')
+def send_payment(amount, iban):
+    # Solo se ejecuta si el veredicto es ALLOW
+    return banking_api.transfer(amount, iban)`}
             />
             <CodePanel
               title="VEREDICTO DEVUELTO (REFERENCE)"
-              code={
-"{\n" +
-'  "verdict": "DENY",\n' +
-'  "policy": "FIN-PAYMENT-042",\n' +
-'  "policy_version": 17,\n' +
-'  "dimensions_failed": ["RISK", "DATA"],\n' +
-'  "latency_ms": 1.16,\n' +
-'  "evidence_digest": "e3b0c44298fc1c14…",\n' +
-'  "permit": null\n' +
-"}"
-              }
+              code={`{
+  "verdict": "DENY",
+  "policy": "FIN-PAYMENT-042",
+  "policy_version": 17,
+  "dimensions_failed": ["RISK", "DATA"],
+  "latency_ms": 1.16,
+  "evidence_digest": "e3b0c44298fc1c14…",
+  "permit": null
+}`}
             />
           </div>
         </div>
@@ -2124,9 +1993,6 @@ function TabSDK() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   MODO PROXY · PERIMETERSHIELD
-   -------------------------------------------------------------------------- */
 function TabProxy() {
   useSEO("dev");
   return (
@@ -2152,26 +2018,22 @@ function TabProxy() {
           <div className="space-y-6">
             <CodePanel
               title="DESPLIEGUE · KUBERNETES / HELM (REFERENCE)"
-              code={
-"helm install perimetershield saare/charts \\\n" +
-"  --set node.keyRef=hsm://pkcs11/key-0x9f \\\n" +
-"  --set policy.bundle=FIN-PAYMENT-042:v17 \\\n" +
-"  --set failClosed=true \\\n" +
-"  --set evidence.custody=true \\\n" +
-"  --set telemetry.minimal=true"
-              }
+              code={`helm install perimetershield saare/charts \\
+  --set node.keyRef=hsm://pkcs11/key-0x9f \\
+  --set policy.bundle=FIN-PAYMENT-042:v17 \\
+  --set failClosed=true \\
+  --set evidence.custody=true \\
+  --set telemetry.minimal=true`}
             />
             <CodePanel
               title="FLUJO DE INTERCEPCIÓN (REFERENCE)"
-              code={
-"AGENT ──▶ PERIMETERSHIELD ──▶ POLICY EVAL (7D, RAM)\n" +
-"                                   │\n" +
-"                    ┌──────────────┴──────────────┐\n" +
-"                 ALLOW ▶ upstream            DENY ▶ 403 + digest\n" +
-"                    │                              │\n" +
-"              respuesta filtrada          evidencia sellada\n" +
-"              (PII sanitizada)            (Merkle + Ed25519)"
-              }
+              code={`AGENT ──▶ PERIMETERSHIELD ──▶ POLICY EVAL (7D, RAM)
+                                   │
+                    ┌──────────────┴──────────────┐
+                 ALLOW ▶ upstream            DENY ▶ 403 + digest
+                    │                              │
+              respuesta filtrada          evidencia sellada
+              (PII sanitizada)            (Merkle + Ed25519)`}
             />
           </div>
         </div>
@@ -2187,9 +2049,6 @@ function TabProxy() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   MODO DAEMON · LOCAL NODE / ON-PREMISE
-   -------------------------------------------------------------------------- */
 function TabDaemon() {
   useSEO("dev");
   return (
@@ -2215,21 +2074,19 @@ function TabDaemon() {
           <div className="space-y-6">
             <CodePanel
               title="INSTALACIÓN · SYSTEMD (REFERENCE)"
-              code={
-"# paquete firmado, verificación previa a la instalación\n" +
-"saare-cli verify saare-node-1.0.sgp \\\n" +
-"  --pubkey governance.pub\n" +
-"\n" +
-"sudo dpkg -i saare-node-1.0.sgp\n" +
-"sudo systemctl enable --now saare-node\n" +
-"\n" +
-"# estado del nodo (sin salida de red)\n" +
-"saare-cli status\n" +
-"# NODE_STATUS  ONLINE\n" +
-"# POLICY       FIN-PAYMENT-042 v17 (SIGNED)\n" +
-"# FAIL_CLOSED  true\n" +
-"# EVIDENCE     local vault (air-gapped)"
-              }
+              code={`# paquete firmado, verificación previa a la instalación
+saare-cli verify saare-node-1.0.sgp \\
+  --pubkey governance.pub
+
+sudo dpkg -i saare-node-1.0.sgp
+sudo systemctl enable --now saare-node
+
+# estado del nodo (sin salida de red)
+saare-cli status
+# NODE_STATUS  ONLINE
+# POLICY       FIN-PAYMENT-042 v17 (SIGNED)
+# FAIL_CLOSED  true
+# EVIDENCE     local vault (air-gapped)`}
             />
             <div className="grid grid-cols-2 gap-4 font-mono text-xs">
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
@@ -2255,9 +2112,6 @@ function TabDaemon() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   CANAL / VENTAS · PROGRAMA PARTNER MULTI-TENANT
-   -------------------------------------------------------------------------- */
 function TabVentas() {
   useSEO("canal");
   const tramo = CATALOGO.find((c) => c.id === "canal");
@@ -2269,7 +2123,6 @@ function TabVentas() {
         description="Licenciamiento marca blanca para consultoras, MSP y agentes digitalizadores. Cada cliente gestionado dispone de su política, su clave y su cadena de prueba independiente."
       />
       <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-
         <div className="font-mono text-[10px] text-slate-500 bg-slate-900/40 border border-slate-800 p-4 rounded-lg flex flex-wrap gap-x-6 gap-y-2 items-center">
           <span className="text-white font-bold">S.A.A.R.E.</span>
           <span>→</span><span>SOLUCIÓN TÉCNICA</span>
@@ -2320,7 +2173,7 @@ function TabVentas() {
             </div>
             <div className="flex gap-3">
               <Link to={tramo.path} className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER FICHA COMPLETA →</Link>
-              <CtaButton ctaText={tramo.cta} full={false} />
+              <CtaButton ctaText={tramo.cta} item={tramo} full={false} />
             </div>
           </div>
         </div>
@@ -2329,9 +2182,6 @@ function TabVentas() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   TRIAL · PRUEBA DE CONTROL CUALIFICADA
-   -------------------------------------------------------------------------- */
 function TrialPage() {
   useSEO("trial");
   const [sent, setSent] = useState(false);
@@ -2407,7 +2257,7 @@ function TrialPage() {
               <p className="text-[10px] text-slate-500 max-w-sm leading-relaxed">
                 Solo usaremos estos datos para gestionar la evaluación. Sin listas de correo ni cesión a terceros.
               </p>
-              <button type="submit" className="px-8 py-4 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition shrink-0">
+              <button type="submit" className="px-8 py-4 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition shrink-0 cursor-pointer">
                 SOMETER UN AGENTE ↗
               </button>
             </div>
@@ -2418,9 +2268,6 @@ function TrialPage() {
   );
 }
 
-/* --------------------------------------------------------------------------
-   CORPORATIVO · VARIANTES (empresa / buenas-practicas / legal)
-   -------------------------------------------------------------------------- */
 function CorporatePage({ variant }) {
   useSEO("home");
 
@@ -2475,9 +2322,7 @@ function LoginPage() {
   useSEO("login");
   return <Login />;
 }
-/* ==========================================================================
-   PARTE 6 · PIE DE PÁGINA, SCROLL Y ENRUTADOR GENERAL
-   ========================================================================== */
+
 function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-slate-950 pt-12 pb-8 px-6 font-mono text-xs text-slate-400">
@@ -2542,9 +2387,6 @@ function ScrollToTop() {
   return null;
 }
 
-/* --------------------------------------------------------------------------
-   ENRUTADOR GENERAL
-   -------------------------------------------------------------------------- */
 export default function App() {
   return (
     <BrowserRouter>
@@ -2582,7 +2424,6 @@ export default function App() {
           <Route path="/buenas-practicas" element={<CorporatePage variant="buenas-practicas" />} />
           <Route path="/legal" element={<CorporatePage variant="legal" />} />
 
-          {/* Alias legacy */}
           <Route path="/cumplimiento" element={<TabCumplimiento />} />
           <Route path="/grc" element={<VistaConsola vistaId="grc" />} />
           <Route path="/auditoria" element={<TabAuditoriaPublica />} />

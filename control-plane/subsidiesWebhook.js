@@ -1,20 +1,46 @@
-// control-plane/subsidiesWebhook.js — Módulo de Despacho e Integración de Webhooks
+// control-plane/subsidiesWebhook.js — Módulo de Despacho e Integración de Webhooks (SAARE Core v7)
 const ramWebhookConfigCache = new Map();
+
+/**
+ * Genera un HMAC-SHA256 para validación de la firma del webhook
+ */
+async function generateHmacSignature(secret, bodyString) {
+  if (!secret) return '';
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const msgData = encoder.encode(bodyString);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export async function dispatchWebhookEvent(tenantId, payload, env) {
   try {
     let config = null;
 
-    // 1. Buscar configuración en Cloudflare KV
+    // 1. Lectura prioritaria desde KV
     if (env && env.SAARE_VAULT_KV) {
       try {
         config = await env.SAARE_VAULT_KV.get(`webhook_config_${tenantId}`, 'json');
+        if (config) {
+          ramWebhookConfigCache.set(tenantId, config); // Actualizar cache volátil
+        }
       } catch (e) {
-        console.warn("[Subsidies Webhook] Error leyendo KV:", e);
+        console.warn("[Subsidies Webhook] Error leyendo Cloudflare KV:", e);
       }
     }
 
-    // 2. Fallback a memoria RAM si no está en KV
+    // 2. Fallback a cache en RAM si falla o no está disponible KV
     if (!config) {
       config = ramWebhookConfigCache.get(tenantId);
     }
@@ -23,24 +49,62 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
       return { success: false, reason: "No webhook target configured" };
     }
 
+    const bodyString = JSON.stringify(payload);
+    
+    // Generar firma HMAC-SHA256 con el secret_token
+    const signature = await generateHmacSignature(config.secret_token, bodyString);
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Saare-Signature': signature,
+      'X-Saare-Tenant-ID': tenantId
+    };
+
+    if (config.secret_token) {
+      headers['Authorization'] = `Bearer ${config.secret_token}`;
+    }
+
+    // Control de tiempo límite (5000 ms)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const response = await fetch(config.target_url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Saare-Signature': config.secret_token || '',
-        'Authorization': config.secret_token ? `Bearer ${config.secret_token}` : ''
-      },
-      body: JSON.stringify(payload)
+      headers,
+      body: bodyString,
+      signal: controller.signal
     });
 
-    return { success: response.ok, status: response.status };
+    clearTimeout(timeoutId);
+
+    return { 
+      success: response.ok, 
+      status: response.status,
+      timestamp: new Date().toISOString()
+    };
+
   } catch (err) {
     console.error("[Subsidies Webhook] Error dispatching event:", err);
-    return { success: false, error: err.message };
+    return { 
+      success: false, 
+      error: err.name === 'AbortError' ? 'Fetch timeout (5s)' : err.message 
+    };
   }
 }
 
 export async function handleWebhookTestRoute(request, url, env) {
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Saare-Signature'
+  };
+
+  // Manejo de preflight CORS (OPTIONS)
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   if (url.pathname === '/api/v1/subsidies/webhook/test' && request.method === 'POST') {
     const tenantId = url.searchParams.get('tenant_id') || 'ENTERPRISE';
 
@@ -48,17 +112,15 @@ export async function handleWebhookTestRoute(request, url, env) {
       event_type: 'TEST_PING',
       timestamp: new Date().toISOString(),
       tenant_id: tenantId,
-      status: 'OPERATIONAL'
+      status: 'OPERATIONAL',
+      platform: 'MS3V S.A.A.R.E. SL Core v7'
     };
 
     const result = await dispatchWebhookEvent(tenantId, payload, env);
 
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 400,
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Access-Control-Allow-Origin': '*' 
-      }
+      headers: corsHeaders
     });
   }
 

@@ -100,8 +100,6 @@ export async function handleStripeWebhook(request, env) {
     // 4. Sincronización con D1 Database
     if (env.DB) {
       try {
-        // La tabla se crea por migración CLI en producción; aquí se mantiene
-        // IF NOT EXISTS por compatibilidad con el auto-aprovisionamiento.
         await env.DB.exec(`
           CREATE TABLE IF NOT EXISTS tenants (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

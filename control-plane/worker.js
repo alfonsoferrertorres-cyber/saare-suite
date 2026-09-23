@@ -8,7 +8,7 @@ import { runResilienceTests } from "./resilienceGate.js";
 import { handleStripeWebhook } from "./stripeWebhook.js";
 import { dispatchWebhookEvent } from "./subsidiesWebhook.js";
 import { TenantManager } from "./tenantManager.js";
-import { EnterpriseKeyManager } from "./keyManager.js";
+import { EnterpriseKeyManager, computeSha256 } from "./keyManager.js";
 
 // Inicialización de subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
@@ -775,7 +775,7 @@ export default {
       }
 
       // ==========================================
-      // KPIS Y MÉTRICAS AGREGADAS (CAPA EXECUTIVE / NIVEL 1)
+      // KPIS Y MÉTRICAS AGREGADAS (DEDUPLICACIÓN VÍA CONSOLIDATED TRACES)
       // ==========================================
       if (path === '/api/v1/metrics/kpis' && method === 'GET') {
         if (!hasRequiredRank(activeUserRole, 1)) {
@@ -792,14 +792,15 @@ export default {
 
         if (env.DB) {
           try {
+            // Consulta de deduplicación sobre consolidated_traces
             let query = `SELECT 
-              COUNT(*) as total,
-              SUM(CASE WHEN decision = 'DENY' OR verdict = 'RECHAZADO' THEN 1 ELSE 0 END) as denyCount
-              FROM runs WHERE tenant = ?`;
+              COUNT(trace_id) as total,
+              SUM(CASE WHEN final_action = 'BLOCKED' OR final_action = 'DENY' THEN 1 ELSE 0 END) as denyCount
+              FROM consolidated_traces WHERE tenant_id = ?`;
             const params = [tenantId];
 
             if (currentUser && currentUser !== "admin@saare.es") {
-              query += ` AND user = ?`;
+              query += ` AND user_email = ?`;
               params.push(currentUser);
             }
 
@@ -814,7 +815,23 @@ export default {
               denyCount = results[0].denyCount || 0;
             }
           } catch (e) {
-            console.warn("Error consultando KPIs en D1, usando cache RAM:", e);
+            console.warn("Fallo en consulta de consolidación D1, usando fallback a tabla runs:", e);
+            try {
+              let queryFallback = `SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN decision = 'DENY' OR verdict = 'RECHAZADO' THEN 1 ELSE 0 END) as denyCount
+                FROM runs WHERE tenant = ?`;
+              const paramsFallback = [tenantId];
+              if (currentUser && currentUser !== "admin@saare.es") {
+                queryFallback += ` AND user = ?`;
+                paramsFallback.push(currentUser);
+              }
+              const { results } = await env.DB.prepare(queryFallback).bind(...paramsFallback).all();
+              if (results && results[0]) {
+                total = results[0].total || 0;
+                denyCount = results[0].denyCount || 0;
+              }
+            } catch (fallbackErr) {}
           }
         }
 
@@ -824,7 +841,9 @@ export default {
             const matchUser = !currentUser || currentUser === "admin@saare.es" || item.user === currentUser;
             return matchTenant && matchUser;
           });
-          total = filteredRAM.length;
+          // Deduplicación en memoria RAM por trace_id
+          const uniqueTraces = new Set(filteredRAM.map(i => i.trace_id || i.evidence_id));
+          total = uniqueTraces.size;
           denyCount = filteredRAM.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
         }
 
@@ -837,7 +856,7 @@ export default {
           denyCount,
           blockRate: `${blockRate}%`,
           avgLatencyMs: avgLatency.toFixed(1),
-          vaultSource: env.DB ? "D1_HYBRID" : "RAM"
+          vaultSource: env.DB ? "D1_CONSOLIDATED" : "RAM"
         }), {
           status: 200,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
@@ -1169,7 +1188,7 @@ export default {
       }
 
       // ==========================================
-      // INTERCEPT / JUDGE EX-ANTE (COMPLIANCE ENGINE INTEGRATED)
+      // INTERCEPT / JUDGE EX-ANTE (COMPLIANCE ENGINE + CONSOLIDACIÓN D1)
       // ==========================================
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
@@ -1193,11 +1212,14 @@ export default {
 
         const runId = await generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
         const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
+        const traceId = body.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+        const finalEvaluatorNode = body.node_type || "EDGE_WORKER";
         const createdAt = body.timestamp || new Date().toISOString();
 
         const fullRecord = await enrichEvidenceForGrant({
           id: runId,
           evidence_id: runId,
+          trace_id: traceId,
           verdictId: verdictId,
           decision: evalResult.decision,
           verdict: evalResult.verdict,
@@ -1219,13 +1241,32 @@ export default {
 
         if (env.DB) {
           try {
+            // 1. Escritura en Tabla Consolidada para Deduplicación
             await env.DB.prepare(`
-              INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(trace_id) DO UPDATE SET
+                final_evaluator_node = excluded.final_evaluator_node,
+                final_action = excluded.final_action,
+                rule_applied = excluded.rule_applied
+            `).bind(
+              traceId,
+              tenant,
+              user,
+              finalEvaluatorNode,
+              evalResult.decision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
+              body.scenarioId || "banca_dora_pci_dss",
+              createdAt
+            ).run();
+
+            // 2. Escritura Append-Only en Bóveda
+            await env.DB.prepare(`
+              INSERT INTO runs (verdictId, evidence_id, trace_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(evidence_id) DO UPDATE SET decision=excluded.decision, prompt=excluded.prompt, payload_json=excluded.payload_json
-            `).bind(verdictId, runId, evalResult.decision, user, tenant, evalResult.verdict, promptInput, "", JSON.stringify(fullRecord), createdAt).run();
+            `).bind(verdictId, runId, traceId, evalResult.decision, user, tenant, evalResult.verdict, promptInput, "", JSON.stringify(fullRecord), createdAt).run();
           } catch (e) {
-            console.error("Error al insertar en D1:", e);
+            console.error("Error al insertar transaccionalmente en D1:", e);
           }
         }
 
@@ -1239,7 +1280,7 @@ export default {
           })());
         }
 
-        return new Response(JSON.stringify({ status: "SUCCESS", ...evalResult, evidence_id: runId, grantMetadata: fullRecord.grantMetadata, proofBundle: fullRecord.proofBundle }), {
+        return new Response(JSON.stringify({ status: "SUCCESS", ...evalResult, evidence_id: runId, trace_id: traceId, grantMetadata: fullRecord.grantMetadata, proofBundle: fullRecord.proofBundle }), {
           status: evalResult.decision === "DENY" ? 403 : 200,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
         });
@@ -1276,6 +1317,7 @@ export default {
                   const baseRecord = {
                     ...parsedPayload,
                     id: row.evidence_id || row.id,
+                    trace_id: row.trace_id || parsedPayload.trace_id,
                     verdictId: row.verdictId || "VRD-LIVE-D1",
                     decision: row.decision || "ALLOW",
                     verdict: row.verdict || "PERMITIDO",
@@ -1330,12 +1372,15 @@ export default {
           
           const runId = await generateDeterministicEvidenceId(user, prompt, runPayload.id || runPayload.evidence_id);
           const verdictId = runPayload.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
+          const traceId = runPayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+          const finalEvaluatorNode = runPayload.node_type || "DAEMON_LOCAL";
           const createdAt = runPayload.timestamp || new Date().toISOString();
 
           const fullPayload = await enrichEvidenceForGrant({
             ...runPayload,
             id: runId,
             evidence_id: runId,
+            trace_id: traceId,
             verdictId: verdictId,
             user: user,
             tenant: tenant,
@@ -1353,12 +1398,33 @@ export default {
 
           if (env.DB) {
             try {
+              // 1. Escritura en Tabla Consolidada
               await env.DB.prepare(`
-                INSERT INTO runs (verdictId, evidence_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(trace_id) DO UPDATE SET
+                  final_evaluator_node = excluded.final_evaluator_node,
+                  final_action = excluded.final_action,
+                  rule_applied = excluded.rule_applied
+              `).bind(
+                traceId,
+                tenant,
+                user,
+                finalEvaluatorNode,
+                (fullPayload.decision === 'DENY' || fullPayload.verdict === 'RECHAZADO') ? 'BLOCKED' : 'ALLOWED',
+                runPayload.rule || "GENERIC_CHECK",
+                createdAt
+              ).run();
+
+              // 2. Inserción Append-Only en Bóveda
+              await env.DB.prepare(`
+                INSERT INTO runs (verdictId, evidence_id, trace_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(evidence_id) DO UPDATE SET decision=excluded.decision, prompt=excluded.prompt, payload_json=excluded.payload_json
-              `).bind(verdictId, runId, fullPayload.decision || 'ALLOW', user, tenant, fullPayload.verdict || 'PERMITIDO', prompt, "", JSON.stringify(fullPayload), createdAt).run();
-            } catch (e) {}
+              `).bind(verdictId, runId, traceId, fullPayload.decision || 'ALLOW', user, tenant, fullPayload.verdict || 'PERMITIDO', prompt, "", JSON.stringify(fullPayload), createdAt).run();
+            } catch (e) {
+              console.error("Error al registrar traza en D1:", e);
+            }
           }
 
           if (env.SAARE_VAULT_KV && ctx && typeof ctx.waitUntil === 'function') {
@@ -1371,7 +1437,7 @@ export default {
             })());
           }
 
-          return new Response(JSON.stringify({ success: true, stored: true, runId }), {
+          return new Response(JSON.stringify({ success: true, stored: true, runId, traceId }), {
             status: 200,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
