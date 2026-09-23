@@ -1,7 +1,13 @@
 export const API_BASE_URL = 'https://api.saare.es';
 
 export async function saareFetch(endpoint, options = {}) {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // Asegura el prefijo /api/v1 solo si no viene especificado en la llamada
+  if (!cleanEndpoint.startsWith('/api/v1') && !cleanEndpoint.startsWith('/v1') && !cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = `/api/v1${cleanEndpoint}`;
+  }
+
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   const session = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
@@ -34,13 +40,14 @@ export async function saareFetch(endpoint, options = {}) {
 }
 
 /**
-  Creación de sesión de checkout para pasarela de pago (Stripe/Redsys)
+ * Creación de sesión de checkout para pasarela de pago (Stripe)
  */
-export async function saareCheckout(planId) {
+export async function saareCheckout(priceId, mode = 'subscription') {
   try {
-    const response = await saareFetch('/v1/billing/checkout', {
+    // Apunta al endpoint real del worker: /v1/checkout
+    const response = await saareFetch('/v1/checkout', {
       method: 'POST',
-      body: JSON.stringify({ planId }),
+      body: JSON.stringify({ price: priceId, mode }),
     });
 
     if (!response.ok) {
@@ -48,8 +55,8 @@ export async function saareCheckout(planId) {
     }
 
     const data = await response.json();
-    if (data.checkoutUrl) {
-      window.location.href = data.checkoutUrl; // Redirección a la pasarela de pago segura
+    if (data.url) {
+      window.location.href = data.url; // Redirección a la pasarela de pago Stripe
     } else {
       throw new Error('No se recibió la URL de la pasarela de pago.');
     }

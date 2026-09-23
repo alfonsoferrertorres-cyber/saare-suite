@@ -1,13 +1,7 @@
-// SAARE L7 Sovereign Sensor - Service Worker (Background Engine v10.2.3 - Anonymous Pack)
-const WORKER_URL = "https://api.saare.es/api/v1";
+// extension-base/background.js — Servidor de Fondo del Sensor L7
 
-// Keep-Alive System anti-suspensión de Chrome
-chrome.alarms.create("saare_keep_alive", { periodInMinutes: 0.5 });
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "saare_keep_alive") {
-    chrome.storage.local.get(["saare_user_email"], () => {});
-  }
-});
+// RECOMENDACIÓN: Usar la raíz base del servidor
+const WORKER_URL = "https://api.saare.es";
 
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return false;
@@ -21,7 +15,14 @@ function isNoisePayload(text) {
   );
 }
 
-// Inyección inicial: Carga storage_managed.json solo si tiene valores válidos
+// Keep-Alive System anti-suspensión de Chrome
+chrome.alarms.create("saare_keep_alive", { periodInMinutes: 0.5 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "saare_keep_alive") {
+    chrome.storage.local.get(["saare_user_email"], () => {});
+  }
+});
+
 chrome.runtime.onInstalled.addListener(async () => {
   try {
     const res = await fetch(chrome.runtime.getURL("storage_managed.json"));
@@ -37,15 +38,11 @@ chrome.runtime.onInstalled.addListener(async () => {
           saare_tenant_domain: tenant,
           saare_token: token
         });
-        console.log("[SAARE Sensor] Credenciales MDM sincronizadas.");
       }
     }
-  } catch (e) {
-    console.warn("[SAARE Sensor] Sin configuración MDM previa. Modo Zero-Trust activo.");
-  }
+  } catch (e) {}
 });
 
-// Resuelve la identidad evitando tokens hardcodeados
 async function resolveIdentity(payloadUser) {
   return new Promise((resolve) => {
     chrome.storage.local.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (local) => {
@@ -57,7 +54,6 @@ async function resolveIdentity(payloadUser) {
         });
       }
 
-      // Fallback a Enterprise Managed (Directivas del SO / Registros Chrome)
       if (chrome.storage?.managed) {
         chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (managed) => {
           const finalUser = managed?.saare_user_email || payloadUser || "anonymous_operator@saare.es";
@@ -105,7 +101,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...currentLogs].slice(0, 100) });
       });
 
-      fetch(`${WORKER_URL}/runs`, {
+      // CONCATENACIÓN SEGURA: Se envía directamente a /api/v1/runs
+      fetch(`${WORKER_URL}/api/v1/runs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
@@ -127,7 +124,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "SAARE_GET_RULES") {
     resolveIdentity().then(({ token, user, tenant }) => {
-      fetch(`${WORKER_URL}/custom-rules`, {
+      fetch(`${WORKER_URL}/api/v1/custom-rules`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "x-saare-user": user,

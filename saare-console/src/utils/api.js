@@ -25,8 +25,8 @@ export async function saareFetch(endpoint, options = {}) {
   if (!isAbsolute) {
     if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
     
-    // Antepone /api/v1 solo si no especifica una versión de API explícita (/api/...)
-    if (!cleanEndpoint.startsWith('/api/')) {
+    // Antepone /api/v1 solo si el endpoint no incluye ya /api/v1 o /api/...
+    if (!cleanEndpoint.startsWith('/api/v1') && !cleanEndpoint.startsWith('/api/')) {
       cleanEndpoint = `/api/v1${cleanEndpoint}`;
     }
     

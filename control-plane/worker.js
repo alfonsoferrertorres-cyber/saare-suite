@@ -214,7 +214,19 @@ async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\/$/, '') || '/';
+    
+    // --- SANITIZACIÓN Y NORMALIZACIÓN DE RUTAS DUPICADAS ---
+    let normalizedPath = url.pathname.replace(/\/$/, '') || '/';
+    
+    // Elimina duplicados de prefijos generados por concatenación
+    while (normalizedPath.includes('/api/v1/api/v1')) {
+      normalizedPath = normalizedPath.replace('/api/v1/api/v1', '/api/v1');
+    }
+    while (normalizedPath.includes('/v1/v1')) {
+      normalizedPath = normalizedPath.replace('/v1/v1', '/v1');
+    }
+    
+    const path = normalizedPath;
     const method = request.method;
 
     const tenantManager = new TenantManager(env);
@@ -824,7 +836,6 @@ export default {
 
         if (env.DB) {
           try {
-            // Consulta de deduplicación sobre consolidated_traces
             let query = `SELECT 
               COUNT(trace_id) as total,
               SUM(CASE WHEN final_action = 'BLOCKED' OR final_action = 'DENY' THEN 1 ELSE 0 END) as denyCount
@@ -873,7 +884,6 @@ export default {
             const matchUser = !currentUser || currentUser === "admin@saare.es" || item.user === currentUser;
             return matchTenant && matchUser;
           });
-          // Deduplicación en memoria RAM por trace_id
           const uniqueTraces = new Set(filteredRAM.map(i => i.trace_id || i.evidence_id));
           total = uniqueTraces.size;
           denyCount = filteredRAM.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
@@ -1273,7 +1283,6 @@ export default {
 
         if (env.DB) {
           try {
-            // 1. Escritura en Tabla Consolidada para Deduplicación
             await env.DB.prepare(`
               INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
               VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1291,7 +1300,6 @@ export default {
               createdAt
             ).run();
 
-            // 2. Escritura Append-Only en Bóveda
             await env.DB.prepare(`
               INSERT INTO runs (verdictId, evidence_id, trace_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1430,7 +1438,6 @@ export default {
 
           if (env.DB) {
             try {
-              // 1. Escritura en Tabla Consolidada
               await env.DB.prepare(`
                 INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1448,7 +1455,6 @@ export default {
                 createdAt
               ).run();
 
-              // 2. Inserción Append-Only en Bóveda
               await env.DB.prepare(`
                 INSERT INTO runs (verdictId, evidence_id, trace_id, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
