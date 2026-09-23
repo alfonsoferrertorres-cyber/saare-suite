@@ -7,28 +7,51 @@
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; padding-bottom: 10px; margin-bottom: 12px; }
     .title { font-weight: 900; font-size: 13px; color: #ffffff; letter-spacing: 1px; }
     .badge-status { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .info-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px; font-size: 11px; margin-bottom: 12px; }
+    .info-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; font-size: 11px; margin-bottom: 12px; }
     .label { color: #9ca3af; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
-    .val { color: #38bdf8; font-family: monospace; margin-bottom: 8px; word-break: break-all; }
+    .val { color: #38bdf8; font-family: monospace; margin-bottom: 8px; word-break: break-all; font-weight: bold; }
     input { width: 100%; box-sizing: border-box; background: #020617; border: 1px solid #334155; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 11px; margin-bottom: 8px; }
-    .btn-save { width: 100%; background: #059669; color: white; border: none; padding: 6px 0; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; margin-bottom: 8px; }
+    .btn-save { width: 100%; background: #059669; color: white; border: none; padding: 7px 0; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; margin-bottom: 8px; }
+    .btn-edit { width: 100%; background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 5px 0; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; margin-top: 6px; }
     .btn-console { display: block; width: 100%; text-align: center; background: #0284c7; color: #ffffff; text-decoration: none; padding: 8px 0; border-radius: 6px; font-weight: bold; font-size: 11.5px; box-sizing: border-box; }
+    .active-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid #059669; color: #34d399; padding: 8px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: 800; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <div class="header">
     <span class="title">SAARE SENSOR L7</span>
-    <span class="badge-status">● ACTIVO</span>
+    <span class="badge-status" id="badge-top">● ACTIVO</span>
   </div>
-  <div class="info-card">
-    <div class="label">Organización / Tenant</div>
-    <div class="val" id="disp-tenant">ENTERPRISE</div>
-    <div class="label">Usuario / Operador</div>
-    <input type="email" id="input-user" placeholder="operador@empresa.com" />
-    <div class="label">Token de Sincronización</div>
-    <input type="password" id="input-token" placeholder="sk_saare_..." />
-    <button class="btn-save" id="btn-save-creds">Guardar Credenciales</button>
+
+  <!-- VISTA 1: CREDENCIALES VERIFICADAS Y AUDITANDO -->
+  <div id="view-verified" style="display: none;">
+    <div class="active-banner">
+      🛡️ MODO BLINDAJE ACTIVO: AUDITANDO RAM EN VIVO
+    </div>
+    <div class="info-card">
+      <div class="label">Organización / Tenant</div>
+      <div class="val" id="verified-tenant">ENTERPRISE</div>
+      <div class="label">Operador Vinculado</div>
+      <div class="val" id="verified-user">operador@empresa.com</div>
+      <div class="label">Estado de Sincronización</div>
+      <div style="color: #4ade80; font-weight: bold; font-size: 10px;">✓ Credenciales Verificadas</div>
+      <button class="btn-edit" id="btn-reconfig">Modificar Credenciales</button>
+    </div>
   </div>
+
+  <!-- VISTA 2: FORMULARIO DE EDICIÓN -->
+  <div id="view-form">
+    <div class="info-card">
+      <div class="label">Organización / Tenant</div>
+      <div class="val" id="disp-tenant">ENTERPRISE</div>
+      <div class="label">Usuario / Operador</div>
+      <input type="email" id="input-user" placeholder="operador@empresa.com" />
+      <div class="label">Token de Sincronización</div>
+      <input type="password" id="input-token" placeholder="sk_saare_..." />
+      <button class="btn-save" id="btn-save-creds">Guardar y Activar Sensor</button>
+    </div>
+  </div>
+
   <a href="https://console.saare.es/" target="_blank" class="btn-console">Abrir SAARE GRC Console ↗</a>
   <script src="popup.js"></script>
 </body>
