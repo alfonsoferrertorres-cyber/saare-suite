@@ -1,18 +1,29 @@
+# Dependetiae et aedificationes
 node_modules/
+**/node_modules/
 dist/
-.env
-.env.production
-.dev.vars
+**/dist/
+.turbo/
+**/ .turbo/
+
+# Cloudflare Wrangler et cache
+.wrangler/
+**/.wrangler/
+control-plane-local/
 target/
+
+# Secretes et variabiles ambiente
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Dati temporarii et repositoria localia
+evidence_vault/
+**/evidence_vault/
+*.json.db
 *.log
 
-# Caché y entornos locales
-.turbo/
-control-plane-local/
-.wrangler/
-control-plane/.wrangler/
-
-# Ignorar paquetes comprimidos
+# Scrinia compressa et exceptiones
 *.zip
 !saare-console/public/*.zip
-.dev.vars
