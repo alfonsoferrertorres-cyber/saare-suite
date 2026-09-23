@@ -251,6 +251,38 @@ export default {
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || "OPERATIONAL_AGENT_USER";
 
       // ==========================================
+      // DESCARGA / GENERACIÓN DE INFORME PDF
+      // ==========================================
+      if (path === '/api/v1/report/pdf' && method === 'GET') {
+        let pdfBuffer = null;
+
+        if (env.SAARE_VAULT_KV) {
+          try {
+            pdfBuffer = await env.SAARE_VAULT_KV.get('informe_maestro.pdf', { type: 'arrayBuffer' });
+          } catch (e) {}
+        }
+
+        if (!pdfBuffer) {
+          return new Response(JSON.stringify({
+            error: "PDF_NOT_FOUND",
+            message: "El archivo 'informe_maestro.pdf' no se encuentra cargado en la bóveda KV. Por favor cárguelo con Wrangler."
+          }), {
+            status: 404,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        return new Response(pdfBuffer, {
+          status: 200,
+          headers: {
+            ...cors.corsHeaders,
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'inline; filename="informe_maestro_saare.pdf"'
+          }
+        });
+      }
+
+      // ==========================================
       // RUTAS DE AUTENTICACIÓN Y VERIFICACIÓN
       // ==========================================
       if (path === '/auth/register' || path === '/v1/auth/register' || path === '/api/v1/auth/register') {
