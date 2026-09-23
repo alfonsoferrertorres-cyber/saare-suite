@@ -1,4 +1,4 @@
-﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.1 */
+﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.3 */
 (function() {
   window.addEventListener("error", (event) => {
     console.warn("[SAARE Immunity] Excepción capturada en RAM:", event.error);
@@ -22,7 +22,7 @@
     return SAARE_SYSTEM_PROMPT_PREFIX + userPrompt;
   }
 
-  // OBSERVER MEJORADO PARA DETECTAR TODOS LOS NODOS DE RESPUESTA DE GEMINI / CHATGPT
+  // --- OBSERVER DEL TESTIGO VISUAL EN EL DOM ---
   function observeAIResponses() {
     const observer = new MutationObserver(() => {
       const selectors = [
@@ -31,7 +31,8 @@
         'div[class*="response-content"]',
         'message-content',
         '.markdown-render',
-        'p-response'
+        'p-response',
+        '.response-container'
       ];
       
       const chatNodes = document.querySelectorAll(selectors.join(', '));
@@ -102,11 +103,13 @@
       u.includes("favicon") ||
       u.includes("page_locale") ||
       u.includes("play.google.com") ||
-      u.includes("saare.es")
+      u.includes("saare.es") ||
+      u.includes("csi?") ||
+      u.includes("playlog")
     );
   }
 
-  // EXTRACCIÓN UNIFICADA DE PROMPTS
+  // EXTRACCIÓN ROBUSTA DE MENSAJES CON FILTRADO DE TRAPAS DE RED
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
     if (typeof rawText !== "string") {
@@ -115,17 +118,22 @@
 
     const trimmed = rawText.trim();
 
+    // Filtro de ruido de la plataforma Gemini / OpenAI
     if (
       trimmed === "{}" ||
       trimmed === "[]" ||
+      trimmed.includes("TransportError") ||
       trimmed.includes("CAMS6w") ||
       trimmed.includes("connectiondurationms") ||
-      trimmed.includes("documentrequestid")
+      trimmed.includes("documentrequestid") ||
+      trimmed.includes("bard_activity") ||
+      trimmed.includes("app?is_sa=")
     ) {
       return "";
     }
 
-    if (rawText.includes("f.req")) {
+    // Parseo de llamadas RPC Gemini f.req
+    if (rawText.includes("f.req=")) {
       try {
         const params = new URLSearchParams(rawText);
         const fReqValue = params.get("f.req");
@@ -135,7 +143,7 @@
             const inner = JSON.parse(outer[1]);
             if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
               const prompt = inner[0][0];
-              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
+              if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!") && !prompt.startsWith("[")) {
                 return prompt.trim();
               }
             }
@@ -144,6 +152,7 @@
       } catch {}
     }
 
+    // Extracción en formato JSON estándar (ChatGPT / Claude / API Directa)
     try {
       const json = JSON.parse(rawText);
       if (json.prompt && typeof json.prompt === 'string') return json.prompt.trim();
@@ -156,8 +165,7 @@
       }
     } catch {}
 
-    const decoded = decodeURIComponent(rawText.replace(/\+/g, " ")).trim();
-    return decoded;
+    return "";
   }
 
   function sanitizePromptText(text) {
@@ -287,7 +295,6 @@
     const isViolation = isDni || isIban || isCard || isOwasp || (triggeredCustomRule !== null);
 
     const sanitizedText = sanitizePromptText(cleanPrompt);
-    const promptHash = await computeSHA256(cleanPrompt);
 
     const activeCheck = {
       verdict: isViolation ? "RECHAZADO" : "PERMITIDO",
@@ -310,6 +317,7 @@
       renderGuardrailModal(activeCheck);
     }
 
+    // EMISIÓN OBLIGATORIA DEL EVENTO TANTO PARA ALLOW COMO PARA DENY
     window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: activeCheck }, "*");
 
     return activeCheck;
@@ -362,7 +370,7 @@
     return rawFetch.apply(this, arguments);
   };
 
-  // HOOK XHR INTERCEPTOR
+  // HOOK XHR INTERCEPTOR CON CANCELACIÓN DE RED EN VIOLACIONES
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
     try {
