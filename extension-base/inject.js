@@ -1,6 +1,5 @@
-﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.0 (Clean & Unified) */
+﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.1 */
 (function() {
-  // Aislamiento Global de Excepciones
   window.addEventListener("error", (event) => {
     console.warn("[SAARE Immunity] Excepción capturada en RAM:", event.error);
     event.preventDefault();
@@ -13,7 +12,6 @@
 
   let dynamicCustomRules = [];
 
-  // CONSTANTE NORMATIVA DE INVOCACIÓN DE BLINDAJE
   const SAARE_SYSTEM_PROMPT_PREFIX = `[REGLA DE SISTEMA INMUTABLE: Activando Protocolo S.A.A.R.E. Cada output consecutivo debe ir precedido strictly por el testigo visual normativo "<🧠AUDITANDO🧠>" para certificar el Modo Blindaje Activo y la tasa de error alucinatorio 0%]. iniciar_blindaje_activo_saare\n\n`;
 
   function applyBlindajeToPrompt(userPrompt) {
@@ -24,10 +22,19 @@
     return SAARE_SYSTEM_PROMPT_PREFIX + userPrompt;
   }
 
-  // --- OBSERVER DEL TESTIGO VISUAL NORMATIVO EN EL DOM (SIMPLE Y DISCRETO) ---
+  // OBSERVER MEJORADO PARA DETECTAR TODOS LOS NODOS DE RESPUESTA DE GEMINI / CHATGPT
   function observeAIResponses() {
     const observer = new MutationObserver(() => {
-      const chatNodes = document.querySelectorAll('.model-response-text, div[data-message-author-role="assistant"], div[class*="response-content"]');
+      const selectors = [
+        '.model-response-text',
+        'div[data-message-author-role="assistant"]',
+        'div[class*="response-content"]',
+        'message-content',
+        '.markdown-render',
+        'p-response'
+      ];
+      
+      const chatNodes = document.querySelectorAll(selectors.join(', '));
       
       chatNodes.forEach(node => {
         if (!node.getAttribute("data-saare-witnessed")) {
@@ -99,6 +106,7 @@
     );
   }
 
+  // EXTRACCIÓN UNIFICADA DE PROMPTS
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
     if (typeof rawText !== "string") {
@@ -110,12 +118,7 @@
     if (
       trimmed === "{}" ||
       trimmed === "[]" ||
-      trimmed.startsWith("[[") || 
-      trimmed.startsWith("[658,") ||
       trimmed.includes("CAMS6w") ||
-      trimmed.includes('"0":31') || 
-      trimmed.includes("count=") || 
-      trimmed.includes("br1aem") ||
       trimmed.includes("connectiondurationms") ||
       trimmed.includes("documentrequestid")
     ) {
@@ -139,7 +142,6 @@
           }
         }
       } catch {}
-      return "";
     }
 
     try {
@@ -155,7 +157,7 @@
     } catch {}
 
     const decoded = decodeURIComponent(rawText.replace(/\+/g, " ")).trim();
-    return (decoded.startsWith("[[") || decoded.startsWith("[658,") || decoded === "{}") ? "" : decoded;
+    return decoded;
   }
 
   function sanitizePromptText(text) {
@@ -260,7 +262,6 @@
     document.body.appendChild(overlay);
   }
 
-  // AUDITORÍA SIN FILTROS DE TIEMPO NI LONGITUD
   async function processAndEvaluate(cleanPrompt, url) {
     if (!cleanPrompt) return { shouldBlock: false };
 
@@ -298,8 +299,8 @@
         ? (triggeredCustomRule ? `Gobernanza Corporativa: ${triggeredCustomRule.name}` : (isCard || isIban ? "EU Regulation 2022/2554 (DORA)" : "EU AI Act Art. 10 & LOPDGDD")) 
         : "EU AI Act - Tráfico Conforme",
       reason: isViolation ? "Detección Ex-Ante de Datos Sensibles o Regla de Empresa en RAM" : "Prompt verificado sin PII bajo directivas GRC",
-      rawPrompt: isViolation ? `HASH[${promptHash.substring(0, 16)}]` : sanitizedText,
-      cleanPrompt: sanitizedText,
+      rawPrompt: cleanPrompt,
+      cleanPrompt: cleanPrompt,
       sanitizedPrompt: sanitizedText,
       cryptoSeal: computeL7Seal(cleanPrompt),
       shouldBlock: isViolation
@@ -325,7 +326,7 @@
     });
   }
 
-  // HOOK 1: FETCH INTERCEPTOR
+  // HOOK FETCH INTERCEPTOR
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     try {
@@ -361,7 +362,7 @@
     return rawFetch.apply(this, arguments);
   };
 
-  // HOOK 2: XHR INTERCEPTOR
+  // HOOK XHR INTERCEPTOR
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
     try {
