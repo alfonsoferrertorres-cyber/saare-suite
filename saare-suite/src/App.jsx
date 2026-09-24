@@ -1,5 +1,5 @@
 /* ==========================================================================
-   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE COMPLETA CON BOTONES DE COBRO
+   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE & GRC SAAS MONETIZATION
    ========================================================================== */
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -32,7 +32,7 @@ const METRIC_LABELS = {
 
 /* NAVEGACIÓN AGRUPADA */
 const NAV = [
-  { id: "auditoria", label: "1. AUDITORÍA PÚBLICA", description: "Motor de referencia", path: "/" },
+  { id: "auditoria", label: "1. AUDITORÍA PÚBLICA", description: "Trust Layer y Verificador", path: "/" },
   { id: "cumplimiento", label: "2. CUMPLIMIENTO L7", description: "Board · GRC · CISO", path: "/producto/cumplimiento" },
   { id: "forense", label: "3. LEGAL-FORENSE", description: "Evidence Vault", path: "/forense" },
   { id: "ventas", label: "4. AGENTES VENTA", description: "Partners · Canal", path: "/ventas" },
@@ -83,10 +83,10 @@ const INTEROP = [
 ];
 
 const DEPLOYMENT = [
-  ["VPC PRIVADA", "El nodo se despliega dentro de su nube virtual. Sus claves, sus políticas, su red.", "Nodo con Custodia"],
-  ["PRIVATE CLOUD", "Clúster Kubernetes gestionado por su equipo con Helm chart firmado.", "Nodo con Custodia / Enterprise"],
-  ["ON-PREMISE", "Servidor físico o virtual en su centro de datos. Systemd o servicio Windows.", "Enterprise"],
-  ["AIR-GAPPED", "Red aislada sin salida a Internet. Actualización de políticas por paquete firmado offline.", "Enterprise"],
+  ["VPC PRIVADA", "El nodo se despliega dentro de su nube virtual. Sus claves, sus políticas, su red.", "Business GRC / Enterprise"],
+  ["PRIVATE CLOUD", "Clúster Kubernetes gestionado por su equipo con Helm chart firmado.", "Business GRC / Enterprise"],
+  ["ON-PREMISE", "Servidor físico o virtual en su centro de datos. Systemd o servicio Windows.", "Enterprise / Legal Shield"],
+  ["AIR-GAPPED", "Red aislada sin salida a Internet. Actualización de políticas por paquete firmado offline.", "Enterprise / Legal Shield"],
 ];
 
 const TELEMETRIA_SALE = [
@@ -117,176 +117,93 @@ const PARTNER_ENTREGABLES = [
   ["ENTREGABLE 03", "Expediente de evidencia sellada", "Muestra de la cadena de custodia del cliente: raíz Merkle, firma Ed25519 y sello RFC 3161."],
 ];
 
-/* CATÁLOGO DE LICENCIAS CON CONFIGURACIÓN DE PAGO DIRECTO */
+/* ==========================================================================
+   CATÁLOGO DE LICENCIAS ALINEADO A LOS 4 NIVELES DE MONETIZACIÓN SAAS / GRC
+   ========================================================================== */
 const CATALOGO = [
   {
-    id: "nodo-base",
-    priceId: "price_nodo_base_149eur",
-    path: "/licencias/nodo-base",
-    grupo: "NODOS",
-    etiqueta: "NODO BASE",
-    nombre: "Nodo Base PEP L7",
-    claim: "Contención determinista sin custodia de evidencias.",
+    id: "free-explorer",
+    priceId: "price_free_explorer_0eur",
+    path: "/licencias/free-explorer",
+    grupo: "VERIFICACIÓN",
+    etiqueta: "FREE / EXPLORER",
+    nombre: "Verificador Público (Trust Layer)",
+    claim: "Verificación puntual de hashes y veredictos existentes.",
+    precio: "0 €",
+    priceAmount: 0,
+    sufijo: "/gratuito",
+    unidad: "Acceso público ilimitado",
+    comprador: "Auditores, examinadores y usuarios web",
+    descripcion: "La consulta y verificación de veredictos unitarios mediante hash SHA-256 en saare.es.",
+    features: ["Verificación puntual de hashes", "Acceso directo al Public Trust Anchor"],
+    noIncluye: ["Consola GRC corporativa", "SDK perimetral"],
+    ideal: ["Auditores externos", "Examinadores independientes"],
+    cta: "USAR VERIFICADOR PÚBLICO ↗",
+    type: "link",
+    pathTarget: "/#trust-anchor",
+    featured: false,
+  },
+  {
+    id: "developer-pro",
+    priceId: "price_1MxyzDeveloperPro01", // ID real en Stripe para Developer Pro
+    path: "/licencias/developer-pro",
+    grupo: "RUNTIME EDGE",
+    etiqueta: "DEVELOPER / PRO",
+    nombre: "SDK & Runtime Edge",
+    claim: "Control L7 con Token Binding y límites de inferencia.",
     precio: "149 €",
     priceAmount: 149,
-    sufijo: "/mes",
-    unidad: "Por nodo desplegado",
-    comprador: "Quien despliega agentes propios",
-    descripcion:
-      "El motor de contención en memoria volátil, con intercepción L7 síncrona y veredicto binario. No incluye custodia persistente de evidencias: es la puerta de entrada a la plataforma.",
-    features: [
-      "Motor de decisión en RAM (1,16 ms · BENCHMARK)",
-      "Intercepción L7 síncrona",
-      "Veredictos ALLOW / DENY; REVIEW en capa de gobierno",
-      "Evaluación de las 7 dimensiones de control",
-      "Modo Fail-Closed configurable",
-      "Sin custodia persistente de evidencias",
-    ],
-    noIncluye: ["Sellado continuo de evidencias", "Dossier judicial exportable", "Consola de cumplimiento"],
-    ideal: ["Pymes que despliegan sus primeros agentes", "Equipos que solo necesitan el bloqueo", "Pruebas de concepto antes de escalar"],
-    cta: "COMPRAR NODO BASE (149 €/mes) 💳",
+    sufijo: "/mes + consumo",
+    unidad: "Por nodo / SDK integrado",
+    comprador: "Startups y desarrolladores de agentes IA",
+    descripcion: "Sensor L7 en backend o cliente, inyección de Token Binding X.509.",
+    features: ["Sensor L7 y LabEngine SDK nativo", "Inyección de Token Binding X.509"],
+    noIncluye: ["Informes PDF automatizados EU AI Act"],
+    ideal: ["Desarrolladores de agentes autónomos"],
+    cta: "CONTRATAR DEVELOPER (149 €/mes) 💳",
     type: "checkout",
     featured: false,
   },
   {
-    id: "nodo-custodia",
-    priceId: "price_nodo_custodia_290eur",
-    path: "/licencias/nodo-custodia",
-    grupo: "NODOS",
-    etiqueta: "NODO CON CUSTODIA",
-    nombre: "Nodo con Custodia Forense",
-    claim: "Control continuo con prueba exportable.",
+    id: "business-grc",
+    priceId: "price_1MxyzBusinessGRC290", // ID real en Stripe para Business GRC
+    path: "/licencias/business-grc",
+    grupo: "SAAS & GRC",
+    etiqueta: "BUSINESS GRC",
+    nombre: "Business GRC Console (Todo en Uno)",
+    claim: "Generación automatizada de informes EU AI Act y blindaje.",
     precio: "290 €",
     priceAmount: 290,
     sufijo: "/mes",
-    unidad: "Por nodo con sellado continuo",
-    comprador: "Quien responde ante auditoría periódica",
-    descripcion:
-      "Todo lo del nodo base, más el sellado continuo con firma Ed25519, la estructuración en árbol de Merkle y el acceso al dossier exportable. Es el tramo que convierte un control en una prueba.",
-    features: [
-      "Todo lo incluido en el Nodo Base PEP L7",
-      "Sellado continuo con firma Ed25519",
-      "Estructuración en árbol de Merkle",
-      "Marcado de tiempo eIDAS RFC 3161",
-      "Dossier judicial exportable (Art. 326 LEC)",
-      "Consola de cumplimiento con las cuatro superficies RBAC",
-    ],
-    noIncluye: ["HSM corporativo dedicado", "SLA del 99,99 %", "Despliegue air-gapped"],
-    ideal: ["CISO y DPO con auditoría periódica", "Banca y seguros de tamaño medio", "Organizaciones que deben probar cumplimiento"],
-    cta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
+    unidad: "Por tenant / organización",
+    comprador: "Pymes tecnológicas y empresas con LLMs internos",
+    descripcion: "Acceso completo a SAARE Console, panel de métricas de entropía y generación automatizada de informes PDF.",
+    features: ["Acceso completo a SAARE Console (4 superficies RBAC)", "Generación automática de informes PDF EU AI Act"],
+    noIncluye: ["HSM corporativo dedicado"],
+    ideal: ["CISO y DPO de pymes tecnológicas"],
+    cta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
     type: "checkout",
     featured: true,
   },
   {
-    id: "nodo-enterprise",
-    priceId: "price_nodo_enterprise_custom",
-    path: "/licencias/nodo-enterprise",
-    grupo: "NODOS",
-    etiqueta: "ENTERPRISE",
-    nombre: "Nodo Soberano Enterprise",
-    claim: "Despliegue aislado con contrato marco y SLA.",
+    id: "enterprise-shield",
+    priceId: "price_1MxyzEnterprise3500", // ID real en Stripe para Enterprise Shield
+    path: "/licencias/enterprise-shield",
+    grupo: "ENTERPRISE",
+    etiqueta: "ENTERPRISE / LEGAL SHIELD",
+    nombre: "Enterprise / Legal Shield (Custom PKI)",
+    claim: "Inmunidad pericial, PKI propia y acuerdos SLA.",
     precio: "3.500 €",
     priceAmount: 3500,
     sufijo: "/mes",
-    unidad: "Por nodo con HSM y SLA",
-    comprador: "Sector regulado, banca, defensa y público",
-    descripcion:
-      "Despliegue perimetral aislado para infraestructuras críticas. El nodo vive dentro de su VPC o en arquitectura air-gapped, con claves gestionadas por el cliente y soporte de Nivel 3.",
-    features: [
-      "Despliegue en VPC privada o Air-Gapped",
-      "Integración con HSM corporativo (PKCS#11)",
-      "Claves de cifrado gestionadas por el cliente",
-      "SLA Enterprise definido contractualmente",
-      "Soporte técnico dedicado 24/7 de Nivel 3",
-      "Despliegue en clústeres de Kubernetes / Helm",
-    ],
+    unidad: "Por nodo Enterprise con HSM",
+    comprador: "Corporaciones, aseguradoras y despachos jurídicos",
+    descripcion: "Emisión de certificados de evidencia preconstituida procesal (Arts. 281/326 LEC).",
+    features: ["Certificados de evidencia preconstituida", "Integración nativa con HSM / PKI corporativa propia"],
     noIncluye: [],
-    ideal: ["Infraestructuras críticas y defensa", "Administraciones públicas", "Entidades bajo contrato marco"],
+    ideal: ["Corporaciones reguladas y banca"],
     cta: "SOLICITAR PROPUESTA ENTERPRISE ↗",
     type: "contact",
-    featured: false,
-  },
-  {
-    id: "evidencias",
-    priceId: "price_sellos_120eur",
-    path: "/licencias/evidencias",
-    grupo: "MEDICIÓN",
-    etiqueta: "EVIDENCIAS",
-    nombre: "Paquete de Sellado eIDAS",
-    claim: "Consumo medido en veredictos sellados.",
-    precio: "120 €",
-    priceAmount: 120,
-    sufijo: "/mes · 1.000 sellos",
-    unidad: "Por paquete de 1.000 sellos",
-    comprador: "Volumen alto de veredictos sellados",
-    descripcion:
-      "El consumo puro del motor: se paga proporcionalmente al uso real. Cada sello incorpora una marca de tiempo RFC 3161 y puede formar parte de una evidencia verificable.",
-    features: [
-      "1.000 sellos RFC 3161 al mes",
-      "Exceso facturado por sello adicional",
-      "Descuento por volumen superior a un millón",
-      "Aplicable a cualquier nodo desplegado",
-    ],
-    noIncluye: [],
-    ideal: ["Operación con miles de veredictos diarios", "Nodos con custodia ya contratada", "Escalado sin cambiar de tramo"],
-    cta: "COMPRAR SELLOS (120 €/mes) 💳",
-    type: "checkout",
-    featured: false,
-  },
-  {
-    id: "forense",
-    priceId: "price_pericial_1200eur",
-    path: "/licencias/forense",
-    grupo: "PERICIAL",
-    etiqueta: "FORENSE",
-    nombre: "Licencia Estación Pericial",
-    claim: "Verificación independiente, cobrada por caso.",
-    precio: "1.200 €",
-    priceAmount: 1200,
-    sufijo: "/año + 300 €/dossier",
-    unidad: "Licencia anual más emisión",
-    comprador: "Peritos, despachos y asesoría jurídica",
-    descripcion:
-      "El instrumento del perito. Bóveda ciega, validador Ed25519 contra la clave pública del nodo y exportación de un dossier para análisis pericial.",
-    features: [
-      "Verificación independiente sin confiar en el vendedor",
-      "Exportación de dossiers con sello RFC 3161",
-      "Acceso a la bóveda ciega y al validador Ed25519",
-      "Dossier de muestra descargable sin registro",
-      "Soporte técnico para la ratificación en sala",
-    ],
-    noIncluye: [],
-    ideal: ["Peritos ciberinformáticos", "Despachos de litigio tecnológico", "Departamentos de fraude y arbitraje"],
-    cta: "CONTRATAR LICENCIA ANUAL (1.200 €) 💳",
-    type: "checkout",
-    featured: false,
-  },
-  {
-    id: "canal",
-    priceId: "price_partner_450eur",
-    path: "/licencias/canal",
-    grupo: "DISTRIBUCIÓN",
-    etiqueta: "CANAL",
-    nombre: "Programa Partner Multi-Tenant",
-    claim: "Venda gobernanza de IA sin construirla.",
-    precio: "Desde 450 €",
-    priceAmount: 450,
-    sufijo: "/cliente/año",
-    unidad: "Por cliente gestionado",
-    comprador: "Consultoras, MSP y agentes digitalizadores",
-    descripcion:
-      "Licenciamiento marca blanca para quien audita a otros. Cada cliente gestionado con su política, su clave y su cadena de prueba independiente, más la documentación justificativa.",
-    features: [
-      "Portal multi-tenant con clientes ilimitados",
-      "Configuración de políticas por cliente",
-      "Documentación justificativa de ayudas generada automáticamente",
-      "Soporte técnico para su propio equipo",
-      "Tres entregables homologados para el Kit Consulting",
-    ],
-    noIncluye: [],
-    ideal: ["Agentes digitalizadores del Kit Consulting", "Consultoras de cumplimiento normativo", "Integradores con cartera pyme"],
-    cta: "ACTIVAR PROGRAMA PARTNER (450 €) 💳",
-    type: "checkout",
     featured: false,
   },
 ];
@@ -337,8 +254,8 @@ const VISTAS_CONSOLA = {
       ["GASTO POR DEPARTAMENTO", "Trazado por tipo de modelo"],
       ["CONTINUIDAD DE NEGOCIO", "Sin interrupción registrada"],
     ],
-    tramoRecomendado: "nodo-custodia",
-    tramoCta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
+    tramoRecomendado: "business-grc",
+    tramoCta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
   },
   grc: {
     id: "grc",
@@ -385,8 +302,8 @@ const VISTAS_CONSOLA = {
       ["ÚLTIMA VERIFICACIÓN EXTERNA", "Sin incidencias"],
       ["PENDIENTE DE CIERRE", "2 requisitos en revisión"],
     ],
-    tramoRecomendado: "nodo-custodia",
-    tramoCta: "COMPRAR CON CUSTODIA (290 €/mes) 💳",
+    tramoRecomendado: "business-grc",
+    tramoCta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
   },
   cyber: {
     id: "cyber",
@@ -433,8 +350,8 @@ const VISTAS_CONSOLA = {
       ["CONMUTACIÓN FAIL-CLOSED", "Instantánea, sin reinicio"],
       ["PUNTOS CIEGOS DETECTADOS", "0"],
     ],
-    tramoRecomendado: "evidencias",
-    tramoCta: "COMPRAR SELLOS (120 €/mes) 💳",
+    tramoRecomendado: "developer-pro",
+    tramoCta: "CONTRATAR DEVELOPER / PRO (149 €/mes) 💳",
   },
   forense: {
     id: "forense",
@@ -478,8 +395,8 @@ const VISTAS_CONSOLA = {
       ["DOSSIER DE MUESTRA", "Descargable sin registro"],
       ["SOPORTE EN SALA", "Incluido en la licencia anual"],
     ],
-    tramoRecomendado: "forense",
-    tramoCta: "CONTRATAR LICENCIA ANUAL (1.200 €) 💳",
+    tramoRecomendado: "enterprise-shield",
+    tramoCta: "SOLICITAR LEGAL SHIELD ENTERPRISE ↗",
   },
 };
 
@@ -727,6 +644,16 @@ function CtaButton({ ctaText, item, href = WHATSAPP_URL, full = true }) {
       </button>
     );
   }
+  if (item && item.type === "link") {
+    return (
+      <Link
+        to={item.pathTarget || "/"}
+        className={`${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition`}
+      >
+        {ctaText}
+      </Link>
+    );
+  }
 
   const isExternal = href.startsWith("http");
   const cls = `${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition`;
@@ -785,6 +712,13 @@ function CatalogCard({ item }) {
           >
             {item.cta}
           </button>
+        ) : item.type === "link" ? (
+          <Link
+            to={item.pathTarget || "/"}
+            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
+          >
+            {item.cta}
+          </Link>
         ) : (
           <a
             href={WHATSAPP_URL}
@@ -924,6 +858,51 @@ function EvidenceChainPanel() {
   );
 }
 
+function EidasComplianceSection() {
+  return (
+    <section className="border-b border-slate-800 bg-slate-950 py-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <SectionTitle
+          kicker="CUMPLIMIENTO NORMATIVO EUROPEO"
+          title="Sellado eIDAS RFC 3161 por Delegación"
+          lead="Garantía jurídica plena sin los costes ni la fricción de operar como QTSP primario. S.A.A.R.E. ancla los árboles de Merkle mediante autoridades de certificación cualificadas de la Unión Europea."
+        />
+        
+        <div className="grid lg:grid-cols-2 gap-8 mt-10">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl font-mono text-xs space-y-4">
+            <div className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">ARQUITECTURA DE CONFIANZA EIDAS</div>
+            <h3 className="text-white font-bold text-sm">Heredando la validez jurídica europea</h3>
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              En lugar de someter a la organización a costosas auditorías de hardware HSM primario (ETSI EN 319 401), S.A.A.R.E. empaqueta el Root Merkle Bound local y solicita un Time-Stamp Token (TST) a un Prestador Cualificado de Servicios de Confianza (QTSP) homologado.
+            </p>
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <DataRow label="ESTÁNDAR" value="RFC 3161 · eIDAS Reg. 910/2014" />
+              <DataRow label="VALOR PROCESAL" value="Arts. 281 y 326 LEC (España / UE)" />
+              <DataRow label="COSTE OPERATIVO" value="Optimizado por delegación de API" />
+            </div>
+          </div>
+
+          <CodePanel
+            title="ESTRUCTURA DEL SELLO EIDAS (REFERENCE JSON)"
+            code={`{
+  "expediente": "IA-2026-VAL-AUD-8842-XF",
+  "qtsp_provider": "Autoridad Cualificada UE (RFC 3161)",
+  "root_merkle_bound": "c1b681097685b75ef8e965aebd...",
+  "time_stamp_token": "TST-901842-EU-SECURE",
+  "legal_status": "PRESUNCIÓN DE INTEGRIDAD Y NO REPUDIO",
+  "conformity": [
+    "eIDAS (Reg. 910/2014)",
+    "EU AI Act Art. 12/15",
+    "LEC Art. 326"
+  ]
+}`}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ==========================================================================
    LANDING PRINCIPAL / MOTOR DE REFERENCIA
    ========================================================================== */
@@ -983,7 +962,7 @@ function TabAuditoriaPublica() {
           <div className="grid xl:grid-cols-[1.1fr_.9fr] gap-12 items-center">
             <div>
               <span className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-sky-400 bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
-                GOBERNANZA EJECUTABLE
+                GOBERNANZA EJECUTABLE & BLINDAJE EU AI ACT
               </span>
 
               <h1 className="font-display font-bold text-4xl sm:text-6xl text-white tracking-tight leading-[1.02] mt-6">
@@ -993,7 +972,7 @@ function TabAuditoriaPublica() {
 
               <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-300 leading-relaxed">
                 Convierte las políticas de uso de IA en una decisión ejecutable
-                antes de que la acción alcance el sistema.
+                antes de que la acción alcance el sistema, garantizando cumplimiento legal y defensa corporativa.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -1041,11 +1020,11 @@ function TabAuditoriaPublica() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-[.85fr_1.15fr] gap-8 items-center">
             <div>
-              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em]">PUBLIC TRUST ANCHOR</span>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mt-2">No confíe en nosotros.</h2>
+              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em]">FREE / EXPLORER (TRUST LAYER)</span>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mt-2">No confíe en nosotros. Verifique.</h2>
               <p className="mt-3 text-xs text-slate-400 leading-relaxed font-mono">
-                Introduzca una evidencia. El sistema consultará el Trust Anchor.
-                La interfaz no decide si la evidencia es válida: el registro verificable lo decide.
+                La consulta y verificación de veredictos unitarios (Trust Layer) es pública y gratuita.
+                Valide cualquier hash SHA-256 o identificador VRD- para comprobar la fehaciencia erga omnes de la evidencia.
               </p>
             </div>
             <div>
@@ -1053,7 +1032,7 @@ function TabAuditoriaPublica() {
                 <input
                   value={hash}
                   onChange={(e) => setHash(e.target.value)}
-                  placeholder="Merkle Root o ID de evidencia"
+                  placeholder="Merkle Root o ID de evidencia (VRD-...)"
                   className="flex-1 bg-slate-950 border border-slate-700 px-4 py-3 text-xs font-mono text-slate-200 rounded focus:outline-none focus:border-amber-400"
                 />
                 <button type="submit" disabled={loading} className="px-5 py-3 rounded bg-amber-400 text-black font-mono text-xs font-bold hover:bg-amber-300 disabled:opacity-60 transition cursor-pointer">
@@ -1080,13 +1059,15 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
+      <EidasComplianceSection />
+
       {/* 03 · DE PAPEL A ENFORCEMENT */}
       <section className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
             kicker="DE PAPEL A ENFORCEMENT"
             title="Tu política de IA no debería ser solo un documento. Debería poder ejecutarse."
-            lead="Un Plan de Uso de IA en papel no detiene una fuga. La misma política, compilada a regla versionada, sí."
+            lead="Un Plan de Uso de IA en papel no detiene una fuga ni evita multas del EU AI Act. La misma política, compilada a regla versionada, sí."
           />
 
           <div className="grid lg:grid-cols-2 gap-8 mt-10">
@@ -1133,7 +1114,7 @@ function TabAuditoriaPublica() {
           </div>
 
           <div className="mt-12 text-center font-mono text-xs text-slate-400 bg-slate-900/40 border border-slate-800 p-4 rounded-lg">
-            LA POLÍTICA NO DESAPARECE. <span className="text-white font-bold">SE CONVIERTE EN INFRAESTRUCTURA.</span>
+            LA POLÍTICA NO DESAPARECE. <span className="text-white font-bold">SE CONVIERTE EN INFRAESTRUCTURA DE CUMPLIMIENTO.</span>
           </div>
         </div>
       </section>
@@ -1150,13 +1131,10 @@ function TabAuditoriaPublica() {
               </h2>
               <p className="mt-5 text-sm text-slate-300 leading-relaxed">
                 Un agente autónomo con credenciales puede leer una base de datos, mover fondos
-                o enviar información fuera de su perímetro. La mayoría de organizaciones responde
-                con un documento de uso responsable: necesario, pero estructuralmente incapaz de
-                detener nada. Entre la política y la acción no existe hoy ninguna capa ejecutable.
+                o enviar información fuera de su perímetro, exponiendo a la empresa a sanciones severas bajo el Reglamento Europeo de IA. La mayoría responde con un documento de papel: necesario, pero inútil para detener infracciones.
               </p>
               <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-                S.A.A.R.E. es esa capa: un Policy Enforcement Point de capa 7 que evalúa cada
-                acción antes de que ocurra y deja una prueba criptográfica de cada decisión.
+                S.A.A.R.E. es la infraestructura que blinda a su organización mediante control ex-ante y generación automatizada de informes de diligencia debida.
               </p>
             </div>
             <PolicyEnginePanel />
@@ -1169,8 +1147,8 @@ function TabAuditoriaPublica() {
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
             kicker="COMPOSICIÓN DE LA ISV"
-            title="1 Motor. 3 Formas de Ejecución. 4 Paquetes de Software. 1 Consola. 1 Cadena de Evidencia."
-            lead="Arquitectura unificada alrededor de un único Runtime PEP L7 determinista. Los modos de ejecución no son productos distintos: son el mismo motor viviendo en puntos distintos de su infraestructura."
+            title="1 Motor. 3 Formas de Ejecución. 4 Niveles Comerciales. 1 Consola. 1 Cadena de Evidencia."
+            lead="Arquitectura unificada alrededor de un único Runtime PEP L7 determinista con soporte para los cuatro tramos de monetización SaaS y GRC."
           />
 
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs mb-10 overflow-x-auto">
@@ -1195,7 +1173,7 @@ function TabAuditoriaPublica() {
               </div>
               <div className="text-slate-600">│</div>
               <div className="inline-block bg-slate-900 border border-slate-800 text-slate-300 px-6 py-2 rounded">
-                CONTROL PLANE ── saare_console ── EVIDENCE VAULT
+                CONTROL PLANE ── saare_console (Business GRC & Legal Shield)
               </div>
             </div>
           </div>
@@ -1235,7 +1213,7 @@ function TabAuditoriaPublica() {
                   <DataRow label="QUÉ CONTROLA" value="Llamadas a funciones y prompts" />
                   <DataRow label="DÓNDE EJECUTA" value="In-process (RAM compartida)" />
                   <DataRow label="CÓMO SE ACTUALIZA" value="Política firmada vía Control Plane" />
-                  <DataRow label="QUÉ COMPRA" value="Nodo Base o Nodo con Custodia" />
+                  <DataRow label="NIVEL COMERCIAL" value="Developer / Pro" />
                 </div>
               </div>
               <Link to="/dev/sdk" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES SDK →</Link>
@@ -1251,7 +1229,7 @@ function TabAuditoriaPublica() {
                   <DataRow label="QUÉ CONTROLA" value="Peticiones HTTP/REST L7" />
                   <DataRow label="DÓNDE EJECUTA" value="Borde del clúster / Gateway" />
                   <DataRow label="CÓMO SE ACTUALIZA" value="Política firmada vía Control Plane" />
-                  <DataRow label="QUÉ COMPRA" value="Nodo Base o Nodo con Custodia" />
+                  <DataRow label="NIVEL COMERCIAL" value="Developer / Pro o Business GRC" />
                 </div>
               </div>
               <Link to="/dev/proxy" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES PROXY →</Link>
@@ -1267,7 +1245,7 @@ function TabAuditoriaPublica() {
                   <DataRow label="QUÉ CONTROLA" value="Sockets locales y bus de mensajes" />
                   <DataRow label="DÓNDE EJECUTA" value="On-Premise / Air-Gapped" />
                   <DataRow label="CÓMO SE ACTUALIZA" value="Paquete firmado offline" />
-                  <DataRow label="QUÉ COMPRA" value="Nodo Soberano Enterprise" />
+                  <DataRow label="NIVEL COMERCIAL" value="Enterprise / Legal Shield" />
                 </div>
               </div>
               <Link to="/dev/daemon" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES DAEMON →</Link>
@@ -1395,8 +1373,8 @@ function TabAuditoriaPublica() {
             <div className="lg:sticky lg:top-32">
               <EvidenceChainPanel />
               <p className="mt-4 text-[11px] font-mono text-slate-500 leading-relaxed">
-                La custodia de evidencias está disponible desde el tramo Nodo con Custodia.
-                La verificación pública del Trust Anchor no requiere licencia.
+                La custodia avanzada de evidencias está disponible desde el tramo Business GRC.
+                La verificación pública del Trust Anchor (Free / Explorer) no requiere licencia.
               </p>
             </div>
           </div>
@@ -1525,90 +1503,16 @@ function TabAuditoriaPublica() {
         </div>
       </section>
 
-      {/* 15 · ESCALADO DE LICENCIAMIENTO CON ACCIÓN DIRECTA */}
+      {/* 15 · ESCALADO DE LICENCIAMIENTO / LOS 4 NIVELES DE MONETIZACIÓN */}
       <section id="licencias" className="border-b border-slate-800 bg-slate-950 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <SectionTitle
-            kicker="ESCALADO DE LICENCIAMIENTO"
-            title="El flujo económico de la plataforma"
-            lead="Cuatro líneas económicas principales. La expansión del cliente sigue el crecimiento de su parque de agentes y de su exigencia probatoria."
+            kicker="MODELO DE MONETIZACIÓN SAAS & GRC"
+            title="Los 4 Niveles de Gobierno y Cumplimiento S.A.A.R.E."
+            lead="Desde la verificación pública gratuita hasta la inmunidad pericial Enterprise con PKI propia y blindaje frente al EU AI Act."
           />
 
-          <div className="grid md:grid-cols-5 gap-3 mt-10 font-mono text-xs">
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
-              <div>
-                <div className="text-sky-400 font-bold">CONTROL</div>
-                <div className="text-white font-bold text-lg mt-2">149 € <span className="text-slate-500 text-xs">/mes</span></div>
-                <p className="text-[10px] text-slate-500 mt-2">Nodo Base. Contención L7 sin custodia.</p>
-              </div>
-              <button
-                onClick={() => saareCheckout("nodo-base")}
-                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
-              >
-                COMPRAR (149 €) 💳
-              </button>
-            </div>
-
-            <div className="bg-slate-900 border border-emerald-500/40 p-5 rounded-lg relative flex flex-col justify-between">
-              <div>
-                <div className="text-emerald-400 font-bold">CONTROL + CUSTODIA</div>
-                <div className="text-white font-bold text-lg mt-2">290 € <span className="text-slate-500 text-xs">/mes</span></div>
-                <p className="text-[10px] text-slate-500 mt-2">Sellado Ed25519 + Consola de cumplimiento.</p>
-              </div>
-              <button
-                onClick={() => saareCheckout("nodo-custodia")}
-                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
-              >
-                COMPRAR (290 €) 💳
-              </button>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
-              <div>
-                <div className="text-amber-400 font-bold">ESCALA DE EVIDENCIA</div>
-                <div className="text-white font-bold text-lg mt-2">120 € <span className="text-slate-500 text-xs">/mes</span></div>
-                <p className="text-[10px] text-slate-500 mt-2">Paquetes de 1.000 sellos eIDAS.</p>
-              </div>
-              <button
-                onClick={() => saareCheckout("evidencias")}
-                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
-              >
-                COMPRAR (120 €) 💳
-              </button>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg relative flex flex-col justify-between">
-              <div>
-                <div className="text-sky-400 font-bold">FORENSE</div>
-                <div className="text-white font-bold text-lg mt-2">1.200 € <span className="text-slate-500 text-xs">/año</span></div>
-                <p className="text-[10px] text-slate-500 mt-2">Estación pericial + 300 €/dossier.</p>
-              </div>
-              <button
-                onClick={() => saareCheckout("forense")}
-                className="mt-4 block w-full text-center px-3 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded hover:bg-emerald-400 transition cursor-pointer"
-              >
-                CONTRATAR (1.200 €) 💳
-              </button>
-            </div>
-
-            <div className="bg-slate-900 border border-purple-500/40 p-5 rounded-lg flex flex-col justify-between">
-              <div>
-                <div className="text-purple-400 font-bold">ENTERPRISE</div>
-                <div className="text-white font-bold text-lg mt-2">3.500 € <span className="text-slate-500 text-xs">/mes</span></div>
-                <p className="text-[10px] text-slate-500 mt-2">VPC / Air-Gapped con HSM y SLA.</p>
-              </div>
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 block w-full text-center px-3 py-2 bg-sky-500 text-black font-bold text-[10px] rounded hover:bg-sky-400 transition"
-              >
-                PROPUESTA ↗
-              </a>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+          <div className="grid md:grid-cols-4 gap-6 mt-12">
             {CATALOGO.map((item) => (
               <CatalogCard key={item.id} item={item} />
             ))}
@@ -1862,7 +1766,7 @@ function VistaConsola({ vistaId }) {
           {tramo && (
             <div className="bg-slate-900 border border-emerald-500/40 p-8 rounded-xl font-mono text-xs flex flex-col justify-between">
               <div>
-                <span className="text-[10px] text-emerald-400 font-bold tracking-widest">TRAMO RECOMENDADO</span>
+                <span className="text-[10px] text-emerald-400 font-bold tracking-widest">NIVEL COMERCIAL RECOMENDADO</span>
                 <div className="text-white font-bold text-base mt-2">{tramo.nombre}</div>
                 <div className="text-2xl font-bold text-white mt-3">
                   {tramo.precio} <span className="text-xs font-normal text-slate-400">{tramo.sufijo}</span>
@@ -1872,7 +1776,7 @@ function VistaConsola({ vistaId }) {
               <div className="mt-6 space-y-3">
                 <CtaButton ctaText={v.tramoCta} item={tramo} />
                 <Link to={tramo.path} className="block text-center text-[10px] text-slate-500 hover:text-slate-300">
-                  ver ficha completa del tramo →
+                  ver ficha completa del nivel →
                 </Link>
               </div>
             </div>
@@ -1982,9 +1886,9 @@ def send_payment(amount, iban):
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo SDK se licencia como <span className="text-white font-bold">Nodo Base</span> o <span className="text-white font-bold">Nodo con Custodia</span>.</div>
+          <div className="text-slate-400">El modo SDK se licencia bajo el nivel <span className="text-white font-bold">Developer / Pro</span> o superior.</div>
           <div className="flex gap-3">
-            <Link to="/licencias/nodo-base" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER NODO BASE →</Link>
+            <Link to="/licencias/developer-pro" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER DEVELOPER / PRO →</Link>
             <Link to="/trial" className="px-5 py-3 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition">PROBAR SDK ↗</Link>
           </div>
         </div>
@@ -2038,9 +1942,9 @@ function TabProxy() {
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo Proxy se licencia como <span className="text-white font-bold">Nodo Base</span>, <span className="text-white font-bold">Nodo con Custodia</span> o <span className="text-white font-bold">Enterprise</span>.</div>
+          <div className="text-slate-400">El modo Proxy se licencia bajo <span className="text-white font-bold">Developer / Pro</span> o <span className="text-white font-bold">Business GRC</span>.</div>
           <div className="flex gap-3">
-            <Link to="/licencias/nodo-custodia" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER NODO CON CUSTODIA →</Link>
+            <Link to="/licencias/business-grc" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER BUSINESS GRC →</Link>
             <Link to="/trial" className="px-5 py-3 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition">PROBAR PROXY ↗</Link>
           </div>
         </div>
@@ -2101,9 +2005,9 @@ saare-cli status
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo Daemon se licencia como <span className="text-white font-bold">Nodo Soberano Enterprise</span>, con contrato marco y SLA.</div>
+          <div className="text-slate-400">El modo Daemon se licencia bajo el nivel <span className="text-white font-bold">Enterprise / Legal Shield</span>, con contrato marco y SLA.</div>
           <div className="flex gap-3">
-            <Link to="/licencias/nodo-enterprise" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER ENTERPRISE →</Link>
+            <Link to="/licencias/enterprise-shield" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER LEGAL SHIELD →</Link>
             <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-5 py-3 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition">HABLAR CON UN ARQUITECTO ↗</a>
           </div>
         </div>
@@ -2114,7 +2018,7 @@ saare-cli status
 
 function TabVentas() {
   useSEO("canal");
-  const tramo = CATALOGO.find((c) => c.id === "canal");
+  const tramo = CATALOGO.find((c) => c.id === "business-grc");
   return (
     <main>
       <PageHeader
@@ -2168,12 +2072,12 @@ function TabVentas() {
           </div>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800 pt-6">
             <div>
-              <div className="text-2xl font-bold text-white">{tramo.precio} <span className="text-xs font-normal text-slate-400">{tramo.sufijo}</span></div>
-              <div className="text-[10px] text-slate-500 mt-1">{tramo.unidad}</div>
+              <div className="text-2xl font-bold text-white">Desde 450 € <span className="text-xs font-normal text-slate-400">/cliente/año</span></div>
+              <div className="text-[10px] text-slate-500 mt-1">Por cliente gestionado multi-tenant</div>
             </div>
             <div className="flex gap-3">
-              <Link to={tramo.path} className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER FICHA COMPLETA →</Link>
-              <CtaButton ctaText={tramo.cta} item={tramo} full={false} />
+              <Link to="/licencias/business-grc" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER GRC CONSOLE →</Link>
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-5 py-3 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition">ACTIVAR PROGRAMA ↗</a>
             </div>
           </div>
         </div>
@@ -2295,7 +2199,7 @@ function CorporatePage({ variant }) {
       blocks: [
         ["PRIVACIDAD POR DISEÑO", "El motor procesa payloads en memoria volátil (mlock) y los zeroiza tras la firma. La telemetría saliente es numérica y nunca contiene PII ni contenido de conversaciones."],
         ["ENCARGO DE TRATAMIENTO", "En los tramos con custodia, la evidencia almacena digests criptográficos, no contenido. El cliente conserva la condición de responsable del tratamiento."],
-        ["SLA ZERO-DISK", "Ningún payload se persiste en disco en ningún modo de ejecución. Este compromiso forma parte del contrato de los tramos con custodia y Enterprise."],
+        ["SLA ZERO-DISK", "Ningún payload se persiste en disco en ningún modo de ejecución. Este compromiso forma parte del contrato de los tramos Business GRC y Legal Shield."],
         ["CONTACTO LEGAL", `${CONTACT_EMAIL} · ${CONTACT_PHONE}`],
       ],
     },
@@ -2334,8 +2238,8 @@ function Footer() {
           </div>
           <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
             Infraestructura de autorización ex-ante y gobernanza runtime L7.
-            Un solo producto mental. Siete puertas comerciales. Cuatro familias
-            de software. Tres modos de ejecución. Una consola. Un motor.
+            Un solo producto mental. Cuatro niveles comerciales de monetización.
+            Tres modos de ejecución. Una consola. Un motor.
           </p>
         </div>
         <div>

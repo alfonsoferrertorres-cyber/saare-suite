@@ -1,10 +1,7 @@
-// Eliminado: import crypto from "crypto"
-
+// control-plane/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0
 export class TenantManager {
   constructor(env) {
-    // Inyectamos las variables de entorno para acceder a Cloudflare KV / D1
     this.env = env;
-    // Mantenemos el Map como una caché L1 rápida en memoria (efímera)
     this.cache = new Map(); 
   }
 
@@ -14,16 +11,13 @@ export class TenantManager {
       name,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
-      // Adaptado para usar almacenamiento en la nube (ej. Cloudflare R2 o KV)
       vaultUri: `kv://saare-vault/tenants/${tenantId}_vault.jsonld`,
       quota: config.quota || 10000,
       activeScenarios: config.scenarios || ["banca_dora_pci_dss"]
     };
 
-    // Guardar en caché L1
     this.cache.set(tenantId, tenantData);
 
-    // Persistencia real en Cloudflare KV (Sincronizado con StripeWebhook)
     if (this.env && this.env.SAARE_VAULT_KV) {
       await this.env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantData));
     }
@@ -32,18 +26,26 @@ export class TenantManager {
   }
 
   async getTenant(tenantId) {
-    // 1. Intentar recuperación rápida desde caché en memoria
     if (this.cache.has(tenantId)) {
       return this.cache.get(tenantId);
     }
 
-    // 2. Si no está en memoria, consultar la base de datos persistente (KV)
     if (this.env && this.env.SAARE_VAULT_KV) {
       const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${tenantId}`, "json");
       if (storedTenant) {
-        this.cache.set(tenantId, storedTenant); // Repoblar caché
+        this.cache.set(tenantId, storedTenant);
         return storedTenant;
       }
+    }
+
+    // Tenant por defecto si opera en modo público/evaluación
+    if (tenantId === "ENTERPRISE" || tenantId === "DEMO_TENANT") {
+      return {
+        tenantId,
+        name: "Organización Enterprise",
+        status: "ACTIVE",
+        activeScenarios: ["banca_dora_pci_dss"]
+      };
     }
 
     throw new Error(`[SECURITY_ALERT] Isolation Violation: Tenant "${tenantId}" no existe o fue revocado.`);

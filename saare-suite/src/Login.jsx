@@ -182,7 +182,7 @@ export default function Login({ onLoginSuccess }) {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer"
                 >
                   {showPassword ? "OCULTAR" : "MOSTRAR"}
                 </button>
@@ -215,7 +215,7 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full py-3.5 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition disabled:opacity-60"
+              className="w-full py-3.5 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition disabled:opacity-60 cursor-pointer"
             >
               {status === "loading" ? "AUTENTICANDO..." : "ACCEDER A LA CONSOLA"}
             </button>

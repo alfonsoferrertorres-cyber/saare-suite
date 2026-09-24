@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API_BASE_URL, saareFetch } from '../utils/api';
+import { API_BASE_URL, saareFetch } from './utils/api';
 
 export default function GovernanceToolbar({
   onVerifySignature,
@@ -74,50 +74,50 @@ export default function GovernanceToolbar({
   };
 
   return (
-    <section className="p-6 bg-saare-surface border border-saare-line-hi rounded-xl my-8">
-      <h3 className="text-xs font-mono font-bold text-saare-accent uppercase tracking-wider mb-4">
+    <section className="p-6 bg-slate-900 border border-slate-800 rounded-xl my-8 font-mono text-xs">
+      <h3 className="text-xs font-bold text-sky-400 uppercase tracking-wider mb-4">
         PANEL DE GOBERNANZA & CUMPLIMIENTO (EU AI ACT / DORA / ISO 27037)
       </h3>
 
       <div className="flex gap-3 flex-wrap">
         <button
           onClick={handleVerify}
-          className="px-4 py-2.5 bg-saare-accent text-black font-mono font-bold text-xs rounded hover:opacity-90 transition"
+          className="px-4 py-2.5 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition cursor-pointer"
         >
           🔍 Verificar Firma Notarial SAARE (Ed25519)
         </button>
 
         <button
           onClick={handleExportCustodyJSON}
-          className="px-4 py-2.5 bg-saare-surface-2 text-saare-ink border border-saare-line-hi font-mono text-xs rounded hover:bg-saare-line transition"
+          className="px-4 py-2.5 bg-slate-950 text-slate-200 border border-slate-700 rounded hover:bg-slate-800 transition cursor-pointer"
         >
           📄 Exportar Cadena de Custodia (JSON)
         </button>
 
         <button
           onClick={() => triggerAction('Ataque inyectado bloqueado en Edge. 0 tokens consumidos.', onSimulateBlock)}
-          className="px-4 py-2.5 bg-saare-seal text-black font-mono font-bold text-xs rounded hover:opacity-90 transition"
+          className="px-4 py-2.5 bg-amber-400 text-black font-bold rounded hover:bg-amber-300 transition cursor-pointer"
         >
           ⚡ Simular Bloqueo Ex-Ante
         </button>
 
         <button
           onClick={handleIssueAuditToken}
-          className="px-4 py-2.5 bg-saare-allow text-black font-mono font-bold text-xs rounded hover:opacity-90 transition"
+          className="px-4 py-2.5 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition cursor-pointer"
         >
           🛡️ Generar Token de Auditoría
         </button>
 
         <button
           onClick={() => triggerAction('Descargando Teaser Técnico y Matriz de Invariantes...', onDownloadTeaser)}
-          className="px-4 py-2.5 bg-saare-bg text-saare-ink-dim border border-saare-line-hi font-mono text-xs rounded hover:text-white transition"
+          className="px-4 py-2.5 bg-slate-950 text-slate-400 border border-slate-700 rounded hover:text-white transition cursor-pointer"
         >
           📥 Descargar Teaser Técnico
         </button>
       </div>
 
       {status && (
-        <div className="mt-4 p-3 bg-saare-bg border-l-4 border-saare-accent text-saare-accent text-xs font-mono font-semibold rounded-r">
+        <div className="mt-4 p-3 bg-slate-950 border-l-4 border-sky-400 text-sky-300 text-xs font-semibold rounded-r">
           ✅ {status}
         </div>
       )}

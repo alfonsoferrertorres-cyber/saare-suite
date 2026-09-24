@@ -218,7 +218,6 @@ export default {
     // --- SANITIZACIÓN Y NORMALIZACIÓN DE RUTAS DUPICADAS ---
     let normalizedPath = url.pathname.replace(/\/$/, '') || '/';
     
-    // Elimina duplicados de prefijos generados por concatenación
     while (normalizedPath.includes('/api/v1/api/v1')) {
       normalizedPath = normalizedPath.replace('/api/v1/api/v1', '/api/v1');
     }

@@ -9,32 +9,32 @@ export const Navbar: React.FC = () => {
       id: 'auditoria-publica',
       title: 'AUDITORÍA PÚBLICA',
       subtitle: 'VERIFICACIÓN DE SELLOS & EVIDENCIAS',
-      path: '/public-audit', // o la ruta que uses para la vista pública
+      path: '/',
       highlight: true
     },
     {
       id: 'forense',
       title: 'FORENSE',
       subtitle: 'EVIDENCE VAULT',
-      path: '/forensic'
+      path: '/forense'
     },
     {
-      id: 'pymes',
-      title: 'PYMES GOBERNANZA',
-      subtitle: 'KITS & COMPLIANCE RÁPIDO',
-      path: '/pymes'
+      id: 'cumplimiento',
+      title: 'CUMPLIMIENTO L7',
+      subtitle: 'BOARD · GRC · CISO',
+      path: '/producto/cumplimiento'
     },
     {
       id: 'desarrolladores',
       title: 'DESARROLLADORES',
       subtitle: 'SDK · PROXY · DAEMON',
-      path: '/developers'
+      path: '/dev'
     },
     {
       id: 'canal',
       title: 'CANAL',
       subtitle: 'PARTNERS Y KIT CONSULTING',
-      path: '/channel'
+      path: '/ventas'
     }
   ];
 
@@ -49,10 +49,10 @@ export const Navbar: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <a href="https://console.saare.es" target="_blank" rel="noreferrer" className="text-xs font-bold text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-700 bg-gray-900/50">
+          <Link to="/login" className="text-xs font-bold text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-700 bg-gray-900/50">
             ACCESO SOC ↗
-          </a>
-          <a href="/enterprise" className="text-xs font-extrabold text-emerald-400 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 px-3 py-1.5 rounded">
+          </Link>
+          <a href="https://wa.me/34633886506?text=Solicito%20propuesta%20Enterprise%20SAARE%20SGP%201.0" target="_blank" rel="noreferrer" className="text-xs font-extrabold text-emerald-400 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 px-3 py-1.5 rounded">
             ENTERPRISE ↗
           </a>
         </div>
