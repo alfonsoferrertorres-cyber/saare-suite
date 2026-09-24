@@ -1,16 +1,7 @@
 /* ==========================================================================
-   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE & GRC SAAS MONETIZATION
+   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE & GRC SAAS MONETIZATION (SINGLE PAGE)
    ========================================================================== */
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  BrowserRouter,
-  Link,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
-import { saareFetch, saareCheckout } from "./utils/api";
-import Login from "./Login";
+import React, { useState } from "react";
 
 /* ==========================================================================
    CONSTANTES GLOBALES, REGISTROS CRIPTOGRÁFICOS Y CONFIGURACIÓN SGP 1.0
@@ -25,21 +16,10 @@ const WHATSAPP_URL =
 
 const METRIC_LABELS = {
   DEMO: { text: "DEMO", cls: "bg-slate-500/10 border-slate-500/40 text-slate-400" },
-  BENCHMARK: { text: "BENCHMARK", cls: "bg-sky-500/10 border-sky-500/40 text-sky-300" },
-  REFERENCE: { text: "REFERENCE", cls: "bg-amber-500/10 border-amber-500/40 text-amber-300" },
-  LIVE: { text: "LIVE", cls: "bg-emerald-500/10 border-emerald-500/40 text-emerald-300" },
+  BENCHMARK: { text: "BENCHMARK", cls: "bg-saare-accent/10 border-saare-accent/40 text-saare-accent" },
+  REFERENCE: { text: "REFERENCE", cls: "bg-saare-seal/10 border-saare-seal/40 text-saare-seal" },
+  LIVE: { text: "LIVE", cls: "bg-saare-allow/10 border-saare-allow/40 text-saare-allow" },
 };
-
-/* NAVEGACIÓN AGRUPADA */
-const NAV = [
-  { id: "auditoria", label: "1. AUDITORÍA PÚBLICA", description: "Trust Layer y Verificador", path: "/" },
-  { id: "cumplimiento", label: "2. CUMPLIMIENTO L7", description: "Board · GRC · CISO", path: "/producto/cumplimiento" },
-  { id: "forense", label: "3. LEGAL-FORENSE", description: "Evidence Vault", path: "/forense" },
-  { id: "ventas", label: "4. AGENTES VENTA", description: "Partners · Canal", path: "/ventas" },
-  { id: "sdk", label: "5. MODO SDK", description: "LabEngine", path: "/sdk" },
-  { id: "proxy", label: "6. MODO PROXY", description: "PerimeterShield", path: "/proxy" },
-  { id: "daemon", label: "7. MODO DAEMON", description: "On-Premise", path: "/daemon" },
-];
 
 const DIMENSIONS = [
   ["DIM 01", "IDENTIDAD", "Quién solicita la acción. Verificación asimétrica de firmas Ed25519 del agente o token JWT del sistema originador."],
@@ -118,20 +98,14 @@ const PARTNER_ENTREGABLES = [
   ["ENTREGABLE 03", "Expediente de evidencia sellada", "Muestra de la cadena de custodia del cliente: raíz Merkle, firma Ed25519 y sello RFC 3161."],
 ];
 
-/* ==========================================================================
-   CATÁLOGO DE LICENCIAS ALINEADO A LOS 4 NIVELES DE MONETIZACIÓN SAAS / GRC
-   ========================================================================== */
 const CATALOGO = [
   {
     id: "free-explorer",
-    priceId: "price_free_explorer_0eur",
-    path: "/licencias/free-explorer",
     grupo: "VERIFICACIÓN",
     etiqueta: "FREE / EXPLORER",
     nombre: "Verificador Público (Trust Layer)",
     claim: "Verificación puntual de hashes y veredictos existentes.",
     precio: "0 €",
-    priceAmount: 0,
     sufijo: "/gratuito",
     unidad: "Acceso público ilimitado",
     comprador: "Auditores, examinadores y usuarios web",
@@ -140,20 +114,16 @@ const CATALOGO = [
     noIncluye: ["Consola GRC corporativa", "SDK perimetral"],
     ideal: ["Auditores externos", "Examinadores independientes"],
     cta: "USAR VERIFICADOR PÚBLICO ↗",
-    type: "link",
-    pathTarget: "/#trust-anchor",
+    href: "#trust-anchor",
     featured: false,
   },
   {
     id: "developer-pro",
-    priceId: "price_1UHuuwFlwFW4ifPS66wDvS4n",
-    path: "/licencias/developer-pro",
     grupo: "RUNTIME EDGE",
     etiqueta: "DEVELOPER / PRO",
     nombre: "SDK & Runtime Edge",
     claim: "Control L7 con Token Binding y límites de inferencia.",
     precio: "149 €",
-    priceAmount: 149,
     sufijo: "/mes + consumo",
     unidad: "Por nodo / SDK integrado",
     comprador: "Startups y desarrolladores de agentes IA",
@@ -161,20 +131,17 @@ const CATALOGO = [
     features: ["Sensor L7 y LabEngine SDK nativo", "Inyección de Token Binding X.509"],
     noIncluye: ["Informes PDF automatizados EU AI Act"],
     ideal: ["Desarrolladores de agentes autónomos"],
-    cta: "CONTRATAR DEVELOPER (149 €/mes) 💳",
-    type: "checkout",
+    cta: "SOLICITAR ACCESO DEVELOPER ↗",
+    href: WHATSAPP_URL,
     featured: false,
   },
   {
     id: "business-grc",
-    priceId: "price_1UHuypFlwFW4ifPSyDz1vT47",
-    path: "/licencias/business-grc",
     grupo: "SAAS & GRC",
     etiqueta: "BUSINESS GRC",
     nombre: "Business GRC Console (Todo en Uno)",
     claim: "Generación automatizada de informes EU AI Act y blindaje.",
     precio: "290 €",
-    priceAmount: 290,
     sufijo: "/mes",
     unidad: "Por tenant / organización",
     comprador: "Pymes tecnológicas y empresas con LLMs internos",
@@ -182,20 +149,17 @@ const CATALOGO = [
     features: ["Acceso completo a SAARE Console (4 superficies RBAC)", "Generación automática de informes PDF EU AI Act"],
     noIncluye: ["HSM corporativo dedicado"],
     ideal: ["CISO y DPO de pymes tecnológicas"],
-    cta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
-    type: "checkout",
+    cta: "SOLICITAR BUSINESS GRC ↗",
+    href: WHATSAPP_URL,
     featured: true,
   },
   {
     id: "enterprise-shield",
-    priceId: "enterprise-shield",
-    path: "/licencias/enterprise-shield",
     grupo: "ENTERPRISE",
     etiqueta: "ENTERPRISE / LEGAL SHIELD",
     nombre: "Enterprise / Legal Shield (Custom PKI)",
     claim: "Inmunidad pericial, PKI propia y acuerdos SLA.",
     precio: "3.500 €",
-    priceAmount: 3500,
     sufijo: "/mes",
     unidad: "Por nodo Enterprise con HSM",
     comprador: "Corporaciones, aseguradoras y despachos jurídicos",
@@ -204,19 +168,16 @@ const CATALOGO = [
     noIncluye: [],
     ideal: ["Corporaciones reguladas y banca"],
     cta: "SOLICITAR PROPUESTA ENTERPRISE ↗",
-    type: "contact",
+    href: WHATSAPP_URL,
     featured: false,
   },
 ];
 
-const VISTAS_CONSOLA = {
-  executive: {
+const VISTAS_CONSOLA = [
+  {
     id: "executive",
     badge: "VISTA BOARD / EXECUTIVE",
     titular: "Gobernanza cuantitativa y blindaje de responsabilidad",
-    pageTitle: "Cuánta responsabilidad está asumiendo su automatización",
-    pageDesc:
-      "Cuadro de mando para dirección: riesgo operativo acumulado, consumo por área, continuidad de negocio y exposición legal derivada de cada agente autónomo en producción. Convierte el gobierno de IA en una cifra que el consejo puede evaluar.",
     pregunta: "¿Qué riesgo está asumiendo el negocio?",
     owner: "CEO · Junta directiva · Dirección jurídica",
     rol: "BOARD_EXECUTIVE_LEVEL_1",
@@ -226,93 +187,50 @@ const VISTAS_CONSOLA = {
       ["AGENTES EN PRODUCCIÓN", "37 trazados", "DEMO"],
       ["EXPOSICIÓN BAJO DORA", "MITIGADA", "DEMO"],
     ],
-    seccionMatriz: "OBLIGACIÓN DE CONSEJO",
-    tituloMatriz: "Qué obligación cubre y qué puede demostrar",
-    leadMatriz:
-      "Cada fila es una obligación que recae sobre la dirección, el control que la atiende y el documento que puede entregar ante un consejo, aseguradora o inversor.",
     matriz: [
-      ["EU AI Act art. 14", "Supervisión humana efectiva", "Cambio de política en vivo sin reiniciar sistemas", "Registro de cambio de política firmado"],
-      ["EU AI Act art. 15", "Precisión y robustez del sistema", "Contención fail-closed y tolerancia estructural", "Veredicto firmado con su latencia"],
-      ["DORA art. 5", "Gobernanza y responsabilidad de la dirección", "Políticas locales firmadas sin dependencia de red", "Registro técnico de autonomía de nodo"],
-      ["DORA art. 9", "Protección y prevención de incidentes TIC", "Intercepción ex-ante contra vectores L7", "Registro de intercepción sellado"],
-      ["NIS 2 art. 20", "Responsabilidad de la alta dirección", "Telemetría determinista sin contenido ni PII", "Contadores anónimos firmados"],
+      ["EU AI Act art. 14", "Supervisión humana efectiva", "Cambio de política en vivo sin reiniciar sistemas", "Registro de cambio firmado"],
+      ["EU AI Act art. 15", "Precisión y robustez del sistema", "Contención fail-closed y tolerancia estructural", "Veredicto firmado con latencia"],
+      ["DORA art. 5", "Gobernanza y responsabilidad", "Políticas locales firmadas sin dependencia de red", "Registro de autonomía de nodo"],
+      ["DORA art. 9", "Protección de incidentes TIC", "Intercepción ex-ante contra vectores L7", "Registro de intercepción sellado"],
+      ["NIS 2 art. 20", "Responsabilidad de alta dirección", "Telemetría determinista sin contenido ni PII", "Contadores anónimos firmados"],
     ],
-    seccionInventario: "PARQUE AUTORIZADO",
-    tituloInventario: "Qué agentes están bajo control hoy",
-    leadInventario:
-      "El consejo no necesita ver la infraestructura: necesita saber cuántos agentes operan, bajo qué política y con qué resultado.",
     inventario: [
       ["agent-treasury-01", "Autónomo financiero", "Core bancario", "scope: pagos", "ALLOW"],
       ["agent-fraud-scoring-02", "Autónomo de riesgo", "VPC privada", "scope: scoring", "REVIEW"],
       ["agent-reporting-cfo", "Asistente de dirección", "App interna", "scope: reporting", "ALLOW"],
     ],
-    superficieSeccion: "CUADRO DE MANDO",
-    superficieTitulo: "Consolidado de nivel C",
-    superficie: [
-      ["PERIODO", "Últimos 30 días"],
-      ["AHORRO POR COMPRESIÓN", "Context Slicing activo"],
-      ["CERTIFICADO CORPORATIVO", "Exportable en 1 clic"],
-      ["GASTO POR DEPARTAMENTO", "Trazado por tipo de modelo"],
-      ["CONTINUIDAD DE NEGOCIO", "Sin interrupción registrada"],
-    ],
-    tramoRecomendado: "business-grc",
-    tramoCta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
   },
-  grc: {
+  {
     id: "grc",
     badge: "VISTA GRC / PRIVACIDAD",
     titular: "La prueba llegó antes que el litigio",
-    pageTitle: "La prueba llegó antes que el litigio",
-    pageDesc:
-      "Matriz de trazabilidad normativa contra el EU AI Act, DORA, NIS 2, RGPD e ISO/IEC 27037, con exportación de Proof Bundles firmados y sellados con marca de tiempo cualificada.",
     pregunta: "¿Qué controles puedo demostrar?",
     owner: "CISO · DPO · Auditoría externa",
     rol: "DPO_GRC_LEVEL_2",
     metricas: [
-      ["ENMASCARAMIENTO PII", "DNI · IBAN · Tarjetas · PHI", "REFERENCE"],
+      ["ENMASCARAMIENTO PII", "DNI · IBAN · PHI", "REFERENCE"],
       ["CLASIFICACIÓN AI ACT", "Inaceptable · Alto · Limitado", "REFERENCE"],
       ["RGPD ART. 32", "Arquitectura Zero-Disk", "REFERENCE"],
       ["REGISTRO EIPD", "Inmutable y firmado", "REFERENCE"],
     ],
-    seccionMatriz: "TRAZABILIDAD NORMATIVA",
-    tituloMatriz: "Matriz de requisito a veredicto",
-    leadMatriz:
-      "De la norma al veredicto, sin traducción manual. Cada fila mapea una obligación a un control ejecutable y a la evidencia que genera.",
     matriz: [
-      ["EU AI Act art. 10", "Gobernanza de datos de contexto", "Generalización y seudonimización ex-ante", "Registro de política de datos aplicada"],
-      ["EU AI Act art. 12", "Registro automático de eventos", "Registro en memoria sin violar minimización", "Huella criptográfica del veredicto"],
-      ["RGPD art. 5", "Minimización de datos personales", "Zeroización tras la firma, sin persistencia", "Digest HMAC-SHA256 del payload"],
-      ["RGPD art. 32", "Seguridad y cifrado del tratamiento", "Sanitización en RAM y arquitectura Zero-Disk", "Registro de no exfiltración"],
-      ["ISO/IEC 27037", "Identificación de evidencia digital", "Cadena de Merkle y firma asimétrica", "Dossier forense verificable offline"],
-      ["Arts. 281 y 326 LEC", "Evidencia documental verificable", "Sellado cualificado y cadena de custodia", "Expediente exportable para revisión pericial"],
+      ["EU AI Act art. 10", "Gobernanza de datos", "Generalización y seudonimización ex-ante", "Registro de política aplicada"],
+      ["EU AI Act art. 12", "Registro automático de eventos", "Registro en memoria sin violar minimización", "Huella criptográfica"],
+      ["RGPD art. 5", "Minimización de datos", "Zeroización tras la firma, sin persistencia", "Digest HMAC-SHA256"],
+      ["RGPD art. 32", "Seguridad del tratamiento", "Sanitización en RAM y arquitectura Zero-Disk", "Registro de no exfiltración"],
+      ["ISO/IEC 27037", "Evidencia digital", "Cadena de Merkle y firma asimétrica", "Dossier forense offline"],
+      ["Arts. 281 y 326 LEC", "Prueba documental", "Sellado cualificado y cadena de custodia", "Expediente para revisión pericial"],
     ],
-    seccionInventario: "EXPEDIENTES BAJO CUSTODIA",
-    tituloInventario: "Evidencias selladas y verificables",
-    leadInventario: "Cada entrada es un expediente con su cadena de custodia completa.",
     inventario: [
       ["VRD-2026-0917-88A1F", "Veredicto DENY", "policy: POL-EU-AIACT-ART15", "RFC 3161", "VERIFIED"],
       ["VRD-2026-0916-4C09B", "Veredicto ALLOW", "policy: POL-LOG-IMMUTABLE", "RFC 3161", "VERIFIED"],
       ["EIPD-2026-014", "Evaluación de impacto", "policy: POL-PII-EGRESS", "Firma Ed25519", "VERIFIED"],
     ],
-    superficieSeccion: "SUPERFICIE DE AUDITORÍA",
-    superficieTitulo: "Estado del expediente",
-    superficie: [
-      ["POLICY_STATE", "SIGNED_BY_HSM_KEY_0x9F (v2.4.1)"],
-      ["COBERTURA NORMATIVA", "94 % mapeados · DEMO"],
-      ["PROOF BUNDLES EMITIDOS", "1.284 este trimestre · DEMO"],
-      ["ÚLTIMA VERIFICACIÓN EXTERNA", "Sin incidencias"],
-      ["PENDIENTE DE CIERRE", "2 requisitos en revisión"],
-    ],
-    tramoRecomendado: "business-grc",
-    tramoCta: "CONTRATAR BUSINESS GRC (290 €/mes) 💳",
   },
-  cyber: {
+  {
     id: "cyber",
     badge: "VISTA CISO / RESILIENCIA",
     titular: "Ve cada intercepción mientras ocurre",
-    pageTitle: "Ve cada intercepción mientras ocurre",
-    pageDesc:
-      "Monitorización síncrona de intercepciones de capa 7: inyección de prompt, fuga de PII y vectores del OWASP LLM Top 10, con inspección de cada veredicto y su latencia.",
     pregunta: "¿Qué está bloqueando el motor ahora?",
     owner: "SOC · SecOps · Threat hunters",
     rol: "CISO_SECOPS_LEVEL_3",
@@ -322,45 +240,23 @@ const VISTAS_CONSOLA = {
       ["ESTADO FAIL-CLOSED", "100 % activo", "REFERENCE"],
       ["LATENCIA DE APLICACIÓN", "1,18 ms", "BENCHMARK"],
     ],
-    seccionMatriz: "VECTORES NEUTRALIZADOS",
-    tituloMatriz: "Contención por vector de ataque",
-    leadMatriz:
-      "Cada fila es un vector del OWASP LLM Top 10, el mecanismo determinista que lo neutraliza y la latencia medida en banco de pruebas.",
     matriz: [
-      ["LLM01 · Prompt Injection", "Manipulación directa del modelo", "Separación estricta de roles a nivel sintáctico", "0,8 ms · BENCHMARK"],
+      ["LLM01 · Prompt Injection", "Manipulación directa del modelo", "Separación estricta de roles sintácticos", "0,8 ms · BENCHMARK"],
       ["LLM02 · Insecure Output", "Salida no validada hacia sistemas", "Validación de integridad dicotómica", "1,4 ms · BENCHMARK"],
       ["LLM06 · Sensitive Info", "Exfiltración de datos sensibles", "Sanitización k-anónima in-RAM", "1,2 ms · BENCHMARK"],
       ["LLM08 · Excessive Agency", "Acciones fuera de política", "Puerta de ejecución ex-ante", "0,4 ms · BENCHMARK"],
       ["LLM10 · Unbounded Consumption", "Consumo ilimitado de recursos", "Context Slicing y umbral determinista", "1,1 ms · BENCHMARK"],
     ],
-    seccionInventario: "TRÁFICO INTERCEPTADO",
-    tituloInventario: "Intercepciones en las últimas 24 horas",
-    leadInventario:
-      "Cada línea es una intercepción con su vector, su nodo de origen y su resultado. La telemetría es numérica: nunca contiene el texto ni los datos personales.",
     inventario: [
       ["10:42:07.118", "node-proxy-ingress-01", "LLM01 · Inyección directa", "0,8 ms", "DENY"],
       ["10:41:52.004", "node-sdk-payment-api", "LLM06 · Fuga de PII", "1,2 ms", "DENY"],
       ["10:41:19.771", "node-daemon-finance", "LLM08 · Agencia excesiva", "0,4 ms", "DENY"],
     ],
-    superficieSeccion: "TELEMETRÍA DE BORDE",
-    superficieTitulo: "Estado del motor en vivo",
-    superficie: [
-      ["NODE_STATUS", "ONLINE (0,84 ms · BENCHMARK)"],
-      ["INTERCEPCIONES 24 H", "4.891 bloqueadas · DEMO"],
-      ["VECTORES ACTIVOS", "5 del OWASP LLM Top 10"],
-      ["CONMUTACIÓN FAIL-CLOSED", "Instantánea, sin reinicio"],
-      ["PUNTOS CIEGOS DETECTADOS", "0"],
-    ],
-    tramoRecomendado: "developer-pro",
-    tramoCta: "CONTRATAR DEVELOPER / PRO (149 €/mes) 💳",
   },
-  forense: {
+  {
     id: "forense",
     badge: "VISTA FORENSE / PERICIAL",
     titular: "Verifique la evidencia sin confiar en nosotros",
-    pageTitle: "Verifique la evidencia sin confiar en nosotros",
-    pageDesc:
-      "Estación pericial independiente: bóveda ciega de evidencias, validación Ed25519 contra la clave pública del nodo y exportación de dossier procesal conforme a los Arts. 281 y 326 LEC e ISO/IEC 27037.",
     pregunta: "¿Puedo verificar la evidencia independientemente?",
     owner: "Peritos · Despachos · Departamentos de fraude",
     rol: "FORENSIC_EXTERNAL_LEVEL_4",
@@ -370,98 +266,22 @@ const VISTAS_CONSOLA = {
       ["BÓVEDA", "Ciega: sin acceso al contenido", "REFERENCE"],
       ["VALOR PROCESAL", "Arts. 281 / 326 LEC", "REFERENCE"],
     ],
-    seccionMatriz: "MARCO PROCESAL",
-    tituloMatriz: "De la evidencia técnica a la prueba en sala",
-    leadMatriz:
-      "Cada fila conecta un requisito procesal con el mecanismo criptográfico que lo satisface y el artefacto que el perito puede ratificar.",
     matriz: [
-      ["Art. 326 LEC", "Reconocimiento de documentos privados", "Dossier firmado y sellado con marca cualificada", "Expediente exportable verificable"],
-      ["Art. 299 LEC", "Valoración de la prueba pericial", "Verificación independiente por tercero cualificado", "Informe pericial sobre la cadena"],
-      ["ISO/IEC 27037", "Gestión de evidencia digital", "Identificación, recolección y preservación selladas", "Cadena de custodia documentada"],
-      ["eIDAS (Reg. 910/2014)", "Sello de tiempo cualificado", "Marcado RFC 3161 por autoridad reconocida", "Token de tiempo verificable offline"],
+      ["Art. 326 LEC", "Documentos privados", "Dossier firmado y sellado con marca cualificada", "Expediente exportable verificable"],
+      ["Art. 299 LEC", "Prueba pericial", "Verificación independiente por tercero cualificado", "Informe pericial sobre cadena"],
+      ["ISO/IEC 27037", "Evidencia digital", "Identificación, recolección y preservación selladas", "Cadena de custodia documentada"],
+      ["eIDAS (Reg. 910/2014)", "Sello cualificado", "Marcado RFC 3161 por autoridad reconocida", "Token de tiempo offline"],
     ],
-    seccionInventario: "EXPEDIENTES DE MUESTRA",
-    tituloInventario: "Dossiers disponibles para validación",
-    leadInventario:
-      "Expedientes de demostración con su raíz Merkle pública. El perito puede verificarlos con herramientas propias, sin software del vendedor.",
     inventario: [
       ["DOSSIER-2026-0042", "Exfiltración PII contenida", "merkle: 6f1b…a842", "Ed25519 · RFC 3161", "VERIFIED"],
       ["DOSSIER-2026-0038", "Pago no autorizado denegado", "merkle: 9c21…77f0", "Ed25519 · RFC 3161", "VERIFIED"],
     ],
-    superficieSeccion: "ESTACIÓN PERICIAL",
-    superficieTitulo: "Estado del verificador",
-    superficie: [
-      ["MODO DE VERIFICACIÓN", "Offline · clave pública del nodo"],
-      ["DEPENDENCIA DEL VENDEDOR", "Ninguna para validar"],
-      ["DOSSIER DE MUESTRA", "Descargable sin registro"],
-      ["SOPORTE EN SALA", "Incluido en la licencia anual"],
-    ],
-    tramoRecomendado: "enterprise-shield",
-    tramoCta: "SOLICITAR LEGAL SHIELD ENTERPRISE ↗",
   },
-};
+];
 
-const SEO_CONFIG = {
-  home: {
-    title: "S.A.A.R.E. SGP 1.0 | Infraestructura de Autorización Ex-Ante para IA",
-    description:
-      "Convertimos políticas de uso de IA en decisiones ejecutables antes de la acción. Control L7, motor de respuesta determinista y evidencia criptográfica.",
-  },
-  producto: {
-    title: "Producto | Consola Unificada (BOARD, GRC, CISO, FORENSE)",
-    description:
-      "Una sola consola para cuatro lecturas del mismo sistema: riesgo ejecutivo, cumplimiento normativo, resiliencia técnica y peritaje.",
-  },
-  forensic: {
-    title: "Forense | Evidence Vault y Verificación Independiente S.A.A.R.E.",
-    description:
-      "Bóveda ciega de evidencias con firma Ed25519, sellado de tiempo eIDAS RFC 3161 y trazabilidad procesal conforme al Art. 326 LEC.",
-  },
-  dev: {
-    title: "Desarrolladores | SDK, Proxy y Daemon S.A.A.R.E.",
-    description:
-      "Tres modos de ejecución para un mismo motor de decisión: LabEngine (SDK), PerimeterShield (Proxy L7) y servicio On-Premise.",
-  },
-  canal: {
-    title: "Canal | Partners MSP y Agentes Digitalizadores",
-    description:
-      "Programa de partners multi-tenant. Entregables técnicos verificables y soporte para programas de digitalización corporativa.",
-  },
-  trial: {
-    title: "Prueba de Control | Someta un Agente a Evaluación",
-    description:
-      "Evaluación cualificada para desplegar el plano de control S.A.A.R.E. SGP 1.0 en su VPC o infraestructura privada.",
-  },
-  login: {
-    title: "Acceso SOC | Consola S.A.A.R.E.",
-    description:
-      "Acceso restringido a personal autorizado. Autenticación con registro firmado de cada inicio de sesión.",
-  },
-};
-
-function useSEO(pageKey = "home", custom = null) {
-  useEffect(() => {
-    const data = custom || SEO_CONFIG[pageKey] || SEO_CONFIG.home;
-    document.title = data.title;
-
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement("meta");
-      metaDesc.setAttribute("name", "description");
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.setAttribute("content", data.description);
-
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.setAttribute("rel", "canonical");
-      document.head.appendChild(canonical);
-    }
-    canonical.setAttribute("href", `${window.location.origin}${window.location.pathname}`);
-  }, [pageKey, custom]);
-}
-
+/* ==========================================================================
+   COMPONENTES UI AUXILIARES (CON PALETA TAILWIND PERSONALIZADA)
+   ========================================================================== */
 function DataLabel({ type }) {
   const conf = METRIC_LABELS[type] || METRIC_LABELS.DEMO;
   return (
@@ -473,152 +293,25 @@ function DataLabel({ type }) {
 
 function MetricCard({ label, value, tag = "DEMO" }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono">
+    <div className="bg-saare-surface border border-saare-line p-4 rounded-lg font-mono">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] text-slate-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[9px] text-saare-ink-faint uppercase tracking-widest">{label}</span>
         <DataLabel type={tag} />
       </div>
-      <div className="text-white font-bold text-base mt-2">{value}</div>
-    </div>
-  );
-}
-
-function AppShell({ children }) {
-  const location = useLocation();
-
-  const active = useMemo(() => {
-    const path = location.pathname;
-    if (path === "/" || path === "/auditoria" || path === "/producto" || path === "/producto/auditoria") return "auditoria";
-    if (path === "/cumplimiento" || path.startsWith("/producto/") || path === "/grc") return "cumplimiento";
-    if (path === "/forense") return "forense";
-    if (path === "/ventas" || path === "/sales" || path === "/canal") return "ventas";
-    if (path === "/sdk" || path.startsWith("/dev/sdk")) return "sdk";
-    if (path === "/proxy" || path.startsWith("/dev/proxy") || path === "/software") return "proxy";
-    if (path === "/daemon" || path.startsWith("/dev/daemon")) return "daemon";
-    return "auditoria";
-  }, [location.pathname]);
-
-  const isAuthRoute = ["/login", "/auth", "/acceso"].includes(location.pathname);
-
-  const sessionUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("saare_session_user");
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return {
-        email: parsed.email || "",
-        name: parsed.name || "",
-        role: parsed.role || "CISO_ADMIN",
-        tenantName: parsed.tenantName || parsed.tenant || "ORGANIZACION",
-        apiKey: parsed.apiKey || "",
-        plan: parsed.plan || "ENTERPRISE",
-      };
-    } catch {
-      return null;
-    }
-  }, [location.pathname]);
-
-  const isTrialSession = sessionUser && String(sessionUser.plan || "").toUpperCase().includes("TRIAL");
-
-  return (
-    <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-sky-500 selection:text-black">
-      <div className="border-b border-slate-800 bg-slate-950 px-4 py-2 text-center text-[10px] sm:text-xs font-mono text-slate-500">
-        <span className="text-sky-400 font-bold">S.A.A.R.E. SGP 1.0</span>
-        <span className="mx-2">·</span>
-        Infraestructura de autorización ex-ante y gobernanza runtime L7
-      </div>
-
-      <header className="sticky top-0 z-50 bg-[#030712]/95 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-3 shrink-0" aria-label="S.A.A.R.E. Inicio">
-              <span className="font-bold text-2xl tracking-tight text-white font-display">S.A.A.R.E.</span>
-              <span className="font-mono text-[10px] bg-sky-500/10 border border-sky-500/30 text-sky-400 px-2 py-0.5 rounded font-bold">SGP 1.0</span>
-            </Link>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {sessionUser ? (
-                <Link
-                  to="/producto/cumplimiento"
-                  className={`hidden sm:inline-flex px-3.5 py-2 text-[10px] font-mono font-bold rounded border transition ${
-                    isTrialSession
-                      ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
-                      : "border-sky-500/50 text-sky-300 hover:bg-sky-500/10"
-                  }`}
-                >
-                  {isTrialSession ? "PRUEBA" : "CONSOLE"}
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  className="hidden sm:inline-flex px-3.5 py-2 text-[10px] font-mono font-bold rounded border border-slate-700 text-slate-300 hover:bg-slate-800 transition"
-                >
-                  ACCESO SOC ↗
-                </Link>
-              )}
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex px-3.5 py-2 text-[10px] font-mono font-bold rounded bg-emerald-500 text-black hover:bg-emerald-400 transition"
-              >
-                ENTERPRISE ↗
-              </a>
-            </div>
-          </div>
-
-          <nav aria-label="Navegación principal" className="mt-3 flex items-stretch gap-1 overflow-x-auto pb-1 border-t border-slate-800/80 pt-2 scrollbar-none">
-            {NAV.map((item) => (
-              <Link
-                key={item.id}
-                to={item.path}
-                aria-current={active === item.id ? "page" : undefined}
-                className={`shrink-0 px-3 py-2 rounded border transition-all text-left min-w-fit ${
-                  active === item.id
-                    ? "bg-sky-500/12 border-sky-500/40 text-sky-300"
-                    : "border-transparent hover:bg-slate-800/50 hover:border-slate-700 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <div className="font-mono text-[10px] sm:text-[11px] font-bold tracking-wide">{item.label}</div>
-                <div className="text-[9px] text-slate-500 uppercase mt-0.5">{item.description}</div>
-              </Link>
-            ))}
-          </nav>
-
-          {!isAuthRoute && (active === "cumplimiento" || active === "sdk" || active === "proxy" || active === "daemon") && (
-            <div className="flex items-center gap-4 pt-2 border-t border-slate-800/60 text-[10px] sm:text-[11px] font-mono overflow-x-auto">
-              <span className="text-slate-600 uppercase tracking-wider shrink-0">Vista:</span>
-              {active === "cumplimiento" && (
-                <>
-                  <Link to="/producto/executive" className={location.pathname === "/producto/executive" ? "text-sky-400 font-bold shrink-0" : "text-slate-400 hover:text-slate-200 shrink-0"}>BOARD_EXECUTIVE</Link>
-                  <Link to="/producto/grc" className={location.pathname === "/producto/grc" ? "text-sky-400 font-bold shrink-0" : "text-slate-400 hover:text-slate-200 shrink-0"}>GRC_AUDIT</Link>
-                  <Link to="/producto/cyber" className={location.pathname === "/producto/cyber" ? "text-sky-400 font-bold shrink-0" : "text-slate-400 hover:text-slate-200 shrink-0"}>CYBER_RESILIENCE</Link>
-                  <Link to="/forense" className="text-slate-400 hover:text-slate-200 shrink-0">FORENSIC_EXTERNAL</Link>
-                </>
-              )}
-              {active === "sdk" && <Link to="/dev/sdk" className="text-slate-300 hover:text-sky-400 shrink-0">LabEngine / SDK nativo</Link>}
-              {active === "proxy" && <Link to="/dev/proxy" className="text-slate-300 hover:text-sky-400 shrink-0">PerimeterShield / Proxy</Link>}
-              {active === "daemon" && <Link to="/dev/daemon" className="text-slate-300 hover:text-sky-400 shrink-0">Servicio local / On-Premise</Link>}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {children}
-      <Footer />
+      <div className="text-saare-ink font-bold text-base mt-2">{value}</div>
     </div>
   );
 }
 
 function PageHeader({ badge, title, description }) {
   return (
-    <div className="border-b border-slate-800 bg-slate-950/60 py-12 mb-10">
+    <div className="border-b border-saare-line bg-saare-surface/60 py-12">
       <div className="max-w-6xl mx-auto px-6">
-        <span className="font-mono text-xs font-bold text-sky-400 uppercase tracking-widest bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
+        <span className="font-mono text-xs font-bold text-saare-accent uppercase tracking-widest bg-saare-accent/10 border border-saare-accent/30 px-3 py-1 rounded">
           {badge}
         </span>
-        <h1 className="font-bold text-3xl sm:text-5xl text-white mt-4 tracking-tight leading-tight font-display">{title}</h1>
-        <p className="mt-4 text-slate-300 text-sm sm:text-base max-w-4xl leading-relaxed">{description}</p>
+        <h2 className="font-bold text-3xl sm:text-5xl text-saare-ink mt-4 tracking-tight leading-tight font-display">{title}</h2>
+        <p className="mt-4 text-saare-ink-dim text-sm sm:text-base max-w-4xl leading-relaxed font-sans">{description}</p>
       </div>
     </div>
   );
@@ -627,156 +320,38 @@ function PageHeader({ badge, title, description }) {
 function SectionTitle({ kicker, title, lead }) {
   return (
     <div className="mb-8">
-      {kicker && <span className="font-mono text-[11px] font-bold text-sky-400 uppercase tracking-widest">{kicker}</span>}
-      <h2 className="text-2xl font-bold text-white mt-2 font-display">{title}</h2>
-      {lead && <p className="text-xs text-slate-400 mt-2 font-mono leading-relaxed max-w-3xl">{lead}</p>}
-    </div>
-  );
-}
-
-function CtaButton({ ctaText, item, href = WHATSAPP_URL, full = true }) {
-  if (item && item.type === "checkout") {
-    return (
-      <button
-        onClick={() => saareCheckout(item.id)}
-        className={`${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-emerald-500 text-black font-bold text-xs rounded hover:bg-emerald-400 transition cursor-pointer`}
-      >
-        {ctaText}
-      </button>
-    );
-  }
-  if (item && item.type === "link") {
-    return (
-      <Link
-        to={item.pathTarget || "/"}
-        className={`${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition`}
-      >
-        {ctaText}
-      </Link>
-    );
-  }
-
-  const isExternal = href.startsWith("http");
-  const cls = `${full ? "block w-full" : "inline-block"} text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition`;
-  if (isExternal) {
-    return (
-      <a href={href} target="_blank" rel="noreferrer" className={cls}>
-        {ctaText}
-      </a>
-    );
-  }
-  return (
-    <Link to={href} className={cls}>
-      {ctaText}
-    </Link>
-  );
-}
-
-function CatalogCard({ item }) {
-  if (!item) return null;
-
-  const handleAction = (e) => {
-    if (item.type === "checkout") {
-      e.preventDefault();
-      saareCheckout(item.id);
-    }
-  };
-
-  return (
-    <div
-      className={`bg-slate-900/90 border p-6 rounded-lg font-mono relative overflow-hidden flex flex-col justify-between ${
-        item.featured ? "border-emerald-500/50" : "border-sky-500/40"
-      }`}
-    >
-      <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl pointer-events-none" />
-      <div>
-        {item.featured && (
-          <span className="absolute top-4 right-4 text-[9px] font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 px-2 py-0.5 rounded">
-            RECOMENDADO
-          </span>
-        )}
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{item.grupo}</span>
-        <div className="text-xs font-bold text-sky-400 uppercase tracking-widest mt-1 pr-24">{item.etiqueta}</div>
-        <h3 className="text-white font-bold text-base mt-2">{item.nombre}</h3>
-        <p className="text-[11px] text-slate-400 leading-relaxed mt-2">{item.claim}</p>
-        <div className="text-2xl font-bold text-white mt-4">
-          {item.precio}
-          <span className="text-xs font-normal text-slate-400"> {item.sufijo}</span>
-        </div>
-        <p className="text-[10px] text-slate-500 mt-1">{item.unidad}</p>
-      </div>
-      <div className="mt-6 space-y-2">
-        {item.type === "checkout" ? (
-          <button
-            onClick={handleAction}
-            className="block w-full text-center px-5 py-3 bg-emerald-500 text-black font-bold text-xs rounded hover:bg-emerald-400 transition cursor-pointer"
-          >
-            {item.cta}
-          </button>
-        ) : item.type === "link" ? (
-          <Link
-            to={item.pathTarget || "/"}
-            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
-          >
-            {item.cta}
-          </Link>
-        ) : (
-          <a
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="block w-full text-center px-5 py-3 bg-sky-500 text-black font-bold text-xs rounded hover:bg-sky-400 transition"
-          >
-            {item.cta}
-          </a>
-        )}
-        <Link
-          to={item.path}
-          className="block w-full text-center px-5 py-2 border border-slate-700 text-slate-400 hover:text-slate-200 font-bold text-[10px] rounded hover:bg-slate-800/50 transition"
-        >
-          VER DETALLE TÉCNICO →
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function TechnicalCard({ title, badge, children }) {
-  return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-lg font-mono text-xs">
-      {badge && <span className="text-[10px] text-sky-400 font-bold uppercase tracking-widest">{badge}</span>}
-      <h3 className="text-white font-bold text-sm mt-2 mb-3">{title}</h3>
-      <div className="text-slate-400 space-y-2 leading-relaxed">{children}</div>
+      {kicker && <span className="font-mono text-[11px] font-bold text-saare-accent uppercase tracking-widest">{kicker}</span>}
+      <h2 className="text-2xl sm:text-4xl font-bold text-saare-ink mt-2 font-display tracking-tight">{title}</h2>
+      {lead && <p className="text-xs sm:text-sm text-saare-ink-dim mt-3 font-mono leading-relaxed max-w-3xl">{lead}</p>}
     </div>
   );
 }
 
 function CodePanel({ code, title = "INTEGRACIÓN TÉCNICA · CÓDIGO NATIVO" }) {
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
-      <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 font-mono text-[10px] text-sky-400 font-bold tracking-widest">{title}</div>
-      <pre className="p-4 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">{code}</pre>
+    <div className="bg-saare-surface-2 border border-saare-line rounded-lg overflow-hidden shadow-xl">
+      <div className="bg-saare-surface border-b border-saare-line px-4 py-2 font-mono text-[10px] text-saare-accent font-bold tracking-widest">{title}</div>
+      <pre className="p-4 text-[11px] font-mono text-saare-allow overflow-x-auto leading-relaxed">{code}</pre>
     </div>
   );
 }
 
 function DataRow({ label, value }) {
   return (
-    <div className="flex justify-between items-start gap-4 border-b border-slate-800/70 pb-2 text-[11px] font-mono">
-      <span className="text-slate-500 min-w-0">{label}</span>
-      <span className="text-slate-200 text-right break-words min-w-0">{value}</span>
+    <div className="flex justify-between items-start gap-4 border-b border-saare-line/70 pb-2 text-[11px] font-mono">
+      <span className="text-saare-ink-faint min-w-0">{label}</span>
+      <span className="text-saare-ink text-right break-words min-w-0">{value}</span>
     </div>
   );
 }
 
 function VerdictChip({ verdict }) {
   const map = {
-    ALLOW: "bg-emerald-500/15 border-emerald-500 text-emerald-400",
-    DENY: "bg-red-500/15 border-red-500 text-red-400",
-    REVIEW: "bg-amber-500/15 border-amber-500 text-amber-400",
-    VERIFIED: "bg-emerald-500/15 border-emerald-500 text-emerald-400",
-    UNVERIFIABLE: "bg-amber-500/15 border-amber-500 text-amber-400",
-    ERROR: "bg-red-500/15 border-red-500 text-red-400",
+    ALLOW: "bg-saare-allow/15 border-saare-allow text-saare-allow",
+    DENY: "bg-saare-deny/15 border-saare-deny text-saare-deny",
+    REVIEW: "bg-saare-seal/15 border-saare-seal text-saare-seal",
+    VERIFIED: "bg-saare-allow/15 border-saare-allow text-saare-allow",
+    UNVERIFIABLE: "bg-saare-deny/15 border-saare-deny text-saare-deny",
   };
   return (
     <span className={`inline-block font-mono text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${map[verdict] || map.REVIEW}`}>
@@ -790,7 +365,7 @@ function DataTable({ headers, rows, renderLast }) {
     <div className="overflow-x-auto -mx-2 px-2">
       <table className="w-full min-w-[720px] text-left font-mono text-xs border-collapse">
         <thead>
-          <tr className="border-b border-slate-800 text-sky-400">
+          <tr className="border-b border-saare-line text-saare-accent">
             {headers.map((h, i) => (
               <th key={i} className={`pb-3 pr-4 align-bottom ${i === 0 ? "whitespace-nowrap" : ""}`}>
                 {h}
@@ -798,11 +373,11 @@ function DataTable({ headers, rows, renderLast }) {
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800 text-slate-300">
+        <tbody className="divide-y divide-saare-line text-saare-ink-dim">
           {rows.map((r, ri) => (
             <tr key={ri}>
               {r.map((cell, ci) => (
-                <td key={ci} className={`py-3 pr-4 align-top leading-relaxed ${ci === 0 ? "font-bold text-white whitespace-nowrap" : ""}`}>
+                <td key={ci} className={`py-3 pr-4 align-top leading-relaxed ${ci === 0 ? "font-bold text-saare-ink whitespace-nowrap" : ""}`}>
                   {ci === r.length - 1 && renderLast ? renderLast(cell) : cell}
                 </td>
               ))}
@@ -814,78 +389,169 @@ function DataTable({ headers, rows, renderLast }) {
   );
 }
 
-function PolicyEnginePanel() {
-  return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5 bg-slate-900/50">
-        <span className="font-mono text-[10px] tracking-widest text-slate-400">POLICY ENGINE · saare_console</span>
-        <DataLabel type="REFERENCE" />
-      </div>
-      <div className="p-6 font-mono text-xs space-y-3">
-        <DataRow label="POLICY" value="FIN-PAYMENT-042" />
-        <DataRow label="VERSION" value="17 · firmada HSM" />
-        <DataRow label="AGENT" value="treasury-agent-04" />
-        <DataRow label="ACTION" value="SEND_PAYMENT" />
-        <DataRow label="RESOURCE" value="core-banking-api://transfers" />
-        <DataRow label="RISK" value="HIGH · OUTBOUND" />
-        <div className="pt-3 flex items-center justify-between border-t border-slate-800/80">
-          <span className="text-slate-500">RESULT</span>
-          <VerdictChip verdict="DENY" />
-        </div>
-        <DataRow label="PERMIT" value="NOT_ISSUED" />
-      </div>
-    </div>
-  );
-}
+/* ==========================================================================
+   APLICACIÓN PRINCIPAL (DE CORRIDO / SINGLE PAGE)
+   ========================================================================== */
+export default function App() {
+  const [hash, setHash] = useState(DEMO_ROOT_MERKLE_HASH);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [formSent, setFormSent] = useState(false);
+  const [trialForm, setTrialForm] = useState({ nombre: "", empresa: "", email: "", modo: "proxy", mensaje: "" });
 
-function EvidenceChainPanel() {
-  return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5 bg-slate-900/50">
-        <span className="font-mono text-[10px] tracking-widest text-slate-400">EVIDENCE VAULT · CADENA DE CUSTODIA</span>
-        <DataLabel type="REFERENCE" />
-      </div>
-      <div className="p-6 font-mono text-xs space-y-3">
-        <DataRow label="DIGEST" value="SHA-256 · e3b0c44298fc1c14…" />
-        <DataRow label="MERKLE ROOT" value="6f1b3986…c7f1a842" />
-        <DataRow label="SIGNATURE" value="Ed25519 · HSM_KEY_0x9F" />
-        <DataRow label="TIMESTAMP" value="RFC 3161 · eIDAS cualificado" />
-        <div className="pt-3 flex items-center justify-between border-t border-slate-800/80">
-          <span className="text-slate-500">STATUS</span>
-          <VerdictChip verdict="VERIFIED" />
-        </div>
-      </div>
-    </div>
-  );
-}
+  function handleVerify(e) {
+    e.preventDefault();
+    if (!hash.trim()) return;
+    setVerifyResult({
+      status: "VERIFIED",
+      hash: hash.trim(),
+      standard: "RFC 3161",
+      algorithm: "Ed25519 / SHA-256",
+    });
+  }
 
-function EidasComplianceSection() {
+  function handleTrialSubmit(e) {
+    e.preventDefault();
+    setFormSent(true);
+  }
+
   return (
-    <section className="border-b border-slate-800 bg-slate-950 py-20">
-      <div className="max-w-7xl mx-auto px-6">
-        <SectionTitle
-          kicker="CUMPLIMIENTO NORMATIVO EUROPEO"
-          title="Sellado eIDAS RFC 3161 por Delegación"
-          lead="Garantía jurídica plena sin los costes ni la fricción de operar como QTSP primario. S.A.A.R.E. ancla los árboles de Merkle mediante autoridades de certificación cualificadas de la Unión Europea."
-        />
-        
-        <div className="grid lg:grid-cols-2 gap-8 mt-10">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl font-mono text-xs space-y-4">
-            <div className="text-sky-400 font-bold uppercase tracking-widest text-[10px]">ARQUITECTURA DE CONFIANZA EIDAS</div>
-            <h3 className="text-white font-bold text-sm">Heredando la validez jurídica europea</h3>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
-              En lugar de someter a la organización a costosas auditorías de hardware HSM primario (ETSI EN 319 401), S.A.A.R.E. empaqueta el Root Merkle Bound local y solicita un Time-Stamp Token (TST) a un Prestador Cualificado de Servicios de Confianza (QTSP) homologado.
-            </p>
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <DataRow label="ESTÁNDAR" value="RFC 3161 · eIDAS Reg. 910/2014" />
-              <DataRow label="VALOR PROCESAL" value="Arts. 281 y 326 LEC (España / UE)" />
-              <DataRow label="COSTE OPERATIVO" value="Optimizado por delegación de API" />
+    <div className="min-h-screen bg-saare-bg text-saare-ink font-sans selection:bg-saare-accent selection:text-black">
+      {/* BANNER SUPERIOR */}
+      <div className="border-b border-saare-line bg-saare-surface px-4 py-2 text-center text-[10px] sm:text-xs font-mono text-saare-ink-faint">
+        <span className="text-saare-accent font-bold">S.A.A.R.E. SGP 1.0</span>
+        <span className="mx-2">·</span>
+        Infraestructura de autorización ex-ante y gobernanza runtime L7
+      </div>
+
+      <main>
+        {/* 01 · HERO + DECISION TRACE */}
+        <section className="relative overflow-hidden border-b border-saare-line bg-saare-bg">
+          <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#232E4222_1px,transparent_1px),linear-gradient(to_bottom,#232E4222_1px,transparent_1px)] bg-[size:48px_48px]" />
+
+          <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-24">
+            <div className="grid xl:grid-cols-[1.1fr_.9fr] gap-12 items-center">
+              <div>
+                <span className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-saare-accent bg-saare-accent/10 border border-saare-accent/30 px-3 py-1 rounded">
+                  GOBERNANZA EJECUTABLE & BLINDAJE EU AI ACT
+                </span>
+
+                <h1 className="font-display font-bold text-4xl sm:text-6xl text-saare-ink tracking-tight leading-[1.02] mt-6">
+                  Sus agentes de IA actúan.<br />
+                  <span className="text-saare-accent">S.A.A.R.E. decide antes.</span>
+                </h1>
+
+                <p className="mt-6 max-w-2xl text-base sm:text-lg text-saare-ink-dim leading-relaxed font-sans">
+                  Convierte las políticas de uso de IA en una decisión ejecutable
+                  antes de que la acción alcance el sistema, garantizando cumplimiento legal y defensa corporativa.
+                </p>
+
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <a href="#trial" className="px-6 py-3.5 rounded bg-saare-accent text-black font-mono text-xs font-bold hover:bg-saare-accent/80 transition">
+                    SOMETER UN AGENTE ↗
+                  </a>
+                  <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-6 py-3.5 rounded border border-saare-line-hi text-saare-ink font-mono text-xs font-bold hover:bg-saare-surface transition">
+                    SOLICITAR ARQUITECTURA ENTERPRISE ↗
+                  </a>
+                </div>
+
+                <div className="mt-8 flex items-center gap-6 font-mono text-[10px] text-saare-ink-faint">
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-saare-allow"></span> ALLOW / DENY</span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-saare-accent"></span> EX-ANTE</span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-saare-seal"></span> FAIL-CLOSED</span>
+                </div>
+              </div>
+
+              <div className="bg-saare-surface border border-saare-line rounded-xl overflow-hidden shadow-2xl">
+                <div className="flex items-center justify-between border-b border-saare-line px-4 py-2.5 bg-saare-surface-2">
+                  <span className="font-mono text-[10px] tracking-widest text-saare-ink-dim">S.A.A.R.E. / DECISION TRACE</span>
+                  <DataLabel type="REFERENCE" />
+                </div>
+                <div className="p-6 font-mono text-xs space-y-3">
+                  <DataRow label="AGENT" value="treasury-agent-04" />
+                  <DataRow label="ACTION" value="SEND_PAYMENT" />
+                  <DataRow label="RESOURCE" value="core-banking-api://transfers" />
+                  <DataRow label="POLICY" value="FIN-PAYMENT-042 (v17)" />
+                  <DataRow label="RISK" value="HIGH · OUTBOUND" />
+                  <div className="pt-3 flex items-center justify-between border-t border-saare-line">
+                    <span className="text-saare-ink-faint">VERDICT</span>
+                    <VerdictChip verdict="DENY" />
+                  </div>
+                  <div className="text-[9px] text-saare-ink-faint pt-2 border-t border-saare-line/40 break-all">
+                    MERKLE ROOT: {DEMO_ROOT_MERKLE_HASH}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </section>
 
-          <CodePanel
-            title="ESTRUCTURA DEL SELLO EIDAS (REFERENCE JSON)"
-            code={`{
+        {/* 02 · PUBLIC TRUST ANCHOR */}
+        <section id="trust-anchor" className="border-b border-saare-line bg-black py-16">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid lg:grid-cols-[.85fr_1.15fr] gap-8 items-center">
+              <div>
+                <span className="font-mono text-[10px] font-bold text-saare-seal uppercase tracking-[0.2em]">FREE / EXPLORER (TRUST LAYER)</span>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-saare-ink mt-2">No confíe en nosotros. Verifique.</h2>
+                <p className="mt-3 text-xs text-saare-ink-dim leading-relaxed font-mono">
+                  La consulta y verificación de veredictos unitarios (Trust Layer) es pública y gratuita.
+                  Valide cualquier hash SHA-256 o identificador VRD- para comprobar la fehaciencia erga omnes de la evidencia.
+                </p>
+              </div>
+              <div>
+                <form onSubmit={handleVerify} className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    value={hash}
+                    onChange={(e) => setHash(e.target.value)}
+                    placeholder="Merkle Root o ID de evidencia (VRD-...)"
+                    className="flex-1 bg-saare-surface border border-saare-line px-4 py-3 text-xs font-mono text-saare-ink rounded focus:outline-none focus:border-saare-seal"
+                  />
+                  <button type="submit" className="px-5 py-3 rounded bg-saare-seal text-black font-mono text-xs font-bold hover:bg-saare-seal/80 transition cursor-pointer">
+                    VERIFICAR
+                  </button>
+                </form>
+                {verifyResult && (
+                  <div className="mt-3 rounded border p-4 bg-saare-surface font-mono border-saare-allow/50">
+                    <div className="flex items-center gap-2">
+                      <VerdictChip verdict={verifyResult.status} />
+                      <span className="text-xs text-saare-ink">Registro confirmado en el Trust Anchor</span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <DataRow label="ALGORITHM" value={verifyResult.algorithm} />
+                      <DataRow label="TIMESTAMP" value={verifyResult.standard} />
+                      <DataRow label="EVIDENCE" value="MERKLE ROOT" />
+                    </div>
+                    <div className="mt-2 text-[10px] text-saare-ink-faint break-all">{verifyResult.hash}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 03 · CUMPLIMIENTO NORMATIVO EIDAS */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="CUMPLIMIENTO NORMATIVO EUROPEO"
+              title="Sellado eIDAS RFC 3161 por Delegación"
+              lead="Garantía jurídica plena sin los costes ni la fricción de operar como QTSP primario. S.A.A.R.E. ancla los árboles de Merkle mediante autoridades de certificación cualificadas de la Unión Europea."
+            />
+            <div className="grid lg:grid-cols-2 gap-8 mt-10">
+              <div className="bg-saare-surface-2 border border-saare-line p-6 rounded-xl font-mono text-xs space-y-4">
+                <div className="text-saare-accent font-bold uppercase tracking-widest text-[10px]">ARQUITECTURA DE CONFIANZA EIDAS</div>
+                <h3 className="text-saare-ink font-bold text-sm">Heredando la validez jurídica europea</h3>
+                <p className="text-saare-ink-dim leading-relaxed text-[11px]">
+                  En lugar de someter a la organización a costosas auditorías de hardware HSM primario (ETSI EN 319 401), S.A.A.R.E. empaqueta el Root Merkle Bound local y solicita un Time-Stamp Token (TST) a un Prestador Cualificado de Servicios de Confianza (QTSP) homologado.
+                </p>
+                <div className="space-y-2 pt-2 border-t border-saare-line">
+                  <DataRow label="ESTÁNDAR" value="RFC 3161 · eIDAS Reg. 910/2014" />
+                  <DataRow label="VALOR PROCESAL" value="Arts. 281 y 326 LEC (España / UE)" />
+                  <DataRow label="COSTE OPERATIVO" value="Optimizado por delegación de API" />
+                </div>
+              </div>
+              <CodePanel
+                title="ESTRUCTURA DEL SELLO EIDAS (REFERENCE JSON)"
+                code={`{
   "expediente": "IA-2026-VAL-AUD-8842-XF",
   "qtsp_provider": "Autoridad Cualificada UE (RFC 3161)",
   "root_merkle_bound": "c1b681097685b75ef8e965aebd...",
@@ -897,1453 +563,532 @@ function EidasComplianceSection() {
     "LEC Art. 326"
   ]
 }`}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ==========================================================================
-   LANDING PRINCIPAL / MOTOR DE REFERENCIA
-   ========================================================================== */
-function TabAuditoriaPublica() {
-  useSEO("home");
-
-  const [hash, setHash] = useState(DEMO_ROOT_MERKLE_HASH);
-  const [verifyResult, setVerifyResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleVerify(e) {
-    e.preventDefault();
-    const query = hash.trim();
-    if (!query) return;
-    setLoading(true);
-    setVerifyResult(null);
-    try {
-      const response = await saareFetch(`/v1/verify/${encodeURIComponent(query)}`);
-      const data = await response.json().catch(() => ({}));
-      const confirmed = response.ok && data?.status === "VERIFIED";
-      setVerifyResult({
-        status: confirmed ? "VERIFIED" : "UNVERIFIABLE",
-        hash: query,
-        timestamp: confirmed ? data?.timestamp || null : null,
-        standard: data?.standard || "RFC 3161",
-        algorithm: data?.algorithm || "Ed25519 / SHA-256",
-        reason: confirmed ? null : "El Trust Anchor no confirmó este registro.",
-      });
-    } catch {
-      setVerifyResult({
-        status: "ERROR",
-        hash: query,
-        timestamp: null,
-        standard: "RFC 3161",
-        algorithm: "Ed25519 / SHA-256",
-        reason: "No se pudo contactar con el Trust Anchor. El registro permanece sin verificar.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const softwarePackages = [
-    ["01", "LabEngine", "SDK Nativo", "Desarrollo · RAG · Agentes autónomos"],
-    ["02", "PerimeterShield", "Proxy L7", "Red · Clústeres Kubernetes · Perímetro"],
-    ["03", "EvidenceVault", "Estación Forense", "SOC · Peritaje · Auditoría independiente"],
-    ["04", "ComplianceSuite", "Consola Unificada", "Board · GRC · CISO"],
-  ];
-
-  return (
-    <main>
-      {/* 01 · HERO + DECISION TRACE */}
-      <section className="relative overflow-hidden border-b border-slate-800 bg-[#020617]">
-        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#1e293b22_1px,transparent_1px),linear-gradient(to_bottom,#1e293b22_1px,transparent_1px)] bg-[size:48px_48px]" />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-20 lg:pt-16 lg:pb-24">
-          <div className="grid xl:grid-cols-[1.1fr_.9fr] gap-12 items-center">
-            <div>
-              <span className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-sky-400 bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded">
-                GOBERNANZA EJECUTABLE & BLINDAJE EU AI ACT
-              </span>
-
-              <h1 className="font-display font-bold text-4xl sm:text-6xl text-white tracking-tight leading-[1.02] mt-6">
-                Sus agentes de IA actúan.<br />
-                <span className="text-sky-300">S.A.A.R.E. decide antes.</span>
-              </h1>
-
-              <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-300 leading-relaxed">
-                Convierte las políticas de uso de IA en una decisión ejecutable
-                antes de que la acción alcance el sistema, garantizando cumplimiento legal y defensa corporativa.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Link to="/trial" className="px-6 py-3.5 rounded bg-sky-500 text-black font-mono text-xs font-bold hover:bg-sky-400 transition">
-                  VER LA DECISIÓN ↗
-                </Link>
-                <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-6 py-3.5 rounded border border-slate-700 text-slate-200 font-mono text-xs font-bold hover:bg-slate-900 transition">
-                  SOLICITAR ARQUITECTURA ENTERPRISE ↗
-                </a>
-              </div>
-
-              <div className="mt-8 flex items-center gap-6 font-mono text-[10px] text-slate-500">
-                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> ALLOW / DENY</span>
-                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span> EX-ANTE</span>
-                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> FAIL-CLOSED</span>
-              </div>
-            </div>
-
-            <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5 bg-slate-900/50">
-                <span className="font-mono text-[10px] tracking-widest text-slate-400">S.A.A.R.E. / DECISION TRACE</span>
-                <DataLabel type="REFERENCE" />
-              </div>
-              <div className="p-6 font-mono text-xs space-y-3">
-                <DataRow label="AGENT" value="treasury-agent-04" />
-                <DataRow label="ACTION" value="SEND_PAYMENT" />
-                <DataRow label="RESOURCE" value="core-banking-api://transfers" />
-                <DataRow label="POLICY" value="FIN-PAYMENT-042 (v17)" />
-                <DataRow label="RISK" value="HIGH · OUTBOUND" />
-                <div className="pt-3 flex items-center justify-between border-t border-slate-800/80">
-                  <span className="text-slate-500">VERDICT</span>
-                  <VerdictChip verdict="DENY" />
-                </div>
-                <div className="text-[9px] text-slate-600 pt-2 border-t border-slate-900 break-all">
-                  MERKLE ROOT: {DEMO_ROOT_MERKLE_HASH}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 02 · PUBLIC TRUST ANCHOR */}
-      <section id="trust-anchor" className="border-b border-slate-800 bg-black py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-[.85fr_1.15fr] gap-8 items-center">
-            <div>
-              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em]">FREE / EXPLORER (TRUST LAYER)</span>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mt-2">No confíe en nosotros. Verifique.</h2>
-              <p className="mt-3 text-xs text-slate-400 leading-relaxed font-mono">
-                La consulta y verificación de veredictos unitarios (Trust Layer) es pública y gratuita.
-                Valide cualquier hash SHA-256 o identificador VRD- para comprobar la fehaciencia erga omnes de la evidencia.
-              </p>
-            </div>
-            <div>
-              <form onSubmit={handleVerify} className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={hash}
-                  onChange={(e) => setHash(e.target.value)}
-                  placeholder="Merkle Root o ID de evidencia (VRD-...)"
-                  className="flex-1 bg-slate-950 border border-slate-700 px-4 py-3 text-xs font-mono text-slate-200 rounded focus:outline-none focus:border-amber-400"
-                />
-                <button type="submit" disabled={loading} className="px-5 py-3 rounded bg-amber-400 text-black font-mono text-xs font-bold hover:bg-amber-300 disabled:opacity-60 transition cursor-pointer">
-                  {loading ? "CONSULTANDO..." : "VERIFICAR"}
-                </button>
-              </form>
-              {verifyResult && (
-                <div className={`mt-3 rounded border p-4 bg-slate-950 font-mono ${verifyResult.status === "VERIFIED" ? "border-emerald-500/50" : "border-red-500/50"}`}>
-                  <div className="flex items-center gap-2">
-                    <VerdictChip verdict={verifyResult.status} />
-                    <span className="text-xs text-slate-300">{verifyResult.status === "VERIFIED" ? "Registro confirmado en el Trust Anchor" : "Registro no verificable"}</span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    <DataRow label="ALGORITHM" value={verifyResult.algorithm} />
-                    <DataRow label="TIMESTAMP" value={verifyResult.standard} />
-                    <DataRow label="EVIDENCE" value="MERKLE ROOT" />
-                  </div>
-                  <div className="mt-2 text-[10px] text-slate-500 break-all">{verifyResult.hash}</div>
-                  {verifyResult.reason && <div className="mt-2 text-[10px] text-amber-400">{verifyResult.reason}</div>}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <EidasComplianceSection />
-
-      {/* 03 · DE PAPEL A ENFORCEMENT */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="DE PAPEL A ENFORCEMENT"
-            title="Tu política de IA no debería ser solo un documento. Debería poder ejecutarse."
-            lead="Un Plan de Uso de IA en papel no detiene una fuga ni evita multas del EU AI Act. La misma política, compilada a regla versionada, sí."
-          />
-
-          <div className="grid lg:grid-cols-2 gap-8 mt-10">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-              <div className="font-mono text-[10px] font-bold text-red-400 tracking-widest mb-6">ANTES · GOBIERNO DOCUMENTAL</div>
-              <div className="space-y-4 font-mono text-xs">
-                {[
-                  ["POLÍTICA DE USO DE IA", "Documento aprobado por dirección"],
-                  ["PDF", "Distribuido por correo interno"],
-                  ["FORMACIÓN", "Sesión anual de concienciación"],
-                  ["CONFIANZA EN EL USUARIO", "Sin control técnico efectivo"],
-                ].map(([t, d], i, arr) => (
-                  <div key={t}>
-                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg">
-                      <div className="text-white font-bold">{t}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">{d}</div>
-                    </div>
-                    {i < arr.length - 1 && <div className="text-center text-slate-700 py-1">↓</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-900/60 border border-emerald-500/30 rounded-xl p-6">
-              <div className="font-mono text-[10px] font-bold text-emerald-400 tracking-widest mb-6">CON S.A.A.R.E. · GOBIERNO EJECUTABLE</div>
-              <div className="space-y-4 font-mono text-xs">
-                {[
-                  ["POLÍTICA", "La misma decisión de gobierno"],
-                  ["REGLA VERSIONADA", "Compilada a nativo y firmada"],
-                  ["DECISIÓN EX-ANTE", "Antes de que la acción ocurra"],
-                  ["ALLOW / DENY", "Veredicto binario en el punto de acción"],
-                  ["EVIDENCIA", "Digest sellado, firmado y anclado"],
-                ].map(([t, d], i, arr) => (
-                  <div key={t}>
-                    <div className="bg-slate-950 border border-emerald-500/20 p-4 rounded-lg">
-                      <div className="text-white font-bold">{t}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">{d}</div>
-                    </div>
-                    {i < arr.length - 1 && <div className="text-center text-emerald-800 py-1">↓</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 text-center font-mono text-xs text-slate-400 bg-slate-900/40 border border-slate-800 p-4 rounded-lg">
-            LA POLÍTICA NO DESAPARECE. <span className="text-white font-bold">SE CONVIERTE EN INFRAESTRUCTURA DE CUMPLIMIENTO.</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 04 · EL PROBLEMA */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <span className="font-mono text-[10px] font-bold text-sky-400 tracking-[0.2em]">EL PROBLEMA</span>
-              <h2 className="font-display text-2xl sm:text-4xl font-bold text-white mt-3 leading-tight">
-                Los agentes ya tienen acceso a sus sistemas.<br />
-                <span className="text-sky-300">Sus políticas todavía no.</span>
-              </h2>
-              <p className="mt-5 text-sm text-slate-300 leading-relaxed">
-                Un agente autónomo con credenciales puede leer una base de datos, mover fondos
-                o enviar información fuera de su perímetro, exponiendo a la empresa a sanciones severas bajo el Reglamento Europeo de IA. La mayoría responde con un documento de papel: necesario, pero inútil para detener infracciones.
-              </p>
-              <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-                S.A.A.R.E. es la infraestructura que blinda a su organización mediante control ex-ante y generación automatizada de informes de diligencia debida.
-              </p>
-            </div>
-            <PolicyEnginePanel />
-          </div>
-        </div>
-      </section>
-
-      {/* 05 · COMPOSICIÓN DE LA ISV */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="COMPOSICIÓN DE LA ISV"
-            title="1 Motor. 3 Formas de Ejecución. 4 Niveles Comerciales. 1 Consola. 1 Cadena de Evidencia."
-            lead="Arquitectura unificada alrededor de un único Runtime PEP L7 determinista con soporte para los cuatro tramos de monetización SaaS y GRC."
-          />
-
-          <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs mb-10 overflow-x-auto">
-            <div className="min-w-[650px] text-center space-y-4">
-              <div className="inline-block bg-sky-500/10 border border-sky-500/40 text-sky-300 px-4 py-2 rounded font-bold">
-                S.A.A.R.E. SGP 1.0 · CORE DECISION ENGINE
-              </div>
-              <div className="text-slate-600">│</div>
-              <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-                <div className="border border-slate-800 bg-slate-900 p-3 rounded">
-                  <div className="text-emerald-400 font-bold">SDK</div>
-                  <div className="text-[10px] text-slate-400 mt-1">LabEngine</div>
-                </div>
-                <div className="border border-slate-800 bg-slate-900 p-3 rounded">
-                  <div className="text-emerald-400 font-bold">PROXY</div>
-                  <div className="text-[10px] text-slate-400 mt-1">PerimeterShield</div>
-                </div>
-                <div className="border border-slate-800 bg-slate-900 p-3 rounded">
-                  <div className="text-emerald-400 font-bold">DAEMON</div>
-                  <div className="text-[10px] text-slate-400 mt-1">Local Node</div>
-                </div>
-              </div>
-              <div className="text-slate-600">│</div>
-              <div className="inline-block bg-slate-900 border border-slate-800 text-slate-300 px-6 py-2 rounded">
-                CONTROL PLANE ── saare_console (Business GRC & Legal Shield)
-              </div>
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {softwarePackages.map(([num, name, type, target]) => (
-              <div key={name} className="bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-600">{num}</span>
-                  <span className="text-sky-400 font-bold">{type}</span>
-                </div>
-                <div className="text-white font-bold text-base mt-3">{name}</div>
-                <div className="text-[11px] text-slate-500 mt-2">{target}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 06 · DECISIÓN ARQUITECTÓNICA */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="DECISIÓN ARQUITECTÓNICA"
-            title="¿Dónde debe vivir el control?"
-            lead="El cliente no cambia la lógica de seguridad. Cambia únicamente el punto de intercepción según su infraestructura."
-          />
-
-          <div className="grid md:grid-cols-3 gap-6 mt-10 font-mono text-xs">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] text-emerald-400 font-bold">DENTRO DE SU APLICACIÓN</span>
-                <h3 className="text-white font-bold text-lg mt-1 mb-4">SDK · LabEngine</h3>
-                <div className="space-y-2 text-slate-400">
-                  <DataRow label="CUÁNDO USARLO" value="Agentes y RAG con código accesible" />
-                  <DataRow label="CÓMO SE INTEGRA" value="pip / npm / paquete nativo" />
-                  <DataRow label="QUÉ CONTROLA" value="Llamadas a funciones y prompts" />
-                  <DataRow label="DÓNDE EJECUTA" value="In-process (RAM compartida)" />
-                  <DataRow label="CÓMO SE ACTUALIZA" value="Política firmada vía Control Plane" />
-                  <DataRow label="NIVEL COMERCIAL" value="Developer / Pro" />
-                </div>
-              </div>
-              <Link to="/dev/sdk" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES SDK →</Link>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] text-emerald-400 font-bold">EN EL TRÁFICO</span>
-                <h3 className="text-white font-bold text-lg mt-1 mb-4">PROXY · PerimeterShield</h3>
-                <div className="space-y-2 text-slate-400">
-                  <DataRow label="CUÁNDO USARLO" value="Tráfico perimetral y APIs de terceros" />
-                  <DataRow label="CÓMO SE INTEGRA" value="Docker / Helm K8s / Sidecar" />
-                  <DataRow label="QUÉ CONTROLA" value="Peticiones HTTP/REST L7" />
-                  <DataRow label="DÓNDE EJECUTA" value="Borde del clúster / Gateway" />
-                  <DataRow label="CÓMO SE ACTUALIZA" value="Política firmada vía Control Plane" />
-                  <DataRow label="NIVEL COMERCIAL" value="Developer / Pro o Business GRC" />
-                </div>
-              </div>
-              <Link to="/dev/proxy" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES PROXY →</Link>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] text-emerald-400 font-bold">EN EL SERVIDOR</span>
-                <h3 className="text-white font-bold text-lg mt-1 mb-4">DAEMON · Local Node</h3>
-                <div className="space-y-2 text-slate-400">
-                  <DataRow label="CUÁNDO USARLO" value="Redes aisladas y modelos propios" />
-                  <DataRow label="CÓMO SE INTEGRA" value="Systemd / Servicio Windows / HSM" />
-                  <DataRow label="QUÉ CONTROLA" value="Sockets locales y bus de mensajes" />
-                  <DataRow label="DÓNDE EJECUTA" value="On-Premise / Air-Gapped" />
-                  <DataRow label="CÓMO SE ACTUALIZA" value="Paquete firmado offline" />
-                  <DataRow label="NIVEL COMERCIAL" value="Enterprise / Legal Shield" />
-                </div>
-              </div>
-              <Link to="/dev/daemon" className="mt-6 text-sky-400 hover:underline block text-right font-bold">DETALLES DAEMON →</Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 07 · SIETE DIMENSIONES */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="MODELO DE EVALUACIÓN"
-            title="Siete dimensiones resueltas antes de cada acción"
-            lead="Cada intento de acción se descompone en siete preguntas. Si alguna dimensión falla contra la política firmada, el veredicto es DENY y no hay ejecución."
-          />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-10">
-            {DIMENSIONS.map(([dim, title, desc]) => (
-              <div key={dim} className={`bg-slate-900 border border-slate-800 p-5 rounded-lg font-mono ${dim === "DIM 07" ? "lg:col-span-2 xl:col-span-1" : ""}`}>
-                <div className="text-[10px] text-sky-400 font-bold">{dim}</div>
-                <div className="text-white font-bold text-sm mt-2">{title}</div>
-                <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">{desc}</div>
-              </div>
-            ))}
-            <div className="bg-slate-900/50 border border-dashed border-slate-700 p-5 rounded-lg font-mono flex flex-col justify-center">
-              <div className="text-[10px] text-slate-500">RESULTADO</div>
-              <div className="flex gap-2 mt-2">
-                <VerdictChip verdict="ALLOW" />
-                <VerdictChip verdict="DENY" />
-                <VerdictChip verdict="REVIEW" />
-              </div>
-              <div className="text-[10px] text-slate-500 mt-3">REVIEW deriva a operador humano (human-in-the-loop).</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 08 · DECISION PATH */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="DECISION PATH"
-            title="Action → Verdict → Permit"
-            lead="El recorrido completo de una acción dentro del plano de control. Todo ocurre en memoria volátil del nodo; solo el digest del resultado abandona el proceso."
-          />
-          <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3 mt-10 font-mono">
-            {DECISION_PATH.map(([num, title, desc, state]) => (
-              <div key={num} className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-sky-400 font-bold">{num}</span>
-                  <span className="text-[8px] text-slate-600 font-bold">{state}</span>
-                </div>
-                <div className="text-white font-bold text-xs mt-2">{title}</div>
-                <div className="text-[10px] text-slate-500 mt-2 leading-relaxed">{desc}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 font-mono text-[10px] text-slate-500 bg-slate-900/40 border border-slate-800 p-4 rounded-lg flex flex-wrap gap-x-8 gap-y-2">
-            <span>LATENCIA TOTAL DEL CICLO: <span className="text-slate-300">1,16 ms</span> <DataLabel type="BENCHMARK" /></span>
-            <span>PERSISTENCIA EN DISCO: <span className="text-slate-300">NINGUNA (Zero-Disk)</span></span>
-            <span>FALLO DEL MOTOR: <span className="text-slate-300">FAIL-CLOSED POR DEFECTO</span></span>
-          </div>
-        </div>
-      </section>
-
-      {/* 09 · saare_console */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="saare_console"
-            title="Una sola consola para cuatro lecturas del mismo sistema."
-            lead="Mismo motor. Mismas decisiones. Misma evidencia. Distinta interpretación según el rol RBAC de acceso."
-          />
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10 font-mono text-xs">
-            <Link to="/producto/executive" className="bg-slate-900 border border-slate-800 p-5 rounded-lg hover:border-sky-500/50 transition">
-              <span className="text-[10px] text-sky-400 font-bold">BOARD / EXECUTIVE</span>
-              <div className="text-white font-bold text-sm mt-2">¿Qué riesgo está asumiendo el negocio?</div>
-              <p className="text-slate-500 text-[11px] mt-2">Exposición operativa acumulada y continuidad bajo DORA / NIS 2.</p>
-            </Link>
-
-            <Link to="/producto/grc" className="bg-slate-900 border border-slate-800 p-5 rounded-lg hover:border-sky-500/50 transition">
-              <span className="text-[10px] text-sky-400 font-bold">GRC / PRIVACIDAD</span>
-              <div className="text-white font-bold text-sm mt-2">¿Qué controles puedo demostrar?</div>
-              <p className="text-slate-500 text-[11px] mt-2">Matriz normativa EU AI Act / RGPD y exportación de Proof Bundles.</p>
-            </Link>
-
-            <Link to="/producto/cyber" className="bg-slate-900 border border-slate-800 p-5 rounded-lg hover:border-sky-500/50 transition">
-              <span className="text-[10px] text-sky-400 font-bold">CISO / SECOPS</span>
-              <div className="text-white font-bold text-sm mt-2">¿Qué está bloqueando el motor ahora?</div>
-              <p className="text-slate-500 text-[11px] mt-2">Intercepciones OWASP LLM Top 10 y estado Fail-Closed en vivo.</p>
-            </Link>
-
-            <Link to="/forense" className="bg-slate-900 border border-slate-800 p-5 rounded-lg hover:border-sky-500/50 transition">
-              <span className="text-[10px] text-sky-400 font-bold">FORENSE / PERICIAL</span>
-              <div className="text-white font-bold text-sm mt-2">¿Puedo verificar la evidencia independientemente?</div>
-              <p className="text-slate-500 text-[11px] mt-2">Bóveda ciega y verificación offline por terceros (Art. 326 LEC).</p>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 10 · EVIDENCE CHAIN */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-10 items-start">
-            <div>
-              <SectionTitle
-                kicker="EVIDENCE CHAIN"
-                title="Digest → Merkle → Ed25519 → RFC 3161"
-                lead="Cada veredicto puede convertirse en una prueba verificable por un tercero, sin necesidad de confiar en S.A.A.R.E. ni en su infraestructura."
               />
-              <div className="space-y-3 font-mono text-xs">
-                {EVIDENCE_CHAIN.map(([tag, name, desc]) => (
-                  <div key={tag} className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[9px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 rounded">{tag}</span>
-                      <span className="text-white font-bold">{name}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">{desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="lg:sticky lg:top-32">
-              <EvidenceChainPanel />
-              <p className="mt-4 text-[11px] font-mono text-slate-500 leading-relaxed">
-                La custodia avanzada de evidencias está disponible desde el tramo Business GRC.
-                La verificación pública del Trust Anchor (Free / Explorer) no requiere licencia.
-              </p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 11 · SECURITY / ARCHITECTURE BRIEF */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="SECURITY / ARCHITECTURE BRIEF"
-            title="El nodo decide. El plano de control gobierna."
-            lead="Separación estricta de planos: la decisión ocurre en el nodo, de forma autónoma y sin dependencia de red; el Control Plane distribuye políticas firmadas y recoge telemetría mínima."
-          />
-
-          <div className="grid lg:grid-cols-[1fr_.8fr] gap-8 items-start mt-4">
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs overflow-x-auto">
-              <div className="min-w-[420px] space-y-3">
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  {DEPLOYMENT.map(([name]) => (
-                    <div key={name} className="border border-slate-800 bg-slate-900 p-2 rounded text-[9px] text-slate-300 font-bold">{name}</div>
+        {/* 04 · DE PAPEL A ENFORCEMENT */}
+        <section className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="DE PAPEL A ENFORCEMENT"
+              title="Tu política de IA no debería ser solo un documento. Debería poder ejecutarse."
+              lead="Un Plan de Uso de IA en papel no detiene una fuga ni evita multas del EU AI Act. La misma política, compilada a regla versionada, sí."
+            />
+            <div className="grid lg:grid-cols-2 gap-8 mt-10">
+              <div className="bg-saare-surface border border-saare-line rounded-xl p-6">
+                <div className="font-mono text-[10px] font-bold text-saare-deny tracking-widest mb-6">ANTES · GOBIERNO DOCUMENTAL</div>
+                <div className="space-y-4 font-mono text-xs">
+                  {[
+                    ["POLÍTICA DE USO DE IA", "Documento aprobado por dirección"],
+                    ["PDF", "Distribuido por correo interno"],
+                    ["FORMACIÓN", "Sesión anual de concienciación"],
+                    ["CONFIANZA EN EL USUARIO", "Sin control técnico efectivo"],
+                  ].map(([t, d], i, arr) => (
+                    <div key={t}>
+                      <div className="bg-saare-surface-2 border border-saare-line p-4 rounded-lg">
+                        <div className="text-saare-ink font-bold">{t}</div>
+                        <div className="text-[10px] text-saare-ink-faint mt-1">{d}</div>
+                      </div>
+                      {i < arr.length - 1 && <div className="text-center text-saare-ink-faint py-1">↓</div>}
+                    </div>
                   ))}
                 </div>
-                <div className="text-center text-slate-600">↓</div>
-                <div className="border border-sky-500/40 bg-sky-500/5 p-4 rounded-lg">
-                  <div className="text-sky-300 font-bold text-center">DECISION NODE</div>
-                  <div className="grid grid-cols-2 gap-2 mt-3 text-[10px]">
-                    <div className="border border-slate-800 bg-slate-900 p-2 rounded text-slate-400">LOCAL POLICY · firmada</div>
-                    <div className="border border-slate-800 bg-slate-900 p-2 rounded text-slate-400">FAIL-CLOSED · por defecto</div>
-                    <div className="border border-slate-800 bg-slate-900 p-2 rounded text-slate-400">VOLATILE PROCESSING · RAM</div>
-                    <div className="border border-slate-800 bg-slate-900 p-2 rounded text-slate-400">EVIDENCE PIPELINE · digest</div>
-                  </div>
-                </div>
-                <div className="text-center text-slate-600">↓ telemetría mínima · políticas firmadas ↑</div>
-                <div className="border border-slate-800 bg-slate-900 p-3 rounded text-center text-slate-300 font-bold">
-                  CONTROL PLANE · API · D1 · KV
+              </div>
+
+              <div className="bg-saare-surface border border-saare-allow/30 rounded-xl p-6">
+                <div className="font-mono text-[10px] font-bold text-saare-allow tracking-widest mb-6">CON S.A.A.R.E. · GOBIERNO EJECUTABLE</div>
+                <div className="space-y-4 font-mono text-xs">
+                  {[
+                    ["POLÍTICA", "La misma decisión de gobierno"],
+                    ["REGLA VERSIONADA", "Compilada a nativo y firmada"],
+                    ["DECISIÓN EX-ANTE", "Antes de que la acción ocurra"],
+                    ["ALLOW / DENY", "Veredicto binario en el punto de acción"],
+                    ["EVIDENCIA", "Digest sellado, firmado y anclado"],
+                  ].map(([t, d], i, arr) => (
+                    <div key={t}>
+                      <div className="bg-saare-surface-2 border border-saare-allow/20 p-4 rounded-lg">
+                        <div className="text-saare-ink font-bold">{t}</div>
+                        <div className="text-[10px] text-saare-ink-faint mt-1">{d}</div>
+                      </div>
+                      {i < arr.length - 1 && <div className="text-center text-saare-allow/60 py-1">↓</div>}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-
-            <div className="space-y-4">
-              <TechnicalCard title="Autonomía del nodo" badge="RESILIENCIA">
-                <p>Si el Control Plane deja de estar disponible, el nodo sigue decidiendo con la última política firmada. La contención no depende de la red.</p>
-              </TechnicalCard>
-              <TechnicalCard title="Distribución de políticas" badge="GOBERNANZA">
-                <p>Cada política viaja firmada y versionada. El nodo rechaza cualquier paquete cuya firma no valide contra la clave de gobierno.</p>
-              </TechnicalCard>
-              <CtaButton ctaText="SOLICITAR ARQUITECTURA COMPLETA →" href={WHATSAPP_URL} full={false} />
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 12 · DEFENSA ACTIVA */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="DEFENSA ACTIVA"
-            title="Injection, PII, Shadow AI, Fail-Closed"
-            lead="Contención determinista de los vectores críticos del OWASP LLM Top 10, con la latencia medida en banco de pruebas de cada intercepción."
-          />
-          <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 mt-8">
-            <DataTable
-              headers={["VECTOR OWASP", "MECANISMO DE EXPLOTACIÓN", "MITIGACIÓN DETERMINISTA", "LATENCIA", "ETIQUETA"]}
-              rows={DEFENSE_VECTORS}
-              renderLast={(cell) => <DataLabel type={cell} />}
+        {/* 05 · SIETE DIMENSIONES */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="MODELO DE EVALUACIÓN"
+              title="Siete dimensiones resueltas antes de cada acción"
+              lead="Cada intento de acción se descompone en siete preguntas. Si alguna dimensión falla contra la política firmada, el veredicto es DENY y no hay ejecución."
             />
-          </div>
-          <div className="grid sm:grid-cols-3 gap-4 mt-6 font-mono text-xs">
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-              <div className="text-sky-400 font-bold text-[10px] tracking-widest">SHADOW AI</div>
-              <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">Descubrimiento automático de tráfico hacia proveedores de IA no autorizados dentro del perímetro.</p>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-              <div className="text-sky-400 font-bold text-[10px] tracking-widest">FAIL-CLOSED</div>
-              <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">Ante cualquier fallo interno del motor, la acción se deniega. La disponibilidad nunca prima sobre la contención.</p>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-              <div className="text-sky-400 font-bold text-[10px] tracking-widest">ZERO-DISK</div>
-              <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">El payload se procesa en RAM con mlock y se zeroiza tras la firma. No existe archivo que exfiltrar.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 13 · INTEROPERABILIDAD */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="INTEROPERABILIDAD"
-            title="Agnóstico al modelo. Agnóstico al proveedor."
-            lead="La política se escribe una vez y se aplica igual sobre cualquier modelo, en la nube o en su propio hardware."
-          />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10 font-mono text-xs">
-            {INTEROP.map(([name, family, desc, mode]) => (
-              <div key={name} className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
-                <div className="text-white font-bold text-sm">{name}</div>
-                <div className="text-[10px] text-sky-400 mt-1">{family}</div>
-                <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">{desc}</p>
-                <div className="text-[9px] text-slate-500 mt-3 font-bold">{mode}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 14 · DESPLIEGUE SOBERANO */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="DESPLIEGUE"
-            title="VPC · Private Cloud · On-Premise · Air-Gapped"
-            lead="El motor vive donde vive su infraestructura. La soberanía de claves y políticas permanece en el cliente en todas las topologías."
-          />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10 font-mono text-xs">
-            {DEPLOYMENT.map(([name, desc, tramo]) => (
-              <div key={name} className="bg-slate-900 border border-slate-800 p-5 rounded-lg flex flex-col justify-between">
-                <div>
-                  <div className="text-white font-bold text-sm">{name}</div>
-                  <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">{desc}</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-10">
+              {DIMENSIONS.map(([dim, title, desc]) => (
+                <div key={dim} className="bg-saare-surface-2 border border-saare-line p-5 rounded-lg font-mono">
+                  <div className="text-[10px] text-saare-accent font-bold">{dim}</div>
+                  <div className="text-saare-ink font-bold text-sm mt-2">{title}</div>
+                  <div className="text-[11px] text-saare-ink-dim mt-2 leading-relaxed">{desc}</div>
                 </div>
-                <div className="text-[9px] text-emerald-400 font-bold mt-4">{tramo}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 15 · ESCALADO DE LICENCIAMIENTO / LOS 4 NIVELES DE MONETIZACIÓN */}
-      <section id="licencias" className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="MODELO DE MONETIZACIÓN SAAS & GRC"
-            title="Los 4 Niveles de Gobierno y Cumplimiento S.A.A.R.E."
-            lead="Desde la verificación pública gratuita hasta la inmunidad pericial Enterprise con PKI propia y blindaje frente al EU AI Act."
-          />
-
-          <div className="grid md:grid-cols-4 gap-6 mt-12">
-            {CATALOGO.map((item) => (
-              <CatalogCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 16 · PARTNERS */}
-      <section className="border-b border-slate-800 bg-[#020617] py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="CANAL PARTNER"
-            title="Venda gobernanza de IA sin construirla."
-            lead="S.A.A.R.E. es la solución técnica. El programa Partner es el canal. Las ayudas públicas (Kit Consulting y similares) son el instrumento de financiación del cliente final: una palanca comercial, nunca la tesis del producto."
-          />
-
-          <div className="font-mono text-[10px] text-slate-500 bg-slate-900/40 border border-slate-800 p-4 rounded-lg flex flex-wrap gap-x-6 gap-y-2 items-center">
-            <span className="text-white font-bold">S.A.A.R.E.</span>
-            <span>→</span><span>SOLUCIÓN TÉCNICA</span>
-            <span>→</span><span>CANAL PARTNER</span>
-            <span>→</span><span className="text-slate-300">KIT CONSULTING / AYUDAS</span>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4 mt-8 font-mono text-xs">
-            {PARTNER_ENTREGABLES.map(([num, title, desc]) => (
-              <div key={num} className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
-                <div className="text-[10px] text-sky-400 font-bold">{num}</div>
-                <div className="text-white font-bold text-sm mt-2">{title}</div>
-                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8">
-            <Link to="/ventas" className="inline-block px-6 py-3 border border-sky-500/50 text-sky-300 font-mono text-xs font-bold rounded hover:bg-sky-500/10 transition">
-              VER PROGRAMA PARTNER COMPLETO →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 17 · SEGURIDAD Y BUEN USO */}
-      <section className="border-b border-slate-800 bg-slate-950 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <SectionTitle
-            kicker="SEGURIDAD Y BUEN USO"
-            title="Contención de máquinas. No vigilancia de personas."
-            lead="S.A.A.R.E. es infraestructura de autorización y prueba sobre acciones de agentes de IA. Estos principios definen el perímetro ético y operativo del producto."
-          />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10 font-mono text-xs">
-            {BUEN_USO.map(([title, desc]) => (
-              <div key={title} className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
-                <div className="text-white font-bold text-xs">{title}</div>
-                <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mt-12 font-mono text-xs">
-            <div className="bg-slate-900/80 border border-emerald-500/30 p-6 rounded-xl">
-              <div className="text-emerald-400 font-bold mb-4">✓ SALE DEL NODO (TELEMETRÍA MÍNIMA)</div>
-              <ul className="space-y-2 text-slate-300">
-                {TELEMETRIA_SALE.map((t) => (
-                  <li key={t} className="flex items-center gap-2"><span className="text-emerald-400">›</span> {t}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-slate-900/80 border border-red-500/30 p-6 rounded-xl">
-              <div className="text-red-400 font-bold mb-4">× NO SALE DEL NODO (NUNCA PERSISTIDO)</div>
-              <ul className="space-y-2 text-slate-400">
-                {TELEMETRIA_NO_SALE.map((t) => (
-                  <li key={t} className="flex items-center gap-2"><span className="text-red-400">›</span> {t}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 18 · CTA FINAL CONSOLIDADO */}
-      <section className="relative overflow-hidden bg-[#020617] py-24 text-center border-t border-slate-800">
-        <div className="max-w-4xl mx-auto px-6 font-mono">
-          <span className="text-xs text-sky-400 font-bold tracking-widest uppercase">S.A.A.R.E. SGP 1.0</span>
-          <h2 className="font-display font-bold text-3xl sm:text-5xl text-white mt-4">
-            ¿Dónde quiere empezar?
-          </h2>
-          <p className="mt-4 text-slate-400 text-sm max-w-xl mx-auto">
-            Tres vías de acceso, tres funciones distintas: probar el producto, hablar de arquitectura o verificar una evidencia.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 text-xs font-bold">
-            <Link to="/trial" className="w-full sm:w-auto px-8 py-4 bg-emerald-500 text-black rounded hover:bg-emerald-400 transition">
-              QUIERO PROBAR EL CONTROL ↗
-            </Link>
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-200 rounded hover:bg-slate-900 transition">
-              QUIERO HABLAR CON UN ARQUITECTO ↗
-            </a>
-            <a href="/#trust-anchor" className="w-full sm:w-auto px-8 py-4 border border-amber-500/40 text-amber-300 rounded hover:bg-amber-500/10 transition">
-              QUIERO VERIFICAR UNA EVIDENCIA ↗
-            </a>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-/* ==========================================================================
-   PÁGINAS SECUNDARIAS DESARROLLADAS
-   ========================================================================== */
-function DetalleLicencia({ id }) {
-  const item = CATALOGO.find((c) => c.id === id);
-  useSEO("home", item ? { title: `${item.nombre} | Licenciamiento S.A.A.R.E.`, description: item.descripcion.slice(0, 155) } : null);
-
-  if (!item) {
-    return (
-      <main className="max-w-3xl mx-auto px-6 py-20 text-center font-mono">
-        <PageHeader badge="LICENCIAMIENTO" title="Tramo no encontrado" description="El tramo solicitado no existe." />
-        <CtaButton ctaText="VOLVER AL CATÁLOGO →" href="/#licencias" full={false} />
-      </main>
-    );
-  }
-
-  return (
-    <main>
-      <PageHeader badge={`${item.grupo} · ${item.etiqueta}`} title={item.nombre} description={item.descripcion} />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 font-mono text-xs">
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
-              <SectionTitle kicker="ALCANCE" title="Características del tramo" />
-              <ul className="space-y-3">
-                {item.features.map((f, i) => (
-                  <li key={i} className="flex items-start gap-3 text-slate-300">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              {item.noIncluye.length > 0 && (
-                <div className="mt-8 pt-6 border-t border-slate-800">
-                  <div className="text-[10px] text-red-400 font-bold tracking-widest mb-3">NO INCLUIDO EN ESTE TRAMO</div>
-                  <ul className="space-y-2">
-                    {item.noIncluye.map((f, i) => (
-                      <li key={i} className="flex items-start gap-3 text-slate-500">
-                        <span className="text-red-400 font-bold">×</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-            <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
-              <SectionTitle kicker="PERFIL" title={`Comprador: ${item.comprador}`} />
-              <div className="grid sm:grid-cols-3 gap-3">
-                {item.ideal.map((p) => (
-                  <div key={p} className="border border-slate-800 bg-slate-950 p-3 rounded text-slate-400 text-[11px]">{p}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-900 border border-sky-500/40 p-8 rounded-xl flex flex-col justify-between">
-            <div>
-              <span className="text-[10px] text-sky-400 font-bold uppercase">{item.grupo}</span>
-              <div className="text-3xl font-bold text-white mt-2">{item.precio}</div>
-              <div className="text-slate-400 mt-1">{item.sufijo}</div>
-              <div className="text-[10px] text-slate-500 mt-2">{item.unidad}</div>
-              <p className="text-[11px] text-slate-400 mt-6 leading-relaxed border-t border-slate-800 pt-4">{item.claim}</p>
-            </div>
-            <div className="mt-8 space-y-3">
-              <CtaButton ctaText={item.cta} item={item} />
-              <Link to="/trial" className="block w-full text-center px-5 py-3 border border-slate-700 text-slate-300 font-bold text-xs rounded hover:bg-slate-800 transition">
-                PROBAR ANTES EN /trial →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function VistaConsola({ vistaId }) {
-  const v = VISTAS_CONSOLA[vistaId];
-  useSEO("producto", { title: `${v.badge} | saare_console`, description: v.pageDesc.slice(0, 155) });
-  const esCyber = v.id === "cyber";
-  const esForense = v.id === "forense";
-  const tramo = CATALOGO.find((c) => c.id === v.tramoRecomendado);
-
-  return (
-    <main>
-      <PageHeader badge={v.badge} title={v.pageTitle} description={v.pageDesc} />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <div className="text-[10px] text-slate-500 tracking-widest">PREGUNTA QUE RESPONDE ESTA VISTA</div>
-            <div className="text-white font-bold text-base mt-1">{v.pregunta}</div>
-          </div>
-          <div className="sm:text-right">
-            <div className="text-[10px] text-slate-500 tracking-widest">ROL DE ACCESO</div>
-            <div className="text-sky-400 font-bold mt-1">{v.rol}</div>
-            <div className="text-[10px] text-slate-500 mt-1">{v.owner}</div>
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {v.metricas.map(([label, value, tag]) => (
-            <MetricCard key={label} label={label} value={value} tag={tag} />
-          ))}
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
-          <SectionTitle kicker={v.seccionMatriz} title={v.tituloMatriz} lead={v.leadMatriz} />
-          <DataTable
-            headers={
-              esCyber
-                ? ["VECTOR OWASP", "MECANISMO DE EXPLOTACIÓN", "MITIGACIÓN DETERMINISTA", "LATENCIA"]
-                : esForense
-                ? ["MARCO PROCESAL", "REQUISITO", "MECANISMO S.A.A.R.E.", "ARTEFACTO PERICIAL"]
-                : ["MARCO Y ARTÍCULO", "CONTROL REQUERIDO", "MECANISMO S.A.A.R.E.", "EVIDENCIA GENERADA"]
-            }
-            rows={v.matriz}
-          />
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
-          <SectionTitle kicker={v.seccionInventario} title={v.tituloInventario} lead={v.leadInventario} />
-          <DataTable
-            headers={
-              esCyber
-                ? ["TIMESTAMP", "NODO", "VECTOR", "LATENCIA", "VEREDICTO"]
-                : esForense
-                ? ["EXPEDIENTE", "TIPO", "RAÍZ MERKLE", "SELLO", "ESTADO"]
-                : ["ACTIVO", "TIPO", "ENTORNO / POLÍTICA", "SCOPE / SELLO", "ESTADO"]
-            }
-            rows={v.inventario}
-            renderLast={(cell) => <VerdictChip verdict={cell} />}
-          />
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs">
-            <SectionTitle kicker={v.superficieSeccion} title={v.superficieTitulo} />
-            <div className="space-y-3">
-              {v.superficie.map(([label, value]) => (
-                <DataRow key={label} label={label} value={value} />
               ))}
             </div>
           </div>
-          {tramo && (
-            <div className="bg-slate-900 border border-emerald-500/40 p-8 rounded-xl font-mono text-xs flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] text-emerald-400 font-bold tracking-widest">NIVEL COMERCIAL RECOMENDADO</span>
-                <div className="text-white font-bold text-base mt-2">{tramo.nombre}</div>
-                <div className="text-2xl font-bold text-white mt-3">
-                  {tramo.precio} <span className="text-xs font-normal text-slate-400">{tramo.sufijo}</span>
+        </section>
+
+        {/* 06 · DECISION PATH */}
+        <section className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="DECISION PATH"
+              title="Action → Verdict → Permit"
+              lead="El recorrido completo de una acción dentro del plano de control. Todo ocurre en memoria volátil del nodo; solo el digest del resultado abandona el proceso."
+            />
+            <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3 mt-10 font-mono">
+              {DECISION_PATH.map(([num, title, desc, state]) => (
+                <div key={num} className="bg-saare-surface border border-saare-line p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-saare-accent font-bold">{num}</span>
+                    <span className="text-[8px] text-saare-ink-faint font-bold">{state}</span>
+                  </div>
+                  <div className="text-saare-ink font-bold text-xs mt-2">{title}</div>
+                  <div className="text-[10px] text-saare-ink-dim mt-2 leading-relaxed">{desc}</div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">{tramo.claim}</p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 07 · CADENA DE CUSTODIA (EVIDENCE CHAIN) */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid lg:grid-cols-2 gap-10 items-start">
+              <div>
+                <SectionTitle
+                  kicker="EVIDENCE CHAIN"
+                  title="Digest → Merkle → Ed25519 → RFC 3161"
+                  lead="Cada veredicto puede convertirse en una prueba verificable por un tercero, sin necesidad de confiar en S.A.A.R.E. ni en su infraestructura."
+                />
+                <div className="space-y-3 font-mono text-xs">
+                  {EVIDENCE_CHAIN.map(([tag, name, desc]) => (
+                    <div key={tag} className="bg-saare-surface-2 border border-saare-line p-4 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-bold text-saare-accent bg-saare-accent/10 border border-saare-accent/30 px-2 py-0.5 rounded">{tag}</span>
+                        <span className="text-saare-ink font-bold">{name}</span>
+                      </div>
+                      <p className="text-[11px] text-saare-ink-dim mt-2 leading-relaxed">{desc}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="mt-6 space-y-3">
-                <CtaButton ctaText={v.tramoCta} item={tramo} />
-                <Link to={tramo.path} className="block text-center text-[10px] text-slate-500 hover:text-slate-300">
-                  ver ficha completa del nivel →
-                </Link>
+              <div className="bg-saare-surface-2 border border-saare-line rounded-xl p-6 font-mono text-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-saare-line pb-3">
+                  <span className="text-saare-accent font-bold">EVIDENCE VAULT · CADENA DE CUSTODIA</span>
+                  <VerdictChip verdict="VERIFIED" />
+                </div>
+                <DataRow label="DIGEST" value="SHA-256 · e3b0c44298fc1c14…" />
+                <DataRow label="MERKLE ROOT" value="6f1b3986…c7f1a842" />
+                <DataRow label="SIGNATURE" value="Ed25519 · HSM_KEY_0x9F" />
+                <DataRow label="TIMESTAMP" value="RFC 3161 · eIDAS cualificado" />
+                <div className="pt-3 border-t border-saare-line text-[10px] text-saare-ink-faint leading-relaxed">
+                  Bóveda ciega: sin persistencia de payloads sensibles en disco. Trazabilidad completa con presunción legal de integridad.
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function TabCumplimiento() {
-  useSEO("producto");
-  return <VistaConsola vistaId="grc" />;
-}
-
-function TabForense() {
-  useSEO("forense");
-  return <VistaConsola vistaId="forense" />;
-}
-
-function TabDev() {
-  useSEO("dev");
-  return (
-    <main>
-      <PageHeader
-        badge="DESARROLLADORES"
-        title="Tres modos de ejecución. Un mismo motor."
-        description="SDK nativo (LabEngine), Proxy L7 perimetral (PerimeterShield) y servicio On-Premise (Daemon). La lógica de decisión es idéntica en los tres; cambia únicamente el punto de intercepción."
-      />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16">
-        <div className="grid md:grid-cols-3 gap-6 font-mono text-xs">
-          <Link to="/dev/sdk" className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-sky-500/50 transition">
-            <span className="text-[10px] text-emerald-400 font-bold">MODO SDK</span>
-            <h3 className="text-white font-bold text-lg mt-1">LabEngine</h3>
-            <p className="text-slate-400 mt-3 leading-relaxed">Autorización in-process dentro de su aplicación, RAG o agente.</p>
-            <div className="text-sky-400 font-bold mt-4">INTEGRAR SDK →</div>
-          </Link>
-          <Link to="/dev/proxy" className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-sky-500/50 transition">
-            <span className="text-[10px] text-emerald-400 font-bold">MODO PROXY</span>
-            <h3 className="text-white font-bold text-lg mt-1">PerimeterShield</h3>
-            <p className="text-slate-400 mt-3 leading-relaxed">Intercepción L7 en el borde: Docker, Helm o sidecar de Kubernetes.</p>
-            <div className="text-sky-400 font-bold mt-4">DESPLEGAR PROXY →</div>
-          </Link>
-          <Link to="/dev/daemon" className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-sky-500/50 transition">
-            <span className="text-[10px] text-emerald-400 font-bold">MODO DAEMON</span>
-            <h3 className="text-white font-bold text-lg mt-1">Local Node</h3>
-            <p className="text-slate-400 mt-3 leading-relaxed">Servicio local para redes aisladas, modelos propios y HSM.</p>
-            <div className="text-sky-400 font-bold mt-4">INSTALAR DAEMON →</div>
-          </Link>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function TabSDK() {
-  useSEO("dev");
-  return (
-    <main>
-      <PageHeader
-        badge="LABENGINE · MODO SDK"
-        title="El control vive dentro de su aplicación"
-        description="Paquete nativo que envuelve las llamadas del agente y consulta al motor de decisión en memoria compartida. Sin salida de red: la autorización ocurre in-process."
-      />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <TechnicalCard title="Cuándo elegir el modo SDK" badge="DECISIÓN">
-              <p>Agentes, pipelines RAG o herramientas internas cuyo código fuente controla. Es el punto de integración más profundo y el de menor latencia de intercepción.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Qué controla" badge="ALCANCE">
-              <p>Llamadas a funciones (tool-use), construcción de prompts, acceso a recursos internos y egreso de datos. Cada acción pasa por la evaluación de las 7 dimensiones antes de ejecutarse.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Cómo se actualiza" badge="GOBERNANZA">
-              <p>La política llega firmada desde el Control Plane y se carga en RAM. Un cambio de política se aplica en vivo, sin reiniciar el servicio ni redesplegar la aplicación.</p>
-            </TechnicalCard>
           </div>
-          <div className="space-y-6">
-            <CodePanel
-              title="INTEGRACIÓN · PYTHON (REFERENCE)"
-              code={`from saare import LabEngine
+        </section>
 
-engine = LabEngine(
-    node_key='NODE_KEY_HSM',
-    policy='FIN-PAYMENT-042',
-    fail_closed=True,
-)
-
-@engine.guard(action='SEND_PAYMENT',
-              resource='core-banking://transfers')
-def send_payment(amount, iban):
-    # Solo se ejecuta si el veredicto es ALLOW
-    return banking_api.transfer(amount, iban)`}
+        {/* 08 · TRES MODOS DE EJECUCIÓN (SDK, PROXY, DAEMON) */}
+        <section className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="DESARROLLADORES & INFRAESTRUCTURA"
+              title="Tres modos de ejecución. Un mismo motor."
+              lead="La lógica de decisión es idéntica en los tres; cambia únicamente el punto de intercepción según su arquitectura."
             />
-            <CodePanel
-              title="VEREDICTO DEVUELTO (REFERENCE)"
-              code={`{
-  "verdict": "DENY",
-  "policy": "FIN-PAYMENT-042",
-  "policy_version": 17,
-  "dimensions_failed": ["RISK", "DATA"],
-  "latency_ms": 1.16,
-  "evidence_digest": "e3b0c44298fc1c14…",
-  "permit": null
-}`}
-            />
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo SDK se licencia bajo el nivel <span className="text-white font-bold">Developer / Pro</span> o superior.</div>
-          <div className="flex gap-3">
-            <Link to="/licencias/developer-pro" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER DEVELOPER / PRO →</Link>
-            <Link to="/trial" className="px-5 py-3 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition">PROBAR SDK ↗</Link>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
 
-function TabProxy() {
-  useSEO("dev");
-  return (
-    <main>
-      <PageHeader
-        badge="PERIMETERSHIELD · MODO PROXY"
-        title="El control vive en el tráfico"
-        description="Pasarela L7 que intercepta cada petición hacia proveedores de IA o APIs internas antes de que salga del perímetro. Despliegue en Docker, Helm o sidecar de Kubernetes."
-      />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <TechnicalCard title="Cuándo elegir el modo Proxy" badge="DECISIÓN">
-              <p>Cuando el tráfico hacia modelos sale por red — APIs de OpenAI, Anthropic o Google, o agentes de terceros sin código accesible. También para descubrir Shadow AI en el perímetro.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Qué controla" badge="ALCANCE">
-              <p>Peticiones HTTP/REST de capa 7: destino, payload, cabeceras y volumen. Aplica la política antes de reenviar y emite el veredicto con su evidencia asociada.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Dónde ejecuta" badge="TOPOLOGÍA">
-              <p>En el borde del clúster o como gateway dedicado. Escalado horizontal sin estado: la decisión es local en cada réplica; la política se sincroniza firmada desde el Control Plane.</p>
-            </TechnicalCard>
-          </div>
-          <div className="space-y-6">
-            <CodePanel
-              title="DESPLIEGUE · KUBERNETES / HELM (REFERENCE)"
-              code={`helm install perimetershield saare/charts \\
+            <div className="grid lg:grid-cols-3 gap-8 mt-10">
+              {/* MODO SDK */}
+              <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
+                <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">LABENGINE · MODO SDK</span>
+                <h3 className="text-saare-ink font-bold text-xl">El control vive dentro de la aplicación</h3>
+                <p className="text-saare-ink-dim text-xs leading-relaxed">
+                  Paquete nativo que envuelve las llamadas del agente y consulta al motor en memoria compartida. Sin salida de red: la autorización ocurre in-process.
+                </p>
+                <CodePanel
+                  title="PYTHON (REFERENCE)"
+                  code={`from saare import LabEngine
+
+engine = LabEngine(node_key='HSM', policy='POL-01')
+@engine.guard(action='SEND_PAYMENT')
+def pay(amount, iban):
+    return api.transfer(amount, iban)`}
+                />
+              </div>
+
+              {/* MODO PROXY */}
+              <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
+                <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">PERIMETERSHIELD · MODO PROXY</span>
+                <h3 className="text-saare-ink font-bold text-xl">El control vive en el tráfico</h3>
+                <p className="text-saare-ink-dim text-xs leading-relaxed">
+                  Pasarela L7 que intercepta cada petición hacia proveedores de IA o APIs internas antes de que salga del perímetro. Docker, Helm o Sidecar.
+                </p>
+                <CodePanel
+                  title="HELM / K8S (REFERENCE)"
+                  code={`helm install perimetershield saare/charts \\
   --set node.keyRef=hsm://pkcs11/key-0x9f \\
   --set policy.bundle=FIN-PAYMENT-042:v17 \\
-  --set failClosed=true \\
-  --set evidence.custody=true \\
-  --set telemetry.minimal=true`}
-            />
-            <CodePanel
-              title="FLUJO DE INTERCEPCIÓN (REFERENCE)"
-              code={`AGENT ──▶ PERIMETERSHIELD ──▶ POLICY EVAL (7D, RAM)
-                                   │
-                    ┌──────────────┴──────────────┐
-                 ALLOW ▶ upstream             DENY ▶ 403 + digest
-                    │                             │
-             respuesta filtrada            evidencia sellada
-             (PII sanitizada)            (Merkle + Ed25519)`}
-            />
-          </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo Proxy se licencia bajo <span className="text-white font-bold">Developer / Pro</span> o <span className="text-white font-bold">Business GRC</span>.</div>
-          <div className="flex gap-3">
-            <Link to="/licencias/business-grc" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER BUSINESS GRC →</Link>
-            <Link to="/trial" className="px-5 py-3 bg-sky-500 text-black font-bold rounded hover:bg-sky-400 transition">PROBAR PROXY ↗</Link>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
+  --set failClosed=true`}
+                />
+              </div>
 
-function TabDaemon() {
-  useSEO("dev");
-  return (
-    <main>
-      <PageHeader
-        badge="LOCAL NODE · MODO DAEMON"
-        title="El control vive en su servidor"
-        description="Servicio local para redes aisladas y modelos propios. Systemd o servicio Windows, con claves en HSM del cliente y actualización de políticas por paquete firmado offline."
-      />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <TechnicalCard title="Cuándo elegir el modo Daemon" badge="DECISIÓN">
-              <p>Infraestructuras críticas, defensa, sector público o cualquier red sin salida a Internet. Es la modalidad de máxima soberanía: nada abandona su perímetro, ni siquiera la telemetría mínima si así se configura.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Air-Gapped real" badge="AISLAMIENTO">
-              <p>Las políticas se distribuyen como paquetes firmados verificables offline. El nodo valida la firma contra la clave de gobierno antes de cargar cualquier actualización.</p>
-            </TechnicalCard>
-            <TechnicalCard title="Claves del cliente" badge="HSM">
-              <p>Integración PKCS#11 con su HSM corporativo. Las claves de firma de evidencias las genera y las custodia el cliente: S.A.A.R.E. no puede firmar en su nombre.</p>
-            </TechnicalCard>
-          </div>
-          <div className="space-y-6">
-            <CodePanel
-              title="INSTALACIÓN · SYSTEMD (REFERENCE)"
-              code={`# paquete firmado, verificación previa a la instalación
-saare-cli verify saare-node-1.0.sgp \\
-  --pubkey governance.pub
-
+              {/* MODO DAEMON */}
+              <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
+                <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">LOCAL NODE · MODO DAEMON</span>
+                <h3 className="text-saare-ink font-bold text-xl">El control vive en su servidor</h3>
+                <p className="text-saare-ink-dim text-xs leading-relaxed">
+                  Servicio local para redes aisladas y modelos propios. Systemd o servicio Windows, con claves en HSM del cliente y actualización offline.
+                </p>
+                <CodePanel
+                  title="SYSTEMD (REFERENCE)"
+                  code={`saare-cli verify saare-node-1.0.sgp
 sudo dpkg -i saare-node-1.0.sgp
-sudo systemctl enable --now saare-node
+sudo systemctl enable --now saare-node`}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
-# estado del nodo (sin salida de red)
-saare-cli status
-# NODE_STATUS  ONLINE
-# POLICY       FIN-PAYMENT-042 v17 (SIGNED)
-# FAIL_CLOSED  true
-# EVIDENCE     local vault (air-gapped)`}
+        {/* 09 · DEFENSA ACTIVA (OWASP) */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="DEFENSA ACTIVA"
+              title="Injection, PII, Shadow AI, Fail-Closed"
+              lead="Contención determinista de los vectores críticos del OWASP LLM Top 10, con la latencia medida en banco de pruebas de cada intercepción."
             />
-            <div className="grid grid-cols-2 gap-4 font-mono text-xs">
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-                <div className="text-sky-400 font-bold text-[10px] tracking-widest">MLOCK + ZEROIZACIÓN</div>
-                <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">La memoria del motor se bloquea contra swap y se zeroiza tras cada firma.</p>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg">
-                <div className="text-sky-400 font-bold text-[10px] tracking-widest">SIN DEPENDENCIA DE RED</div>
-                <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">La decisión es local y autónoma. La contención no se degrada sin conectividad.</p>
-              </div>
+            <div className="bg-saare-surface-2 border border-saare-line rounded-xl p-6 mt-8">
+              <DataTable
+                headers={["VECTOR OWASP", "MECANISMO DE EXPLOTACIÓN", "MITIGACIÓN DETERMINISTA", "LATENCIA", "ETIQUETA"]}
+                rows={DEFENSE_VECTORS}
+                renderLast={(cell) => <DataLabel type={cell} />}
+              />
             </div>
           </div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-slate-400">El modo Daemon se licencia bajo el nivel <span className="text-white font-bold">Enterprise / Legal Shield</span>, con contrato marco y SLA.</div>
-          <div className="flex gap-3">
-            <Link to="/licencias/enterprise-shield" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER LEGAL SHIELD →</Link>
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-5 py-3 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition">HABLAR CON UN ARQUITECTO ↗</a>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
+        </section>
 
-function TabVentas() {
-  useSEO("canal");
-  const tramo = CATALOGO.find((c) => c.id === "business-grc");
-  return (
-    <main>
-      <PageHeader
-        badge="CANAL PARTNERS"
-        title="Programa Partner Multi-Tenant"
-        description="Licenciamiento marca blanca para consultoras, MSP y agentes digitalizadores. Cada cliente gestionado dispone de su política, su clave y su cadena de prueba independiente."
-      />
-      <section className="max-w-6xl mx-auto px-6 py-6 mb-16 space-y-8">
-        <div className="font-mono text-[10px] text-slate-500 bg-slate-900/40 border border-slate-800 p-4 rounded-lg flex flex-wrap gap-x-6 gap-y-2 items-center">
-          <span className="text-white font-bold">S.A.A.R.E.</span>
-          <span>→</span><span>SOLUCIÓN TÉCNICA</span>
-          <span>→</span><span>CANAL PARTNER</span>
-          <span>→</span><span className="text-slate-300">KIT CONSULTING / AYUDAS PÚBLICAS</span>
-        </div>
+        {/* 10 · INTEROPERABILIDAD Y DESPLIEGUE SOBERANO */}
+        <section className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="INTEROPERABILIDAD Y DESPLIEGUE"
+              title="Agnóstico al modelo. Soberano en la infraestructura."
+              lead="La política se escribe una vez y se aplica igual sobre cualquier modelo, en la nube o en su propio centro de datos."
+            />
 
-        <div className="grid md:grid-cols-3 gap-4 font-mono text-xs">
-          {PARTNER_ENTREGABLES.map(([num, title, desc]) => (
-            <div key={num} className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
-              <div className="text-[10px] text-sky-400 font-bold">{num}</div>
-              <div className="text-white font-bold text-sm mt-2">{title}</div>
-              <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">{desc}</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 font-mono text-xs">
+              {INTEROP.map(([name, family, desc, mode]) => (
+                <div key={name} className="bg-saare-surface border border-saare-line p-5 rounded-lg">
+                  <div className="text-saare-ink font-bold text-sm">{name}</div>
+                  <div className="text-[10px] text-saare-accent mt-1">{family}</div>
+                  <p className="text-[11px] text-saare-ink-dim mt-3 leading-relaxed">{desc}</p>
+                  <div className="text-[9px] text-saare-ink-faint mt-3 font-bold">{mode}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl">
-          <SectionTitle
-            kicker="ALCANCE DEL PROGRAMA"
-            title="Qué incluye la licencia de canal"
-            lead="Todo lo necesario para operar gobernanza de IA como servicio sobre su cartera, sin construir infraestructura propia."
-          />
-          <div className="grid sm:grid-cols-2 gap-3 font-mono text-xs">
-            {tramo.features.map((f) => (
-              <div key={f} className="flex items-start gap-3 text-slate-300">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>{f}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl font-mono text-xs">
-          <SectionTitle
-            kicker="PERFIL DE PARTNER"
-            title="Para quién es este programa"
-          />
-          <div className="grid sm:grid-cols-3 gap-3">
-            {tramo.ideal.map((p) => (
-              <div key={p} className="border border-slate-800 bg-slate-950 p-3 rounded text-slate-400 text-[11px]">{p}</div>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800 pt-6">
-            <div>
-              <div className="text-2xl font-bold text-white">Desde 450 € <span className="text-xs font-normal text-slate-400">/cliente/año</span></div>
-              <div className="text-[10px] text-slate-500 mt-1">Por cliente gestionado multi-tenant</div>
-            </div>
-            <div className="flex gap-3">
-              <Link to="/licencias/business-grc" className="px-5 py-3 border border-sky-500/50 text-sky-300 font-bold rounded hover:bg-sky-500/10 transition">VER GRC CONSOLE →</Link>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="px-5 py-3 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition">ACTIVAR PROGRAMA ↗</a>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 font-mono text-xs">
+              {DEPLOYMENT.map(([name, desc, tramo]) => (
+                <div key={name} className="bg-saare-surface border border-saare-line p-5 rounded-lg flex flex-col justify-between">
+                  <div>
+                    <div className="text-saare-ink font-bold text-sm">{name}</div>
+                    <p className="text-[11px] text-saare-ink-dim mt-3 leading-relaxed">{desc}</p>
+                  </div>
+                  <div className="text-[9px] text-saare-allow font-bold mt-4">{tramo}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
-    </main>
-  );
-}
+        </section>
 
-function TrialPage() {
-  useSEO("trial");
-  const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ nombre: "", empresa: "", email: "", modo: "proxy", mensaje: "" });
+        {/* 11 · CONSOLA MULTI-VISTA (SAARE_CONSOLE) */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="saare_console"
+              title="Una sola consola para cuatro lecturas del mismo sistema"
+              lead="Mismo motor. Mismas decisiones. Misma evidencia. Distinta interpretación según el rol de acceso RBAC."
+            />
+            <div className="space-y-12 mt-10">
+              {VISTAS_CONSOLA.map((v) => (
+                <div key={v.id} className="bg-saare-surface-2 border border-saare-line rounded-xl p-8">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-saare-line">
+                    <div>
+                      <span className="font-mono text-xs text-saare-accent font-bold uppercase">{v.badge}</span>
+                      <h3 className="text-xl font-bold text-saare-ink mt-1">{v.titular}</h3>
+                    </div>
+                    <div className="font-mono text-right text-xs">
+                      <div className="text-saare-ink-dim">{v.pregunta}</div>
+                      <div className="text-saare-ink-faint text-[10px] mt-1">Rol: {v.rol}</div>
+                    </div>
+                  </div>
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    setSent(true);
-  }
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {v.metricas.map(([label, value, tag]) => (
+                      <MetricCard key={label} label={label} value={value} tag={tag} />
+                    ))}
+                  </div>
 
-  return (
-    <main>
-      <PageHeader
-        badge="PRUEBA DE CONTROL"
-        title="Someta un agente a control"
-        description="Evaluación cualificada: desplegamos un nodo de demostración sobre uno de sus agentes y le entregamos el decision trace y la evidencia sellada del ejercicio."
-      />
-      <section className="max-w-4xl mx-auto px-6 py-6 mb-16">
-        {sent ? (
-          <div className="bg-slate-900 border border-emerald-500/40 rounded-xl p-10 text-center font-mono">
-            <VerdictChip verdict="VERIFIED" />
-            <h2 className="text-white font-bold text-xl mt-4">Solicitud registrada</h2>
-            <p className="text-slate-400 text-sm mt-3 max-w-md mx-auto leading-relaxed">
-              Un arquitecto de soluciones le contactará en un plazo máximo de 48 h laborables
-              para definir el alcance del ejercicio de control.
-            </p>
-            <Link to="/" className="inline-block mt-6 px-6 py-3 border border-slate-700 text-slate-200 font-mono text-xs font-bold rounded hover:bg-slate-800 transition">
-              VOLVER AL MOTOR DE REFERENCIA →
-            </Link>
+                  <div className="mb-6">
+                    <h4 className="text-xs font-mono font-bold text-saare-accent uppercase tracking-widest mb-3">MATRIZ DE CUMPLIMIENTO / VECTORES</h4>
+                    <DataTable
+                      headers={["MARCO / VECTOR", "CONTROL / REQUISITO", "MITIGACIÓN S.A.A.R.E.", "EVIDENCIA / LATENCIA"]}
+                      rows={v.matriz}
+                    />
+                  </div>
+
+                  {v.inventario && (
+                    <div>
+                      <h4 className="text-xs font-mono font-bold text-saare-accent uppercase tracking-widest mb-3">INVENTARIO / HISTÓRICO DE VEREDICTOS</h4>
+                      <DataTable
+                        headers={["IDENTIFICADOR / NODO", "TIPO / DETALLE", "POLÍTICA / VECTOR", "SELLO / LATENCIA", "ESTADO"]}
+                        rows={v.inventario}
+                        renderLast={(cell) => <VerdictChip verdict={cell} />}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-8 font-mono text-xs space-y-5">
-            <div className="grid sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-[10px] text-slate-500 tracking-widest mb-2">NOMBRE Y CARGO</label>
-                <input required value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 px-4 py-3 rounded text-slate-200 focus:outline-none focus:border-sky-400" placeholder="Nombre · CISO / CTO / DPO" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-slate-500 tracking-widest mb-2">ORGANIZACIÓN</label>
-                <input required value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 px-4 py-3 rounded text-slate-200 focus:outline-none focus:border-sky-400" placeholder="Empresa o entidad" />
-              </div>
+        </section>
+
+        {/* 12 · MODELO DE MONETIZACIÓN & CATALOGO */}
+        <section id="licencias" className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="MODELO DE MONETIZACIÓN SAAS & GRC"
+              title="Los 4 Niveles de Gobierno y Cumplimiento S.A.A.R.E."
+              lead="Desde la verificación pública gratuita hasta la inmunidad pericial Enterprise con PKI propia y blindaje frente al EU AI Act."
+            />
+            <div className="grid md:grid-cols-4 gap-6 mt-12">
+              {CATALOGO.map((item) => (
+                <div
+                  key={item.id}
+                  className={`bg-saare-surface border p-6 rounded-lg font-mono relative flex flex-col justify-between ${
+                    item.featured ? "border-saare-allow/50" : "border-saare-accent/40"
+                  }`}
+                >
+                  <div>
+                    {item.featured && (
+                      <span className="absolute top-4 right-4 text-[9px] font-bold bg-saare-allow/15 border border-saare-allow/40 text-saare-allow px-2 py-0.5 rounded">
+                        RECOMENDADO
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold text-saare-ink-faint uppercase tracking-widest">{item.grupo}</span>
+                    <div className="text-xs font-bold text-saare-accent uppercase tracking-widest mt-1">{item.etiqueta}</div>
+                    <h3 className="text-saare-ink font-bold text-base mt-2">{item.nombre}</h3>
+                    <p className="text-[11px] text-saare-ink-dim leading-relaxed mt-2">{item.claim}</p>
+                    <div className="text-2xl font-bold text-saare-ink mt-4">
+                      {item.precio}
+                      <span className="text-xs font-normal text-saare-ink-faint"> {item.sufijo}</span>
+                    </div>
+                    <p className="text-[10px] text-saare-ink-faint mt-1">{item.unidad}</p>
+                    
+                    <ul className="mt-6 space-y-2 text-[11px] border-t border-saare-line pt-4 text-saare-ink-dim">
+                      {item.features.map((f, fi) => (
+                        <li key={fi} className="flex items-center gap-2">
+                          <span className="text-saare-allow">✓</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <a
+                    href={item.href}
+                    target={item.href.startsWith("http") ? "_blank" : "_self"}
+                    rel="noreferrer"
+                    className="block w-full text-center px-5 py-3 mt-8 bg-saare-accent text-black font-bold text-xs rounded hover:bg-saare-accent/80 transition"
+                  >
+                    {item.cta}
+                  </a>
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="block text-[10px] text-slate-500 tracking-widest mb-2">EMAIL CORPORATIVO</label>
-              <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-700 px-4 py-3 rounded text-slate-200 focus:outline-none focus:border-sky-400" placeholder="nombre@empresa.com" />
+          </div>
+        </section>
+
+        {/* 13 · PROGRAMA PARTNERS */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="CANAL PARTNER"
+              title="Venda gobernanza de IA sin construirla."
+              lead="S.A.A.R.E. es la solución técnica. El programa Partner es el canal. Licenciamiento marca blanca para consultoras, MSPs y agentes digitalizadores."
+            />
+            <div className="grid md:grid-cols-3 gap-4 mt-8 font-mono text-xs">
+              {PARTNER_ENTREGABLES.map(([num, title, desc]) => (
+                <div key={num} className="bg-saare-surface-2 border border-saare-line p-5 rounded-lg">
+                  <div className="text-[10px] text-saare-accent font-bold">{num}</div>
+                  <div className="text-saare-ink font-bold text-sm mt-2">{title}</div>
+                  <p className="text-[11px] text-saare-ink-dim mt-2 leading-relaxed">{desc}</p>
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="block text-[10px] text-slate-500 tracking-widest mb-2">MODO DE EJECUCIÓN A EVALUAR</label>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {[
-                  ["sdk", "SDK · LabEngine", "Dentro de la aplicación"],
-                  ["proxy", "PROXY · PerimeterShield", "En el tráfico de red"],
-                  ["daemon", "DAEMON · Local Node", "En el servidor / air-gapped"],
-                ].map(([val, title, desc]) => (
-                  <button type="button" key={val} onClick={() => setForm({ ...form, modo: val })}
-                    className={`text-left p-4 rounded-lg border transition ${form.modo === val ? "border-sky-500/60 bg-sky-500/10" : "border-slate-800 bg-slate-950 hover:border-slate-700"}`}>
-                    <div className="text-white font-bold">{title}</div>
-                    <div className="text-[10px] text-slate-500 mt-1">{desc}</div>
+          </div>
+        </section>
+
+        {/* 14 · FORMULARIO TRIAL / SOMETER AGENTE */}
+        <section id="trial" className="border-b border-saare-line bg-saare-bg py-20">
+          <div className="max-w-4xl mx-auto px-6">
+            <PageHeader
+              badge="PRUEBA DE CONTROL"
+              title="Someta un agente a control"
+              description="Evaluación cualificada: desplegamos un nodo de demostración sobre uno de sus agentes y le entregamos el decision trace y la evidencia sellada del ejercicio."
+            />
+            <div className="mt-8">
+              {formSent ? (
+                <div className="bg-saare-surface border border-saare-allow/40 rounded-xl p-10 text-center font-mono">
+                  <VerdictChip verdict="VERIFIED" />
+                  <h2 className="text-saare-ink font-bold text-xl mt-4">Solicitud registrada</h2>
+                  <p className="text-saare-ink-dim text-sm mt-3 max-w-md mx-auto leading-relaxed">
+                    Un arquitecto de soluciones le contactará en un plazo máximo de 48 h laborables
+                    para definir el alcance del ejercicio de control.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleTrialSubmit} className="bg-saare-surface border border-saare-line rounded-xl p-8 font-mono text-xs space-y-5">
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] text-saare-ink-faint tracking-widest mb-2">NOMBRE Y CARGO</label>
+                      <input required value={trialForm.nombre} onChange={(e) => setTrialForm({ ...trialForm, nombre: e.target.value })}
+                        className="w-full bg-saare-surface-2 border border-saare-line px-4 py-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent" placeholder="Nombre · CISO / CTO / DPO" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-saare-ink-faint tracking-widest mb-2">ORGANIZACIÓN</label>
+                      <input required value={trialForm.empresa} onChange={(e) => setTrialForm({ ...trialForm, empresa: e.target.value })}
+                        className="w-full bg-saare-surface-2 border border-saare-line px-4 py-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent" placeholder="Empresa o entidad" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-saare-ink-faint tracking-widest mb-2">EMAIL CORPORATIVO</label>
+                    <input required type="email" value={trialForm.email} onChange={(e) => setTrialForm({ ...trialForm, email: e.target.value })}
+                      className="w-full bg-saare-surface-2 border border-saare-line px-4 py-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent" placeholder="nombre@empresa.com" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-saare-ink-faint tracking-widest mb-2">MODO DE EJECUCIÓN A EVALUAR</label>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      {[
+                        ["sdk", "SDK · LabEngine", "Dentro de la aplicación"],
+                        ["proxy", "PROXY · PerimeterShield", "En el tráfico de red"],
+                        ["daemon", "DAEMON · Local Node", "En el servidor / air-gapped"],
+                      ].map(([val, title, desc]) => (
+                        <button type="button" key={val} onClick={() => setTrialForm({ ...trialForm, modo: val })}
+                          className={`text-left p-4 rounded-lg border transition ${trialForm.modo === val ? "border-saare-accent/60 bg-saare-accent/10" : "border-saare-line bg-saare-surface-2 hover:border-saare-line-hi"}`}>
+                          <div className="text-saare-ink font-bold">{title}</div>
+                          <div className="text-[10px] text-saare-ink-faint mt-1">{desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-saare-ink-faint tracking-widest mb-2">CONTEXTO DEL AGENTE (OPCIONAL)</label>
+                    <textarea rows={4} value={trialForm.mensaje} onChange={(e) => setTrialForm({ ...trialForm, mensaje: e.target.value })}
+                      className="w-full bg-saare-surface-2 border border-saare-line px-4 py-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent resize-none"
+                      placeholder="Qué hace el agente, a qué sistemas accede y qué política quiere hacer ejecutable." />
+                  </div>
+                  <button type="submit" className="w-full py-4 bg-saare-allow text-black font-bold rounded hover:bg-saare-allow/80 transition cursor-pointer">
+                    SOMETER UN AGENTE ↗
                   </button>
-                ))}
+                </form>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* 15 · BUEN USO & TELEMETRÍA */}
+        <section className="border-b border-saare-line bg-saare-surface py-20">
+          <div className="max-w-7xl mx-auto px-6">
+            <SectionTitle
+              kicker="SEGURIDAD Y BUEN USO"
+              title="Contención de máquinas. No vigilancia de personas."
+              lead="S.A.A.R.E. es infraestructura de autorización y prueba sobre acciones de agentes de IA."
+            />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10 font-mono text-xs">
+              {BUEN_USO.map(([title, desc]) => (
+                <div key={title} className="bg-saare-surface-2 border border-saare-line p-5 rounded-lg">
+                  <div className="text-saare-ink font-bold text-xs">{title}</div>
+                  <p className="text-[11px] text-saare-ink-dim mt-3 leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mt-12 font-mono text-xs">
+              <div className="bg-saare-surface-2/80 border border-saare-allow/30 p-6 rounded-xl">
+                <div className="text-saare-allow font-bold mb-4">✓ SALE DEL NODO (TELEMETRÍA MÍNIMA)</div>
+                <ul className="space-y-2 text-saare-ink-dim">
+                  {TELEMETRIA_SALE.map((t) => (
+                    <li key={t} className="flex items-center gap-2"><span className="text-saare-allow">›</span> {t}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="bg-saare-surface-2/80 border border-saare-deny/30 p-6 rounded-xl">
+                <div className="text-saare-deny font-bold mb-4">× NO SALE DEL NODO (NUNCA PERSISTIDO)</div>
+                <ul className="space-y-2 text-saare-ink-faint">
+                  {TELEMETRIA_NO_SALE.map((t) => (
+                    <li key={t} className="flex items-center gap-2"><span className="text-saare-deny">›</span> {t}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 16 · INFORMACIÓN CORPORATIVA & FOOTER */}
+        <footer className="bg-saare-surface pt-16 pb-12 px-6 font-mono text-xs text-saare-ink-dim">
+          <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-12 border-b border-saare-line">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg text-saare-ink font-display">S.A.A.R.E.</span>
+                <span className="text-[9px] bg-saare-accent/10 border border-saare-accent/30 text-saare-accent px-2 py-0.5 rounded font-bold">SGP 1.0</span>
+              </div>
+              <p className="text-[10px] text-saare-ink-faint mt-3 leading-relaxed">
+                MS3V S.A.A.R.E. SL · Infraestructura española de autorización ex-ante y gobernanza runtime L7 para Inteligencia Artificial.
+              </p>
+            </div>
+            <div>
+              <div className="text-[10px] text-saare-ink-faint tracking-widest font-bold">CONTACTO</div>
+              <div className="mt-3 space-y-2 text-[11px]">
+                <div>Email: <a href={`mailto:${CONTACT_EMAIL}`} className="text-saare-ink hover:underline">{CONTACT_EMAIL}</a></div>
+                <div>Teléfono: <a href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`} className="text-saare-ink hover:underline">{CONTACT_PHONE}</a></div>
               </div>
             </div>
             <div>
-              <label className="block text-[10px] text-slate-500 tracking-widest mb-2">CONTEXTO DEL AGENTE (OPCIONAL)</label>
-              <textarea rows={4} value={form.mensaje} onChange={(e) => setForm({ ...form, mensaje: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-700 px-4 py-3 rounded text-slate-200 focus:outline-none focus:border-sky-400 resize-none"
-                placeholder="Qué hace el agente, a qué sistemas accede y qué política quiere hacer ejecutable." />
+              <div className="text-[10px] text-saare-ink-faint tracking-widest font-bold">ACCESO ENTERPRISE</div>
+              <div className="mt-3 text-[11px]">
+                <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="text-saare-allow font-bold hover:underline">
+                  Solicitar Propuesta por WhatsApp ↗
+                </a>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <p className="text-[10px] text-slate-500 max-w-sm leading-relaxed">
-                Solo usaremos estos datos para gestionar la evaluación. Sin listas de correo ni cesión a terceros.
-              </p>
-              <button type="submit" className="px-8 py-4 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition shrink-0 cursor-pointer">
-                SOMETER UN AGENTE ↗
-              </button>
+            <div>
+              <div className="text-[10px] text-saare-ink-faint tracking-widest font-bold">MARCO LEGAL</div>
+              <div className="mt-3 text-[10px] text-saare-ink-faint leading-relaxed">
+                Procesamiento en memoria volátil Zero-Disk. Cumplimiento con RGPD, eIDAS, DORA y EU AI Act.
+              </div>
             </div>
-          </form>
-        )}
-      </section>
-    </main>
-  );
-}
-
-function CorporatePage({ variant }) {
-  useSEO("home");
-
-  const content = {
-    empresa: {
-      badge: "CORPORATIVO",
-      title: "MS3V S.A.A.R.E. SL",
-      description: "Infraestructura española de autorización ex-ante para inteligencia artificial. Ingeniería de plano de control, evidencia criptográfica y gobernanza ejecutable.",
-      blocks: [
-        ["MISIÓN", "Convertir las políticas de uso de IA en decisiones ejecutables y demostrables, para que la automatización autónoma opere bajo control verificable."],
-        ["ENFOQUE", "Determinismo frente a probabilidad: reglas compiladas, decisión ex-ante, fail-closed por defecto y evidencia verificable por terceros."],
-        ["SOBERANÍA", "Despliegue en infraestructura del cliente, claves del cliente y telemetría mínima. El contenido de sus sistemas nunca sale del nodo."],
-      ],
-    },
-    "buenas-practicas": {
-      badge: "BUEN USO",
-      title: "Contención de máquinas, no vigilancia de personas",
-      description: "Los principios que delimitan el uso legítimo de la plataforma y el perímetro ético del producto.",
-      blocks: BUEN_USO.map(([t, d]) => [t, d]),
-    },
-    legal: {
-      badge: "LEGAL",
-      title: "Privacidad, términos B2B y SLA Zero-Disk",
-      description: "Marco contractual y de tratamiento de datos de la plataforma.",
-      blocks: [
-        ["PRIVACIDAD POR DISEÑO", "El motor procesa payloads en memoria volátil (mlock) y los zeroiza tras la firma. La telemetría saliente es numérica y nunca contiene PII ni contenido de conversaciones."],
-        ["ENCARGO DE TRATAMIENTO", "En los tramos con custodia, la evidencia almacena digests criptográficos, no contenido. El cliente conserva la condición de responsable del tratamiento."],
-        ["SLA ZERO-DISK", "Ningún payload se persiste en disco en ningún modo de ejecución. Este compromiso forma parte del contrato de los tramos Business GRC y Legal Shield."],
-        ["CONTACTO LEGAL", `${CONTACT_EMAIL} · ${CONTACT_PHONE}`],
-      ],
-    },
-  };
-
-  const c = content[variant] || content.empresa;
-
-  return (
-    <main>
-      <PageHeader badge={c.badge} title={c.title} description={c.description} />
-      <section className="max-w-4xl mx-auto px-6 py-6 mb-16 space-y-4 font-mono text-xs">
-        {c.blocks.map(([t, d]) => (
-          <div key={t} className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-            <div className="text-sky-400 font-bold text-[10px] tracking-widest">{t}</div>
-            <p className="text-slate-300 mt-3 leading-relaxed">{d}</p>
           </div>
-        ))}
-      </section>
-    </main>
-  );
-}
-
-function LoginPage() {
-  useSEO("login");
-  return <Login />;
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-slate-800 bg-slate-950 pt-12 pb-8 px-6 font-mono text-xs text-slate-400">
-      <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-lg text-white font-display">S.A.A.R.E.</span>
-            <span className="text-[9px] bg-sky-500/10 border border-sky-500/30 text-sky-400 px-2 py-0.5 rounded font-bold">SGP 1.0</span>
+          <div className="max-w-7xl mx-auto text-center text-[10px] text-saare-ink-faint mt-8">
+            © 2026 MS3V S.A.A.R.E. SL. Todos los derechos reservados.
           </div>
-          <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
-            Infraestructura de autorización ex-ante y gobernanza runtime L7.
-            Un solo producto mental. Cuatro niveles comerciales de monetización.
-            Tres modos de ejecución. Una consola. Un motor.
-          </p>
-        </div>
-        <div>
-          <div className="text-[10px] text-slate-500 tracking-widest font-bold">PRODUCTO</div>
-          <div className="mt-3 space-y-2 text-[11px]">
-            <div><Link to="/producto/executive" className="hover:text-slate-300">Consola Board / Executive</Link></div>
-            <div><Link to="/producto/grc" className="hover:text-slate-300">Consola GRC / Privacidad</Link></div>
-            <div><Link to="/producto/cyber" className="hover:text-slate-300">Consola CISO / SecOps</Link></div>
-            <div><Link to="/forense" className="hover:text-slate-300">Evidence Vault / Forense</Link></div>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] text-slate-500 tracking-widest font-bold">DESARROLLADORES</div>
-          <div className="mt-3 space-y-2 text-[11px]">
-            <div><Link to="/dev/sdk" className="hover:text-slate-300">SDK · LabEngine</Link></div>
-            <div><Link to="/dev/proxy" className="hover:text-slate-300">Proxy · PerimeterShield</Link></div>
-            <div><Link to="/dev/daemon" className="hover:text-slate-300">Daemon · Local Node</Link></div>
-            <div><Link to="/#trust-anchor" className="hover:text-slate-300">Public Trust Anchor</Link></div>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] text-slate-500 tracking-widest font-bold">CONTACTO</div>
-          <div className="mt-3 space-y-2 text-[11px]">
-            <div><a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-slate-300">{CONTACT_EMAIL}</a></div>
-            <div><a href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`} className="hover:text-slate-300">{CONTACT_PHONE}</a></div>
-            <div><a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="hover:text-emerald-400 text-emerald-500">Propuesta Enterprise ↗</a></div>
-            <div><Link to="/trial" className="hover:text-slate-300">Prueba de control</Link></div>
-          </div>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-600 border-t border-slate-800/70 pt-6">
-        <div>© 2026 MS3V S.A.A.R.E. SL. Todos los derechos reservados.</div>
-        <div className="flex gap-4">
-          <Link to="/legal" className="hover:text-slate-400">Privacidad</Link>
-          <Link to="/legal" className="hover:text-slate-400">Términos B2B</Link>
-          <Link to="/legal" className="hover:text-slate-400">SLA Zero-Disk</Link>
-          <Link to="/buenas-practicas" className="hover:text-slate-400">Buen uso</Link>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, [pathname]);
-  return null;
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AppShell>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<TabAuditoriaPublica />} />
-          <Route path="/producto" element={<TabAuditoriaPublica />} />
-          <Route path="/producto/auditoria" element={<TabAuditoriaPublica />} />
-
-          <Route path="/producto/executive" element={<VistaConsola vistaId="executive" />} />
-          <Route path="/producto/grc" element={<VistaConsola vistaId="grc" />} />
-          <Route path="/producto/cyber" element={<VistaConsola vistaId="cyber" />} />
-          <Route path="/producto/cumplimiento" element={<TabCumplimiento />} />
-
-          <Route path="/forense" element={<TabForense />} />
-
-          <Route path="/dev" element={<TabDev />} />
-          <Route path="/dev/sdk" element={<TabSDK />} />
-          <Route path="/dev/proxy" element={<TabProxy />} />
-          <Route path="/dev/daemon" element={<TabDaemon />} />
-
-          <Route path="/canal" element={<TabVentas />} />
-
-          {CATALOGO.map((c) => (
-            <Route key={c.id} path={c.path} element={<DetalleLicencia id={c.id} />} />
-          ))}
-
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth" element={<LoginPage />} />
-          <Route path="/acceso" element={<LoginPage />} />
-
-          <Route path="/trial" element={<TrialPage />} />
-          <Route path="/empresa" element={<CorporatePage variant="empresa" />} />
-          <Route path="/buenas-practicas" element={<CorporatePage variant="buenas-practicas" />} />
-          <Route path="/legal" element={<CorporatePage variant="legal" />} />
-
-          <Route path="/cumplimiento" element={<TabCumplimiento />} />
-          <Route path="/grc" element={<VistaConsola vistaId="grc" />} />
-          <Route path="/auditoria" element={<TabAuditoriaPublica />} />
-          <Route path="/sdk" element={<TabSDK />} />
-          <Route path="/proxy" element={<TabProxy />} />
-          <Route path="/daemon" element={<TabDaemon />} />
-          <Route path="/software" element={<TabProxy />} />
-          <Route path="/sales" element={<TabVentas />} />
-          <Route path="/ventas" element={<TabVentas />} />
-          <Route path="/developers" element={<TabDev />} />
-          <Route path="/enterprise" element={<VistaConsola vistaId="executive" />} />
-
-          <Route path="*" element={<TabAuditoriaPublica />} />
-        </Routes>
-      </AppShell>
-    </BrowserRouter>
+        </footer>
+      </main>
+    </div>
   );
 }
