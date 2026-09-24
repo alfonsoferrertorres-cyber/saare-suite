@@ -96,6 +96,7 @@ const TELEMETRIA_SALE = [
   "Identificador técnico del nodo desplegado",
   "Métricas de latencia de aplicación del motor",
 ];
+
 const TELEMETRIA_NO_SALE = [
   "Prompts ni respuestas del modelo en texto claro",
   "Datos personales (PII / PHI) ni identificadores de usuario",
@@ -145,7 +146,7 @@ const CATALOGO = [
   },
   {
     id: "developer-pro",
-    priceId: "price_1MxyzDeveloperPro01", // ID real en Stripe para Developer Pro
+    priceId: "price_1MxyzDeveloperPro01",
     path: "/licencias/developer-pro",
     grupo: "RUNTIME EDGE",
     etiqueta: "DEVELOPER / PRO",
@@ -166,7 +167,7 @@ const CATALOGO = [
   },
   {
     id: "business-grc",
-    priceId: "price_1MxyzBusinessGRC290", // ID real en Stripe para Business GRC
+    priceId: "price_1MxyzBusinessGRC290",
     path: "/licencias/business-grc",
     grupo: "SAAS & GRC",
     etiqueta: "BUSINESS GRC",
@@ -187,7 +188,7 @@ const CATALOGO = [
   },
   {
     id: "enterprise-shield",
-    priceId: "price_1MxyzEnterprise3500", // ID real en Stripe para Enterprise Shield
+    priceId: "price_1MxyzEnterprise3500",
     path: "/licencias/enterprise-shield",
     grupo: "ENTERPRISE",
     etiqueta: "ENTERPRISE / LEGAL SHIELD",
@@ -1793,7 +1794,7 @@ function TabCumplimiento() {
 }
 
 function TabForense() {
-  useSEO("forensic");
+  useSEO("forense");
   return <VistaConsola vistaId="forense" />;
 }
 

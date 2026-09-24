@@ -1,4 +1,5 @@
-﻿// control-plane/stripeWebhook.js — S.A.A.R.E. Enterprise SGP 1.0
+﻿// control-plane/stripeWebhook.js — S.A.A.R.E. Enterprise SGP 1.0 (Stripe Sync Engine)
+
 async function verifyStripeSignature(payload, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
 
@@ -24,8 +25,9 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
   );
 
   const expectedSignatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
-  const expectedSignatureArray = Array.from(new Uint8Array(expectedSignatureBuffer));
-  const expectedSignatureHex = expectedSignatureArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const expectedSignatureHex = Array.from(new Uint8Array(expectedSignatureBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 
   if (expectedSignatureHex.length !== signature.length) return false;
   let diff = 0;
@@ -59,6 +61,7 @@ export async function handleStripeWebhook(request, env) {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
   }
 
+  // Prevenir procesamiento duplicado de webhooks (Idempotencia en KV)
   if (env.SAARE_VAULT_KV && event.id) {
     const seenKey = `stripe_event:${event.id}`;
     const alreadyProcessed = await env.SAARE_VAULT_KV.get(seenKey);
@@ -78,15 +81,22 @@ export async function handleStripeWebhook(request, env) {
     const priceId = session.metadata?.price_id || session.metadata?.plan || "price_1MxyzBusinessGRC290";
     const assignedRole = mapPriceToRole(priceId);
     
+    // Asignación unificada de Tenant ID
     const tenantId = session.client_reference_id || session.metadata?.tenant || `tenant_${crypto.randomUUID().slice(0, 8)}`;
 
     if (session.payment_status && session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
-      return new Response(JSON.stringify({ status: "PENDING_PAYMENT", sessionId: session.id }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "PENDING_PAYMENT", sessionId: session.id }), { 
+        status: 200, 
+        headers: { "Content-Type": "application/json" } 
+      });
     }
 
     if (!customerEmail) {
       console.error("[SAARE Stripe Webhook] checkout.session.completed sin email de cliente:", session.id);
-      return new Response(JSON.stringify({ status: "NO_EMAIL", sessionId: session.id }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "NO_EMAIL", sessionId: session.id }), { 
+        status: 200, 
+        headers: { "Content-Type": "application/json" } 
+      });
     }
 
     const tenantRecord = {
@@ -99,18 +109,18 @@ export async function handleStripeWebhook(request, env) {
       createdAt: new Date().toISOString()
     };
 
-    // 1. Persistencia en Cloudflare KV
+    // 1. Sincronización e Indexación en Cloudflare KV
     if (env.SAARE_VAULT_KV) {
       await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(tenantRecord));
       await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantRecord));
     }
 
-    // 2. Persistencia en D1 Database (Tablas `tenants` y `users`)
+    // 2. Persistencia en Base de Datos D1
     if (env.DB) {
       try {
         await env.DB.exec(`
           CREATE TABLE IF NOT EXISTS tenants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT PRIMARY KEY,
             email TEXT UNIQUE,
             name TEXT,
             plan TEXT,
@@ -131,19 +141,19 @@ export async function handleStripeWebhook(request, env) {
           );
         `);
 
-        // Sincronizar Tenant
+        // Sincronizar tabla de Tenants con Tenant ID
         await env.DB.prepare(`
-          INSERT INTO tenants (email, name, plan, status, updated_at)
-          VALUES (?, ?, ?, 'ACTIVE', datetime('now'))
-          ON CONFLICT(email) DO UPDATE SET plan = ?, status = 'ACTIVE', updated_at = datetime('now')
-        `).bind(customerEmail, customerName, priceId, priceId).run();
+          INSERT INTO tenants (id, email, name, plan, status, updated_at)
+          VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))
+          ON CONFLICT(email) DO UPDATE SET id = excluded.id, plan = excluded.plan, status = 'ACTIVE', updated_at = datetime('now')
+        `).bind(tenantId, customerEmail, customerName, priceId).run();
 
-        // Sincronizar Usuario Aprovisionado Post-Pago
+        // Sincronizar Usuario Aprovisionado (asignando company = tenantId para coincidencia en RBAC)
         await env.DB.prepare(`
           INSERT INTO users (email, password_hash, name, company, role, is_verified, created_at)
           VALUES (?, 'demo', ?, ?, ?, 1, datetime('now'))
           ON CONFLICT(email) DO UPDATE SET company = excluded.company, role = excluded.role, is_verified = 1
-        `).bind(customerEmail, customerName, customerName, assignedRole).run();
+        `).bind(customerEmail, customerName, tenantId, assignedRole).run();
 
       } catch (e) {
         console.error("[SAARE Stripe Webhook] Error actualizando D1:", e);
@@ -165,5 +175,8 @@ export async function handleStripeWebhook(request, env) {
     });
   }
 
-  return new Response(JSON.stringify({ status: "IGNORED", type: event.type }), { status: 200, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ status: "IGNORED", type: event.type }), { 
+    status: 200, 
+    headers: { "Content-Type": "application/json" } 
+  });
 }

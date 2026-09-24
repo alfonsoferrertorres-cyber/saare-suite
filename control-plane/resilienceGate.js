@@ -87,9 +87,10 @@ async function testMissingScenario() {
 }
 
 async function testRBACEnforcement() {
-  const userRole = "Business";
+  const userRole = "DPO_GRC_LEVEL_2";
   const protectedAction = "DELETE_POLICY";
-  const authorized = (userRole === "Engineer" && protectedAction === "DELETE_POLICY");
+  // Solo CISO_ADMIN (Nivel 4) o CISO_SECOPS_LEVEL_3 (Nivel 3) pueden realizar acciones críticas de política
+  const authorized = (userRole === "CISO_ADMIN" || userRole === "CISO_SECOPS_LEVEL_3") && protectedAction === "DELETE_POLICY";
   INVARIANTS["INV-006"].status = !authorized ? "PASS" : "FAIL";
 }
 

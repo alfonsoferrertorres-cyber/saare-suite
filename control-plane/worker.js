@@ -32,31 +32,53 @@ function hasRequiredRank(userRole, minRank) {
 }
 
 /* --------------------------------------------------------------------------
+   METERING DE VEREDICTOS Y USO (BILLING & CONSUMPTIONS)
+   -------------------------------------------------------------------------- */
+async function trackVerdictUsage(tenantId, env) {
+  if (!env || !env.DB) return;
+  const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  try {
+    await env.DB.exec(`
+      CREATE TABLE IF NOT EXISTS tenant_usage (
+        tenant_id TEXT,
+        billing_period TEXT,
+        verdict_count INTEGER DEFAULT 0,
+        PRIMARY KEY (tenant_id, billing_period)
+      );
+    `);
+    await env.DB.prepare(`
+      INSERT INTO tenant_usage (tenant_id, billing_period, verdict_count)
+      VALUES (?, ?, 1)
+      ON CONFLICT(tenant_id, billing_period) DO UPDATE SET
+        verdict_count = verdict_count + 1
+    `).bind(tenantId, currentMonth).run();
+  } catch (e) {
+    console.error("[SAARE Metering] Error registrando uso:", e);
+  }
+}
+
+/* --------------------------------------------------------------------------
    Bóveda de respaldo bajo control explícito (Environment Driven)
    -------------------------------------------------------------------------- */
-const fallbackUserVault = {
-  "admin@saare.es": {
-    name: "CISO Admin",
-    company: "S.A.A.R.E. Governance Core",
-    password_hash: "demo",
-    is_verified: 1,
-    role: "CISO_ADMIN"
-  },
-  "demo@saare.ai": {
-    name: "Operador Enterprise",
-    company: "Banco Santander",
-    password_hash: "demo",
-    is_verified: 1,
-    role: "CISO_ADMIN"
-  },
-  "alfonsoferrertorres@gmail.com": {
-    name: "Alfonso Ferrer",
-    company: "ENTERPRISE",
-    password_hash: "demo",
-    is_verified: 1,
-    role: "CISO_ADMIN"
-  }
-};
+function getFallbackUserVault(env) {
+  const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "admin@saare.es");
+  return {
+    [primaryAdmin]: {
+      name: "CISO Admin",
+      company: "S.A.A.R.E. Governance Core",
+      password_hash: "demo",
+      is_verified: 1,
+      role: "CISO_ADMIN"
+    },
+    "demo@saare.ai": {
+      name: "Operador Enterprise",
+      company: "Enterprise Core",
+      password_hash: "demo",
+      is_verified: 1,
+      role: "CISO_ADMIN"
+    }
+  };
+}
 
 function fallbackVaultEnabled(env) {
   return String(env?.ALLOW_FALLBACK_VAULT || "").toLowerCase() === "true";
@@ -215,7 +237,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
-    // --- SANITIZACIÓN Y NORMALIZACIÓN DE RUTAS DUPICADAS ---
+    // --- SANITIZACIÓN Y NORMALIZACIÓN DE RUTAS DUPLICADAS ---
     let normalizedPath = url.pathname.replace(/\/$/, '') || '/';
     
     while (normalizedPath.includes('/api/v1/api/v1')) {
@@ -354,8 +376,9 @@ export default {
             } catch (e) {}
           }
 
-          if (!userRecord && fallbackVaultEnabled(env) && fallbackUserVault[cleanEmail]) {
-            const fallback = fallbackUserVault[cleanEmail];
+          const fallbackVault = getFallbackUserVault(env);
+          if (!userRecord && fallbackVaultEnabled(env) && fallbackVault[cleanEmail]) {
+            const fallback = fallbackVault[cleanEmail];
             userRecord = {
               email: cleanEmail,
               name: fallback.name,
@@ -587,7 +610,7 @@ export default {
               try {
                 let query = "SELECT * FROM runs WHERE tenant = ?";
                 let bindings = [tenantId];
-                if (currentUser && currentUser !== "admin@saare.es") {
+                if (currentUser && activeUserRole !== "CISO_ADMIN") {
                   query += " AND user = ?";
                   bindings.push(currentUser);
                 }
@@ -613,7 +636,7 @@ export default {
             if (initialEvidences.length === 0) {
               initialEvidences = await Promise.all(
                 ramRunCache
-                  .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
+                  .filter(item => item.tenant === tenantId && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
                   .map(item => enrichEvidenceForGrant(item))
               );
             }
@@ -841,7 +864,7 @@ export default {
               FROM consolidated_traces WHERE tenant_id = ?`;
             const params = [tenantId];
 
-            if (currentUser && currentUser !== "admin@saare.es") {
+            if (currentUser && activeUserRole !== "CISO_ADMIN") {
               query += ` AND user_email = ?`;
               params.push(currentUser);
             }
@@ -864,7 +887,7 @@ export default {
                 SUM(CASE WHEN decision = 'DENY' OR verdict = 'RECHAZADO' THEN 1 ELSE 0 END) as denyCount
                 FROM runs WHERE tenant = ?`;
               const paramsFallback = [tenantId];
-              if (currentUser && currentUser !== "admin@saare.es") {
+              if (currentUser && activeUserRole !== "CISO_ADMIN") {
                 queryFallback += ` AND user = ?`;
                 paramsFallback.push(currentUser);
               }
@@ -880,7 +903,7 @@ export default {
         if (total === 0 && ramRunCache.length > 0) {
           const filteredRAM = ramRunCache.filter(item => {
             const matchTenant = item.tenant === tenantId;
-            const matchUser = !currentUser || currentUser === "admin@saare.es" || item.user === currentUser;
+            const matchUser = !currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser;
             return matchTenant && matchUser;
           });
           const uniqueTraces = new Set(filteredRAM.map(i => i.trace_id || i.evidence_id));
@@ -1229,7 +1252,7 @@ export default {
       }
 
       // ==========================================
-      // INTERCEPT / JUDGE EX-ANTE (COMPLIANCE ENGINE + CONSOLIDACIÓN D1)
+      // INTERCEPT / JUDGE EX-ANTE (COMPLIANCE ENGINE + CONSOLIDACIÓN D1 + METERING)
       // ==========================================
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
@@ -1238,6 +1261,13 @@ export default {
         const promptInput = body.prompt || body.rawPrompt || body.cleanPrompt || "";
         const user = sanitizeEmail(body.user || identity?.email || headerUser);
         const tenant = body.tenant || identity?.tenantId || tenantId;
+
+        // Metering automático de veredictos por tenant
+        if (ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(trackVerdictUsage(tenant, env));
+        } else {
+          await trackVerdictUsage(tenant, env);
+        }
 
         const isDeny = typeof promptInput === 'string' && (promptInput.includes('PII') || promptInput.includes('SECRET') || promptInput.includes('HASH['));
         const verdictCode = isDeny ? 'REJECTED' : 'APPROVED';
@@ -1339,7 +1369,7 @@ export default {
               let query = "SELECT * FROM runs WHERE tenant = ?";
               let bindings = [tenantId];
 
-              if (currentUser && currentUser !== "admin@saare.es") {
+              if (currentUser && activeUserRole !== "CISO_ADMIN") {
                 query += " AND user = ?";
                 bindings.push(currentUser);
               }
@@ -1379,7 +1409,7 @@ export default {
             try {
               const kvData = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
               if (Array.isArray(kvData) && kvData.length > 0) {
-                evidencesList = kvData.filter(item => !currentUser || currentUser === "admin@saare.es" || item.user === currentUser);
+                evidencesList = kvData.filter(item => !currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser);
               }
             } catch (e) {}
           }
@@ -1387,7 +1417,7 @@ export default {
           if (evidencesList.length === 0) {
             evidencesList = await Promise.all(
               ramRunCache
-                .filter(item => item.tenant === tenantId && (!currentUser || currentUser === "admin@saare.es" || item.user === currentUser))
+                .filter(item => item.tenant === tenantId && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
                 .map(item => enrichEvidenceForGrant(item))
             );
           }
@@ -1409,6 +1439,12 @@ export default {
           const tenant = runPayload.tenant || identity?.tenantId || tenantId;
           const prompt = runPayload.prompt || runPayload.rawPrompt || runPayload.cleanPrompt || "";
           
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(trackVerdictUsage(tenant, env));
+          } else {
+            await trackVerdictUsage(tenant, env);
+          }
+
           const runId = await generateDeterministicEvidenceId(user, prompt, runPayload.id || runPayload.evidence_id);
           const verdictId = runPayload.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
           const traceId = runPayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
