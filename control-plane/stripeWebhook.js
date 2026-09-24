@@ -37,11 +37,10 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
   return diff === 0;
 }
 
-// Map de Price IDs a Roles RBAC de S.A.A.R.E.
+// Map de Price IDs reales (App.jsx) a Roles RBAC de S.A.A.R.E.
 function mapPriceToRole(priceId) {
-  if (priceId === "price_1MxyzDeveloperPro01") return "CISO_SECOPS_LEVEL_3";
-  if (priceId === "price_1MxyzBusinessGRC290") return "DPO_GRC_LEVEL_2";
-  if (priceId === "price_1MxyzEnterprise3500") return "CISO_ADMIN";
+  if (priceId === "price_1UHuuwFlwFW4ifPS66wDvS4n") return "CISO_SECOPS_LEVEL_3";
+  if (priceId === "price_1UHuypFlwFW4ifPSyDz1vT47") return "DPO_GRC_LEVEL_2";
   return "BOARD_EXECUTIVE_LEVEL_1";
 }
 
@@ -78,7 +77,7 @@ export async function handleStripeWebhook(request, env) {
     const session = event.data.object;
     const customerEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase().trim();
     const customerName = session.customer_details?.name || session.metadata?.organization || "Organización Suscrita";
-    const priceId = session.metadata?.price_id || session.metadata?.plan || "price_1MxyzBusinessGRC290";
+    const priceId = session.metadata?.price_id || session.metadata?.plan || "price_1UHuypFlwFW4ifPSyDz1vT47";
     const assignedRole = mapPriceToRole(priceId);
     
     // Asignación unificada de Tenant ID

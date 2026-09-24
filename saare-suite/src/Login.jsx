@@ -1,3 +1,6 @@
+/* ==========================================================================
+   S.A.A.R.E. SGP 1.0 · CONSOLA DE CUMPLIMIENTO & AUTENTICACIÓN SOC
+   ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { saareFetch } from "./utils/api";
@@ -27,7 +30,7 @@ export default function Login({ onLoginSuccess }) {
   const saveSessionAndProceed = (user, token) => {
     const activeToken = token || "sk_saare_live_session_token";
     const cleanEmail = user.email || email.trim().toLowerCase();
-    const tenantName = user.tenantName || user.company || "ENTERPRISE";
+    const tenantName = user.tenantName || user.company || user.tenant || "ENTERPRISE";
     const activeRole = user.role || role;
 
     // 1. Guardar claves de persistencia y contexto de rol
@@ -37,7 +40,7 @@ export default function Login({ onLoginSuccess }) {
     localStorage.setItem("saare_tenant_domain", tenantName);
     localStorage.setItem("saare_user_role", activeRole);
 
-    // 2. Objeto canónico de sesión
+    // 2. Objeto canónico de sesión para la aplicación
     const sessionUser = {
       email: cleanEmail,
       name: user.name || tenantName,
@@ -86,13 +89,14 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
+      // Envío con objeto directo (saareFetch maneja la serialización)
       const response = await saareFetch("/v1/auth/login", {
         method: "POST",
-        body: JSON.stringify({ 
+        body: { 
           email: cleanEmail, 
           password: cleanPassword,
           role: role 
-        }),
+        },
       });
 
       const data = await response.json().catch(() => ({}));
@@ -106,7 +110,7 @@ export default function Login({ onLoginSuccess }) {
       }
 
       const u = data?.user || data;
-      const token = data?.token || u?.apiKey || "";
+      const token = data?.token || u?.apiKey || "sk_saare_live_session_token";
 
       setStatus("success");
       setMessage("Acceso autorizado. Sincronizando con la Bóveda D1...");
@@ -123,7 +127,7 @@ export default function Login({ onLoginSuccess }) {
           token
         );
       }, 600);
-    } catch {
+    } catch (err) {
       setStatus("error");
       setMessage("No se ha podido contactar con el Control Plane. Verifique su conexión.");
     }
