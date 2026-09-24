@@ -146,7 +146,7 @@ const CATALOGO = [
   },
   {
     id: "developer-pro",
-    priceId: "price_1MxyzDeveloperPro01",
+    priceId: "price_1UHuuwFlwFW4ifPS66wDvS4n",
     path: "/licencias/developer-pro",
     grupo: "RUNTIME EDGE",
     etiqueta: "DEVELOPER / PRO",
@@ -167,7 +167,7 @@ const CATALOGO = [
   },
   {
     id: "business-grc",
-    priceId: "price_1MxyzBusinessGRC290",
+    priceId: "price_1UHuypFlwFW4ifPSyDz1vT47",
     path: "/licencias/business-grc",
     grupo: "SAAS & GRC",
     etiqueta: "BUSINESS GRC",
@@ -188,7 +188,7 @@ const CATALOGO = [
   },
   {
     id: "enterprise-shield",
-    priceId: "price_1MxyzEnterprise3500",
+    priceId: "enterprise-shield",
     path: "/licencias/enterprise-shield",
     grupo: "ENTERPRISE",
     etiqueta: "ENTERPRISE / LEGAL SHIELD",
@@ -1935,10 +1935,10 @@ function TabProxy() {
               code={`AGENT ──▶ PERIMETERSHIELD ──▶ POLICY EVAL (7D, RAM)
                                    │
                     ┌──────────────┴──────────────┐
-                 ALLOW ▶ upstream            DENY ▶ 403 + digest
-                    │                              │
-              respuesta filtrada          evidencia sellada
-              (PII sanitizada)            (Merkle + Ed25519)`}
+                 ALLOW ▶ upstream             DENY ▶ 403 + digest
+                    │                             │
+             respuesta filtrada            evidencia sellada
+             (PII sanitizada)            (Merkle + Ed25519)`}
             />
           </div>
         </div>
