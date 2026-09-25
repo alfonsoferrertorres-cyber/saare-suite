@@ -3,7 +3,7 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { saareFetch } from "./utils/api";
+import { saareFetch } from "./api"; // Ajustado para apuntar a src/api.js
 
 const CONTACT_EMAIL = "legal@saare.es";
 
@@ -22,7 +22,7 @@ export default function Login({ onLoginSuccess }) {
     const token = localStorage.getItem("saare_token") || localStorage.getItem("saare_auth_token");
     if (token) {
       const params = new URLSearchParams(location.search);
-      const next = params.get("next") || "/producto/executive";
+      const next = params.get("next") || "/#saare-console";
       navigate(next, { replace: true });
     }
   }, [navigate, location.search]);
@@ -33,14 +33,12 @@ export default function Login({ onLoginSuccess }) {
     const tenantName = user.tenantName || user.company || user.tenant || "ENTERPRISE";
     const activeRole = user.role || role;
 
-    // 1. Guardar claves de persistencia y contexto de rol
     localStorage.setItem("saare_token", activeToken);
     localStorage.setItem("saare_auth_token", activeToken);
     localStorage.setItem("saare_user_email", cleanEmail);
     localStorage.setItem("saare_tenant_domain", tenantName);
     localStorage.setItem("saare_user_role", activeRole);
 
-    // 2. Objeto canónico de sesión para la aplicación
     const sessionUser = {
       email: cleanEmail,
       name: user.name || tenantName,
@@ -54,13 +52,7 @@ export default function Login({ onLoginSuccess }) {
     if (typeof onLoginSuccess === "function") {
       onLoginSuccess(sessionUser);
     } else {
-      const params = new URLSearchParams(location.search);
-      const defaultRoute = 
-        activeRole === "DPO_GRC_LEVEL_2" ? "/producto/grc" :
-        activeRole === "CISO_SECOPS_LEVEL_3" ? "/producto/cyber" : "/producto/executive";
-      
-      const next = params.get("next") || defaultRoute;
-      navigate(next, { replace: true });
+      navigate("/", { replace: true });
     }
   };
 
@@ -73,7 +65,6 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // PIN Maestro de emergencia / rescate pericial
     if (cleanPassword === "contraseña") {
       saveSessionAndProceed(
         {
@@ -89,7 +80,6 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      // Envío con objeto directo (saareFetch maneja la serialización)
       const response = await saareFetch("/v1/auth/login", {
         method: "POST",
         body: { 
@@ -104,7 +94,7 @@ export default function Login({ onLoginSuccess }) {
       if (!response.ok) {
         setStatus("error");
         setMessage(
-          data?.error || data?.message || "Credenciales de custodio no válidas o cuenta no registrada en D1."
+          data?.error || data?.message || "Credenciales de custodio no válidas o cuenta no registrada."
         );
         return;
       }
@@ -113,7 +103,7 @@ export default function Login({ onLoginSuccess }) {
       const token = data?.token || u?.apiKey || "sk_saare_live_session_token";
 
       setStatus("success");
-      setMessage("Acceso autorizado. Sincronizando con la Bóveda D1...");
+      setMessage("Acceso autorizado. Sincronizando con la Bóveda...");
 
       setTimeout(() => {
         saveSessionAndProceed(
@@ -134,28 +124,28 @@ export default function Login({ onLoginSuccess }) {
   }
 
   return (
-    <main className="min-h-[70vh] flex items-center justify-center px-6 py-16 font-mono text-xs">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
-        <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+    <main className="min-h-[85vh] flex items-center justify-center px-6 py-16 font-mono text-xs bg-saare-bg">
+      <div className="w-full max-w-md bg-saare-surface border border-saare-line rounded-xl p-8 shadow-2xl">
+        <span className="text-[10px] font-bold text-saare-accent uppercase tracking-widest">
           CONTROL PLANE · ACCESO AUTORIZADO
         </span>
-        <h1 className="font-display text-2xl font-bold text-white mt-3 mb-2">
+        <h1 className="font-display text-2xl font-bold text-saare-ink mt-3 mb-2">
           Consola de Cumplimiento
         </h1>
-        <p className="text-slate-400 text-[11px] leading-relaxed mb-6">
+        <p className="text-saare-ink-dim text-[11px] leading-relaxed mb-6">
           Acceso restringido a personal autorizado. Cada inicio de sesión queda registrado
           y sellado con firma asimétrica Ed25519.
         </p>
 
         {status === "success" ? (
-          <div className="bg-slate-950 border border-emerald-500/50 p-4 rounded">
-            <div className="text-emerald-400 font-bold mb-1">SESIÓN INICIADA</div>
-            <p className="text-slate-300 leading-relaxed">{message}</p>
+          <div className="bg-saare-surface-2 border border-saare-allow/50 p-4 rounded">
+            <div className="text-saare-allow font-bold mb-1">SESIÓN INICIADA</div>
+            <p className="text-saare-ink leading-relaxed">{message}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="login-email" className="block text-sky-400 mb-2">
+              <label htmlFor="login-email" className="block text-saare-accent mb-2">
                 CORREO CORPORATIVO (*)
               </label>
               <input
@@ -165,12 +155,12 @@ export default function Login({ onLoginSuccess }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ciso@empresa.com"
-                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+                className="w-full bg-saare-surface-2 border border-saare-line p-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent"
               />
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-sky-400 mb-2">
+              <label htmlFor="login-password" className="block text-saare-accent mb-2">
                 CONTRASEÑA (*)
               </label>
               <div className="relative">
@@ -181,12 +171,12 @@ export default function Login({ onLoginSuccess }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-950 border border-slate-700 p-3 pr-20 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+                  className="w-full bg-saare-surface-2 border border-saare-line p-3 pr-20 rounded text-saare-ink focus:outline-none focus:border-saare-accent"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-saare-ink-faint hover:text-saare-ink cursor-pointer"
                 >
                   {showPassword ? "OCULTAR" : "MOSTRAR"}
                 </button>
@@ -194,14 +184,14 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             <div>
-              <label htmlFor="login-role" className="block text-sky-400 mb-2">
+              <label htmlFor="login-role" className="block text-saare-accent mb-2">
                 ROL Y NIVEL DE PERMISO (RBAC) (*)
               </label>
               <select
                 id="login-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-200 focus:outline-none focus:border-sky-500"
+                className="w-full bg-saare-surface-2 border border-saare-line p-3 rounded text-saare-ink focus:outline-none focus:border-saare-accent"
               >
                 <option value="BOARD_EXECUTIVE_LEVEL_1">Nivel 1 · EXECUTIVE (CEO / Consejo)</option>
                 <option value="DPO_GRC_LEVEL_2">Nivel 2 · GRC & AUDIT (DPO / Compliance)</option>
@@ -211,7 +201,7 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             {status === "error" && (
-              <div role="alert" className="text-red-400 bg-red-500/10 border border-red-500/30 p-3 rounded leading-relaxed">
+              <div role="alert" className="text-saare-deny bg-saare-deny/10 border border-saare-deny/30 p-3 rounded leading-relaxed">
                 {message}
               </div>
             )}
@@ -219,18 +209,18 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full py-3.5 bg-emerald-500 text-black font-bold rounded hover:bg-emerald-400 transition disabled:opacity-60 cursor-pointer"
+              className="w-full py-3.5 bg-saare-allow text-black font-bold rounded hover:bg-saare-allow/80 transition disabled:opacity-60 cursor-pointer"
             >
               {status === "loading" ? "AUTENTICANDO..." : "ACCEDER A LA CONSOLA"}
             </button>
 
-            <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+            <p className="text-[10px] text-saare-ink-faint text-center leading-relaxed">
               ¿No dispone de credenciales?{" "}
-              <Link to="/trial" className="text-sky-400 hover:underline">
+              <a href="/#trial" className="text-saare-accent hover:underline">
                 Solicite una prueba de control
-              </Link>{" "}
+              </a>{" "}
               o escriba a{" "}
-              <a href={`mailto:${CONTACT_EMAIL}`} className="text-sky-400 hover:underline">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-saare-accent hover:underline">
                 {CONTACT_EMAIL}
               </a>
             </p>

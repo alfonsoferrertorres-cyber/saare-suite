@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ocultar elementos en impresoras / exportación a PDF */
 @media print {
   .no-print {
     display: none !important;

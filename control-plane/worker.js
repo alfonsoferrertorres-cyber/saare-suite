@@ -9,11 +9,18 @@ import { handleStripeWebhook } from "./stripeWebhook.js";
 import { dispatchWebhookEvent } from "./subsidiesWebhook.js";
 import { TenantManager } from "./tenantManager.js";
 import { EnterpriseKeyManager, computeSha256 } from "./keyManager.js";
+import { registerEvidenceInSafeCreative } from "./safeCreativeClient.js";
 
 // Inicialización de subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const ramRunCache = [];
 const ramWebhookConfigCache = new Map();
+
+/* --------------------------------------------------------------------------
+   PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
+   -------------------------------------------------------------------------- */
+const MERKLE_BATCH_THRESHOLD = 1000; // Umbral por cantidad de trazas
+const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000; // Umbral por tiempo (6 Horas)
 
 /* --------------------------------------------------------------------------
    JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC)
@@ -29,6 +36,77 @@ const ROLE_RANKS = {
 function hasRequiredRank(userRole, minRank) {
   const rank = ROLE_RANKS[userRole] !== undefined ? ROLE_RANKS[userRole] : 0;
   return rank >= minRank;
+}
+
+/* --------------------------------------------------------------------------
+   MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE (DOBLE CADENA DE CUSTODIA)
+   -------------------------------------------------------------------------- */
+async function processBatchMerkleAnchor(tenantId, env) {
+  if (!env || !env.DB) return;
+
+  try {
+    // 1. Verificar número de trazas no ancladas
+    const pendingRes = await env.DB.prepare(
+      "SELECT COUNT(*) as total FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0"
+    ).bind(tenantId).first();
+
+    const pendingCount = pendingRes?.total || 0;
+
+    // 2. Verificar tiempo desde el último anclaje
+    const lastAnchor = await env.DB.prepare(
+      "SELECT created_at FROM merkle_anchors WHERE tenant_id = ? ORDER BY id DESC LIMIT 1"
+    ).bind(tenantId).first();
+
+    const lastAnchorTime = lastAnchor ? new Date(lastAnchor.created_at).getTime() : 0;
+    const timeElapsed = Date.now() - lastAnchorTime;
+
+    // Condición del disparador híbrido dinámico
+    if (pendingCount >= MERKLE_BATCH_THRESHOLD || (pendingCount > 0 && timeElapsed >= MERKLE_TIME_THRESHOLD_MS)) {
+      console.log(`[SAARE Custody Engine] Ejecutando anclaje para tenant ${tenantId}. Trazas: ${pendingCount}, Tiempo: ${Math.round(timeElapsed / 60000)}m`);
+
+      const { results } = await env.DB.prepare(
+        "SELECT trace_id, created_at FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY id ASC LIMIT 10000"
+      ).bind(tenantId).all();
+
+      if (!results || results.length === 0) return;
+
+      // Cálculo determinista de la Raíz de Merkle
+      const encoder = new TextEncoder();
+      let combinedHashes = results.map(r => r.trace_id).join(":");
+      const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(combinedHashes));
+      const merkleRoot = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const anchorId = `ANK-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+      const timestamp = new Date().toISOString();
+
+      // Guardar registro de anclaje notarial en D1
+      await env.DB.exec(`
+        CREATE TABLE IF NOT EXISTS merkle_anchors (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT,
+          merkle_root TEXT,
+          batch_size INTEGER,
+          created_at TEXT
+        );
+      `);
+
+      await env.DB.prepare(
+        "INSERT INTO merkle_anchors (id, tenant_id, merkle_root, batch_size, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(anchorId, tenantId, merkleRoot, results.length, timestamp).run();
+
+      // Marcar trazas como ancladas
+      await env.DB.prepare(
+        "UPDATE consolidated_traces SET anchored = 1 WHERE tenant_id = ? AND anchored = 0"
+      ).bind(tenantId).run();
+
+      // Registro externo opcional en Safe Creative / Notariado
+      await registerEvidenceInSafeCreative({ id: anchorId, merkleRoot, batchSize: results.length }, env);
+
+      console.log(`[SAARE Custody Engine] Anclaje finalizado con éxito. Root: ${merkleRoot}`);
+    }
+  } catch (e) {
+    console.error("[SAARE Custody Engine] Error consolidando lote de Merkle:", e);
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1262,11 +1340,13 @@ export default {
         const user = sanitizeEmail(body.user || identity?.email || headerUser);
         const tenant = body.tenant || identity?.tenantId || tenantId;
 
-        // Metering automático de veredictos por tenant
+        // Metering automático de veredictos y ejecución asíncrona de anclaje
         if (ctx && typeof ctx.waitUntil === 'function') {
           ctx.waitUntil(trackVerdictUsage(tenant, env));
+          ctx.waitUntil(processBatchMerkleAnchor(tenant, env));
         } else {
           await trackVerdictUsage(tenant, env);
+          await processBatchMerkleAnchor(tenant, env);
         }
 
         const isDeny = typeof promptInput === 'string' && (promptInput.includes('PII') || promptInput.includes('SECRET') || promptInput.includes('HASH['));
@@ -1313,8 +1393,8 @@ export default {
         if (env.DB) {
           try {
             await env.DB.prepare(`
-              INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at, anchored)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 0)
               ON CONFLICT(trace_id) DO UPDATE SET
                 final_evaluator_node = excluded.final_evaluator_node,
                 final_action = excluded.final_action,
@@ -1441,8 +1521,10 @@ export default {
           
           if (ctx && typeof ctx.waitUntil === 'function') {
             ctx.waitUntil(trackVerdictUsage(tenant, env));
+            ctx.waitUntil(processBatchMerkleAnchor(tenant, env));
           } else {
             await trackVerdictUsage(tenant, env);
+            await processBatchMerkleAnchor(tenant, env);
           }
 
           const runId = await generateDeterministicEvidenceId(user, prompt, runPayload.id || runPayload.evidence_id);
@@ -1474,8 +1556,8 @@ export default {
           if (env.DB) {
             try {
               await env.DB.prepare(`
-                INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, rule_applied, created_at, anchored)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
                 ON CONFLICT(trace_id) DO UPDATE SET
                   final_evaluator_node = excluded.final_evaluator_node,
                   final_action = excluded.final_action,

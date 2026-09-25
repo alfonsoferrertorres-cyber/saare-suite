@@ -1,7 +1,10 @@
 /* ==========================================================================
-   S.A.A.R.E. SGP 1.0 · LANDING ENTERPRISE & GRC SAAS MONETIZATION (SINGLE PAGE)
+   S.A.A.R.E. SGP 1.0 · APLICACIÓN PRINCIPAL CON RUTAS & LANDING PAGE
    ========================================================================== */
 import React, { useState } from "react";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { saareCheckout, verifyMerkleHash, saareFetch } from "./api.js";
+import Login from "./Login.jsx";
 
 /* ==========================================================================
    CONSTANTES GLOBALES, REGISTROS CRIPTOGRÁFICOS Y CONFIGURACIÓN SGP 1.0
@@ -51,7 +54,7 @@ const DEFENSE_VECTORS = [
   ["LLM01 · Prompt Injection", "Manipulación directa o indirecta del modelo para alterar su comportamiento.", "Separación estricta de roles a nivel sintáctico; AST de comandos permitidos.", "0,8 ms", "BENCHMARK"],
   ["LLM02 · Insecure Output Handling", "Salida del modelo consumida sin validación por sistemas posteriores.", "Validación de integridad dicotómica antes de la ejecución.", "1,4 ms", "BENCHMARK"],
   ["LLM06 · Sensitive Information Disclosure", "Exfiltración de PII, PHI o secretos a través del contexto.", "Sanitización k-anónima in-RAM; política de egreso de datos.", "1,2 ms", "BENCHMARK"],
-  ["LLM08 · Excessive Agency", "El agente ejecuta acciones más allá de su mandato declarado.", "Puerta de ejecución ex-ante; scope de acción por identidad firmada.", "0,4 ms", "BENCHMARK"],
+  ["LLM08 · Excessive Agency", "El agente ejecuta acciones más allá de su mandato declared.", "Puerta de ejecución ex-ante; scope de acción por identidad firmada.", "0,4 ms", "BENCHMARK"],
   ["LLM10 · Unbounded Consumption", "Consumo ilimitado de tokens, cómputo o presupuesto.", "Context Slicing y umbrales deterministas por política.", "1,1 ms", "BENCHMARK"],
 ];
 
@@ -109,11 +112,9 @@ const CATALOGO = [
     sufijo: "/gratuito",
     unidad: "Acceso público ilimitado",
     comprador: "Auditores, examinadores y usuarios web",
-    descripcion: "La consulta y verificación de veredictos unitarios mediante hash SHA-256 en saare.es.",
     features: ["Verificación puntual de hashes", "Acceso directo al Public Trust Anchor"],
-    noIncluye: ["Consola GRC corporativa", "SDK perimetral"],
-    ideal: ["Auditores externos", "Examinadores independientes"],
     cta: "USAR VERIFICADOR PÚBLICO ↗",
+    actionType: "link",
     href: "#trust-anchor",
     featured: false,
   },
@@ -127,12 +128,10 @@ const CATALOGO = [
     sufijo: "/mes + consumo",
     unidad: "Por nodo / SDK integrado",
     comprador: "Startups y desarrolladores de agentes IA",
-    descripcion: "Sensor L7 en backend o cliente, inyección de Token Binding X.509.",
     features: ["Sensor L7 y LabEngine SDK nativo", "Inyección de Token Binding X.509"],
-    noIncluye: ["Informes PDF automatizados EU AI Act"],
-    ideal: ["Desarrolladores de agentes autónomos"],
-    cta: "SOLICITAR ACCESO DEVELOPER ↗",
-    href: WHATSAPP_URL,
+    cta: "SUSCRIBIR DEVELOPER ↗",
+    actionType: "checkout",
+    stripePriceId: "price_saare_dev_pro_monthly",
     featured: false,
   },
   {
@@ -145,12 +144,10 @@ const CATALOGO = [
     sufijo: "/mes",
     unidad: "Por tenant / organización",
     comprador: "Pymes tecnológicas y empresas con LLMs internos",
-    descripcion: "Acceso completo a SAARE Console, panel de métricas de entropía y generación automatizada de informes PDF.",
     features: ["Acceso completo a SAARE Console (4 superficies RBAC)", "Generación automática de informes PDF EU AI Act"],
-    noIncluye: ["HSM corporativo dedicado"],
-    ideal: ["CISO y DPO de pymes tecnológicas"],
-    cta: "SOLICITAR BUSINESS GRC ↗",
-    href: WHATSAPP_URL,
+    cta: "SUSCRIBIR BUSINESS GRC ↗",
+    actionType: "checkout",
+    stripePriceId: "price_saare_business_grc_monthly",
     featured: true,
   },
   {
@@ -163,11 +160,9 @@ const CATALOGO = [
     sufijo: "/mes",
     unidad: "Por nodo Enterprise con HSM",
     comprador: "Corporaciones, aseguradoras y despachos jurídicos",
-    descripcion: "Emisión de certificados de evidencia preconstituida procesal (Arts. 281/326 LEC).",
     features: ["Certificados de evidencia preconstituida", "Integración nativa con HSM / PKI corporativa propia"],
-    noIncluye: [],
-    ideal: ["Corporaciones reguladas y banca"],
     cta: "SOLICITAR PROPUESTA ENTERPRISE ↗",
+    actionType: "link",
     href: WHATSAPP_URL,
     featured: false,
   },
@@ -179,7 +174,6 @@ const VISTAS_CONSOLA = [
     badge: "VISTA BOARD / EXECUTIVE",
     titular: "Gobernanza cuantitativa y blindaje de responsabilidad",
     pregunta: "¿Qué riesgo está asumiendo el negocio?",
-    owner: "CEO · Junta directiva · Dirección jurídica",
     rol: "BOARD_EXECUTIVE_LEVEL_1",
     metricas: [
       ["RIESGO ACUMULADO EX-ANTE", "0,02 %", "DEMO"],
@@ -194,18 +188,12 @@ const VISTAS_CONSOLA = [
       ["DORA art. 9", "Protección de incidentes TIC", "Intercepción ex-ante contra vectores L7", "Registro de intercepción sellado"],
       ["NIS 2 art. 20", "Responsabilidad de alta dirección", "Telemetría determinista sin contenido ni PII", "Contadores anónimos firmados"],
     ],
-    inventario: [
-      ["agent-treasury-01", "Autónomo financiero", "Core bancario", "scope: pagos", "ALLOW"],
-      ["agent-fraud-scoring-02", "Autónomo de riesgo", "VPC privada", "scope: scoring", "REVIEW"],
-      ["agent-reporting-cfo", "Asistente de dirección", "App interna", "scope: reporting", "ALLOW"],
-    ],
   },
   {
     id: "grc",
     badge: "VISTA GRC / PRIVACIDAD",
     titular: "La prueba llegó antes que el litigio",
     pregunta: "¿Qué controles puedo demostrar?",
-    owner: "CISO · DPO · Auditoría externa",
     rol: "DPO_GRC_LEVEL_2",
     metricas: [
       ["ENMASCARAMIENTO PII", "DNI · IBAN · PHI", "REFERENCE"],
@@ -221,18 +209,12 @@ const VISTAS_CONSOLA = [
       ["ISO/IEC 27037", "Evidencia digital", "Cadena de Merkle y firma asimétrica", "Dossier forense offline"],
       ["Arts. 281 y 326 LEC", "Prueba documental", "Sellado cualificado y cadena de custodia", "Expediente para revisión pericial"],
     ],
-    inventario: [
-      ["VRD-2026-0917-88A1F", "Veredicto DENY", "policy: POL-EU-AIACT-ART15", "RFC 3161", "VERIFIED"],
-      ["VRD-2026-0916-4C09B", "Veredicto ALLOW", "policy: POL-LOG-IMMUTABLE", "RFC 3161", "VERIFIED"],
-      ["EIPD-2026-014", "Evaluación de impacto", "policy: POL-PII-EGRESS", "Firma Ed25519", "VERIFIED"],
-    ],
   },
   {
     id: "cyber",
     badge: "VISTA CISO / RESILIENCIA",
     titular: "Ve cada intercepción mientras ocurre",
     pregunta: "¿Qué está bloqueando el motor ahora?",
-    owner: "SOC · SecOps · Threat hunters",
     rol: "CISO_SECOPS_LEVEL_3",
     metricas: [
       ["PROMPT INJECTION L7", "Intercepción en tiempo real", "REFERENCE"],
@@ -247,18 +229,12 @@ const VISTAS_CONSOLA = [
       ["LLM08 · Excessive Agency", "Acciones fuera de política", "Puerta de ejecución ex-ante", "0,4 ms · BENCHMARK"],
       ["LLM10 · Unbounded Consumption", "Consumo ilimitado de recursos", "Context Slicing y umbral determinista", "1,1 ms · BENCHMARK"],
     ],
-    inventario: [
-      ["10:42:07.118", "node-proxy-ingress-01", "LLM01 · Inyección directa", "0,8 ms", "DENY"],
-      ["10:41:52.004", "node-sdk-payment-api", "LLM06 · Fuga de PII", "1,2 ms", "DENY"],
-      ["10:41:19.771", "node-daemon-finance", "LLM08 · Agencia excesiva", "0,4 ms", "DENY"],
-    ],
   },
   {
     id: "forense",
     badge: "VISTA FORENSE / PERICIAL",
     titular: "Verifique la evidencia sin confiar en nosotros",
     pregunta: "¿Puedo verificar la evidencia independientemente?",
-    owner: "Peritos · Despachos · Departamentos de fraude",
     rol: "FORENSIC_EXTERNAL_LEVEL_4",
     metricas: [
       ["CADENA DE CUSTODIA", "Digest · Merkle · Ed25519 · RFC 3161", "REFERENCE"],
@@ -272,15 +248,11 @@ const VISTAS_CONSOLA = [
       ["ISO/IEC 27037", "Evidencia digital", "Identificación, recolección y preservación selladas", "Cadena de custodia documentada"],
       ["eIDAS (Reg. 910/2014)", "Sello cualificado", "Marcado RFC 3161 por autoridad reconocida", "Token de tiempo offline"],
     ],
-    inventario: [
-      ["DOSSIER-2026-0042", "Exfiltración PII contenida", "merkle: 6f1b…a842", "Ed25519 · RFC 3161", "VERIFIED"],
-      ["DOSSIER-2026-0038", "Pago no autorizado denegado", "merkle: 9c21…77f0", "Ed25519 · RFC 3161", "VERIFIED"],
-    ],
   },
 ];
 
 /* ==========================================================================
-   COMPONENTES UI AUXILIARES (CON PALETA TAILWIND PERSONALIZADA)
+   COMPONENTES UI AUXILIARES
    ========================================================================== */
 function DataLabel({ type }) {
   const conf = METRIC_LABELS[type] || METRIC_LABELS.DEMO;
@@ -390,37 +362,46 @@ function DataTable({ headers, rows, renderLast }) {
 }
 
 /* ==========================================================================
-   APLICACIÓN PRINCIPAL (DE CORRIDO / SINGLE PAGE)
+   LANDING PAGE CONTINUA
    ========================================================================== */
-export default function App() {
+function LandingPage() {
   const [hash, setHash] = useState(DEMO_ROOT_MERKLE_HASH);
   const [verifyResult, setVerifyResult] = useState(null);
+  const [loadingVerify, setLoadingVerify] = useState(false);
   const [formSent, setFormSent] = useState(false);
   const [trialForm, setTrialForm] = useState({ nombre: "", empresa: "", email: "", modo: "proxy", mensaje: "" });
 
-  function handleVerify(e) {
+  async function handleVerify(e) {
     e.preventDefault();
     if (!hash.trim()) return;
-    setVerifyResult({
-      status: "VERIFIED",
-      hash: hash.trim(),
-      standard: "RFC 3161",
-      algorithm: "Ed25519 / SHA-256",
-    });
+    setLoadingVerify(true);
+    const result = await verifyMerkleHash(hash.trim());
+    setVerifyResult(result);
+    setLoadingVerify(false);
   }
 
-  function handleTrialSubmit(e) {
+  async function handleTrialSubmit(e) {
     e.preventDefault();
+    try {
+      await saareFetch('/v1/trial/submit', { method: 'POST', body: trialForm });
+    } catch {
+      // Continuación limpia independientemente del estado offline/demo
+    }
     setFormSent(true);
   }
 
   return (
     <div className="min-h-screen bg-saare-bg text-saare-ink font-sans selection:bg-saare-accent selection:text-black">
-      {/* BANNER SUPERIOR */}
-      <div className="border-b border-saare-line bg-saare-surface px-4 py-2 text-center text-[10px] sm:text-xs font-mono text-saare-ink-faint">
-        <span className="text-saare-accent font-bold">S.A.A.R.E. SGP 1.0</span>
-        <span className="mx-2">·</span>
-        Infraestructura de autorización ex-ante y gobernanza runtime L7
+      {/* BANNER SUPERIOR DE NAVEGACIÓN Y ACCESO CONSOLA */}
+      <div className="border-b border-saare-line bg-saare-surface px-4 py-2 text-center text-[10px] sm:text-xs font-mono text-saare-ink-faint flex justify-between items-center max-w-7xl mx-auto">
+        <div>
+          <span className="text-saare-accent font-bold">S.A.A.R.E. SGP 1.0</span>
+          <span className="mx-2 hidden sm:inline">·</span>
+          <span className="hidden sm:inline">Infraestructura de autorización ex-ante y gobernanza runtime L7</span>
+        </div>
+        <Link to="/login" className="text-saare-accent font-bold hover:underline bg-saare-accent/10 border border-saare-accent/30 px-2.5 py-1 rounded">
+          ACCEDER A CONSOLA ↗
+        </Link>
       </div>
 
       <main>
@@ -505,8 +486,8 @@ export default function App() {
                     placeholder="Merkle Root o ID de evidencia (VRD-...)"
                     className="flex-1 bg-saare-surface border border-saare-line px-4 py-3 text-xs font-mono text-saare-ink rounded focus:outline-none focus:border-saare-seal"
                   />
-                  <button type="submit" className="px-5 py-3 rounded bg-saare-seal text-black font-mono text-xs font-bold hover:bg-saare-seal/80 transition cursor-pointer">
-                    VERIFICAR
+                  <button type="submit" disabled={loadingVerify} className="px-5 py-3 rounded bg-saare-seal text-black font-mono text-xs font-bold hover:bg-saare-seal/80 transition cursor-pointer">
+                    {loadingVerify ? 'CONSULTANDO...' : 'VERIFICAR'}
                   </button>
                 </form>
                 {verifyResult && (
@@ -713,7 +694,6 @@ export default function App() {
             />
 
             <div className="grid lg:grid-cols-3 gap-8 mt-10">
-              {/* MODO SDK */}
               <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
                 <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">LABENGINE · MODO SDK</span>
                 <h3 className="text-saare-ink font-bold text-xl">El control vive dentro de la aplicación</h3>
@@ -731,7 +711,6 @@ def pay(amount, iban):
                 />
               </div>
 
-              {/* MODO PROXY */}
               <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
                 <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">PERIMETERSHIELD · MODO PROXY</span>
                 <h3 className="text-saare-ink font-bold text-xl">El control vive en el tráfico</h3>
@@ -747,7 +726,6 @@ def pay(amount, iban):
                 />
               </div>
 
-              {/* MODO DAEMON */}
               <div className="bg-saare-surface border border-saare-line p-6 rounded-xl space-y-4">
                 <span className="text-[10px] font-bold text-saare-allow font-mono uppercase">LOCAL NODE · MODO DAEMON</span>
                 <h3 className="text-saare-ink font-bold text-xl">El control vive en su servidor</h3>
@@ -818,7 +796,7 @@ sudo systemctl enable --now saare-node`}
         </section>
 
         {/* 11 · CONSOLA MULTI-VISTA (SAARE_CONSOLE) */}
-        <section className="border-b border-saare-line bg-saare-surface py-20">
+        <section id="saare-console" className="border-b border-saare-line bg-saare-surface py-20">
           <div className="max-w-7xl mx-auto px-6">
             <SectionTitle
               kicker="saare_console"
@@ -852,24 +830,13 @@ sudo systemctl enable --now saare-node`}
                       rows={v.matriz}
                     />
                   </div>
-
-                  {v.inventario && (
-                    <div>
-                      <h4 className="text-xs font-mono font-bold text-saare-accent uppercase tracking-widest mb-3">INVENTARIO / HISTÓRICO DE VEREDICTOS</h4>
-                      <DataTable
-                        headers={["IDENTIFICADOR / NODO", "TIPO / DETALLE", "POLÍTICA / VECTOR", "SELLO / LATENCIA", "ESTADO"]}
-                        rows={v.inventario}
-                        renderLast={(cell) => <VerdictChip verdict={cell} />}
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* 12 · MODELO DE MONETIZACIÓN & CATALOGO */}
+        {/* 12 · MODELO DE MONETIZACIÓN & CATALOGO (STRIPE CHECKOUT) */}
         <section id="licencias" className="border-b border-saare-line bg-saare-bg py-20">
           <div className="max-w-7xl mx-auto px-6">
             <SectionTitle
@@ -910,14 +877,23 @@ sudo systemctl enable --now saare-node`}
                     </ul>
                   </div>
 
-                  <a
-                    href={item.href}
-                    target={item.href.startsWith("http") ? "_blank" : "_self"}
-                    rel="noreferrer"
-                    className="block w-full text-center px-5 py-3 mt-8 bg-saare-accent text-black font-bold text-xs rounded hover:bg-saare-accent/80 transition"
-                  >
-                    {item.cta}
-                  </a>
+                  {item.actionType === "checkout" ? (
+                    <button
+                      onClick={() => saareCheckout(item.stripePriceId)}
+                      className="block w-full text-center px-5 py-3 mt-8 bg-saare-accent text-black font-bold text-xs rounded hover:bg-saare-accent/80 transition cursor-pointer"
+                    >
+                      {item.cta}
+                    </button>
+                  ) : (
+                    <a
+                      href={item.href}
+                      target={item.href.startsWith("http") ? "_blank" : "_self"}
+                      rel="noreferrer"
+                      className="block w-full text-center px-5 py-3 mt-8 bg-saare-accent text-black font-bold text-xs rounded hover:bg-saare-accent/80 transition"
+                    >
+                      {item.cta}
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
@@ -1090,5 +1066,20 @@ sudo systemctl enable --now saare-node`}
         </footer>
       </main>
     </div>
+  );
+}
+
+/* ==========================================================================
+   ENRUTADOR GENERAL DE LA APLICACIÓN
+   ========================================================================== */
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<LandingPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
