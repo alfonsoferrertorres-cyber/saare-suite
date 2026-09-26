@@ -1,0 +1,19 @@
+1. Ver el árbol básico (solo carpetas)
+PowerShell
+
+tree /A
+
+2. Ver el árbol completo con archivos (/F)
+Si quieres ver tanto las carpetas como todos los archivos dentro de ellas:
+
+PowerShell
+
+tree /F /A
+
+3. Alternativa pura de PowerShell (Filtrando carpetas pesadas)
+Para evitar que se listen miles de archivos de carpetas como node_modules o .git (que saturan la consola), puedes usar este comando adaptado de PowerShell:
+
+PowerShell
+Get-ChildItem -Recurse -Exclude "node_modules",".git","dist",".turbo" | Select-Object FullName
+O si prefieres generar un gráfico visual limpio excluyendo node_modules:
+

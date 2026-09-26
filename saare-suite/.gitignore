@@ -18,3 +18,10 @@ build/
 leads_log.json
 .DS_Store
 
+# Certified credentials & local registration
+saare-recognition.json
+
+# Performance & benchmark test outputs
+benchmark_*_summary.json
+*.summary.json
+

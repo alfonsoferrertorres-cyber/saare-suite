@@ -1,5 +1,8 @@
-﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.3 */
+﻿/* S.A.A.R.E. L7 Interceptor, Blindaje Activo & Dynamic Policy Engine v10.5.3 (Production Integrated) */
 (function() {
+  "use strict";
+
+  // --- MANEJO GLOBAL DE EXCEPCIONES EN RAM ---
   window.addEventListener("error", (event) => {
     console.warn("[SAARE Immunity] Excepción capturada en RAM:", event.error);
     event.preventDefault();
@@ -49,7 +52,9 @@
       });
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   if (document.readyState === "loading") {
@@ -58,6 +63,7 @@
     observeAIResponses();
   }
 
+  // --- COMUNICACIÓN DE REGLAS DINÁMICAS ---
   window.addEventListener("message", (event) => {
     if (event.data && event.data.type === "SAARE_UPDATE_CUSTOM_RULES") {
       if (Array.isArray(event.data.payload)) {
@@ -68,6 +74,7 @@
 
   window.postMessage({ type: "SAARE_FETCH_CUSTOM_RULES_REQUEST" }, "*");
 
+  // --- PATRONES DE PROTECCIÓN DE DATOS Y OWASP ---
   const DLP = {
     dni: /(?:\b\d{7,8}[-\s]?[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[-\s]?[A-Za-z]?\b)/i,
     iban: /\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/i,
@@ -75,13 +82,6 @@
   };
 
   const OWASP_PATTERNS = /(ignore previous instructions|system prompt|jailbreak|bypass|drop table|rm -rf|<script|exec\s*\()/i;
-
-  async function computeSHA256(str) {
-    const buffer = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-  }
 
   function computeL7Seal(str) {
     let hash = 0;
@@ -109,7 +109,7 @@
     );
   }
 
-  // EXTRACCIÓN ROBUSTA DE MENSAJES CON FILTRADO DE TRAPAS DE RED
+  // --- EXTRACCIÓN DE PROMPTS Y FILTRADO DE RED ---
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
     if (typeof rawText !== "string") {
@@ -118,7 +118,6 @@
 
     const trimmed = rawText.trim();
 
-    // Filtro de ruido de la plataforma Gemini / OpenAI
     if (
       trimmed === "{}" ||
       trimmed === "[]" ||
@@ -132,7 +131,6 @@
       return "";
     }
 
-    // Parseo de llamadas RPC Gemini f.req
     if (rawText.includes("f.req=")) {
       try {
         const params = new URLSearchParams(rawText);
@@ -152,7 +150,6 @@
       } catch {}
     }
 
-    // Extracción en formato JSON estándar (ChatGPT / Claude / API Directa)
     try {
       const json = JSON.parse(rawText);
       if (json.prompt && typeof json.prompt === 'string') return json.prompt.trim();
@@ -189,6 +186,7 @@
     return clean;
   }
 
+  // --- INTERFAZ VISUAL DE BLOQUEO (MODAL MODERNO) ---
   function renderGuardrailModal(activeCheck) {
     const existingModal = document.getElementById("saare-guardrail-overlay");
     if (existingModal) existingModal.remove();
@@ -245,16 +243,24 @@
     const btnSanitize = document.createElement("button");
     btnSanitize.style.cssText = "padding: 10px 18px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);";
     btnSanitize.textContent = "✨ Sanitizar y Reinsertar";
+    
     btnSanitize.addEventListener("click", () => {
       overlay.remove();
       const inputBox = document.querySelector('div[contenteditable="true"], textarea');
       if (inputBox) {
+        const textToInsert = activeCheck.sanitizedPrompt;
         if (inputBox.tagName === "TEXTAREA") {
-          inputBox.value = activeCheck.sanitizedPrompt;
+          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+          if (nativeSetter) {
+            nativeSetter.call(inputBox, textToInsert);
+          } else {
+            inputBox.value = textToInsert;
+          }
         } else {
-          inputBox.innerText = activeCheck.sanitizedPrompt;
+          inputBox.innerText = textToInsert;
         }
         inputBox.dispatchEvent(new Event("input", { bubbles: true }));
+        inputBox.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
 
@@ -270,6 +276,7 @@
     document.body.appendChild(overlay);
   }
 
+  // --- MOTOR DE EVALUACIÓN EX-ANTE ---
   async function processAndEvaluate(cleanPrompt, url) {
     if (!cleanPrompt) return { shouldBlock: false };
 
@@ -293,7 +300,6 @@
     }
 
     const isViolation = isDni || isIban || isCard || isOwasp || (triggeredCustomRule !== null);
-
     const sanitizedText = sanitizePromptText(cleanPrompt);
 
     const activeCheck = {
@@ -317,9 +323,7 @@
       renderGuardrailModal(activeCheck);
     }
 
-    // EMISIÓN OBLIGATORIA DEL EVENTO TANTO PARA ALLOW COMO PARA DENY
     window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: activeCheck }, "*");
-
     return activeCheck;
   }
 
@@ -334,13 +338,15 @@
     });
   }
 
-  // HOOK FETCH INTERCEPTOR
+  // --- HOOK FETCH INTERCEPTOR ---
   const rawFetch = window.fetch;
-  window.fetch = async function(resource, config) {
+  window.fetch = async function(resource, config = {}) {
     try {
       const url = typeof resource === "string" ? resource : (resource?.url || "");
-      if (!isIgnoredUrl(url) && config && config.body) {
-        const cleanPrompt = extractCleanPrompt(config.body);
+      const body = config?.body || (typeof resource === "object" ? resource.body : null);
+
+      if (!isIgnoredUrl(url) && body) {
+        const cleanPrompt = extractCleanPrompt(body);
         if (cleanPrompt) {
           const check = await processAndEvaluate(cleanPrompt, url);
           if (check && check.shouldBlock) {
@@ -348,7 +354,7 @@
           }
 
           try {
-            if (!url.includes("gemini.google.com")) {
+            if (!url.includes("gemini.google.com") && config.body) {
               let bodyData = JSON.parse(config.body);
               if (bodyData.messages && Array.isArray(bodyData.messages)) {
                 const lastIdx = bodyData.messages.length - 1;
@@ -370,28 +376,39 @@
     return rawFetch.apply(this, arguments);
   };
 
-  // HOOK XHR INTERCEPTOR CON CANCELACIÓN DE RED EN VIOLACIONES
+  // --- HOOK XHR INTERCEPTOR ---
   const rawXHR = window.XMLHttpRequest.prototype.send;
   window.XMLHttpRequest.prototype.send = function(body) {
+    const self = this;
+    const args = arguments;
+
     try {
       if (body) {
         const cleanPrompt = extractCleanPrompt(body);
         if (cleanPrompt) {
           processAndEvaluate(cleanPrompt, "xhr_batch").then(check => {
             if (check && check.shouldBlock) {
-              Object.defineProperty(this, 'readyState', { writable: true, value: 4 });
-              Object.defineProperty(this, 'status', { writable: true, value: 200 });
-              Object.defineProperty(this, 'responseText', { 
+              Object.defineProperty(self, 'readyState', { writable: true, value: 4 });
+              Object.defineProperty(self, 'status', { writable: true, value: 200 });
+              Object.defineProperty(self, 'responseText', { 
                 writable: true, 
                 value: `🧠 [S.A.A.R.E.]: Transmisión cancelada en memoria por directiva corporativa.` 
               });
-              this.dispatchEvent(new Event('readystatechange'));
-              this.dispatchEvent(new Event('load'));
+              self.dispatchEvent(new Event('readystatechange'));
+              self.dispatchEvent(new Event('load'));
+            } else {
+              rawXHR.apply(self, args);
             }
+          }).catch(() => {
+            rawXHR.apply(self, args);
           });
+          return;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("[SAARE XHR Safe] Continuación por excepción:", e);
+    }
+
     return rawXHR.apply(this, arguments);
   };
 })();

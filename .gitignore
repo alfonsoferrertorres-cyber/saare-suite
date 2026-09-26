@@ -27,3 +27,9 @@ evidence_vault/
 # Scrinia compressa et exceptiones
 *.zip
 !saare-console/public/*.zip
+# Certified credentials & local registration
+saare-recognition.json
+
+# Performance & benchmark test outputs
+benchmark_*_summary.json
+*.summary.json
