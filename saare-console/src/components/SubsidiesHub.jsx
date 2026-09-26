@@ -1,6 +1,7 @@
-// src/components/SubsidiesHub.jsx
+// saare-console/src/components/SubsidiesHub.jsx
 import React, { useState } from 'react';
 import { CryptoService } from '../services/cryptoService';
+import { saareFetch } from '../utils/api';
 
 export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] }) => {
   const [verifying, setVerifying] = useState(false);
@@ -25,9 +26,8 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
   const handleExportPackage = async (docType = 'ALL') => {
     setLoadingExport(true);
     try {
-      const res = await fetch('/api/v7/subsidies/export-package', {
+      const res = await saareFetch('/subsidies/export-package', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId,
           grantType: selectedGrant,
@@ -39,7 +39,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
       if (res.ok) {
         alert(`Expediente [${selectedGrant} - ${docType}] generado con éxito. Código: ${data.complianceCode}`);
       } else {
-        alert(`Error al exportar: ${data.error}`);
+        alert(`Error al exportar: ${data.error || 'Error en el servidor'}`);
       }
     } catch (err) {
       alert(`Fallo de conexión: ${err.message}`);

@@ -1,5 +1,7 @@
+// saare-console/src/Login.jsx
 import React, { useState } from 'react';
 import { SAARE_CONFIG } from './config/saareState';
+import { API_HOST } from './utils/api';
 
 export default function Login({ onLoginSuccess }) {
   const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'
@@ -26,11 +28,11 @@ export default function Login({ onLoginSuccess }) {
     const cleanEmail = user?.email || email.trim().toLowerCase();
     const assignedRole = user?.role || SAARE_CONFIG.DEFAULT_ROLE || "CISO_ADMIN";
 
-    // 1. Claves globales requeridas por apiService.ts, App.jsx y la cabecera x-saare-role
+    // 1. Claves globales requeridas por api.js, App.jsx y las cabeceras RBAC
     localStorage.setItem('saare_token', activeToken);
     localStorage.setItem('saare_auth_token', activeToken);
     localStorage.setItem('saare_user_email', cleanEmail);
-    localStorage.setItem('saare_user_role', assignedRole); // 👈 Sincronización indispensable para RBAC
+    localStorage.setItem('saare_user_role', assignedRole); // Sincronización indispensable para RBAC
     localStorage.setItem('saare_tenant_domain', tenantName);
 
     // 2. Objeto de sesión canónico consumido por la consola
@@ -77,7 +79,7 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/auth/login`, {
+      const res = await fetch(`${API_HOST}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
@@ -133,7 +135,7 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/trial`, {
+      const res = await fetch(`${API_HOST}/api/v1/trial`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
@@ -176,7 +178,7 @@ export default function Login({ onLoginSuccess }) {
     clearMessages();
 
     try {
-      const res = await fetch(`${SAARE_CONFIG.WORKER_URL}/auth/reset-password-request`, {
+      const res = await fetch(`${API_HOST}/api/v1/auth/reset-password-request`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',

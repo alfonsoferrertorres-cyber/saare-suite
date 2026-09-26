@@ -1,5 +1,6 @@
+// saare-console/src/components/GovernanceToolbar.jsx
 import React, { useState } from 'react';
-import { API_BASE_URL } from '../utils/api';
+import { API_HOST } from '../utils/api';
 
 export default function GovernanceToolbar({
   onVerifySignature,
@@ -25,15 +26,10 @@ export default function GovernanceToolbar({
       ? customHash 
       : "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    const cleanBase = (API_BASE_URL || '').replace(/\/$/, '');
-    const verifyEndpoint = cleanBase.includes('/api/v1') 
-      ? `${cleanBase}/verify/${targetHash}`
-      : `${cleanBase}/api/v1/verify/${targetHash}`;
-    
-    window.open(verifyEndpoint, '_blank');
+    window.open(`${API_HOST}/verify/${targetHash}`, '_blank');
     
     triggerAction(
-      `Sello criptografico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
+      `Sello criptográfico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
       () => {
         if (typeof onVerifySignature === 'function') {
           onVerifySignature(targetHash);

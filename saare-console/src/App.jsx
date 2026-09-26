@@ -1,3 +1,4 @@
+// saare-console/src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
@@ -106,6 +107,10 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Mapeo unificado para Bóveda D1 y KV en App.jsx
+   * Sincronizado con las columnas nativas de D1 (consolidated_traces / merkle_anchors)
+   */
   const mapEvidences = (remoteEvidences) => {
     if (!Array.isArray(remoteEvidences)) return [];
     return remoteEvidences.map((item, idx) => {
@@ -119,21 +124,23 @@ export default function App() {
       } catch (e) {}
 
       const evidenceId = item.evidence_id || item.id || `EV-L7-${100 + idx}`;
-      const payloadHash = item.proofBundle?.payloadHash || item.merkleRoot || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+      const payloadHash = item.merkle_root || item.merkleRoot || item.proofBundle?.payloadHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+      const rawTime = item.timestamp || item.created_at || new Date().toISOString();
 
       return {
         id: evidenceId,
-        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'En vivo',
-        rawTimestamp: item.timestamp || new Date().toISOString(),
+        time: rawTime ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
+        rawTimestamp: rawTime,
         cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
         sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
         prompt: String(cleanPrompt || '(Sin texto capturado)'),
         responseOutput: String(cleanResponse || ''),
         verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
         decision: isDeny ? 'DENY' : 'ALLOW',
+        anchored: item.anchored !== undefined ? item.anchored : 1, // Campo de inmutabilidad D1
         type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
-        user: item.user || userEmail,
-        tenant: item.tenant || tenantId,
+        user: item.user || item.user_id || userEmail,
+        tenant: item.tenant || item.tenant_id || tenantId,
         merkleRoot: payloadHash,
         node: item.node || SAARE_CONFIG.SAFE_CREATIVE_ID,
         grantMetadata: item.grantMetadata || null,
@@ -142,7 +149,7 @@ export default function App() {
           payloadHash: payloadHash,
           ed25519Signature: `ED25519_SIG_${payloadHash.substring(0, 16).toUpperCase()}`,
           merkleRoot: payloadHash,
-          rfc3161Timestamp: item.timestamp || new Date().toISOString(),
+          rfc3161Timestamp: rawTime,
           claimLevel: isDeny ? 'VERIFIED' : 'TESTED',
           auditStandard: "ISO/IEC 27037:2012 / EU AI Act / DORA"
         },
@@ -154,7 +161,7 @@ export default function App() {
 
   const fetchTelemetryOnce = async () => {
     try {
-      const res = await saareFetch(`/api/v1/runs?t=${Date.now()}`, { method: 'GET' });
+      const res = await saareFetch(`/runs?t=${Date.now()}`, { method: 'GET' });
 
       if (res.status === 401) {
         handleLogout();
@@ -183,7 +190,7 @@ export default function App() {
 
     const fetchCustomRules = async () => {
       try {
-        const res = await saareFetch('/api/v1/custom-rules', { method: 'GET' });
+        const res = await saareFetch('/custom-rules', { method: 'GET' });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.rules)) setCustomFilters(data.rules);
@@ -259,7 +266,7 @@ export default function App() {
     }
 
     try {
-      await saareFetch('/api/v1/integrations/siem', {
+      await saareFetch('/integrations/siem', {
         method: 'POST',
         body: JSON.stringify({
           evidenceId: ev.id,
@@ -331,7 +338,7 @@ export default function App() {
 
   const handleVerifyLicense = async () => {
     try {
-      const res = await saareFetch('/api/v1/auth/verifylicense', {
+      const res = await saareFetch('/auth/verifylicense', {
         method: 'POST',
         body: JSON.stringify({ tenant: tenantId, user: userEmail, scope: 'all' })
       });
@@ -365,7 +372,7 @@ export default function App() {
     const t0 = performance.now();
 
     try {
-      const res = await saareFetch('/api/v1/intercept', {
+      const res = await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
           prompt: testPrompt,
@@ -437,7 +444,7 @@ export default function App() {
     setSimulationRunning(true);
     triggerGovernance(`Ejecutando escenario de resiliencia: ${scenario}...`);
     try {
-      const res = await saareFetch('/api/v1/resilience/check', {
+      const res = await saareFetch('/resilience/check', {
         method: 'POST',
         body: JSON.stringify({ scenario, tenantId })
       });
@@ -455,7 +462,7 @@ export default function App() {
     const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
     
     try {
-      const syncRes = await saareFetch('/api/v1/vault/sync', { method: 'GET' });
+      const syncRes = await saareFetch('/vault/sync', { method: 'GET' });
       if (syncRes.ok) {
         const syncData = await syncRes.json();
         if (syncData.source) setVaultSource(syncData.source);
@@ -523,7 +530,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/api/v1/custom-rules', {
+      await saareFetch('/custom-rules', {
         method: 'POST',
         body: JSON.stringify({ rules: updated })
       });
@@ -547,7 +554,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/api/v1/custom-rules', {
+      await saareFetch('/custom-rules', {
         method: 'POST',
         body: JSON.stringify({ rules: updated })
       });
@@ -565,7 +572,7 @@ export default function App() {
 
     try {
       triggerGovernance("Iniciando verificación de resiliencia ex-ante...");
-      const res = await saareFetch('/api/v1/resilience/check', { method: 'POST' });
+      const res = await saareFetch('/resilience/check', { method: 'POST' });
       const data = await res.json();
       setResilienceReport(data);
       triggerGovernance(`Audit Invariantes: ${data.verdict || 'COMPLETADO'}`);

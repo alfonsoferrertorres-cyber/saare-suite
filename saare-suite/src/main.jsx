@@ -1,16 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import './index.css';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
+import './index.css'; // Tailwind + estilos globales
 
-const rootElement = document.getElementById('root');
+const root = ReactDOM.createRoot(document.getElementById('root'));
 
-if (!rootElement) {
-  throw new Error('No se encontró el elemento raíz "#root" en el documento HTML.');
-}
-
-ReactDOM.createRoot(rootElement).render(
+root.render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>
 );

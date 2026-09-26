@@ -1,18 +1,15 @@
+// saare-console/src/components/DossierExporter.jsx
 import React, { useState } from 'react';
+import { saareFetch } from '../utils/api';
 
-export default function DossierExporter({ tenantId, token }) {
+export default function DossierExporter({ tenantId }) {
   const [exporting, setExporting] = useState(false);
 
   const triggerExport = async () => {
     setExporting(true);
     try {
-      const res = await fetch('https://api.saare.es/api/v1/subsidies/export-package', {
+      const res = await saareFetch('/subsidies/export-package', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'x-saare-tenant': tenantId
-        },
         body: JSON.stringify({
           tenantId,
           grantType: 'EU_AI_ACT_ART27_DUE_DILIGENCE',
@@ -21,13 +18,13 @@ export default function DossierExporter({ tenantId, token }) {
       });
 
       const data = await res.json();
-      if (data.downloadUrl) {
+      if (res.ok && data.downloadUrl) {
         window.open(data.downloadUrl, '_blank');
       } else {
-        alert('Dossier generado correctamente. Notificación enviada al webhook.');
+        alert(data.message || 'Dossier generado correctamente. Notificación enviada al webhook.');
       }
     } catch (e) {
-      alert('Error exportando el Proof Bundle normativo.');
+      alert(`Error exportando el Proof Bundle normativo: ${e.message}`);
     } finally {
       setExporting(false);
     }
