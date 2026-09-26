@@ -62,3 +62,6 @@ if ($gitStatus) {
 }
 
 Write-Host "`n✅ ¡Toda la infraestructura S.A.A.R.E. ha sido compilada, desplegada y sincronizada con éxito!" -ForegroundColor Green
+
+
+https://<worker.js>.<api.saare.es>.workers.dev
