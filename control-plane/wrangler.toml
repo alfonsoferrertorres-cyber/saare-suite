@@ -1,15 +1,9 @@
-name = "control-plane"
-main = "worker.js"
-compatibility_date = "2026-09-25"
+name = "saare-suite"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
 
-workers_dev = true
-preview_urls = false
-
-[[d1_databases]]
-binding = "DB"
-database_name = "saare-db"
-database_id = "85108385-a75a-4764-a9e8-973bfb83d899"
-
-[[kv_namespaces]]
-binding = "SAARE_VAULT_KV"
-id = "8dbfe21019834fc1bdefd9b66e4e810b"
+[vars]
+ENVIRONMENT = "production"
+SGP_PROTOCOL_VERSION = "1.0"
+ADMIN_EMAIL = "admin@saare.es"
+SENDER_EMAIL = "legal@saare.es"
