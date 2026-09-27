@@ -1,7 +1,3 @@
-/* ==========================================================================
-   S.A.A.R.E. Cryptographic Engine (Web Crypto Standard)
-   ========================================================================== */
-
 export async function sha256Hex(value) {
   const data = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest('SHA-256', data);
