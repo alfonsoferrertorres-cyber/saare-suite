@@ -1,1 +1,43 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --saare-bg: #030712;
+  --saare-surface: #0b0f19;
+  --saare-surface-2: #111827;
+  --saare-line: #1e293b;
+  --saare-line-hi: #334155;
+  --saare-blue: #0284c7;
+  --saare-cyan: #38bdf8;
+  --saare-green: #10b981;
+  --saare-text: #f8fafc;
+  --saare-muted: #94a3b8;
+}
+
+body {
+  margin: 0;
+  background-color: var(--saare-bg);
+  color: var(--saare-text);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bg-saare-bg { background-color: var(--saare-bg); }
+.bg-saare-surface { background-color: var(--saare-surface); }
+.border-saare-line { border-color: var(--saare-line); }
+.text-saare-cyan { color: var(--saare-cyan); }
+.bg-saare-blue { background-color: var(--saare-blue); }
+
+.manual-v4-container {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--saare-line);
+}
+
+.manual-v4-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
