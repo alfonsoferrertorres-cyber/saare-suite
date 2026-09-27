@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-// Importación de los componentes principales de saare-suite
+// Importación de los 10 componentes core existentes en saare-suite/src/components/
 import GovernanceToolbar from './components/GovernanceToolbar';
 import ExecutiveView from './components/ExecutiveView';
 import SubsidiesHub from './components/SubsidiesHub';
@@ -10,12 +10,9 @@ import ForensicView from './components/ForensicView';
 import ResilienceLab from './components/ResilienceLab';
 import EvidenceVerify from './components/EvidenceVerify';
 import DossierExporter from './components/DossierExporter';
+import OfficialReportModal from './components/OfficialReportModal';
 
-// Módulos de Auditoría Pública y Venta Pay-Per-Report
-import PublicAuditPortal from './components/PublicAuditPortal';
-import ReportStoreModal from './components/ReportStoreModal';
-
-// Primitiva de UI
+// Primitiva UI
 import { Badge } from './ui/Badge';
 
 export default function App() {
@@ -23,10 +20,10 @@ export default function App() {
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [selectedReportMode, setSelectedReportMode] = useState(null);
 
-  // Pestañas de navegación del Portal Comercial y Auditoría Pública S.A.A.R.E.
+  // Navegación por módulos de la suite
   const navigationTabs = [
     { id: 'executive', label: 'Resumen Ejecutivo', badge: 'C-Level' },
-    { id: 'public-audit', label: 'Auditoría Pública (Live)', badge: 'verify.saare.es', variant: 'allow' },
+    { id: 'public-audit', label: 'Auditoría Pública (Live)', badge: 'eIDAS RFC 3161', variant: 'allow' },
     { id: 'subsidies', label: 'Hub Subvenciones & Nodo', badge: 'Kit Consulting', variant: 'seal' },
     { id: 'enforcement', label: 'Inspector L7 Ex-Ante', badge: '< 1.16 ms', variant: 'allow' },
     { id: 'grc', label: 'Auditoría GRC', badge: 'ISO 42001' },
@@ -34,7 +31,6 @@ export default function App() {
     { id: 'resilience', label: 'Resiliencia DORA', badge: 'NIS 2' },
   ];
 
-  // Abrir tienda en un modo de informe específico (SAARE-MD-*)
   const handleOpenReportStore = (mode = null) => {
     setSelectedReportMode(mode);
     setIsStoreOpen(true);
@@ -44,12 +40,12 @@ export default function App() {
     <div className="min-h-screen bg-saare-bg text-saare-ink font-sans selection:bg-saare-accent selection:text-saare-bg antialiased">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         
-        {/* 1. Header & Barra de Gobernanza SGP 1.0 */}
+        {/* 1. Header & Barra de Gobernanza */}
         <header className="space-y-4">
           <GovernanceToolbar onOpenReport={() => handleOpenReportStore()} />
         </header>
 
-        {/* 2. Navegación por Módulos y Modos Operativos */}
+        {/* 2. Navegación por Módulos */}
         <nav className="border-b border-saare-line pb-3 overflow-x-auto">
           <div className="flex space-x-3 min-w-max">
             {navigationTabs.map((tab) => {
@@ -76,7 +72,7 @@ export default function App() {
           </div>
         </nav>
 
-        {/* 3. Vistas Interactivas */}
+        {/* 3. Panel Principal segun la Vista Seleccionada */}
         <main className="space-y-8 min-h-[500px]">
           {activeTab === 'executive' && (
             <ExecutiveView 
@@ -86,7 +82,9 @@ export default function App() {
           )}
 
           {activeTab === 'public-audit' && (
-            <PublicAuditPortal />
+            <div className="max-w-4xl mx-auto">
+              <EvidenceVerify />
+            </div>
           )}
 
           {activeTab === 'subsidies' && (
@@ -109,7 +107,7 @@ export default function App() {
             <ResilienceLab />
           )}
 
-          {/* 4. Verificación Criptográfica (Trust Layer con Manual v4) y Exportación de Dossier */}
+          {/* 4. Bloque Inferior de Verificación Criptográfica y Exportador de Dossier */}
           <div className="pt-8 border-t border-saare-line grid grid-cols-1 lg:grid-cols-2 gap-6">
             <EvidenceVerify />
             <DossierExporter onOpenStore={() => handleOpenReportStore()} />
@@ -120,7 +118,7 @@ export default function App() {
         <footer className="pt-6 border-t border-saare-line flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-saare-ink-faint gap-4">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-saare-allow inline-block animate-pulse" />
-            <span>MS3V S.A.A.R.E. SL (NIF B-ESB12345678) — Portal Comercial & Landing L7</span>
+            <span>MS3V S.A.A.R.E. SL — Portal Comercial & Landing L7</span>
           </div>
           <div className="flex items-center space-x-4">
             <span>SGP 1.0 (eIDAS RFC 3161)</span>
@@ -131,9 +129,9 @@ export default function App() {
 
       </div>
 
-      {/* 6. Modal Pay-Per-Report (Informes Oficiales y Subvenciones) */}
+      {/* 6. Modal Oficial de Informes Pay-Per-Report */}
       {isStoreOpen && (
-        <ReportStoreModal 
+        <OfficialReportModal 
           initialMode={selectedReportMode}
           onClose={() => setIsStoreOpen(false)} 
         />

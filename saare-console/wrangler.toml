@@ -1,0 +1,6 @@
+﻿name = "saare-console"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-27"
+
+[vars]
+VITE_CONTROL_PLANE_URL = "https://api.saare.es"
