@@ -53,7 +53,7 @@ Write-Host "📦 Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
 git add .
 $gitStatus = git status --porcelain
 if ($gitStatus) {
-    git commit -m "chore(release): despliegue completo v8.1"
+    git commit -m "chore(release): despliegue sincronizado con cloudflare dashboard"
     git push origin main
     Write-Host "🐙 Cambios subidos a GitHub correctamente." -ForegroundColor Green
 } else {
@@ -63,4 +63,4 @@ if ($gitStatus) {
 Write-Host "`n✅ ¡Despliegue completado con éxito!" -ForegroundColor Green
 Write-Host "  - Landing Comercial: https://saare-suite.pages.dev" -ForegroundColor Green
 Write-Host "  - Consola GRC:       https://saare-console.pages.dev" -ForegroundColor Green
-Write-Host "  - Control Plane API: https://control-plane.alfonsoferrertorres.workers.dev" -ForegroundColor Green
+Write-Host "  - Control Plane API: https://api.saare.es" -ForegroundColor Green
