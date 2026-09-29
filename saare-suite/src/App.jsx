@@ -67,6 +67,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('executive');
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [selectedReportMode, setSelectedReportMode] = useState(null);
+  
+  // Estado para controlar la visibilidad del banner de Onboarding
+  const [showWelcome, setShowWelcome] = useState(true);
 
   const navigationTabs = [
     { id: 'executive', label: 'Resumen Ejecutivo', badge: 'C-Level' },
@@ -100,6 +103,22 @@ export default function App() {
             )}
           </SafeViewBoundary>
         </header>
+
+        {/* Banner de Bienvenida (Onboarding para perfiles de negocio) */}
+        {showWelcome && (
+          <div className="bg-slate-900 border border-blue-500/50 text-slate-200 px-5 py-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg shadow-blue-900/20">
+            <div className="text-sm">
+              <strong className="text-blue-400 text-base block mb-1">👋 Bienvenido a S.A.A.R.E. Suite</strong>
+              Estás en la vista de Control de Mandos. Navega por las pestañas para explorar la auditoría técnica L7, la traza forense y las opciones de subvención para tu nodo.
+            </div>
+            <button 
+              onClick={() => setShowWelcome(false)} 
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer border border-slate-700"
+            >
+              Entendido ✕
+            </button>
+          </div>
+        )}
 
         {/* Navegación */}
         <nav className="border-b border-slate-800 pb-3 overflow-x-auto">
