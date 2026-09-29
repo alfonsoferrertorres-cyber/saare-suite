@@ -1,229 +1,130 @@
-import React, { useState, Component } from 'react';
-
-// Intentos de importación con fallback defensivo
-import GovernanceToolbar from './components/GovernanceToolbar';
-import ExecutiveView from './components/ExecutiveView';
-import SubsidiesHub from './components/SubsidiesHub';
-import EnforcementView from './components/EnforcementView';
-import GrcAuditView from './components/GrcAuditView';
-import ForensicView from './components/ForensicView';
-import ResilienceLab from './components/ResilienceLab';
-import EvidenceVerify from './components/EvidenceVerify';
-import DossierExporter from './components/DossierExporter';
-import OfficialReportModal from './components/OfficialReportModal';
-
-// Componente de protección Error Boundary para evitar pantallazo negro por excepciones
-class SafeViewBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("S.A.A.R.E. View Fallback Captured:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center space-y-3">
-          <div className="inline-flex p-3 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400">
-            ⚠️
-          </div>
-          <h3 className="text-lg font-bold text-slate-200">Módulo Temporalmente No Disponible</h3>
-          <p className="text-xs text-slate-400 font-mono max-w-md mx-auto">
-            {this.state.error?.toString() || "No se pudo cargar la vista seleccionada."}
-          </p>
-          <button 
-            onClick={() => this.setState({ hasError: false })}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 font-semibold rounded-lg border border-slate-700 transition-all"
-          >
-            Reintentar Carga
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Subcomponente Badge defensivo
-function SafeBadge({ children, variant = 'default' }) {
-  const styles = variant === 'accent' 
-    ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
-    : 'bg-slate-800 text-slate-400 border-slate-700';
-  return (
-    <span className={`px-2 py-0.5 text-[10px] font-mono font-semibold rounded border ${styles}`}>
-      {children}
-    </span>
-  );
-}
+import React from 'react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('executive');
-  const [isStoreOpen, setIsStoreOpen] = useState(false);
-  const [selectedReportMode, setSelectedReportMode] = useState(null);
-  
-  // Estado para controlar la visibilidad del banner de Onboarding
-  const [showWelcome, setShowWelcome] = useState(true);
-
-  const navigationTabs = [
-    { id: 'executive', label: 'Resumen Ejecutivo', badge: 'C-Level' },
-    { id: 'public-audit', label: 'Auditoría Pública (Live)', badge: 'eIDAS RFC 3161' },
-    { id: 'subsidies', label: 'Hub Subvenciones & Nodo', badge: 'Kit Consulting' },
-    { id: 'enforcement', label: 'Inspector L7 Ex-Ante', badge: '< 1.16 ms' },
-    { id: 'grc', label: 'Auditoría GRC', badge: 'ISO 42001' },
-    { id: 'forensic', label: 'Traza Forense', badge: 'Ed25519' },
-    { id: 'resilience', label: 'Resiliencia DORA', badge: 'NIS 2' },
-  ];
-
-  const handleOpenReportStore = (mode = null) => {
-    setSelectedReportMode(mode);
-    setIsStoreOpen(true);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-blue-500 selection:text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-        
-        {/* Header */}
-        <header className="space-y-4">
-          <SafeViewBoundary>
-            {typeof GovernanceToolbar === 'function' ? (
-              <GovernanceToolbar onOpenReport={() => handleOpenReportStore()} />
-            ) : (
-              <div className="flex items-center justify-between p-4 bg-slate-900 border border-slate-800 rounded-xl">
-                <span className="font-bold text-blue-400">S.A.A.R.E. Governance Suite v8.1</span>
-                <span className="text-xs text-slate-500 font-mono">Control Plane: Active</span>
-              </div>
-            )}
-          </SafeViewBoundary>
-        </header>
-
-        {/* Banner de Bienvenida (Onboarding para perfiles de negocio) */}
-        {showWelcome && (
-          <div className="bg-slate-900 border border-blue-500/50 text-slate-200 px-5 py-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg shadow-blue-900/20">
-            <div className="text-sm">
-              <strong className="text-blue-400 text-base block mb-1">👋 Bienvenido a S.A.A.R.E. Suite</strong>
-              Estás en la vista de Control de Mandos. Navega por las pestañas para explorar la auditoría técnica L7, la traza forense y las opciones de subvención para tu nodo.
-            </div>
-            <button 
-              onClick={() => setShowWelcome(false)} 
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer border border-slate-700"
-            >
-              Entendido ✕
-            </button>
-          </div>
-        )}
-
-        {/* Navegación */}
-        <nav className="border-b border-slate-800 pb-3 overflow-x-auto">
-          <div className="flex space-x-3 min-w-max">
-            {navigationTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
-                    isActive
-                      ? 'bg-slate-800 text-white border-blue-500 shadow-lg shadow-blue-500/10'
-                      : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-900'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <SafeBadge variant={isActive ? 'accent' : 'default'}>
-                      {tab.badge}
-                    </SafeBadge>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Panel Principal Protegido */}
-        <main className="space-y-8 min-h-[500px]">
-          <SafeViewBoundary>
-            {activeTab === 'executive' && (
-              typeof ExecutiveView === 'function' ? (
-                <ExecutiveView 
-                  onNavigateToSubsidies={() => setActiveTab('subsidies')} 
-                  onOpenStore={(mode) => handleOpenReportStore(mode)}
-                />
-              ) : (
-                <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center">
-                  <h2 className="text-xl font-bold text-slate-200">Vista Ejecutiva S.A.A.R.E.</h2>
-                  <p className="text-sm text-slate-400 mt-2">Plataforma activa y lista para recibir telemetría L7.</p>
-                </div>
-              )
-            )}
-
-            {activeTab === 'public-audit' && (
-              <div className="max-w-4xl mx-auto">
-                {typeof EvidenceVerify === 'function' && <EvidenceVerify />}
-              </div>
-            )}
-
-            {activeTab === 'subsidies' && (
-              typeof SubsidiesHub === 'function' && <SubsidiesHub />
-            )}
-
-            {activeTab === 'enforcement' && (
-              typeof EnforcementView === 'function' && <EnforcementView />
-            )}
-
-            {activeTab === 'grc' && (
-              typeof GrcAuditView === 'function' && <GrcAuditView />
-            )}
-
-            {activeTab === 'forensic' && (
-              typeof ForensicView === 'function' && <ForensicView />
-            )}
-
-            {activeTab === 'resilience' && (
-              typeof ResilienceLab === 'function' && <ResilienceLab />
-            )}
-          </SafeViewBoundary>
-
-          <div className="pt-8 border-t border-slate-800 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SafeViewBoundary>
-              {typeof EvidenceVerify === 'function' && <EvidenceVerify />}
-            </SafeViewBoundary>
-            <SafeViewBoundary>
-              {typeof DossierExporter === 'function' && (
-                <DossierExporter onOpenStore={() => handleOpenReportStore()} />
-              )}
-            </SafeViewBoundary>
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-500 gap-4">
+      
+      {/* 1. NAVEGACIÓN SUPERIOR */}
+      <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            <span>MS3V S.A.A.R.E. SL — Portal Comercial & Landing L7</span>
+            <span className="w-6 h-6 rounded-md bg-blue-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/20">S</span>
+            <span className="font-bold text-lg tracking-wide text-slate-100">S.A.A.R.E. Suite</span>
           </div>
-          <div className="flex items-center space-x-4">
-            <span>SGP 1.0 (eIDAS RFC 3161)</span>
-            <span>•</span>
-            <span className="text-amber-400 font-semibold">SAARE-MD-IPRES-2026</span>
+          <div>
+            <a 
+              href="https://console.saare.es" 
+              className="px-5 py-2 text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors border border-slate-700"
+            >
+              Iniciar Sesión
+            </a>
           </div>
-        </footer>
+        </div>
+      </nav>
 
-      </div>
+      {/* 2. HERO SECTION (CABECERA PRINCIPAL) */}
+      <header className="max-w-4xl mx-auto px-6 py-24 text-center space-y-8">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-400 text-xs font-medium mb-4">
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span>Plataforma alineada con EU AI Act & DORA</span>
+        </div>
+        <h1 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-tight">
+          Gobernanza y Cumplimiento IA <br className="hidden md:block" /> 
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+            para Entornos Corporativos
+          </span>
+        </h1>
+        <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Protege tus datos, audita el uso de la Inteligencia Artificial y garantiza el cumplimiento normativo con una plataforma financiable al 100% mediante fondos europeos.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <a 
+            href="https://console.saare.es" 
+            className="px-8 py-3.5 text-base font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-900/50 transition-all w-full sm:w-auto"
+          >
+            Acceder a la Consola
+          </a>
+          <a 
+            href="#precios" 
+            className="px-8 py-3.5 text-base font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 transition-all w-full sm:w-auto"
+          >
+            Ver Planes y Subvenciones
+          </a>
+        </div>
+      </header>
 
-      {isStoreOpen && typeof OfficialReportModal === 'function' && (
-        <OfficialReportModal 
-          initialMode={selectedReportMode}
-          onClose={() => setIsStoreOpen(false)} 
-        />
-      )}
+      {/* 3. PROPUESTA DE VALOR (BENEFICIOS) */}
+      <section className="border-y border-slate-800 bg-slate-900/50">
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-slate-100">Auditoría técnica sin fricción comercial</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 border border-blue-500/20">🛡️</div>
+              <h3 className="text-xl font-bold text-slate-200 mb-3">Seguridad Ex-Ante</h3>
+              <p className="text-slate-400 leading-relaxed">Bloquea fugas de datos (PII, tarjetas, contraseñas) antes de que lleguen a los modelos de IA, operando en milisegundos.</p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl">
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 border border-emerald-500/20">📜</div>
+              <h3 className="text-xl font-bold text-slate-200 mb-3">Cumplimiento Legal</h3>
+              <p className="text-slate-400 leading-relaxed">Genera trazas forenses inmutables listas para auditorías de la normativa DORA, NIS2 y la Ley de IA de la UE.</p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl">
+              <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 border border-amber-500/20">💶</div>
+              <h3 className="text-xl font-bold text-slate-200 mb-3">Financiación 100%</h3>
+              <p className="text-slate-400 leading-relaxed">Nuestros nodos corporativos encajan perfectamente en los programas de ayudas de Kit Digital y Kit Consulting.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. SECCIÓN DE PRECIOS */}
+      <section id="precios" className="max-w-7xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-slate-100 mb-4">Estrategia de Nodos Corporativos</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto">Selecciona el despliegue que mejor se adapte a tu infraestructura y aprovecha las líneas de financiación disponibles.</p>
+        </div>
+        
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Plan PYME */}
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col">
+            <div className="text-xs font-bold text-emerald-400 tracking-wider uppercase mb-2">Kit Digital / Consulting</div>
+            <h3 className="text-2xl font-bold text-slate-100 mb-2">Nodo PYME</h3>
+            <div className="text-4xl font-extrabold text-white mb-6">290 € <span className="text-lg font-normal text-slate-500">/mes</span></div>
+            <p className="text-slate-400 mb-8 flex-grow">Asientos ilimitados por CIF. Cubre ciberseguridad perimetral básica y FRIA Art. 27.</p>
+            <a href="https://console.saare.es" className="text-center py-3 rounded-lg font-bold bg-slate-800 text-white hover:bg-slate-700 transition-colors">Solicitar Alta</a>
+          </div>
+
+          {/* Plan Enterprise */}
+          <div className="bg-slate-800 border-2 border-blue-500 p-8 rounded-2xl flex flex-col relative shadow-2xl shadow-blue-900/20 transform md:-translate-y-4">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Recomendado</div>
+            <div className="text-xs font-bold text-blue-400 tracking-wider uppercase mb-2">DORA / NIS2 / Enterprise</div>
+            <h3 className="text-2xl font-bold text-slate-100 mb-2">Corporativo PKI</h3>
+            <div className="text-4xl font-extrabold text-white mb-6">3.500 € <span className="text-lg font-normal text-slate-400">/mes</span></div>
+            <p className="text-slate-300 mb-8 flex-grow">Despliegue privado Air-Gapped, integración HSM/PKI propia y firma Ed25519 con bóveda D1 dedicada.</p>
+            <a href="https://console.saare.es" className="text-center py-3 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-500 transition-colors">Solicitar Despliegue</a>
+          </div>
+
+          {/* Plan Developer */}
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col">
+            <div className="text-xs font-bold text-purple-400 tracking-wider uppercase mb-2">Pro / Developer</div>
+            <h3 className="text-2xl font-bold text-slate-100 mb-2">SDK Edge</h3>
+            <div className="text-4xl font-extrabold text-white mb-6">149 € <span className="text-lg font-normal text-slate-500">/mes</span></div>
+            <p className="text-slate-400 mb-8 flex-grow">Sensor L7 + LabEngine SDK con Token Binding X.509 para hasta 10 endpoints de desarrollo.</p>
+            <a href="https://console.saare.es" className="text-center py-3 rounded-lg font-bold bg-slate-800 text-white hover:bg-slate-700 transition-colors">Empezar a programar</a>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. FOOTER */}
+      <footer className="border-t border-slate-800 bg-slate-950 py-10">
+        <div className="max-w-7xl mx-auto px-6 text-center text-slate-500 text-sm">
+          <p>© 2026 MS3V S.A.A.R.E. SL. Todos los derechos reservados.</p>
+          <p className="mt-2 font-mono text-xs">Trust Anchor: SAARE-MD-IPRES-2026 | ISO 42001 Ready</p>
+        </div>
+      </footer>
+
     </div>
   );
 }
