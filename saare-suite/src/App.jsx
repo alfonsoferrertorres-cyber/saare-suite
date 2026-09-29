@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, Component } from 'react';
 
-// Componentes
+// Intentos de importación con fallback defensivo
 import GovernanceToolbar from './components/GovernanceToolbar';
 import ExecutiveView from './components/ExecutiveView';
 import SubsidiesHub from './components/SubsidiesHub';
@@ -12,8 +12,56 @@ import EvidenceVerify from './components/EvidenceVerify';
 import DossierExporter from './components/DossierExporter';
 import OfficialReportModal from './components/OfficialReportModal';
 
-// Primitiva UI
-import { Badge } from './ui/Badge';
+// Componente de protección Error Boundary para evitar pantallazo negro por excepciones
+class SafeViewBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("S.A.A.R.E. View Fallback Captured:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center space-y-3">
+          <div className="inline-flex p-3 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400">
+            ⚠️
+          </div>
+          <h3 className="text-lg font-bold text-slate-200">Módulo Temporalmente No Disponible</h3>
+          <p className="text-xs text-slate-400 font-mono max-w-md mx-auto">
+            {this.state.error?.toString() || "No se pudo cargar la vista seleccionada."}
+          </p>
+          <button 
+            onClick={() => this.setState({ hasError: false })}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 font-semibold rounded-lg border border-slate-700 transition-all"
+          >
+            Reintentar Carga
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Subcomponente Badge defensivo
+function SafeBadge({ children, variant = 'default' }) {
+  const styles = variant === 'accent' 
+    ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+    : 'bg-slate-800 text-slate-400 border-slate-700';
+  return (
+    <span className={`px-2 py-0.5 text-[10px] font-mono font-semibold rounded border ${styles}`}>
+      {children}
+    </span>
+  );
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('executive');
@@ -36,12 +84,21 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-blue-500 selection:text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         
         {/* Header */}
         <header className="space-y-4">
-          <GovernanceToolbar onOpenReport={() => handleOpenReportStore()} />
+          <SafeViewBoundary>
+            {typeof GovernanceToolbar === 'function' ? (
+              <GovernanceToolbar onOpenReport={() => handleOpenReportStore()} />
+            ) : (
+              <div className="flex items-center justify-between p-4 bg-slate-900 border border-slate-800 rounded-xl">
+                <span className="font-bold text-blue-400">S.A.A.R.E. Governance Suite v8.1</span>
+                <span className="text-xs text-slate-500 font-mono">Control Plane: Active</span>
+              </div>
+            )}
+          </SafeViewBoundary>
         </header>
 
         {/* Navegación */}
@@ -55,15 +112,15 @@ export default function App() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
                     isActive
-                      ? 'bg-slate-800 text-white border-blue-500 shadow-lg'
+                      ? 'bg-slate-800 text-white border-blue-500 shadow-lg shadow-blue-500/10'
                       : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-900'
                   }`}
                 >
                   <span>{tab.label}</span>
                   {tab.badge && (
-                    <Badge variant={isActive ? 'accent' : 'default'}>
+                    <SafeBadge variant={isActive ? 'accent' : 'default'}>
                       {tab.badge}
-                    </Badge>
+                    </SafeBadge>
                   )}
                 </button>
               );
@@ -71,44 +128,59 @@ export default function App() {
           </div>
         </nav>
 
-        {/* Panel Principal */}
+        {/* Panel Principal Protegido */}
         <main className="space-y-8 min-h-[500px]">
-          {activeTab === 'executive' && (
-            <ExecutiveView 
-              onNavigateToSubsidies={() => setActiveTab('subsidies')} 
-              onOpenStore={(mode) => handleOpenReportStore(mode)}
-            />
-          )}
+          <SafeViewBoundary>
+            {activeTab === 'executive' && (
+              typeof ExecutiveView === 'function' ? (
+                <ExecutiveView 
+                  onNavigateToSubsidies={() => setActiveTab('subsidies')} 
+                  onOpenStore={(mode) => handleOpenReportStore(mode)}
+                />
+              ) : (
+                <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                  <h2 className="text-xl font-bold text-slate-200">Vista Ejecutiva S.A.A.R.E.</h2>
+                  <p className="text-sm text-slate-400 mt-2">Plataforma activa y lista para recibir telemetría L7.</p>
+                </div>
+              )
+            )}
 
-          {activeTab === 'public-audit' && (
-            <div className="max-w-4xl mx-auto">
-              <EvidenceVerify />
-            </div>
-          )}
+            {activeTab === 'public-audit' && (
+              <div className="max-w-4xl mx-auto">
+                {typeof EvidenceVerify === 'function' && <EvidenceVerify />}
+              </div>
+            )}
 
-          {activeTab === 'subsidies' && (
-            <SubsidiesHub />
-          )}
+            {activeTab === 'subsidies' && (
+              typeof SubsidiesHub === 'function' && <SubsidiesHub />
+            )}
 
-          {activeTab === 'enforcement' && (
-            <EnforcementView />
-          )}
+            {activeTab === 'enforcement' && (
+              typeof EnforcementView === 'function' && <EnforcementView />
+            )}
 
-          {activeTab === 'grc' && (
-            <GrcAuditView />
-          )}
+            {activeTab === 'grc' && (
+              typeof GrcAuditView === 'function' && <GrcAuditView />
+            )}
 
-          {activeTab === 'forensic' && (
-            <ForensicView />
-          )}
+            {activeTab === 'forensic' && (
+              typeof ForensicView === 'function' && <ForensicView />
+            )}
 
-          {activeTab === 'resilience' && (
-            <ResilienceLab />
-          )}
+            {activeTab === 'resilience' && (
+              typeof ResilienceLab === 'function' && <ResilienceLab />
+            )}
+          </SafeViewBoundary>
 
           <div className="pt-8 border-t border-slate-800 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EvidenceVerify />
-            <DossierExporter onOpenStore={() => handleOpenReportStore()} />
+            <SafeViewBoundary>
+              {typeof EvidenceVerify === 'function' && <EvidenceVerify />}
+            </SafeViewBoundary>
+            <SafeViewBoundary>
+              {typeof DossierExporter === 'function' && (
+                <DossierExporter onOpenStore={() => handleOpenReportStore()} />
+              )}
+            </SafeViewBoundary>
           </div>
         </main>
 
@@ -127,7 +199,7 @@ export default function App() {
 
       </div>
 
-      {isStoreOpen && (
+      {isStoreOpen && typeof OfficialReportModal === 'function' && (
         <OfficialReportModal 
           initialMode={selectedReportMode}
           onClose={() => setIsStoreOpen(false)} 

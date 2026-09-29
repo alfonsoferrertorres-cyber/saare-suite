@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --saare-bg: #030712;
@@ -15,30 +13,171 @@
   --saare-muted: #94a3b8;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background-color: var(--saare-bg);
   color: var(--saare-text);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Helpers corporativos S.A.A.R.E. */
-.bg-saare-bg { background-color: var(--saare-bg); }
-.bg-saare-surface { background-color: var(--saare-surface); }
-.border-saare-line { border-color: var(--saare-line); }
-.text-saare-cyan { color: var(--saare-cyan); }
-.bg-saare-blue { background-color: var(--saare-blue); }
-
-.manual-v4-container {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--saare-line);
+/* Grillas y maquetación de paneles */
+.view-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
 }
 
-.manual-v4-buttons {
+@media (min-width: 900px) {
+  .view-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+  .view-grid.cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.panel, .hero-panel {
+  background-color: var(--saare-surface);
+  border: 1px solid var(--saare-line);
+  border-radius: 0.85rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.eyebrow {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--saare-cyan);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.hero-panel h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--saare-text);
+}
+
+.hero-panel p {
+  color: var(--saare-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+/* KPIs */
+.executive-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.kpi {
+  background: var(--saare-surface-2);
+  border: 1px solid var(--saare-line);
+  padding: 1rem;
+  border-radius: 0.6rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi span { font-size: 0.7rem; color: var(--saare-muted); font-weight: 700; text-transform: uppercase; }
+.kpi b { font-size: 1.4rem; color: var(--saare-text); margin-top: 0.25rem; font-family: monospace; }
+.kpi.green b { color: var(--saare-green); }
+.kpi.red b { color: #ef4444; }
+.kpi.amber b { color: #f59e0b; }
+
+/* Readouts y listas */
+.panel-title {
+  font-size: 0.8rem;
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--saare-muted);
+  border-bottom: 1px solid var(--saare-line);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.panel-title span { color: var(--saare-cyan); }
+
+.readout {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.readout b { color: var(--saare-muted); font-weight: 600; }
+.readout span { color: var(--saare-text); font-family: monospace; }
+
+/* Botones y Selects */
+button, select, input {
+  font-family: inherit;
+}
+
+.governance-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--saare-surface);
+  border: 1px solid var(--saare-line);
+  padding: 1rem;
+  border-radius: 0.85rem;
+}
+
+.governance-toolbar select {
+  background: var(--saare-bg);
+  color: var(--saare-cyan);
+  border: 1px solid var(--saare-line-hi);
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-family: monospace;
+  font-weight: 700;
+  outline: none;
+}
+
+button.primary {
+  background: var(--saare-blue);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button.primary:hover {
+  background: #0369a1;
+}
+
+button.secondary {
+  background: var(--saare-surface-2);
+  color: var(--saare-text);
+  border: 1px solid var(--saare-line-hi);
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
 }
