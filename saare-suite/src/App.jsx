@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-// Importación de los 10 componentes core existentes en saare-suite/src/components/
+// Componentes
 import GovernanceToolbar from './components/GovernanceToolbar';
 import ExecutiveView from './components/ExecutiveView';
 import SubsidiesHub from './components/SubsidiesHub';
@@ -20,12 +20,11 @@ export default function App() {
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [selectedReportMode, setSelectedReportMode] = useState(null);
 
-  // Navegación por módulos de la suite
   const navigationTabs = [
     { id: 'executive', label: 'Resumen Ejecutivo', badge: 'C-Level' },
-    { id: 'public-audit', label: 'Auditoría Pública (Live)', badge: 'eIDAS RFC 3161', variant: 'allow' },
-    { id: 'subsidies', label: 'Hub Subvenciones & Nodo', badge: 'Kit Consulting', variant: 'seal' },
-    { id: 'enforcement', label: 'Inspector L7 Ex-Ante', badge: '< 1.16 ms', variant: 'allow' },
+    { id: 'public-audit', label: 'Auditoría Pública (Live)', badge: 'eIDAS RFC 3161' },
+    { id: 'subsidies', label: 'Hub Subvenciones & Nodo', badge: 'Kit Consulting' },
+    { id: 'enforcement', label: 'Inspector L7 Ex-Ante', badge: '< 1.16 ms' },
     { id: 'grc', label: 'Auditoría GRC', badge: 'ISO 42001' },
     { id: 'forensic', label: 'Traza Forense', badge: 'Ed25519' },
     { id: 'resilience', label: 'Resiliencia DORA', badge: 'NIS 2' },
@@ -37,16 +36,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-saare-bg text-saare-ink font-sans selection:bg-saare-accent selection:text-saare-bg antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         
-        {/* 1. Header & Barra de Gobernanza */}
+        {/* Header */}
         <header className="space-y-4">
           <GovernanceToolbar onOpenReport={() => handleOpenReportStore()} />
         </header>
 
-        {/* 2. Navegación por Módulos */}
-        <nav className="border-b border-saare-line pb-3 overflow-x-auto">
+        {/* Navegación */}
+        <nav className="border-b border-slate-800 pb-3 overflow-x-auto">
           <div className="flex space-x-3 min-w-max">
             {navigationTabs.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -54,15 +53,15 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 border ${
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
                     isActive
-                      ? 'bg-saare-surface-2 text-saare-ink border-saare-line-hi shadow-lg ring-1 ring-saare-accent/20'
-                      : 'bg-saare-surface/50 text-saare-ink-dim border-saare-line hover:text-saare-ink hover:bg-saare-surface'
+                      ? 'bg-slate-800 text-white border-blue-500 shadow-lg'
+                      : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-900'
                   }`}
                 >
                   <span>{tab.label}</span>
                   {tab.badge && (
-                    <Badge variant={isActive ? (tab.variant || 'accent') : 'default'}>
+                    <Badge variant={isActive ? 'accent' : 'default'}>
                       {tab.badge}
                     </Badge>
                   )}
@@ -72,7 +71,7 @@ export default function App() {
           </div>
         </nav>
 
-        {/* 3. Panel Principal segun la Vista Seleccionada */}
+        {/* Panel Principal */}
         <main className="space-y-8 min-h-[500px]">
           {activeTab === 'executive' && (
             <ExecutiveView 
@@ -107,29 +106,27 @@ export default function App() {
             <ResilienceLab />
           )}
 
-          {/* 4. Bloque Inferior de Verificación Criptográfica y Exportador de Dossier */}
-          <div className="pt-8 border-t border-saare-line grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="pt-8 border-t border-slate-800 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <EvidenceVerify />
             <DossierExporter onOpenStore={() => handleOpenReportStore()} />
           </div>
         </main>
 
-        {/* 5. Pie de Página */}
-        <footer className="pt-6 border-t border-saare-line flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-saare-ink-faint gap-4">
+        {/* Footer */}
+        <footer className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-500 gap-4">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-saare-allow inline-block animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
             <span>MS3V S.A.A.R.E. SL — Portal Comercial & Landing L7</span>
           </div>
           <div className="flex items-center space-x-4">
             <span>SGP 1.0 (eIDAS RFC 3161)</span>
             <span>•</span>
-            <span className="text-saare-seal font-semibold">SAARE-MD-IPRES-2026</span>
+            <span className="text-amber-400 font-semibold">SAARE-MD-IPRES-2026</span>
           </div>
         </footer>
 
       </div>
 
-      {/* 6. Modal Oficial de Informes Pay-Per-Report */}
       {isStoreOpen && (
         <OfficialReportModal 
           initialMode={selectedReportMode}

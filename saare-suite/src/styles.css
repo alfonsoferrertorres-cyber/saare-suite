@@ -23,6 +23,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Helpers corporativos S.A.A.R.E. */
 .bg-saare-bg { background-color: var(--saare-bg); }
 .bg-saare-surface { background-color: var(--saare-surface); }
 .border-saare-line { border-color: var(--saare-line); }
