@@ -4,14 +4,15 @@
   "packageManager": "pnpm@12.3.4",
   "type": "module",
   "scripts": {
-    "clean": "powershell -Command \"Remove-Item -Recurse -Force **/dist -ErrorAction SilentlyContinue\"",
-    "server": "pnpm run server:local",
-    "server:local": "pnpm --filter control-plane-local dev",
-    "dev": "pnpm --parallel run dev",
+    "clean": "rimraf **/dist .turbo .wrangler",
+    "build": "turbo run build",
+    "build:all": "turbo run build",
+    "dev": "turbo run dev --parallel",
     "dev:console": "pnpm --filter saare-console run dev",
     "dev:landing": "pnpm --filter saare-suite run dev",
-    "build:all": "pnpm --filter saare-console run build && pnpm --filter saare-suite run build",
-    "deploy:prod": "pnpm run clean && pnpm --filter saare-console run build && pnpm --filter saare-suite run build && pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console && pnpm --filter saare-suite exec wrangler pages deploy dist --project-name=saare-suite && pnpm --filter control-plane exec wrangler deploy"
+    "server": "pnpm run server:local",
+    "server:local": "pnpm --filter control-plane-local dev",
+    "deploy:prod": "pnpm run clean && pnpm run build && pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console --commit-dirty=true && pnpm --filter saare-suite exec wrangler pages deploy dist --project-name=saare-suite --commit-dirty=true && pnpm --filter control-plane exec wrangler deploy"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
