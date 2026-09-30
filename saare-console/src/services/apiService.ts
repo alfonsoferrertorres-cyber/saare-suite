@@ -19,6 +19,7 @@ export interface ResilienceReport {
   passedCount?: number;
   totalCount?: number;
   details?: Record<string, unknown>;
+  verdict?: string;
 }
 
 export interface ExportDossierPayload {
@@ -64,19 +65,18 @@ export interface CustomRule {
 }
 
 export const apiService = {
-  /**
-   * Obtiene las métricas KPI consolidadas del tenant actual
-   */
   async getKpis(startDate?: string, endDate?: string): Promise<KpiMetrics> {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
     try {
       const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
+        const total = data.totalInspections ?? 14280;
+        const deny = data.denyCount ?? 1120;
         return {
-          totalInterceptions: data.totalInspections ?? 14280,
-          allowedActions: (data.totalInspections ?? 14280) - (data.denyCount ?? 1120),
-          deniedActions: data.denyCount ?? 1120,
+          totalInterceptions: total,
+          allowedActions: total - deny,
+          deniedActions: deny,
           reviewActions: 210,
           averageLatencyMs: 1.12,
           activeSellersCount: 12,
@@ -87,7 +87,6 @@ export const apiService = {
       console.warn('[SAARE API] Error consultando KPIs, aplicando fallback local:', e);
     }
 
-    // Fallback a datos en caliente si la API está offline o en modo autónomo
     return {
       totalInterceptions: 14280,
       allowedActions: 12950,
@@ -99,9 +98,6 @@ export const apiService = {
     };
   },
 
-  /**
-   * Recupera las trazas de telemetría en tiempo real desde la Bóveda D1 / KV
-   */
   async getTelemetryTraces(limit = 50): Promise<TelemetryEvent[]> {
     try {
       const res = await saareFetch(`/runs?limit=${limit}`, { method: 'GET' });
@@ -115,9 +111,6 @@ export const apiService = {
     return [];
   },
 
-  /**
-   * Estado de salud y rendimiento del Nodo L7 Ex-Ante
-   */
   async getNodeStatus(): Promise<NodeStatus> {
     try {
       const res = await saareFetch('/status', { method: 'GET' });
@@ -148,62 +141,68 @@ export const apiService = {
       status: 'NOMINAL',
       trustAnchor: 'SAARE-MD-IPRES-2026',
       specVersion: 'SGP 1.0',
-      engine: 'Core PEP L7 v8.1'
+      engine: 'Core PEP L7 v8.2'
     };
   },
 
-  /**
-   * Registra y evalúa un impacto FRIA (EU AI Act Art. 27 / RGPD Art. 35)
-   */
   async submitFriaAssessment(friaPayload: Record<string, unknown>) {
-    const res = await saareFetch('/fria/evaluate', {
-      method: 'POST',
-      body: JSON.stringify(friaPayload)
-    });
-    return await res.json();
+    try {
+      const res = await saareFetch('/fria/evaluate', {
+        method: 'POST',
+        body: JSON.stringify(friaPayload)
+      });
+      return await res.json();
+    } catch (e: any) {
+      console.error('[SAARE API] Error evaluando FRIA:', e);
+      return { status: 'ERROR', message: e.message };
+    }
   },
 
-  /**
-   * Ejecuta simulaciones de pruebas de estrés y Resiliencia DORA en el Control Plane
-   */
   async runResilienceCheck(): Promise<ResilienceReport> {
-    const res = await saareFetch('/resilience/check', { method: 'POST' });
-    return await res.json();
+    try {
+      const res = await saareFetch('/resilience/check', { method: 'POST' });
+      if (res.ok) return await res.json();
+      return { status: 'FAILED', timestamp: new Date().toISOString(), verdict: 'FAIL_CLOSED' };
+    } catch (e: any) {
+      console.error('[SAARE API] Error en audit de resiliencia:', e);
+      return { status: 'ERROR', timestamp: new Date().toISOString(), verdict: 'FAIL_CLOSED' };
+    }
   },
 
-  /**
-   * Genera y exporta el paquete comprimido de evidencias para subvenciones
-   */
   async exportGrantPackage(payload: ExportDossierPayload): Promise<ExportDossierResponse> {
-    const res = await saareFetch('/subsidies/export-package', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    return await res.json();
+    try {
+      const res = await saareFetch('/subsidies/export-package', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (e: any) {
+      throw new Error(`Error exportando expediente: ${e.message}`);
+    }
   },
 
-  /**
-   * Obtiene la distribución de asientos/licencias de la organización ejecutiva
-   */
   async getExecutiveSeats(): Promise<ExecutiveSeatsResponse> {
-    const res = await saareFetch('/executive/seats', { method: 'GET' });
-    return await res.json();
+    try {
+      const res = await saareFetch('/executive/seats', { method: 'GET' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('[SAARE API] Error recuperando asientos ejecutivos:', e);
+    }
+    return { success: false, tenant: 'ENTERPRISE', maxSeats: 10, usedSeats: 1, users: [] };
   },
 
-  /**
-   * Asigna o actualiza el rol RBAC de un usuario en la organización
-   */
   async assignExecutiveSeat(email: string, role: string, name?: string) {
-    const res = await saareFetch('/executive/seats', {
-      method: 'POST',
-      body: JSON.stringify({ email, role, name })
-    });
-    return await res.json();
+    try {
+      const res = await saareFetch('/executive/seats', {
+        method: 'POST',
+        body: JSON.stringify({ email, role, name })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
   },
 
-  /**
-   * Obtiene las reglas de inspección custom almacenadas en KV Store
-   */
   async getCustomRules(): Promise<CustomRule[]> {
     try {
       const res = await saareFetch('/custom-rules', { method: 'GET' });
@@ -217,26 +216,28 @@ export const apiService = {
     return [];
   },
 
-  /**
-   * Guarda o actualiza la matriz de reglas de inspección perimetral
-   */
   async saveCustomRules(rules: CustomRule[]) {
-    const res = await saareFetch('/custom-rules', {
-      method: 'POST',
-      body: JSON.stringify({ rules })
-    });
-    return await res.json();
+    try {
+      const res = await saareFetch('/custom-rules', {
+        method: 'POST',
+        body: JSON.stringify({ rules })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { ok: false, error: e.message };
+    }
   },
 
-  /**
-   * Intercepta e inspecciona un Prompt en tiempo real Ex-Ante (Capa L7)
-   */
   async interceptPrompt(prompt: string, context?: Record<string, unknown>) {
-    const res = await saareFetch('/judge', {
-      method: 'POST',
-      body: JSON.stringify({ prompt, ...context })
-    });
-    return await res.json();
+    try {
+      const res = await saareFetch('/judge', {
+        method: 'POST',
+        body: JSON.stringify({ prompt, ...context })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { decision: 'DENY', verdict: 'RECHAZADO', error: e.message };
+    }
   }
 };
 

@@ -1,5 +1,5 @@
 /**
- * S.A.A.R.E. Evidence Vault Engine (SGP 1.0 / v8.1)
+ * S.A.A.R.E. Evidence Vault Engine (SGP 1.0 / v8.2)
  * High-performance double-custody persistence engine across Cloudflare D1, KV, and Volatile RAM.
  */
 
@@ -50,31 +50,48 @@ export class EvidenceVaultEngine {
   }
 
   /**
-   * Registra una traza de inspección con Doble Cadena de Custodia.
+   * Registra una traza de inspección con Doble Cadena de Custodia y Persistencia Dual.
    */
   async recordNodeEvidence(tracePayload) {
-    const timestamp = new Date().toISOString();
+    const timestamp = tracePayload.timestamp || new Date().toISOString();
     const traceId = tracePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
     const evidenceId = tracePayload.evidence_id || `EV-L7-${Date.now()}`;
-    const tenantId = tracePayload.tenant_id || "ENTERPRISE";
+    const tenantId = tracePayload.tenant_id || tracePayload.tenant || "ENTERPRISE";
     const user = tracePayload.user || "anonymous";
 
     const payloadHash = tracePayload.payload_hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     const evaluatorChainJson = JSON.stringify(tracePayload.evaluator_chain || { final_evaluator: "PEP_L7_RAM" });
     const verdictDataJson = JSON.stringify(tracePayload.verdict_data || { verdict: "PERMITIDO", action: "ALLOWED" });
 
-    // 1. Persistencia en Cloudflare D1
+    const decision = tracePayload.decision || (tracePayload.verdict_data?.action === 'BLOCKED' ? 'DENY' : 'ALLOW');
+    const verdict = tracePayload.verdict || tracePayload.verdict_data?.verdict || (decision === 'DENY' ? 'RECHAZADO' : 'PERMITIDO');
+
+    const fullRecord = {
+      id: evidenceId,
+      evidence_id: evidenceId,
+      trace_id: traceId,
+      tenant: tenantId,
+      user: user,
+      prompt: tracePayload.prompt || "",
+      responseOutput: tracePayload.responseOutput || "",
+      decision: decision,
+      verdict: verdict,
+      timestamp: timestamp,
+      ...tracePayload
+    };
+
+    // 1. Persistencia Resiliente en Cloudflare D1
     if (this.env && this.env.DB) {
       try {
         await this.initializeSchema();
 
         await this.env.DB.prepare(`
-          INSERT INTO consolidated_traces (trace_id, evidence_id, tenant_id, user, payload_hash, evaluator_chain, verdict_data, anchored, created_at)
+          INSERT OR REPLACE INTO consolidated_traces (trace_id, evidence_id, tenant_id, user, payload_hash, evaluator_chain, verdict_data, anchored, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
         `).bind(traceId, evidenceId, tenantId, user, payloadHash, evaluatorChainJson, verdictDataJson, timestamp).run();
 
         await this.env.DB.prepare(`
-          INSERT INTO runs (evidence_id, trace_id, tenant, user, prompt, responseOutput, decision, verdict, payload_json, created_at)
+          INSERT OR REPLACE INTO runs (evidence_id, trace_id, tenant, user, prompt, responseOutput, decision, verdict, payload_json, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           evidenceId,
@@ -83,9 +100,9 @@ export class EvidenceVaultEngine {
           user,
           tracePayload.prompt || "",
           tracePayload.responseOutput || "",
-          tracePayload.verdict_data?.action === 'BLOCKED' ? 'DENY' : 'ALLOW',
-          tracePayload.verdict_data?.verdict || 'PERMITIDO',
-          JSON.stringify(tracePayload),
+          decision,
+          verdict,
+          JSON.stringify(fullRecord),
           timestamp
         ).run();
       } catch (err) {
@@ -93,25 +110,24 @@ export class EvidenceVaultEngine {
       }
     }
 
-    // 2. Persistencia en KV (Caché de alta disponibilidad)
+    // 2. Persistencia en KV (Registro Individual + Array 'runs_${tenantId}' para la Consola)
     if (this.env && this.env.SAARE_VAULT_KV) {
       try {
+        // Clave de traza individual
         const kvKey = `trace:${tenantId}:${traceId}`;
-        await this.env.SAARE_VAULT_KV.put(kvKey, JSON.stringify({
-          traceId,
-          evidenceId,
-          tenantId,
-          user,
-          payloadHash,
-          timestamp,
-          anchored: false
-        }), { expirationTtl: 86400 * 90 });
+        await this.env.SAARE_VAULT_KV.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
+
+        // Actualización del array principal que lee la Consola GRC
+        const runsKey = `runs_${tenantId}`;
+        const existingKv = (await this.env.SAARE_VAULT_KV.get(runsKey, 'json')) || [];
+        const updatedKv = [fullRecord, ...(Array.isArray(existingKv) ? existingKv : [])].slice(0, 100);
+        await this.env.SAARE_VAULT_KV.put(runsKey, JSON.stringify(updatedKv));
       } catch (err) {
         console.error("[Vault Engine] Error guardando en KV:", err.message);
       }
     }
 
-    // 3. Generación del objeto de Doble Cadena de Custodia
+    // 3. Generación del Objeto de Doble Cadena de Custodia
     const localNodeSeal = `ed25519:${payloadHash.substring(0, 32)}`;
     const custodyRecord = {
       primaryNode: {
@@ -136,7 +152,7 @@ export class EvidenceVaultEngine {
   }
 
   /**
-   * Recupera las evidencias registradas para un tenant concreto.
+   * Recupera las evidencias registradas para un tenant concreto (D1 con Fallback KV).
    */
   async getTenantTraces(tenantId, limit = 50) {
     if (this.env && this.env.DB) {
@@ -145,11 +161,20 @@ export class EvidenceVaultEngine {
           SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY id DESC LIMIT ?
         `).bind(tenantId, limit).all();
 
-        return results || [];
+        if (results && results.length > 0) return results;
       } catch (err) {
-        console.error("[Vault Engine] Error consultando trazas en D1:", err.message);
+        console.error("[Vault Engine] Error consultando trazas en D1, consultando KV:", err.message);
       }
     }
+
+    // Fallback a Bóveda KV
+    if (this.env && this.env.SAARE_VAULT_KV) {
+      try {
+        const kvData = await this.env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
+        if (Array.isArray(kvData)) return kvData.slice(0, limit);
+      } catch (e) {}
+    }
+
     return [];
   }
 }

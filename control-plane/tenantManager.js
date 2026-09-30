@@ -1,4 +1,4 @@
-// control-plane/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0
+// control-plane/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0 (Dynamic Tenant Resilience)
 export class TenantManager {
   constructor(env) {
     this.env = env;
@@ -6,49 +6,57 @@ export class TenantManager {
   }
 
   async registerTenant(tenantId, name, config = {}) {
+    const cleanId = tenantId ? tenantId.trim() : "ENTERPRISE";
     const tenantData = {
-      tenantId,
-      name,
+      tenantId: cleanId,
+      name: name || cleanId,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
-      vaultUri: `kv://saare-vault/tenants/${tenantId}_vault.jsonld`,
+      vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
       quota: config.quota || 10000,
       activeScenarios: config.scenarios || ["banca_dora_pci_dss"]
     };
 
-    this.cache.set(tenantId, tenantData);
+    this.cache.set(cleanId, tenantData);
 
     if (this.env && this.env.SAARE_VAULT_KV) {
-      await this.env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantData));
+      try {
+        await this.env.SAARE_VAULT_KV.put(`tenant:${cleanId}`, JSON.stringify(tenantData));
+      } catch (e) {
+        console.warn("[TenantManager] Error guardando tenant en KV:", e);
+      }
     }
 
     return tenantData;
   }
 
   async getTenant(tenantId) {
-    if (this.cache.has(tenantId)) {
-      return this.cache.get(tenantId);
+    const cleanId = (tenantId || "ENTERPRISE").trim();
+
+    if (this.cache.has(cleanId)) {
+      return this.cache.get(cleanId);
     }
 
     if (this.env && this.env.SAARE_VAULT_KV) {
-      const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${tenantId}`, "json");
-      if (storedTenant) {
-        this.cache.set(tenantId, storedTenant);
-        return storedTenant;
-      }
+      try {
+        const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${cleanId}`, "json");
+        if (storedTenant) {
+          this.cache.set(cleanId, storedTenant);
+          return storedTenant;
+        }
+      } catch (e) {}
     }
 
-    // Tenant por defecto si opera en modo público/evaluación
-    if (tenantId === "ENTERPRISE" || tenantId === "DEMO_TENANT") {
-      return {
-        tenantId,
-        name: "Organización Enterprise",
-        status: "ACTIVE",
-        activeScenarios: ["banca_dora_pci_dss"]
-      };
-    }
+    // Dynamic Fallback para organizaciones registradas sobre la marcha
+    const dynamicTenant = {
+      tenantId: cleanId,
+      name: cleanId === "ENTERPRISE" ? "Organización Enterprise" : `Organización (${cleanId})`,
+      status: "ACTIVE",
+      activeScenarios: ["banca_dora_pci_dss"]
+    };
 
-    throw new Error(`[SECURITY_ALERT] Isolation Violation: Tenant "${tenantId}" no existe o fue revocado.`);
+    this.cache.set(cleanId, dynamicTenant);
+    return dynamicTenant;
   }
 
   async validateAccess(tenantId, scenarioId) {
