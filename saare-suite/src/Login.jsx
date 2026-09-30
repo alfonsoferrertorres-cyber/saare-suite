@@ -2,12 +2,20 @@ import React, { useState } from 'react';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_HOST } from './api/api';
 
+const normalizePlan = (plan) => {
+  if (plan === 'TRIAL_COMPLIANCE_7D' || plan === 'compliance') return 'COMPLIANCE_249';
+  if (plan === 'TRIAL_PRO_7D' || plan === 'professional') return 'PROFESSIONAL_649';
+  if (plan === 'enterprise') return 'ENTERPRISE_1500';
+  if (plan === 'private') return 'PRIVATE_CUSTOM';
+  return plan || 'DISCOVER_FREE';
+};
+
 export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, onBack }) {
-  const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'VERIFY'
+  const [authMode, setAuthMode] = useState('LOGIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [company, setCompany] = useState('');
-  const [planType, setPlanType] = useState(initialPlan);
+  const [planType, setPlanType] = useState(() => normalizePlan(initialPlan));
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -45,7 +53,8 @@ export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, o
     if (typeof onLoginSuccess === 'function') {
       onLoginSuccess(sessionUser);
     } else {
-      window.location.href = '/compliance';
+      const consoleUrl = import.meta.env.VITE_CONSOLE_URL || 'https://console.saare.es';
+      window.location.href = `${consoleUrl}/?token=${encodeURIComponent(activeToken)}&plan=${encodeURIComponent(planType)}`;
     }
   };
 
