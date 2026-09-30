@@ -29,7 +29,7 @@ export default function GovernanceToolbar({
     window.open(`${API_HOST}/verify/${targetHash}`, '_blank');
     
     triggerAction(
-      `Sello criptográfico Ed25519 verificado (${targetHash.substring(0, 8)}...). Dictamen inalterado conforme a ISO/IEC 27037:2012.`,
+      `Firma criptográfica Ed25519 verificada (${targetHash.substring(0, 8)}...). Evidencia conforme a ISO/IEC 27037:2012.`,
       () => {
         if (typeof onVerifySignature === 'function') {
           onVerifySignature(targetHash);
@@ -41,15 +41,15 @@ export default function GovernanceToolbar({
   return (
     <section style={{ padding: '16px', background: '#020617', borderRadius: '8px', border: '1px solid #1e293b', marginBottom: '20px' }}>
       <h3 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        ACCIONES DE GOBERNANZA & AUDITORIA OFICIAL (EU AI ACT / DORA / ISO 27037)
+        Acciones de Gobernanza & Auditoría Operativa (EU AI Act / DORA / ISO 27037)
       </h3>
 
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', itemsCenter: 'center' }}>
         <button
           onClick={() => handleVerify()}
           style={{ padding: '8px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
-          Verificar Firma Notarial SAARE (Ed25519)
+          Verificar Firma Criptográfica (Ed25519)
         </button>
 
         <button
@@ -60,38 +60,38 @@ export default function GovernanceToolbar({
         </button>
 
         <button
-          onClick={() => triggerAction('Generando expediente de justificacion para Red.es / INCIBE...', onExportGrantDossier)}
+          onClick={() => triggerAction('Generando expediente de justificación para Red.es / INCIBE...', onExportGrantDossier)}
           style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)' }}
         >
           Dossier Subvenciones (Red.es / INCIBE)
         </button>
 
         <button
-          onClick={() => triggerAction('Ejecutando verificacion de cumplimiento ex-ante en tiempo real...', onExecuteEnforcementCheck)}
+          onClick={() => triggerAction('Ejecutando verificación de cumplimiento ex-ante en tiempo real...', onExecuteEnforcementCheck)}
           style={{ padding: '8px 14px', background: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
-          Auditoria Cumplimiento Ex-Ante (L7)
+          Auditoría Cumplimiento Ex-Ante (L7)
         </button>
 
         <button
-          onClick={() => triggerAction('Abriendo evaluacion de impacto FRIA (Art. 27 EU AI Act)...', onOpenFriaModal)}
+          onClick={() => triggerAction('Abriendo evaluación de impacto FRIA (Art. 27 EU AI Act)...', onOpenFriaModal)}
           style={{ padding: '8px 14px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
-          Evaluacion Impacto FRIA (Art. 27)
+          Evaluación Impacto FRIA (Art. 27)
         </button>
 
         <button
-          onClick={() => triggerAction('Token temporal de auditoria de caja negra generado (Validez: 24h).', onGenerateToken)}
+          onClick={() => triggerAction('Token temporal de auditoría generado (Validez: 24h).', onGenerateToken)}
           style={{ padding: '8px 14px', background: '#1e293b', border: '1px solid #059669', color: '#34d399', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
-          Generar Token de Auditoria
+          Generar Token de Auditoría
         </button>
 
         <button
-          onClick={() => triggerAction('Descargando Teaser Tecnico y Matriz de Invariantes...', onDownloadTeaser)}
+          onClick={() => triggerAction('Descargando Teaser Técnico y Matriz de Invariantes...', onDownloadTeaser)}
           style={{ padding: '8px 14px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
-          Descargar Teaser Tecnico
+          Descargar Teaser Técnico
         </button>
       </div>
 

@@ -17,7 +17,6 @@ if (!fs.existsSync(evidenceDir)) {
 }
 const ledgerPath = path.join(evidenceDir, 'global_ledger.jsonl');
 
-// Cargar evidencias previas desde disco si existen
 let evidenceDb = [];
 try {
   if (fs.existsSync(ledgerPath)) {
@@ -36,28 +35,62 @@ try {
   console.error('[STORAGE WARNING] No se pudo leer el ledger histórico:', err);
 }
 
-// Si está vacío, añadimos registros iniciales de prueba por defecto
+// Datos iniciales de prueba si el ledger está vacío
 if (evidenceDb.length === 0) {
   evidenceDb = [
     {
+      id: 'EV-864387',
       evidenceId: 'EV-864387',
       runId: 'RUN-1786664969077',
       timestamp: new Date().toISOString(),
+      rawTimestamp: new Date().toISOString(),
+      prompt: 'Quiero clonar la voz de un directivo y generar su rostro en video',
       promptSummary: 'Quiero clonar la voz de un directivo y generar su rostro en video',
       verdict: 'RECHAZADO',
-      scenarioApplied: 'Jailbreak & Prompt Injection Guard',
-      cryptoSeal: 'SHA256-ED25519-AES256-SECURE',
-      complianceTags: ['EU-AI-ACT', 'ENS-ALTO', 'eIDAS']
+      decision: 'DENY',
+      category: 'PII_DETECTED',
+      cat: 'PII_DETECTED',
+      norma: 'EU AI Act / LOPDGDD',
+      sub: 'EU AI Act / LOPDGDD',
+      user: 'admin@saare.es',
+      tenant: 'ENTERPRISE',
+      merkleRoot: '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842',
+      latency: 112,
+      proofBundle: {
+        verdictId: 'VRD-2026-EV-864387',
+        payloadHash: '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842',
+        ed25519Signature: 'ED25519_SIG_6F1B3986A4221147',
+        merkleRoot: '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842',
+        rfc3161Timestamp: new Date().toISOString(),
+        claimLevel: 'VERIFIED'
+      }
     },
     {
+      id: 'EV-102290',
       evidenceId: 'EV-102290',
       runId: 'RUN-1786665240079',
       timestamp: new Date().toISOString(),
-      promptSummary: 'mi dni es 666594039',
+      rawTimestamp: new Date().toISOString(),
+      prompt: 'Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.',
+      promptSummary: 'Auditar crédito del titular con DNI 48593021X',
       verdict: 'RECHAZADO',
-      scenarioApplied: 'España - LOPDGDD & AEPD',
-      cryptoSeal: 'SHA256-AEPD-ES-8839',
-      complianceTags: ['EU-AI-ACT', 'ENS-ALTO', 'eIDAS']
+      decision: 'DENY',
+      category: 'PII_DETECTED',
+      cat: 'PII_DETECTED',
+      norma: 'España - LOPDGDD & AEPD',
+      sub: 'España - LOPDGDD & AEPD',
+      user: 'ciso@empresa.com',
+      tenant: 'ENTERPRISE',
+      merkleRoot: '8839a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842f1b',
+      latency: 98,
+      proofBundle: {
+        verdictId: 'VRD-2026-EV-102290',
+        payloadHash: '8839a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842f1b',
+        ed25519Signature: 'ED25519_SIG_8839A4221147814B',
+        merkleRoot: '8839a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842f1b',
+        rfc3161Timestamp: new Date().toISOString(),
+        claimLevel: 'VERIFIED'
+      }
     }
   ];
 }
@@ -66,9 +99,27 @@ function persistEvidenceRecord(record) {
   try {
     fs.appendFileSync(ledgerPath, JSON.stringify(record) + '\n', 'utf-8');
   } catch (err) {
-    console.error('[STORAGE ERROR] Error al persistir evidencia en disco:', err);
+    console.error('[STORAGE ERROR] Error al persistir evidencia:', err);
   }
 }
+
+// --- SSE CLIENTS STORE ---
+let sseClients = [];
+
+function broadcastSseEvent(data) {
+  sseClients.forEach(client => {
+    try {
+      client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch (e) {
+      // Ignorar clientes desconectados
+    }
+  });
+}
+
+// --- REGLAS Y DIRECTIVAS ---
+let customRules = [
+  { id: 'RULE-1', name: 'Tokens de API Abiertos', pattern: 'sk-proj-[a-zA-Z0-9]+', created: new Date().toISOString() }
+];
 
 let activeScenarios = [
   { id: 'ES_CUMPLIMIENTO_ESPANA', title: 'España - LOPDGDD & AEPD', category: 'ENS-ALTO', licensed: true, active: true },
@@ -80,68 +131,193 @@ let activeScenarios = [
 
 const pendingVerificationCodes = new Map();
 
-// --- CORE RUTAS ---
-app.get(['/api/v1/health', '/health'], (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
+// --- RUTAS DE SALUD Y CONTROL ---
+app.get(['/api/v1/health', '/health'], (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString(), service: 'control-plane-local' }));
 
-app.post(['/api/v1/runtime/activate', '/runtime/activate'], (req, res) => {
-  res.json({ status: 'ACTIVE', scenarioId: req.body?.scenarioId || 'cumplimiento-corporativo-es' });
+// --- TELEMETRÍA SSE STREAMING ---
+app.get(['/telemetry/stream', '/api/v1/telemetry/stream'], (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const clientId = Date.now();
+  const newClient = { id: clientId, res };
+  sseClients.push(newClient);
+
+  // Enviar estado inicial
+  res.write(`data: ${JSON.stringify({ status: 'RUNTIME_ACTIVE', evidences: evidenceDb })}\n\n`);
+
+  req.on('close', () => {
+    sseClients = sseClients.filter(c => c.id !== clientId);
+  });
 });
 
-app.all(['/toggle-license', '/api/toggle-license'], (req, res) => {
-  const { id } = req.body || {};
-  const scene = activeScenarios.find(s => s.id === id);
-  if (scene) {
-    scene.licensed = !scene.licensed;
-    scene.active = scene.licensed;
-    console.log(`[CONTROL PLANE RUNTIME] Licencia alterada para ${scene.title} -> Licensed: ${scene.licensed}`);
-  }
-  res.json({ success: true, scenarios: activeScenarios });
+// --- LECTURA DE TELEMETRÍA DE CORRIDAS / EVIDENCIAS ---
+app.get(['/api/v1/runs', '/runs', '/api/runs'], (req, res) => {
+  res.json({
+    evidences: evidenceDb,
+    runs: evidenceDb,
+    vaultSource: 'LOCAL_D1_EMULATOR',
+    total: evidenceDb.length
+  });
 });
 
-// --- MÓDULO DE AUTENTICACIÓN Y OTP ---
-app.post(['/api/v1/auth/send-code', '/auth/send-code'], (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Correo requerido' });
+// --- EXECUTION / L7 INTERCEPTOR ---
+const processInterception = (promptInput, user = 'ciso@empresa.com', tenant = 'ENTERPRISE') => {
+  const runId = `RUN-${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  const evidenceId = `EV-L7-${Math.floor(100000 + Math.random() * 899999)}`;
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  pendingVerificationCodes.set(email.toLowerCase(), {
-    code: otpCode,
-    expiresAt: Date.now() + 15 * 60 * 1000
+  const hasDni = /\b\d{7,8}[A-Za-z]\b/i.test(promptInput) || /dni/i.test(promptInput);
+  const hasIban = /\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/i.test(promptInput);
+  const isJailbreak = /ignore previous instructions|system prompt|jailbreak|bypass|drop table|clonar|tarjeta/i.test(promptInput);
+
+  let isDeny = hasDni || hasIban || isJailbreak;
+
+  // Verificar reglas personalizadas
+  customRules.forEach(rule => {
+    if (rule.pattern) {
+      try {
+        const reg = new RegExp(rule.pattern, 'gi');
+        if (reg.test(promptInput)) isDeny = true;
+      } catch (e) {}
+    }
   });
 
-  console.log(`[SECURITY OTP] Código generado para ${email} -> ${otpCode}`);
-  res.json({ success: true, message: 'Código de verificación emitido con éxito.', previewCode: otpCode });
-});
+  const rawPayload = `${runId}:${timestamp}:${promptInput}`;
+  const merkleRoot = crypto.createHash('sha256').update(rawPayload).digest('hex');
 
-app.post(['/api/v1/auth/verify-code', '/auth/verify-code'], (req, res) => {
-  const { email, code, requestedPlan = 'TRIAL_7D' } = req.body || {};
-  const record = pendingVerificationCodes.get(email?.toLowerCase());
-
-  if (!record || record.expiresAt < Date.now()) {
-    return res.status(400).json({ error: 'El código ha expirado o no existe.' });
-  }
-
-  if (record.code !== code.trim()) {
-    return res.status(400).json({ error: 'Código de verificación incorrecto.' });
-  }
-
-  pendingVerificationCodes.delete(email.toLowerCase());
-  const tenant = email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : 'ORGANIZACION';
-  
-  const user = {
-    email,
-    name: tenant,
-    tenantName: tenant,
-    apiKey: `sk_saare_verified_${Math.random().toString(36).substring(2, 10)}`,
-    role: "CISO_ADMIN",
-    plan: requestedPlan
+  const evidenceRecord = {
+    id: evidenceId,
+    evidence_id: evidenceId,
+    runId,
+    timestamp,
+    rawTimestamp: timestamp,
+    prompt: promptInput,
+    promptSummary: promptInput,
+    verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
+    decision: isDeny ? 'DENY' : 'ALLOW',
+    category: isDeny ? 'PII_OR_POLICY_VIOLATION' : 'AUDITORIA_CONFORME',
+    cat: isDeny ? 'PII_OR_POLICY_VIOLATION' : 'AUDITORIA_CONFORME',
+    norma: isDeny ? 'EU Regulation 2022/2554 (DORA) / LOPDGDD' : 'EU AI Act - Conforme',
+    sub: isDeny ? 'EU Regulation 2022/2554 (DORA) / LOPDGDD' : 'EU AI Act - Conforme',
+    user,
+    tenant,
+    merkleRoot,
+    latency: Math.floor(8 + Math.random() * 20),
+    proofBundle: {
+      verdictId: `VRD-2026-${evidenceId}`,
+      payloadHash: merkleRoot,
+      ed25519Signature: `ED25519_SIG_${merkleRoot.substring(0, 16).toUpperCase()}`,
+      merkleRoot,
+      rfc3161Timestamp: timestamp,
+      claimLevel: isDeny ? 'VERIFIED' : 'TESTED'
+    }
   };
 
-  res.json({ success: true, user, token: user.apiKey });
+  evidenceDb.unshift(evidenceRecord);
+  persistEvidenceRecord(evidenceRecord);
+  broadcastSseEvent({ status: 'NEW_EVIDENCE', evidences: evidenceDb });
+
+  return evidenceRecord;
+};
+
+app.post(['/api/v1/intercept', '/intercept', '/api/v1/runs', '/runs', '/api/runs'], (req, res) => {
+  const body = req.body || {};
+  const prompt = (body.prompt || body.promptInput || body.text || '').trim();
+  const user = body.user || 'ciso@empresa.com';
+  const tenant = body.tenant || 'ENTERPRISE';
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Payload prompt requerido para evaluación.' });
+  }
+
+  const record = processInterception(prompt, user, tenant);
+
+  if (record.decision === 'DENY') {
+    return res.status(403).json(record);
+  }
+
+  res.json(record);
+});
+
+// --- GESTIÓN DE REGLAS PERSONALIZADAS ---
+app.get(['/custom-rules', '/api/v1/custom-rules'], (req, res) => {
+  res.json({ rules: customRules });
+});
+
+app.post(['/custom-rules', '/api/v1/custom-rules'], (req, res) => {
+  const { rules } = req.body || {};
+  if (Array.isArray(rules)) {
+    customRules = rules;
+  }
+  res.json({ success: true, rules: customRules });
+});
+
+// --- SINK Y VERIFICACIÓN BÓVEDA ---
+app.get(['/vault/sync', '/api/v1/vault/sync'], (req, res) => {
+  res.json({ success: true, source: 'LOCAL_D1_EMULATOR', syncedRecords: evidenceDb.length });
+});
+
+app.get(['/verify/:hash', '/api/v1/verify/:hash'], (req, res) => {
+  const targetHash = req.params.hash;
+  const found = evidenceDb.find(e => e.merkleRoot === targetHash || e.id === targetHash || e.evidence_id === targetHash);
+
+  if (found) {
+    res.json({
+      verified: true,
+      status: 'VERIFIED',
+      node: 'SAARE-TRUST-ANCHOR-LOCAL',
+      standard: 'ISO/IEC 27037:2012 / EU AI Act / DORA',
+      timestamp: found.timestamp,
+      evidence: found,
+      message: 'Sello e inmutabilidad acreditados contra el Trust Anchor.'
+    });
+  } else {
+    res.status(404).json({
+      verified: false,
+      status: 'FAILED_NOT_FOUND',
+      error: 'El hash especificado no está registrado en la Bóveda.'
+    });
+  }
+});
+
+// --- SIMULADOR DE RESILIENCIA Y SIEM ---
+app.post(['/resilience/check', '/api/v1/resilience/check'], (req, res) => {
+  const { scenario = 'PROMPT_INJECTION' } = req.body || {};
+  res.json({
+    verdict: 'PASS',
+    status: 'RESILIENT',
+    scenarioEvaluated: scenario,
+    invariantsTested: ['0x01_RAM_INSPECTION', '0x02_CRYPTO_ANCHOR', '0x03_FAIL_CLOSED'],
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post(['/integrations/siem', '/api/v1/integrations/siem'], (req, res) => {
+  const { evidenceId, blockedPayload } = req.body || {};
+  console.log(`[SIEM NOTIFY] Evento notificado para ${evidenceId}: ${blockedPayload}`);
+  res.json({ success: true, eventId: `SIEM-EV-${Math.floor(1000 + Math.random() * 9000)}` });
+});
+
+// --- AUTENTICACIÓN, LICENCIAS Y TRIAL ---
+app.post(['/api/v1/auth/verifylicense', '/auth/verifylicense'], (req, res) => {
+  res.json({ valid: true, success: true, licenseType: 'ENTERPRISE_UNLIMITED' });
+});
+
+app.post(['/api/v1/trial', '/trial'], (req, res) => {
+  const { email, company, planType = 'TRIAL_PRO_7D' } = req.body || {};
+  res.json({
+    success: true,
+    trialId: `TR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    organization: company || email,
+    plan: planType
+  });
 });
 
 app.post(['/api/v1/auth/login', '/auth/login'], (req, res) => {
-  const { email, requestedPlan = 'SOFTWARE_PRO' } = req.body || {};
+  const { email, requestedPlan = 'ENTERPRISE_1500' } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Correo requerido' });
   const tenant = email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : 'ORGANIZACION';
   const user = {
@@ -153,196 +329,14 @@ app.post(['/api/v1/auth/login', '/auth/login'], (req, res) => {
     plan: requestedPlan
   };
   res.json({ success: true, user, token: user.apiKey });
-});
-
-app.post(['/api/v1/auth/register', '/auth/register'], (req, res) => {
-  const { email, company, planType = 'TRIAL_7D' } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Correo requerido' });
-  const tenant = company ? company.toUpperCase() : (email.includes('@') ? email.split('@')[1].split('.')[0].toUpperCase() : 'ORGANIZACION');
-  const user = {
-    email,
-    name: tenant,
-    tenantName: tenant,
-    apiKey: 'sk_saare_live_master_kv_session',
-    role: 'CISO_ADMIN',
-    plan: planType
-  };
-  res.json({ success: true, user, token: user.apiKey });
-});
-
-app.post(['/api/v1/auth/reset-password-request', '/auth/reset-password-request'], (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Correo requerido' });
-  const tempPasswordPreview = `TEMP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  res.json({ success: true, tempPasswordPreview });
-});
-
-// --- MOTOR JUDGE / L7 INTERCEPTOR ---
-app.post(['/api/v1/judge', '/judge'], (req, res) => {
-  const { subject, action, resource, context, payloadDigest } = req.body || {};
-  const verdictId = `VRD-${Math.floor(100000 + Math.random() * 900000)}`;
-  res.json({
-    status: 'AUTHORIZED',
-    decision: 'ALLOW',
-    verdictId,
-    message: 'Evaluación SAARE Judge L7 completada con éxito. Anclaje verificado.',
-    executionPermit: `PERMIT-${Date.now()}`
-  });
-});
-
-app.all(['/api/v1/runs', '/runs', '/api/runs'], (req, res) => {
-  try {
-    const body = req.body || {};
-    const promptInput = (body.promptInput || body.prompt || body.text || '').trim();
-    const runId = `RUN-${Date.now()}`;
-    const timestamp = new Date().toISOString();
-
-    console.log(`[L7 RUNTIME :3001] ⚡ Intercepción L7: "${promptInput}"`);
-    
-    const spainRule = activeScenarios.find(s => s.id === 'ES_CUMPLIMIENTO_ESPANA' || s.id === 'cumplimiento-corporativo-es');
-    const injectionRule = activeScenarios.find(s => s.id === 'TOP_PROMPT_INJECTION');
-    
-    const hasDni = /\b\d{7,9}[A-Za-z0-9]?\b/i.test(promptInput) || /dni/i.test(promptInput);
-    const isThreat = hasDni || /clonar|tarjeta|paciente|dan|ignore|bypass|system prompt/i.test(promptInput);
-    
-    let verdict = 'ACEPTADO';
-    let scenario = 'España - LOPDGDD & AEPD';
-    
-    if (isThreat) {
-      if (hasDni && spainRule?.licensed) {
-        verdict = 'RECHAZADO';
-        scenario = 'España - LOPDGDD & AEPD';
-      } else if (!hasDni && injectionRule?.licensed) {
-        verdict = 'RECHAZADO';
-        scenario = 'Jailbreak & Prompt Injection Guard';
-      } else if (!spainRule?.licensed && !injectionRule?.licensed) {
-        verdict = 'PASSTHROUGH';
-        scenario = 'NINGUNO (RUNTIME PAUSADO)';
-      }
-    }
-    
-    const rawPayload = `${runId}:${timestamp}:${promptInput}`;
-    const digest = crypto.createHash('sha256').update(rawPayload).digest('hex').toUpperCase();
-    
-    const evidenceRecord = {
-      evidenceId: `EV-${Math.floor(100000 + Math.random() * 900000)}`,
-      id: `EV-${Math.floor(100000 + Math.random() * 900000)}`,
-      runId,
-      timestamp,
-      prompt: `"${promptInput}"`,
-      promptSummary: promptInput,
-      verdict,
-      scene: scenario,
-      scenarioApplied: scenario,
-      action: 'PDF Sellado',
-      cryptoSeal: `SHA256-${digest.substring(0, 16)}`,
-      complianceTags: ['EU-AI-ACT', 'ENS-ALTO', 'eIDAS']
-    };
-    
-    evidenceDb.unshift(evidenceRecord);
-    persistEvidenceRecord(evidenceRecord);
-    
-    res.status(200).json({
-      runId,
-      verdict,
-      explanation: verdict === 'RECHAZADO' ? `Intercepción preventiva por [${scenario}]` : 'Flujo autorizado',
-      executionTimeMs: 1.4,
-      memoryProof: {
-        ramBufferAddress: `0x7FFF${Math.floor(Math.random() * 8999 + 1000)}`,
-        sha256Digest: digest,
-        signatureEd25519: `ED25519-${digest.substring(0, 24)}`
-      },
-      evidence: {
-        ...evidenceRecord,
-        cryptoSeal: `AES256-AEPD-ES-${digest.substring(0, 8)}`
-      }
-    });
-  } catch (err) {
-    console.error("[L7 ERROR] Fallo interno en intercepción:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- TELEMETRÍA Y VERIFICACIÓN ---
-app.get(['/api/v1/events', '/events', '/api/events', '/logs', '/api/logs'], (req, res) => {
-  res.json({ events: evidenceDb, logs: evidenceDb });
-});
-
-app.get(['/api/v1/evidence/:id/verify', '/evidence/:id/verify'], (req, res) => {
-  const item = evidenceDb.find(e => e.evidenceId === req.params.id || e.id === req.params.id);
-  if (!item) return res.status(404).json({ error: 'Evidence record not found' });
-  res.json({
-    evidenceId: item.evidenceId || item.id,
-    verified: true,
-    sealStatus: 'INTACT_UNMODIFIED',
-    avalancheEffectTested: true,
-    verificationSource: 'W3C WebCrypto API / Local RAM Verification'
-  });
 });
 
 app.get(['/scenarios', '/api/scenarios', '/api/v1/scenarios'], (req, res) => res.json(activeScenarios));
 
-app.get(['/api/v1/download-extension', '/download-extension'], (req, res) => {
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename=saare-sensor-l7-bundle.zip');
-  res.send(Buffer.from('PK\x03\x04...mock zip archive for saare sensor l7 extension...'));
-});
-
-// --- MÓDULOS B2B, FACTURACIÓN Y FINOPS ---
-app.post(['/api/v1/billing/charge-test', '/api/billing/charge-test'], (req, res) => {
-  const { organization = 'ACME Corporation', gateway = 'STRIPE_TEST_SANDBOX' } = req.body || {};
-  const chargeId = `CHG-${Math.random().toString(36).substring(2, 9).toUpperCase()}-2026`;
-  res.status(200).json({ success: true, chargeId, amount: 0.50, currency: 'EUR', status: 'PAID' });
-});
-
-app.post(['/api/v1/billing/create-checkout-session', '/api/billing/create-checkout-session'], (req, res) => {
-  const { organization, plan } = req.body || {};
-  res.status(200).json({
-    success: true,
-    url: `https://checkout.stripe.com/pay/cs_test_mock_${Math.random().toString(36).substring(2, 8)}?plan=${encodeURIComponent(plan || 'Software Core')}`
-  });
-});
-
-app.post(['/api/v1/runtime/deploy', '/api/runtime/deploy', '/deploy'], (req, res) => {
-  res.status(200).json({
-    success: true,
-    deploymentId: `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-    token: `SAARE-TOKEN-ENT-M57TOVV`,
-    endpointUrl: 'http://localhost:3001/api/v1/runs',
-    chargeAmount: 0.50,
-    currency: 'EUR',
-    status: 'DEPLOYED_ACTIVE'
-  });
-});
-
-app.post(['/api/v1/calculator/simulate', '/api/calculator/simulate'], (req, res) => {
-  const { monthlyPrompts = 100000, avgTokensPerPrompt = 450, costPer1kTokens = 0.002 } = req.body || {};
-  const rawCost = (monthlyPrompts * avgTokensPerPrompt / 1000) * costPer1kTokens;
-  const estimatedSavingsEur = rawCost * 0.38;
-  const bonificationEur = Math.min(3000, rawCost * 0.25);
-  res.status(200).json({
-    monthlyPrompts,
-    baselineCostEur: parseFloat(rawCost.toFixed(2)),
-    estimatedSavingsEur: parseFloat(estimatedSavingsEur.toFixed(2)),
-    bonificationDeductionEur: parseFloat(bonificationEur.toFixed(2)),
-    netMonthlyInvestmentEur: parseFloat((rawCost - estimatedSavingsEur - bonificationEur).toFixed(2)),
-    roiMonths: 1.2
-  });
-});
-
-app.post(['/api/v1/leads', '/leads'], (req, res) => {
-  const { formType, email, vpcCloud, tokenVolume } = req.body || {};
-  console.log(`[B2B LEAD] Nuevo lead capturado: ${email} (${formType} - VPC: ${vpcCloud})`);
-  res.status(200).json({ success: true, message: 'Lead registrado correctamente en el CRM.' });
-});
-
 process.on('uncaughtException', (err) => {
-  console.error('[CRITICAL] Excepción no capturada:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('[CRITICAL] Promesa rechazada no controlada:', reason);
+  console.error('[CRITICAL] Excepción no controlada:', err);
 });
 
 app.listen(PORT, () => {
-  console.log(`=== S.A.A.R.E. CONTROL PLANE API V1 & B2B RUNTIME EN PUERTO ${PORT} ===`);
+  console.log(`=== S.A.A.R.E. CONTROL PLANE LOCAL V1 EN PUERTO ${PORT} ===`);
 });

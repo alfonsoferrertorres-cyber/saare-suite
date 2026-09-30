@@ -1,10 +1,16 @@
-// saare-console/src/utils/api.js
+// saare-console/src/utils/api.js — Cliente HTTP para saare-console (SGP 1.0)
 
-const ENV_URL = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
+const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
+
+// Saneamiento de URL: elimina /api/v1, /api o barras finales para prevenir duplicaciones de ruta
+const cleanEnvUrl = rawEnvUrl 
+  ? rawEnvUrl.replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '').replace(/\/$/, '') 
+  : null;
+
 const isLocal = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-// Raíz base del API Gateway
-export const API_HOST = isLocal ? 'http://127.0.0.1:8787' : (ENV_URL || 'https://api.saare.es');
+// Raíz base del API Gateway / Control Plane
+export const API_HOST = isLocal ? 'http://127.0.0.1:8787' : (cleanEnvUrl || 'https://api.saare.es');
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
@@ -12,7 +18,7 @@ function isOwnApi(url) {
 }
 
 /**
- * Cliente HTTP universal para el Control Plane de S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
+ * Cliente HTTP universal para la Consola GRC de S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
  * @param {string} endpoint - Ruta del endpoint o URL absoluta
  * @param {RequestInit} options - Opciones nativas de fetch
  * @returns {Promise<Response>}
@@ -21,11 +27,11 @@ export async function saareFetch(endpoint, options = {}) {
   const isAbsolute = typeof endpoint === 'string' && endpoint.startsWith('http');
   let cleanEndpoint = endpoint;
 
-  // 1. Normalización de URL y versionado (Prevención de duplicados de prefijo)
+  // 1. Normalización de URL y versionado sin riesgo de duplicación
   if (!isAbsolute) {
     if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
     
-    // Antepone /api/v1 solo si el endpoint no incluye ya /api/v1 o /api/...
+    // Antepone /api/v1 solo si no incluye ya /api/v1 o /api/
     if (!cleanEndpoint.startsWith('/api/v1') && !cleanEndpoint.startsWith('/api/')) {
       cleanEndpoint = `/api/v1${cleanEndpoint}`;
     }
@@ -63,6 +69,7 @@ export async function saareFetch(endpoint, options = {}) {
   // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant RBAC
   const defaultHeaders = {
     'Accept': 'application/json',
+    'x-saare-spec': 'SGP-1.0',
     ...(options.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
     ...(token && isOwnApi(cleanEndpoint) ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(currentUser && isOwnApi(cleanEndpoint) ? { 'x-saare-user': currentUser } : {}),
@@ -88,13 +95,13 @@ export async function saareFetch(endpoint, options = {}) {
 
     return response;
   } catch (error) {
-    console.error('Error de conexión con SAARE Control Plane:', error);
+    console.error('[SAARE_CONSOLE_API] Error de conexión con Control Plane:', error);
     throw new Error(`Error de conexión con el Control Plane: ${error.message}`);
   }
 }
 
 /**
- * Helpers especializados para simplificar llamadas desde la UI
+ * Helpers especializados para simplificar llamadas desde la UI de saare-console
  */
 export const api = {
   get: (endpoint, options = {}) => saareFetch(endpoint, { ...options, method: 'GET' }),

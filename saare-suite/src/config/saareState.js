@@ -1,0 +1,8 @@
+export const SAARE_CONFIG = {
+  DEFAULT_TENANT: 'ENTERPRISE',
+  DEFAULT_ROLE: 'CISO_ADMIN',
+  TRUST_ANCHOR: 'SAARE-MD-IPRES-2026',
+  SPEC_VERSION: 'SGP 1.0',
+  ENVIRONMENT: 'production',
+  CONTROL_PLANE_URL: 'https://api.saare.es'
+};

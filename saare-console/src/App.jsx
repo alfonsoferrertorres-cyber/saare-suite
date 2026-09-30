@@ -1,5 +1,5 @@
 // saare-console/src/App.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
@@ -8,6 +8,7 @@ import FriaWizardModal from './components/FriaWizardModal';
 import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
+import SeatsManagementModal from './components/SeatsManagementModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
@@ -69,6 +70,7 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showSeatsModal, setShowSeatsModal] = useState(false);
   const [resilienceReport, setResilienceReport] = useState(null);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
@@ -107,13 +109,32 @@ export default function App() {
     }
   }, []);
 
+  const triggerGovernance = useCallback((msg) => {
+    setGovernanceStatus(msg);
+    setTimeout(() => setGovernanceStatus(''), 4500);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    localStorage.removeItem('saare_token');
+    localStorage.removeItem('saare_user_email');
+    localStorage.removeItem('saare_user_role');
+    localStorage.removeItem('saare_tenant_domain');
+    setIsAuthenticated(false);
+    setUserEmail('');
+    setUserRole('OPERATIONAL_AGENT_USER');
+    setEvidences([]);
+  }, []);
+
   /**
-   * Mapeo unificado para Bóveda D1 y KV en App.jsx
-   * Sincronizado con las columnas nativas de D1 (consolidated_traces / merkle_anchors)
+   * Mapeo unificado para Bóveda D1 y KV
    */
-  const mapEvidences = (remoteEvidences) => {
+  const mapEvidences = useCallback((remoteEvidences) => {
     if (!Array.isArray(remoteEvidences)) return [];
     return remoteEvidences.map((item, idx) => {
+      if (!item) return null;
       const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
       let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || '';
       let cleanResponse = item.responseOutput || item.llmResponse || '';
@@ -129,7 +150,7 @@ export default function App() {
 
       return {
         id: evidenceId,
-        time: rawTime ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
+        time: rawTime && !isNaN(Date.parse(rawTime)) ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
         rawTimestamp: rawTime,
         cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
         sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
@@ -137,7 +158,7 @@ export default function App() {
         responseOutput: String(cleanResponse || ''),
         verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
         decision: isDeny ? 'DENY' : 'ALLOW',
-        anchored: item.anchored !== undefined ? item.anchored : 1, // Campo de inmutabilidad D1
+        anchored: item.anchored !== undefined ? item.anchored : 1,
         type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
         user: item.user || item.user_id || userEmail,
         tenant: item.tenant || item.tenant_id || tenantId,
@@ -156,10 +177,10 @@ export default function App() {
         latency: item.latency || 115,
         rawJson: item
       };
-    });
-  };
+    }).filter(Boolean);
+  }, [userEmail, tenantId]);
 
-  const fetchTelemetryOnce = async () => {
+  const fetchTelemetryOnce = useCallback(async () => {
     try {
       const res = await saareFetch(`/runs?t=${Date.now()}`, { method: 'GET' });
 
@@ -177,7 +198,7 @@ export default function App() {
     } catch (e) {
       console.error("Error al obtener telemetría inicial:", e);
     }
-  };
+  }, [handleLogout, mapEvidences]);
 
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
@@ -204,7 +225,7 @@ export default function App() {
     fetchTelemetryOnce();
 
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
-    
+
     try {
       const es = new EventSource(streamUrl);
       eventSourceRef.current = es;
@@ -235,13 +256,13 @@ export default function App() {
         eventSourceRef.current.close();
       }
     };
-  }, [isAuthenticated, userEmail, tenantId, userRole]);
+  }, [isAuthenticated, userEmail, tenantId, userRole, fetchTelemetryOnce, mapEvidences]);
 
   const totalInspecciones = evidences.length;
-  const totalDeny = evidences.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
+  const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
   const avgLatencyMs = totalInspecciones > 0 
-    ? (evidences.reduce((acc, curr) => acc + (Number(curr.latency) || 115), 0) / totalInspecciones).toFixed(1)
+    ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 115), 0) / totalInspecciones).toFixed(1)
     : '115.0';
 
   const handleDownloadSingleEvidencePdf = async (ev) => {
@@ -290,9 +311,9 @@ export default function App() {
       return;
     }
 
-    const deniedEvidences = evidences.filter(e => e.verdict === 'RECHAZADO' || e.decision === 'DENY');
+    const deniedEvidences = evidences.filter(e => e && (e.verdict === 'RECHAZADO' || e.decision === 'DENY'));
     const sampleMerkle = evidences[0]?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
-    
+
     const friaReport = {
       documentHeader: {
         type: "FUNDAMENTAL_RIGHTS_IMPACT_ASSESSMENT_FRIA",
@@ -399,7 +420,11 @@ export default function App() {
           try {
             const reg = new RegExp(rule.pattern, "gi");
             clean = clean.replace(reg, `[CUSTOM_BLOCK: ${rule.name.toUpperCase()}]`);
-          } catch (e) {}
+          } catch (e) {
+            if (clean.toLowerCase().includes(rule.pattern.toLowerCase())) {
+              clean = clean.replace(new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "gi"), `[CUSTOM_BLOCK: ${rule.name.toUpperCase()}]`);
+            }
+          }
         }
       });
 
@@ -460,7 +485,7 @@ export default function App() {
 
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
-    
+
     try {
       const syncRes = await saareFetch('/vault/sync', { method: 'GET' });
       if (syncRes.ok) {
@@ -581,11 +606,6 @@ export default function App() {
     }
   };
 
-  const triggerGovernance = (msg) => {
-    setGovernanceStatus(msg);
-    setTimeout(() => setGovernanceStatus(''), 4500);
-  };
-
   const handleDownloadExtension = async () => {
     try {
       const currentToken = localStorage.getItem('saare_token') || `sk_saare_live_${crypto.randomUUID().slice(0, 16)}`;
@@ -655,10 +675,10 @@ export default function App() {
         description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
       },
       grantBreakdown: {
-        kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
-        kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
-        impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
-        incibeCdti: evidences.filter(e => e.merkleRoot)
+        kitConsulting: evidences.filter(e => e?.cat?.includes("PII") || e?.sub?.includes("AI Act")),
+        kitDigital: evidences.filter(e => e?.type === "WORKFLOWS" || e?.cat === "AUDITORIA_CONFORME"),
+        impulsoIA: evidences.filter(e => e?.cat?.includes("FINANCIAL") || e?.sub?.includes("DORA")),
+        incibeCdti: evidences.filter(e => e?.merkleRoot)
       },
       evidenceSummary: {
         totalEvidences: evidences.length,
@@ -722,35 +742,24 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
-  const handleLogout = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    localStorage.removeItem('saare_token');
-    localStorage.removeItem('saare_user_email');
-    localStorage.removeItem('saare_user_role');
-    localStorage.removeItem('saare_tenant_domain');
-    setIsAuthenticated(false);
-    setUserEmail('');
-    setUserRole('OPERATIONAL_AGENT_USER');
-    setEvidences([]);
-  };
-
   const filteredEvidences = evidences.filter(item => {
+    if (!item) return false;
     if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
     if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
     if (startDateFilter) {
       const itemDate = new Date(item.rawTimestamp);
       const startDate = new Date(startDateFilter);
-      if (itemDate < startDate) return false;
+      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
     }
 
     if (endDateFilter) {
       const itemDate = new Date(item.rawTimestamp);
       const endDate = new Date(endDateFilter);
-      endDate.setHours(23, 59, 59, 999);
-      if (itemDate > endDate) return false;
+      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        if (itemDate > endDate) return false;
+      }
     }
 
     return true;
@@ -766,14 +775,14 @@ export default function App() {
             if (data.token) {
               localStorage.setItem('saare_token', data.token);
             }
-            const email = data.email || data.user?.email;
+            const email = data.email || data.user?.email || '';
             const role = data.role || data.user?.role || 'CISO_ADMIN';
             const tDomain = data.tenantName || data.user?.tenantName || SAARE_CONFIG.DEFAULT_TENANT;
-            
+
             setUserEmail(email);
             setUserRole(role);
             setTenantId(tDomain);
-            
+
             localStorage.setItem('saare_user_email', email);
             localStorage.setItem('saare_user_role', role);
             localStorage.setItem('saare_tenant_domain', tDomain);
@@ -859,6 +868,23 @@ export default function App() {
                 cursor: 'pointer'
               }}>
               🟥 CYBER & RESILIENCE (SOC)
+            </button>
+
+            {/* BOTÓN PARA ABRIR EL MODAL DE GESTIÓN DE ASIENTOS Y ROLES EMPLEADOS */}
+            <button
+              onClick={() => setShowSeatsModal(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #38bdf8',
+                background: '#0f172a',
+                color: '#38bdf8',
+                fontWeight: '800',
+                fontSize: '0.72rem',
+                cursor: 'pointer'
+              }}
+              title="Gestión de Licencias y Asientos del Nodo Organismo">
+              👥 ASIENTOS RBAC
             </button>
 
             {/* SIMULADOR / SELECTOR RÁPIDO DE ROL EN INTERFAZ */}
@@ -1008,6 +1034,7 @@ export default function App() {
                   setShowFriaModal(true);
                 }}
                 onExecuteEnforcementCheck={handleExecuteTestExAnte}
+                onOpenReportModal={() => setShowReportModal(true)}
               />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', background: '#020617', padding: '12px 16px', borderRadius: '8px', border: '1px solid #1e293b' }}>
@@ -1450,6 +1477,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE FRIA (EU AI ACT ART. 27) */}
       <FriaWizardModal 
         isOpen={showFriaModal}
         onClose={() => setShowFriaModal(false)}
@@ -1458,6 +1486,7 @@ export default function App() {
         tenantId={tenantId}
       />
 
+      {/* MODAL DE EXPORTACIÓN DE INFORMES AUDITADOS */}
       {showExportModal && (
         <ReportExportModal 
           useCaseId={tenantId} 
@@ -1465,6 +1494,14 @@ export default function App() {
         />
       )}
 
+      {/* MODAL DE GESTIÓN DE ASIENTOS Y ROLES RBAC */}
+      {showSeatsModal && (
+        <SeatsManagementModal 
+          onClose={() => setShowSeatsModal(false)} 
+        />
+      )}
+
+      {/* MODAL DE AUDITORÍA DE INVARIANTES */}
       {resilienceReport && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #8b5cf6', borderRadius: '12px', width: '90%', maxWidth: '650px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1479,6 +1516,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE VISUALIZACIÓN JSON DE EVIDENCIA */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1495,6 +1533,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE EXPORTACIÓN DE HASH D1 */}
       {auditTokenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1516,6 +1555,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE REPORTE OFICIAL */}
       {showReportModal && (
         <OfficialReportModal onClose={() => setShowReportModal(false)} />
       )}

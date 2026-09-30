@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://saare.es/schemas/policy-v1.json",
+  "title": "SAARE Governance Policy Schema",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "status",
+    "scope",
+    "effectiveFrom",
+    "owner",
+    "controls"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^POL-[A-Z0-9_]{3,32}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "ACTIVE", "DEPRECATED", "ARCHIVED"]
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["GLOBAL", "TENANT_SPECIFIC", "SYSTEM_SPECIFIC"]
+    },
+    "effectiveFrom": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "owner": {
+      "type": "string",
+      "format": "email"
+    },
+    "reviewDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^CTL-[A-Z0-9_]{3,32}$"
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false
+}

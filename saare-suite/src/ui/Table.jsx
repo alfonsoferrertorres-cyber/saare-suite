@@ -2,8 +2,8 @@ import React from 'react';
 
 export function Table({ children, className = '' }) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-saare-line">
-      <table className={`w-full text-left text-sm text-saare-ink ${className}`}>
+    <div className="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+      <table className={`w-full text-left text-xs text-slate-300 ${className}`}>
         {children}
       </table>
     </div>
@@ -11,25 +11,23 @@ export function Table({ children, className = '' }) {
 }
 
 export function TableHeader({ children, className = '' }) {
-  return (
-    <thead className={`bg-saare-surface-2 text-xs font-mono uppercase text-saare-ink-dim border-b border-saare-line ${className}`}>
-      {children}
-    </thead>
-  );
+  return <thead className={`bg-slate-900 border-b border-slate-800 text-slate-400 font-mono ${className}`}>{children}</thead>;
 }
 
 export function TableBody({ children, className = '' }) {
-  return <tbody className={`divide-y divide-saare-line ${className}`}>{children}</tbody>;
+  return <tbody className={`divide-y divide-slate-800/60 ${className}`}>{children}</tbody>;
 }
 
 export function TableRow({ children, className = '' }) {
-  return <tr className={`hover:bg-saare-surface-2/50 transition-colors ${className}`}>{children}</tr>;
+  return <tr className={`hover:bg-slate-900/40 transition-colors ${className}`}>{children}</tr>;
 }
 
 export function TableHead({ children, className = '' }) {
-  return <th className={`px-4 py-3 font-semibold ${className}`}>{children}</th>;
+  return <th className={`p-3 font-semibold uppercase tracking-wider text-[10px] ${className}`}>{children}</th>;
 }
 
 export function TableCell({ children, className = '' }) {
-  return <td className={`px-4 py-3 ${className}`}>{children}</td>;
+  return <td className={`p-3 font-mono ${className}`}>{children}</td>;
 }
+
+export default Table;

@@ -10,7 +10,7 @@
   --saare-cyan: #38bdf8;
   --saare-green: #10b981;
   --saare-text: #f8fafc;
-  --saare-muted: #cbd5e1; /* Color aclarado para mejor contraste de lectura */
+  --saare-muted: #cbd5e1;
 }
 
 * {
@@ -25,7 +25,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Grillas y maquetación de paneles */
 .view-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -72,7 +71,6 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/* KPIs */
 .executive-kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -88,13 +86,24 @@ body {
   flex-direction: column;
 }
 
-.kpi span { font-size: 0.7rem; color: var(--saare-muted); font-weight: 700; text-transform: uppercase; }
-.kpi b { font-size: 1.4rem; color: var(--saare-text); margin-top: 0.25rem; font-family: monospace; }
+.kpi span { 
+  font-size: 0.7rem; 
+  color: var(--saare-muted); 
+  font-weight: 700; 
+  text-transform: uppercase; 
+}
+
+.kpi b { 
+  font-size: 1.4rem; 
+  color: var(--saare-text); 
+  margin-top: 0.25rem; 
+  font-family: monospace; 
+}
+
 .kpi.green b { color: var(--saare-green); }
 .kpi.red b { color: #ef4444; }
 .kpi.amber b { color: #f59e0b; }
 
-/* Readouts y listas */
 .panel-title {
   font-size: 0.8rem;
   font-family: monospace;
@@ -120,7 +129,6 @@ body {
 .readout b { color: var(--saare-muted); font-weight: 600; }
 .readout span { color: var(--saare-text); font-family: monospace; }
 
-/* Botones y Selects */
 button, select, input {
   font-family: inherit;
 }

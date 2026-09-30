@@ -1,90 +1,166 @@
 import React, { useState } from 'react';
 
-export default function FriaWizardModal({ isOpen, onClose, onGenerateReport, evidencesCount, tenantId }) {
+export default function FriaWizardModal({ onClose, onSave }) {
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    useCaseName: 'Asistente Corporativo de Consultoría / Atención',
-    department: 'Operaciones & Atención al Cliente',
-    aiModel: 'LLM Multi-Provider (OpenAI / Claude / Local)',
-    highRiskCategory: 'Anexo III - Evaluación de Crédito y Empleo',
-    humanOversight: 'SUPERVISION_HUMANA_CONTINUA',
-    affectedGroups: 'Clientes finales y empleados corporativos'
+    systemName: 'Agente Financiero - Tesorería',
+    purpose: 'Automatización de pagos y transferencias a proveedores',
+    riskCategory: 'ALTO_RIESGO',
+    affectedGroups: 'Clientes, Proveedores, Empleados',
+    humanOversightMode: 'HUMAN_IN_THE_LOOP',
+    mitigationControls: ['Intercepción L7 Ex-Ante', 'Sanitización de PII', 'Firma Criptográfica Ed25519']
   });
 
-  if (!isOpen) return null;
+  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+  const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onGenerateReport(formData);
-    onClose();
+  const handleFinish = () => {
+    const finalReport = {
+      ...formData,
+      completedAt: new Date().toISOString(),
+      friaId: `FRIA-2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      normativeSpec: 'EU AI Act Art. 27 / SGP 1.0'
+    };
+    if (onSave) onSave(finalReport);
+    if (onClose) onClose();
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
-      <div style={{ background: '#0b0f19', border: '1px solid #0284c7', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px rgba(0,0,0,0.7)' }}>
-        <h3 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '1.1rem', fontWeight: '900' }}>
-          📋 EVALUADOR OFICIAL FRIA (Art. 27 EU AI Act)
-        </h3>
-        <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-          Complete la matriz de impacto para cruzar el contexto del negocio con los <strong>{evidencesCount} registros reales</strong> de la Bóveda.
-        </p>
-
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4 font-sans text-slate-100">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-6">
+        {/* Cabecera del Wizard */}
+        <div className="flex justify-between items-center border-b border-slate-800 pb-4">
           <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: '800', marginBottom: '4px' }}>Nombre del Proyecto / Caso de Uso IA:</label>
-            <input 
-              type="text" 
-              value={formData.useCaseName} 
-              onChange={e => setFormData({ ...formData, useCaseName: e.target.value })}
-              style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }}
-            />
+            <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
+              EU AI ACT ART. 27 · FRIA ASSISTANT
+            </span>
+            <h3 className="text-xl font-extrabold text-white">
+              Evaluación de Impacto en Derechos Fundamentales
+            </h3>
           </div>
+          <span className="text-xs font-mono bg-cyan-950 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full">
+            Paso {step} de 3
+          </span>
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        {/* Paso 1: Identificación del Sistema */}
+        {step === 1 && (
+          <div className="space-y-4 text-xs">
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: '800', marginBottom: '4px' }}>Departamento:</label>
-              <input 
-                type="text" 
-                value={formData.department} 
-                onChange={e => setFormData({ ...formData, department: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }}
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Nombre del Sistema / Agente de IA
+              </label>
+              <input
+                type="text"
+                value={formData.systemName}
+                onChange={(e) => setFormData({ ...formData, systemName: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: '800', marginBottom: '4px' }}>Categoría de Alto Riesgo:</label>
-              <select 
-                value={formData.highRiskCategory} 
-                onChange={e => setFormData({ ...formData, highRiskCategory: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #1e293b', color: '#38bdf8', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }}
-              >
-                <option value="Anexo III - Evaluación de Crédito y Empleo">Anexo III - Crédito / Recursos Humanos</option>
-                <option value="Anexo III - Infraestructuras Críticas">Anexo III - Infraestructuras Críticas</option>
-                <option value="Anexo III - Biometría y Acceso">Anexo III - Identificación Biométrica</option>
-                <option value="General - Riesgo Limitado (Transparencia)">Riesgo Limitado / Transparencia</option>
-              </select>
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Finalidad Prevista y Contexto Operativo
+              </label>
+              <textarea
+                rows={3}
+                value={formData.purpose}
+                onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-300 focus:outline-none focus:border-cyan-500 resize-none"
+              />
             </div>
           </div>
+        )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: '800', marginBottom: '4px' }}>Mecanismo de Supervisión Humana:</label>
-            <select 
-              value={formData.humanOversight} 
-              onChange={e => setFormData({ ...formData, humanOversight: e.target.value })}
-              style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #1e293b', color: '#4ade80', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }}
+        {/* Paso 2: Clasificación de Riesgo y Colectivos Afectados */}
+        {step === 2 && (
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Categoría de Riesgo (EU AI Act Anexo III)
+              </label>
+              <select
+                value={formData.riskCategory}
+                onChange={(e) => setFormData({ ...formData, riskCategory: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
+              >
+                <option value="ALTO_RIESGO">Alto Riesgo (Anexo III - Infraestructuras / Servicios Esenciales)</option>
+                <option value="RIESGO_LIMITADO">Riesgo Limitado (Transparencia / Chatbots)</option>
+                <option value="RIESGO_MINIMO">Riesgo Mínimo / Nulo</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Colectivos de Personas Afectadas
+              </label>
+              <input
+                type="text"
+                value={formData.affectedGroups}
+                onChange={(e) => setFormData({ ...formData, affectedGroups: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Paso 3: Mecanismos de Supervisión y Mitigación */}
+        {step === 3 && (
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Modelo de Supervisión Humana
+              </label>
+              <select
+                value={formData.humanOversightMode}
+                onChange={(e) => setFormData({ ...formData, humanOversightMode: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
+              >
+                <option value="HUMAN_IN_THE_LOOP">Human-in-the-Loop (Autorización humana previa)</option>
+                <option value="HUMAN_ON_THE_LOOP">Human-on-the-Loop (Monitoreo ex-post y circuit breaker)</option>
+                <option value="HUMAN_IN_COMMAND">Human-in-Command (Control estructural de capacidad)</option>
+              </select>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+              <span className="text-[10px] font-mono text-emerald-400 font-bold block uppercase">
+                CONTROLES MITIGANTES S.A.A.R.E. L7 VINCULADOS:
+              </span>
+              <ul className="list-disc list-inside text-slate-300 space-y-1 font-mono text-[11px]">
+                {formData.mitigationControls.map((ctrl, i) => (
+                  <li key={i}>{ctrl}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Botones de Navegación del Modal */}
+        <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+          <button
+            type="button"
+            onClick={step === 1 ? onClose : prevStep}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+          >
+            {step === 1 ? 'Cancelar' : 'Anterior'}
+          </button>
+
+          {step < 3 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-cyan-500/20"
             >
-              <option value="SUPERVISION_HUMANA_CONTINUA">Human-in-the-loop (Revisión humana previa)</option>
-              <option value="SUPERVISION_EX_POST">Human-on-the-loop (Auditoría ex-post en Bóveda SAARE)</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
-            <button type="button" onClick={onClose} style={{ padding: '8px 16px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>
-              Cancelar
+              Siguiente →
             </button>
-            <button type="submit" style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-              ⚡ Generar Expediente FRIA + Sello D1
+          ) : (
+            <button
+              type="button"
+              onClick={handleFinish}
+              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+            >
+              ✓ Finalizar y Vincular a Bóveda
             </button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   );

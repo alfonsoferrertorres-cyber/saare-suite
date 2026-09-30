@@ -1,0 +1,13 @@
+{
+  "name": "@saare/entitlements",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "build": "node -e \"console.log('Entitlements package is a pure ES Module. No build required.')\""
+  },
+  "private": true
+}
