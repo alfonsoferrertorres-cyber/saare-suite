@@ -1,10 +1,8 @@
-// extension-base/background.js — Servidor de Fondo del Sensor L7
-
-// RECOMENDACIÓN: Usar la raíz base del servidor
+// extension-base/background.js — Servidor de Fondo del Sensor L7 v10.5.2
 const WORKER_URL = "https://api.saare.es";
 
 function isNoisePayload(text) {
-  if (!text || typeof text !== "string") return false;
+  if (!text || typeof text !== "string") return true;
   const lower = text.toLowerCase();
   return (
     lower.includes("f.req=") ||
@@ -15,7 +13,7 @@ function isNoisePayload(text) {
   );
 }
 
-// Keep-Alive System anti-suspensión de Chrome
+// Keep-Alive System anti-suspensión de Chrome Service Worker
 chrome.alarms.create("saare_keep_alive", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "saare_keep_alive") {
@@ -56,7 +54,7 @@ async function resolveIdentity(payloadUser) {
 
       if (chrome.storage?.managed) {
         chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (managed) => {
-          const finalUser = managed?.saare_user_email || payloadUser || "anonymous_operator@saare.es";
+          const finalUser = managed?.saare_user_email || payloadUser || "ciso@saare.es";
           const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
           const finalToken = managed?.saare_token || "sk_saare_guest_session";
           resolve({
@@ -66,7 +64,7 @@ async function resolveIdentity(payloadUser) {
           });
         });
       } else {
-        const finalUser = payloadUser || "anonymous_operator@saare.es";
+        const finalUser = payloadUser || "ciso@saare.es";
         resolve({
           user: finalUser.toLowerCase().trim(),
           tenant: "ENTERPRISE",
@@ -79,7 +77,7 @@ async function resolveIdentity(payloadUser) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
-    const rawPrompt = message.payload?.prompt || message.payload?.rawPrompt || "";
+    const rawPrompt = message.payload?.prompt || message.payload?.promptInput || message.payload?.rawPrompt || "";
 
     if (isNoisePayload(rawPrompt)) {
       sendResponse({ ok: true, status: "IGNORED_TELEMETRY_NOISE" });
@@ -89,6 +87,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     resolveIdentity(message.payload?.user).then(({ user, tenant, token }) => {
       const enrichedPayload = {
         ...message.payload,
+        prompt: rawPrompt,
         user: user,
         tenant: tenant,
         node: message.payload?.node || "L7-SENSOR-NODE",
@@ -96,13 +95,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         timestamp: message.payload?.timestamp || new Date().toISOString()
       };
 
+      // Guardar en caché local del navegador
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const currentLogs = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...currentLogs].slice(0, 100) });
       });
 
-      // CONCATENACIÓN SEGURA: Se envía directamente a /api/v1/runs
-      fetch(`${WORKER_URL}/api/v1/runs`, {
+      // REGISTRO EN CONTROL PLANE: Apunta a /api/v1/intercept para persistir en D1
+      fetch(`${WORKER_URL}/api/v1/intercept`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",

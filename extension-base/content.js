@@ -1,4 +1,4 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v10.5.0 (SGP 1.0 / Blindaje Activo - 100% Audit Coverage)
+// SAARE L7 TELEMETRY & DOM BRIDGE v10.5.1 (SGP 1.0 / Blindaje Activo - Fixed Filter & Session Sync)
 console.log("[SAARE L7 Engine] DOM Bridge & Execution Guard Active");
 
 const DEFAULT_SETTINGS_V10 = {
@@ -7,18 +7,32 @@ const DEFAULT_SETTINGS_V10 = {
   razonamiento_activo_l7: true
 };
 
-// 1. FILTRO DE RUIDO PERMISIVO: Registra TODO el texto introducido por el usuario
+// Frases de interfaz, saludos iniciales y firmas de ruido de Gemini / Google
+const KNOWN_UI_NOISE = [
+  "f.req=",
+  "bard_activity",
+  "connectiondurationms",
+  "documentrequestid",
+  "¡hola! ¿en qué te puedo ayudar hoy?",
+  "gemini no es un ser humano",
+  "accede para vincular las apps de google",
+  "saludo inicial",
+  "tu privacidad y gemini",
+  "cometer errores, incluso con información sobre personas"
+];
+
+// 1. FILTRO DE RUIDO Y PROMPTS AUTOMÁTICOS
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
-  const lower = text.toLowerCase();
+  const clean = text.trim();
   
-  // Descarta únicamente metadatos técnicos internos de Google/Gemini
-  return (
-    lower.includes("f.req=") ||
-    lower.includes("bard_activity") ||
-    lower.includes("connectiondurationms") ||
-    lower.includes("documentrequestid")
-  );
+  // Ignorar cadenas vacías o fragmentos de menos de 2 caracteres
+  if (clean.length < 2) return true;
+
+  const lower = clean.toLowerCase();
+
+  // Descarta si contiene firmas de ruido técnico o frases predeterminadas de la interfaz
+  return KNOWN_UI_NOISE.some(noise => lower.includes(noise));
 }
 
 function renderActivityWitnessBadge() {
@@ -34,7 +48,7 @@ function renderActivityWitnessBadge() {
     box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(8px);
     transition: all 0.3s ease; opacity: 0.75; cursor: pointer; user-select: none;
   `;
-  
+
   badge.innerHTML = `
     <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
     <span id="saare-witness-text">S.A.A.R.E. L7</span>
@@ -44,7 +58,7 @@ function renderActivityWitnessBadge() {
     badge.style.opacity = "1";
     document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO";
   });
-  
+
   badge.addEventListener("mouseleave", () => {
     badge.style.opacity = "0.75";
     document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7";
@@ -68,22 +82,21 @@ function updateDomContext(settings, userEmail, tenantDomain) {
 }
 
 function syncStorageAndContext() {
+  let localUser = "";
+  let localTenant = "ENTERPRISE";
+  try {
+    localUser = localStorage.getItem("saare_user_email") || "";
+    localTenant = localStorage.getItem("saare_tenant_domain") || "ENTERPRISE";
+  } catch (e) {}
+
   if (typeof chrome !== "undefined" && chrome.storage) {
     chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
-      if (local?.saare_user_email) {
-        updateDomContext(local.saare_settings || DEFAULT_SETTINGS_V10, local.saare_user_email, local.saare_tenant_domain || "ENTERPRISE");
-      } else if (chrome.storage.managed) {
-        chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
-          const finalUser = managed?.saare_user_email || "";
-          const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
-          updateDomContext(DEFAULT_SETTINGS_V10, finalUser, finalTenant);
-        });
-      } else {
-        updateDomContext(DEFAULT_SETTINGS_V10, "", "ENTERPRISE");
-      }
+      const finalUser = local?.saare_user_email || localUser || "ciso@saare.es";
+      const finalTenant = local?.saare_tenant_domain || localTenant || "ENTERPRISE";
+      updateDomContext(local?.saare_settings || DEFAULT_SETTINGS_V10, finalUser, finalTenant);
     });
   } else {
-    updateDomContext(DEFAULT_SETTINGS_V10, "", "ENTERPRISE");
+    updateDomContext(DEFAULT_SETTINGS_V10, localUser || "ciso@saare.es", localTenant || "ENTERPRISE");
   }
 }
 
@@ -103,12 +116,17 @@ try {
 function sendEvidenceToBackground(verdictData) {
   const text = verdictData.cleanPrompt || verdictData.rawPrompt || verdictData.prompt || "";
 
+  // 1. Filtrar ruido técnico y fragmentos de UI
   if (isNoisePayload(text)) {
     return;
   }
 
-  const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "";
+  // 2. Resolver usuario y tenant garantizando que nunca queden vacíos
+  const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "ciso@saare.es";
   const currentDomTenant = document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE";
+
+  const finalUser = verdictData.user || currentDomUser;
+  const finalTenant = verdictData.tenant || currentDomTenant;
 
   const payload = {
     verdict_schema: "SGP_1.0",
@@ -121,8 +139,8 @@ function sendEvidenceToBackground(verdictData) {
     policy: { id: "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
     reason: verdictData.reason || "Tráfico conforme verificado en memoria",
     promptInput: text,
-    user: verdictData.user || currentDomUser,
-    tenant: verdictData.tenant || currentDomTenant,
+    user: finalUser,
+    tenant: finalTenant,
     timestamp: verdictData.timestamp || new Date().toISOString(),
     cryptoSeal: verdictData.cryptoSeal || "L7-SEAL:ACTIVE",
     verdict: verdictData.verdict || "PERMITIDO",
