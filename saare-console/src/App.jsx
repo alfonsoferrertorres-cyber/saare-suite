@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx
+// saare-console/src/App.jsx — Panel Principal GRC & Ciberresiliencia S.A.A.R.E. (SGP 1.0)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
@@ -224,6 +224,12 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
+    // POLING FALLBACK DE SEGURIDAD (Garantiza datos actualizados si SSE tiene microcortes)
+    const pollingInterval = setInterval(() => {
+      fetchTelemetryOnce();
+    }, 3000);
+
+    // CANAL DE TELEMETRÍA EN TIEMPO REAL (SSE)
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
     try {
@@ -238,20 +244,20 @@ export default function App() {
           } else if (streamData.status === 'RUNTIME_ACTIVE') {
             fetchTelemetryOnce();
           }
-        } catch (err) {
-          console.error("Error parseando SSE payload:", err);
-        }
+        } catch (err) {}
       };
 
-      es.onerror = (err) => {
-        console.warn("Conexión SSE interrumpida, reconectando...", err);
+      es.onerror = () => {
+        // Cierre silencioso ante pérdida de señal; el Polling de 3s mantiene la pantalla viva
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+        }
       };
-    } catch (e) {
-      console.error("EventSource no soportado en este entorno:", e);
-    }
+    } catch (e) {}
 
     return () => {
       clearInterval(intervalClock);
+      clearInterval(pollingInterval);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }

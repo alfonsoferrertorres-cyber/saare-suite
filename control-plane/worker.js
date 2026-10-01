@@ -246,6 +246,16 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
 }
 
 async function enrichEvidenceForGrant(rawEvidence) {
+  if (!rawEvidence || typeof rawEvidence !== 'object') {
+    return {
+      id: `EV-L7-${Date.now()}`,
+      decision: "ALLOW",
+      verdict: "PERMITIDO",
+      prompt: "(Dato no disponible)",
+      timestamp: new Date().toISOString()
+    };
+  }
+
   const isDeny = rawEvidence.decision === 'DENY' || rawEvidence.verdict === 'RECHAZADO';
   const category = String(rawEvidence.category || 'AUDITORIA_CONFORME').toUpperCase();
 
@@ -394,7 +404,6 @@ export default {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
       }
 
-      // Aislamiento estricto de tenant: priorizar identidad autenticada
       const tenantId = identity?.tenantId || request.headers.get("x-saare-tenant") || url.searchParams.get("tenant") || "ENTERPRISE";
       let tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
 
@@ -450,7 +459,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 2. RESILIENCIA Y PRUEBAS DE ESTRÉS (VERIFICACIÓN DE DERECHOS)
+      // 2. RESILIENCIA Y PRUEBAS DE ESTRÉS
       if ((path === "/api/v1/resilience/check" || path === "/v1/resilience") && method === "POST") {
         if (!hasRequiredRank(activeUserRole, 3)) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), {
@@ -643,7 +652,7 @@ export default {
         });
       }
 
-      // 11. RUTAS DE AUTENTICACIÓN Y RECUPERACIÓN (COMPLETAS)
+      // 11. RUTAS DE AUTENTICACIÓN Y RECUPERACIÓN
       if (path === '/auth/register' || path === '/v1/auth/register' || path === '/api/v1/auth/register') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -773,7 +782,6 @@ export default {
         }
       }
 
-      // SOLICITUD DE RECUPERACIÓN DE CONTRASEÑA (ANTI-ENUMERACIÓN + OTP)
       if (path === '/auth/forgot-password' || path === '/v1/auth/forgot-password' || path === '/api/v1/auth/forgot-password' ||
           path === '/auth/reset-password-request' || path === '/v1/auth/reset-password-request' || path === '/api/v1/auth/reset-password-request') {
         if (method === 'POST') {
@@ -822,7 +830,6 @@ export default {
         }
       }
 
-      // VERIFICACIÓN DE OTP Y RESTABLECIMIENTO DE CONTRASEÑA (SINGLE-USE + ANTI BRUTE FORCE)
       if (path === '/auth/reset-password' || path === '/v1/auth/reset-password' || path === '/api/v1/auth/reset-password' ||
           path === '/auth/verify-otp' || path === '/v1/auth/verify-otp' || path === '/api/v1/auth/verify-otp') {
         if (method === 'POST') {
@@ -1025,7 +1032,7 @@ export default {
         }
       }
 
-      // 14. CANAL SSE DE TELEMETRÍA EN VIVO
+      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream) — RESILIENTE A DESCONEXIONES
       if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream') && method === 'GET') {
         const { readable, writable } = new TransformStream();
         const writer = writable.getWriter();
@@ -1036,8 +1043,8 @@ export default {
             const currentUser = sanitizeEmail(identity?.email) || headerUser;
             let initialEvidences = [];
 
-            if (env.DB) {
-              try {
+            try {
+              if (env.DB) {
                 let query = "SELECT * FROM runs WHERE tenant = ?";
                 let bindings = [tenantId];
                 if (currentUser && activeUserRole !== "CISO_ADMIN") {
@@ -1048,42 +1055,62 @@ export default {
 
                 const { results } = await env.DB.prepare(query).bind(...bindings).all();
                 if (results?.length > 0) {
-                  initialEvidences = await Promise.all(results.map(row => enrichEvidenceForGrant({
-                    id: row.evidence_id || row.id,
-                    verdictId: row.verdictId || "VRD-LIVE-D1",
-                    decision: row.decision || "ALLOW",
-                    verdict: row.verdict || "PERMITIDO",
-                    user: row.user || currentUser,
-                    tenant: row.tenant || tenantId,
-                    prompt: row.prompt || "(Sin prompt)",
-                    responseOutput: row.responseOutput || "",
-                    timestamp: row.created_at
-                  })));
+                  initialEvidences = await Promise.all(results.map(row => {
+                    let parsedPayload = {};
+                    try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
+
+                    return enrichEvidenceForGrant({
+                      ...parsedPayload,
+                      id: row.evidence_id || row.id,
+                      trace_id: row.trace_id || parsedPayload.trace_id,
+                      verdictId: row.verdictId || "VRD-LIVE-D1",
+                      decision: row.decision || "ALLOW",
+                      verdict: row.verdict || "PERMITIDO",
+                      user: row.user || currentUser,
+                      tenant: row.tenant || tenantId,
+                      prompt: row.prompt || parsedPayload.prompt || "(Sin prompt)",
+                      responseOutput: row.responseOutput || "",
+                      timestamp: row.created_at
+                    });
+                  }));
                 }
-              } catch (e) {}
+              }
+            } catch (dbErr) {
+              console.warn("[SSE D1 Read Warning]:", dbErr.message);
             }
 
             if (initialEvidences.length === 0 && env.SAARE_VAULT_KV) {
               try {
                 const kvData = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
                 if (Array.isArray(kvData) && kvData.length > 0) {
-                  initialEvidences = kvData.filter(item => !currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser);
+                  initialEvidences = await Promise.all(
+                    kvData
+                      .filter(item => item && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
+                      .map(item => enrichEvidenceForGrant(item))
+                  );
                 }
-              } catch (e) {}
+              } catch (kvErr) {
+                console.warn("[SSE KV Read Warning]:", kvErr.message);
+              }
             }
 
             if (initialEvidences.length === 0) {
-              initialEvidences = await Promise.all(
-                ramRunCache
-                  .filter(item => item.tenant === tenantId && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
-                  .map(item => enrichEvidenceForGrant(item))
-              );
+              try {
+                initialEvidences = await Promise.all(
+                  ramRunCache
+                    .filter(item => item && (item.tenant === tenantId || tenantId === "ENTERPRISE") && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
+                    .map(item => enrichEvidenceForGrant(item))
+                );
+              } catch (ramErr) {}
             }
 
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ evidences: initialEvidences, vaultSource: env.DB ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") })}\n\n`));
+            // Transmitir instrucción de reconexión SSE y marco de evidencias inicial
+            await writer.write(encoder.encode(`retry: 5000\n`));
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ evidences: initialEvidences, vaultSource: env.DB && initialEvidences.length > 0 ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") })}\n\n`));
 
+            // Heartbeat + Keep-Alive para prevenir timeouts en Edge Worker
             for (let i = 0; i < 120; i++) {
-              await new Promise(r => setTimeout(r, 3000));
+              await new Promise(r => setTimeout(r, 5000));
               const heartbeat = {
                 timestamp: new Date().toISOString(),
                 p50_ms: (0.2 + Math.random() * 0.1).toFixed(2),
@@ -1092,19 +1119,23 @@ export default {
                 status: 'RUNTIME_ACTIVE'
               };
               await writer.write(encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`));
+              await writer.write(encoder.encode(`: keep-alive\n\n`));
             }
           } catch (e) {
+            console.warn("[SSE Stream Interrupted/Closed]:", e.message);
           } finally {
             try { await writer.close(); } catch (e) {}
           }
         })());
 
         return new Response(readable, {
+          status: 200,
           headers: {
             ...cors.corsHeaders,
-            'Content-Type': 'text/event-stream',
+            'Content-Type': 'text/event-stream; charset=utf-8',
             'Cache-Control': 'no-cache, no-transform',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
           }
         });
       }
@@ -1128,7 +1159,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (EVALUACIÓN Y PERSISTENCIA TRIPLE D1 + KV + RAM)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (PERSISTENCIA TRIPLE D1 + KV + RAM)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1141,7 +1172,6 @@ export default {
         const user = sanitizeEmail(body.user || identity?.email || headerUser) || "ciso@saare.es";
         const tenant = body.tenant || identity?.tenantId || tenantId || "ENTERPRISE";
 
-        // Validar si el plan permite interceptación en Capa L7
         if (!isFeatureAllowed(tenantPlan, 'control_layer_l7')) {
           return new Response(JSON.stringify({ 
             error: "L7_CONTROL_LAYER_DISABLED", 
@@ -1152,7 +1182,6 @@ export default {
           });
         }
 
-        // Incrementar y verificar uso mensual
         let currentUsage = 1;
         if (ctx && typeof ctx.waitUntil === 'function') {
           ctx.waitUntil(processBatchMerkleAnchor(tenant, env));
@@ -1302,13 +1331,13 @@ export default {
         });
       }
 
-// 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs) — CON FALLBACK KV MULTI-TENANT
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs) — CON FALLBACK KV MULTI-TENANT
       if (path.includes('runs') || path.includes('telemetry')) {
         if (method === "GET") {
           let evidencesList = [];
           const currentUser = sanitizeEmail(identity?.email) || headerUser;
 
-          // 1. Intentar consulta en Base de Datos D1
+          // 1. Consulta en Base de Datos D1
           if (env.DB) {
             try {
               let query = "SELECT * FROM runs WHERE tenant = ?";
@@ -1350,14 +1379,16 @@ export default {
             }
           }
 
-          // 2. Fallback a Bóveda KV (Busca en Tenant actual, ENTERPRISE y DEMO_TENANT)
+          // 2. Fallback a Bóveda KV
           if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
             try {
               const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
               for (const key of keysToTry) {
                 const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
                 if (Array.isArray(kvData) && kvData.length > 0) {
-                  evidencesList = kvData;
+                  evidencesList = await Promise.all(
+                    kvData.map(item => enrichEvidenceForGrant(item))
+                  );
                   break;
                 }
               }
