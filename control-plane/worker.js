@@ -1,4 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / v8.2 SRP)
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / v8.4 SRP)
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
 import { ComplianceEngine } from "./complianceEngine.js";
@@ -11,15 +11,49 @@ import { TenantManager } from "./tenantManager.js";
 import { EnterpriseKeyManager, computeSha256 } from "./keyManager.js";
 import { registerEvidenceInSafeCreative } from "./safeCreativeClient.js";
 import { EvidenceVaultEngine } from "./evidenceVaultEngine.js";
+import { TelemetryServer } from "./telemetryServer.js";
 
-// Importación unificada del Motor de Derechos B2B
-import { 
-  getPlanEntitlements, 
-  sanitizePlanId, 
-  checkQuota, 
-  isFeatureAllowed, 
-  PLAN_IDS 
-} from "../packages/entitlements/index.js";
+// Importación unificada y robusta del Motor de Derechos B2B
+const PLAN_IDS = {
+  TRIAL_PRO_7D: "TRIAL_PRO_7D",
+  PROFESSIONAL_649: "PROFESSIONAL_649",
+  ENTERPRISE_1499: "ENTERPRISE_1499"
+};
+
+function sanitizePlanId(planId) {
+  if (!planId) return PLAN_IDS.PROFESSIONAL_649;
+  const upper = String(planId).toUpperCase();
+  if (upper.includes("TRIAL")) return PLAN_IDS.TRIAL_PRO_7D;
+  if (upper.includes("ENTERPRISE")) return PLAN_IDS.ENTERPRISE_1499;
+  return PLAN_IDS.PROFESSIONAL_649;
+}
+
+function getPlanEntitlements(planId) {
+  const cleanPlan = sanitizePlanId(planId);
+  if (cleanPlan === PLAN_IDS.TRIAL_PRO_7D) {
+    return { name: "Trial Profesional 7D", max_users: 3, max_evidence_monthly: 500, resilience_lab: true, export_dossier: true, control_layer_l7: true };
+  }
+  if (cleanPlan === PLAN_IDS.ENTERPRISE_1499) {
+    return { name: "Enterprise Unlimited", max_users: 100, max_evidence_monthly: 100000, resilience_lab: true, export_dossier: true, control_layer_l7: true };
+  }
+  return { name: "Professional B2B", max_users: 15, max_evidence_monthly: 10000, resilience_lab: true, export_dossier: true, control_layer_l7: true };
+}
+
+function checkQuota(planId, quotaKey, currentUsage) {
+  const entitlements = getPlanEntitlements(planId);
+  const limit = entitlements[quotaKey] || 10000;
+  return {
+    allowed: currentUsage <= limit,
+    limit,
+    current: currentUsage,
+    remaining: Math.max(0, limit - currentUsage)
+  };
+}
+
+function isFeatureAllowed(planId, featureKey) {
+  const entitlements = getPlanEntitlements(planId);
+  return Boolean(entitlements[featureKey]);
+}
 
 // Subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
@@ -291,7 +325,7 @@ async function enrichEvidenceForGrant(rawEvidence) {
       isQualifiedTSA: false,
       policyVersion: rawEvidence.policyVersion || "v1.0.0",
       controlVersion: rawEvidence.controlVersion || "v1.0.0",
-      runtimeVersion: "SGP-1.0-v8.2",
+      runtimeVersion: "SGP-1.0-v8.4",
       systemId: rawEvidence.systemId || "SYS-L7-CORE",
       claimLevel,
       auditStandard: "ISO/IEC 27037:2012 / EU AI Act Art. 12 & 14 / DORA UE 2022/2554"
@@ -390,6 +424,7 @@ export default {
 
     const tenantManager = new TenantManager(env);
     const keyManager = new EnterpriseKeyManager(env);
+    const telemetryServer = new TelemetryServer(env);
 
     const cors = handleCors(request);
     if (method === "OPTIONS") return cors.preflightResponse();
@@ -424,7 +459,7 @@ export default {
           latencyP99Ms: 1.12,
           trustAnchor: 'SAARE-MD-IPRES-2026',
           specVersion: 'SGP 1.0',
-          engine: 'Core PEP L7 v8.2'
+          engine: 'Core PEP L7 v8.4'
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -1032,110 +1067,15 @@ export default {
         }
       }
 
-      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream) — RESILIENTE A DESCONEXIONES
+      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream)
       if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream') && method === 'GET') {
-        const { readable, writable } = new TransformStream();
-        const writer = writable.getWriter();
-        const encoder = new TextEncoder();
-
-        ctx.waitUntil((async () => {
-          try {
-            const currentUser = sanitizeEmail(identity?.email) || headerUser;
-            let initialEvidences = [];
-
-            try {
-              if (env.DB) {
-                let query = "SELECT * FROM runs WHERE tenant = ?";
-                let bindings = [tenantId];
-                if (currentUser && activeUserRole !== "CISO_ADMIN") {
-                  query += " AND user = ?";
-                  bindings.push(currentUser);
-                }
-                query += " ORDER BY id DESC LIMIT 50";
-
-                const { results } = await env.DB.prepare(query).bind(...bindings).all();
-                if (results?.length > 0) {
-                  initialEvidences = await Promise.all(results.map(row => {
-                    let parsedPayload = {};
-                    try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
-
-                    return enrichEvidenceForGrant({
-                      ...parsedPayload,
-                      id: row.evidence_id || row.id,
-                      trace_id: row.trace_id || parsedPayload.trace_id,
-                      verdictId: row.verdictId || "VRD-LIVE-D1",
-                      decision: row.decision || "ALLOW",
-                      verdict: row.verdict || "PERMITIDO",
-                      user: row.user || currentUser,
-                      tenant: row.tenant || tenantId,
-                      prompt: row.prompt || parsedPayload.prompt || "(Sin prompt)",
-                      responseOutput: row.responseOutput || "",
-                      timestamp: row.created_at
-                    });
-                  }));
-                }
-              }
-            } catch (dbErr) {
-              console.warn("[SSE D1 Read Warning]:", dbErr.message);
-            }
-
-            if (initialEvidences.length === 0 && env.SAARE_VAULT_KV) {
-              try {
-                const kvData = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
-                if (Array.isArray(kvData) && kvData.length > 0) {
-                  initialEvidences = await Promise.all(
-                    kvData
-                      .filter(item => item && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
-                      .map(item => enrichEvidenceForGrant(item))
-                  );
-                }
-              } catch (kvErr) {
-                console.warn("[SSE KV Read Warning]:", kvErr.message);
-              }
-            }
-
-            if (initialEvidences.length === 0) {
-              try {
-                initialEvidences = await Promise.all(
-                  ramRunCache
-                    .filter(item => item && (item.tenant === tenantId || tenantId === "ENTERPRISE") && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
-                    .map(item => enrichEvidenceForGrant(item))
-                );
-              } catch (ramErr) {}
-            }
-
-            // Transmitir instrucción de reconexión SSE y marco de evidencias inicial
-            await writer.write(encoder.encode(`retry: 5000\n`));
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ evidences: initialEvidences, vaultSource: env.DB && initialEvidences.length > 0 ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") })}\n\n`));
-
-            // Heartbeat + Keep-Alive para prevenir timeouts en Edge Worker
-            for (let i = 0; i < 120; i++) {
-              await new Promise(r => setTimeout(r, 5000));
-              const heartbeat = {
-                timestamp: new Date().toISOString(),
-                p50_ms: (0.2 + Math.random() * 0.1).toFixed(2),
-                p95_ms: (0.7 + Math.random() * 0.2).toFixed(2),
-                rps: Math.floor(450 + Math.random() * 50),
-                status: 'RUNTIME_ACTIVE'
-              };
-              await writer.write(encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`));
-              await writer.write(encoder.encode(`: keep-alive\n\n`));
-            }
-          } catch (e) {
-            console.warn("[SSE Stream Interrupted/Closed]:", e.message);
-          } finally {
-            try { await writer.close(); } catch (e) {}
-          }
-        })());
-
-        return new Response(readable, {
-          status: 200,
+        const currentUser = sanitizeEmail(identity?.email) || headerUser;
+        const streamResponse = await telemetryServer.handleStream(request, tenantId, currentUser, activeUserRole, ctx);
+        return new Response(streamResponse.body, {
+          status: streamResponse.status,
           headers: {
             ...cors.corsHeaders,
-            'Content-Type': 'text/event-stream; charset=utf-8',
-            'Cache-Control': 'no-cache, no-transform',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no'
+            ...streamResponse.headers
           }
         });
       }
@@ -1143,7 +1083,7 @@ export default {
       // 15. MANIFIESTO SRP
       if (path === '/api/v1/manifest/srp' && method === 'GET') {
         return new Response(JSON.stringify({
-          srpVersion: "8.2.0",
+          srpVersion: "8.4.0",
           specification: "SAARE Canonical Structural Resilience Standard (SGP 1.0)",
           trustAnchor: "SAARE-MD-IPRES-2026",
           node: "2607076315021",
@@ -1259,7 +1199,6 @@ export default {
           ...evalResult
         });
 
-        // 1. Escritura en D1 (Tabla runs)
         if (env.DB) {
           try {
             await env.DB.exec(`
@@ -1289,7 +1228,6 @@ export default {
           }
         }
 
-        // 2. Escritura síncrona en Bóveda KV (SAARE_VAULT_KV)
         if (env.SAARE_VAULT_KV) {
           try {
             const existingKv = (await env.SAARE_VAULT_KV.get(`runs_${tenant}`, 'json')) || [];
@@ -1300,7 +1238,6 @@ export default {
           }
         }
 
-        // 3. Escritura en Caché RAM Efímera
         ramRunCache.unshift(fullRecord);
         if (ramRunCache.length > 200) ramRunCache.pop();
 
@@ -1331,13 +1268,12 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs) — CON FALLBACK KV MULTI-TENANT
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs)
       if (path.includes('runs') || path.includes('telemetry')) {
         if (method === "GET") {
           let evidencesList = [];
           const currentUser = sanitizeEmail(identity?.email) || headerUser;
 
-          // 1. Consulta en Base de Datos D1
           if (env.DB) {
             try {
               let query = "SELECT * FROM runs WHERE tenant = ?";
@@ -1379,7 +1315,6 @@ export default {
             }
           }
 
-          // 2. Fallback a Bóveda KV
           if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
             try {
               const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
@@ -1397,7 +1332,6 @@ export default {
             }
           }
 
-          // 3. Fallback a memoria RAM efímera
           if (evidencesList.length === 0) {
             evidencesList = await Promise.all(
               ramRunCache
@@ -1526,11 +1460,11 @@ export default {
       if (path === '/' || path === '/health' || path === '/api/v1') {
         return new Response(JSON.stringify({
           status: "ONLINE",
-          system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.2)",
+          system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.4)",
           node: "2607076315021",
           trustAnchor: "SAARE-MD-IPRES-2026",
-          version: "v10.5.0",
-          srpVersion: "8.2.0",
+          version: "v10.5.2",
+          srpVersion: "8.4.0",
           timestamp: new Date().toISOString()
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
