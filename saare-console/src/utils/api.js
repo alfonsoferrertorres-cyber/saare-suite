@@ -2,19 +2,18 @@
 
 const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 
-// Saneamiento de URL: elimina /api/v1, /api o barras finales para prevenir duplicaciones de ruta
+// Saneamiento robusto de URL base
 const cleanEnvUrl = rawEnvUrl 
-  ? rawEnvUrl.replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '').replace(/\/$/, '') 
+  ? rawEnvUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
   : null;
 
 const isLocal = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-// Raíz base del API Gateway / Control Plane
 export const API_HOST = isLocal ? 'http://127.0.0.1:8787' : (cleanEnvUrl || 'https://api.saare.es');
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
-  return url.startsWith(API_HOST) || url.startsWith(API_BASE_URL);
+  return url.startsWith(API_HOST);
 }
 
 /**
@@ -24,19 +23,18 @@ function isOwnApi(url) {
  * @returns {Promise<Response>}
  */
 export async function saareFetch(endpoint, options = {}) {
-  const isAbsolute = typeof endpoint === 'string' && endpoint.startsWith('http');
-  let cleanEndpoint = endpoint;
+  const isAbsolute = typeof endpoint === 'string' && (endpoint.startsWith('http://') || endpoint.startsWith('https://'));
+  let finalUrl = endpoint;
 
-  // 1. Normalización de URL y versionado sin riesgo de duplicación
+  // 1. Normalización estricta para erradicar el bug de duplicación (/api/v1/api/v1/)
   if (!isAbsolute) {
-    if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
+    // Quitamos las barras iniciales
+    let relativePath = endpoint.replace(/^\/+/, '');
+    // Quitamos cualquier prefijo api/ o api/v1/ residual que venga de las llamadas en los componentes
+    relativePath = relativePath.replace(/^api\/(v1\/)?/, '');
     
-    // Antepone /api/v1 solo si no incluye ya /api/v1 o /api/
-    if (!cleanEndpoint.startsWith('/api/v1') && !cleanEndpoint.startsWith('/api/')) {
-      cleanEndpoint = `/api/v1${cleanEndpoint}`;
-    }
-    
-    cleanEndpoint = `${API_HOST}${cleanEndpoint}`;
+    // Ensamblamos forzando exactamente un único bloque /api/v1/
+    finalUrl = `${API_BASE_URL}/${relativePath}`;
   }
 
   // 2. Extracción de credenciales, rol y contexto desde la sesión unificada
@@ -71,15 +69,15 @@ export async function saareFetch(endpoint, options = {}) {
     'Accept': 'application/json',
     'x-saare-spec': 'SGP-1.0',
     ...(options.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
-    ...(token && isOwnApi(cleanEndpoint) ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...(currentUser && isOwnApi(cleanEndpoint) ? { 'x-saare-user': currentUser } : {}),
-    ...(currentTenant && isOwnApi(cleanEndpoint) ? { 'x-saare-tenant': currentTenant } : {}),
-    ...(currentRole && isOwnApi(cleanEndpoint) ? { 'x-saare-role': currentRole } : {}),
+    ...(token && isOwnApi(finalUrl) ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(currentUser && isOwnApi(finalUrl) ? { 'x-saare-user': currentUser } : {}),
+    ...(currentTenant && isOwnApi(finalUrl) ? { 'x-saare-tenant': currentTenant } : {}),
+    ...(currentRole && isOwnApi(finalUrl) ? { 'x-saare-role': currentRole } : {}),
     ...(options.headers || {})
   };
 
   try {
-    const response = await fetch(cleanEndpoint, {
+    const response = await fetch(finalUrl, {
       ...options,
       headers: defaultHeaders
     });

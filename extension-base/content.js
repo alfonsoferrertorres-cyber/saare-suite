@@ -26,12 +26,9 @@ function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
   const clean = text.trim();
   
-  // Ignorar cadenas vacías o fragmentos de menos de 2 caracteres
   if (clean.length < 2) return true;
 
   const lower = clean.toLowerCase();
-
-  // Descarta si contiene firmas de ruido técnico o frases predeterminadas de la interfaz
   return KNOWN_UI_NOISE.some(noise => lower.includes(noise));
 }
 
@@ -69,8 +66,7 @@ function renderActivityWitnessBadge() {
 
 // BUCLE DE REINYECCIÓN AUTOMÁTICA EN NAVEGACIÓN SPA
 setInterval(() => {
-  const witnessBadge = document.getElementById("saare-witness-badge");
-  if (!witnessBadge) {
+  if (!document.getElementById("saare-witness-badge")) {
     renderActivityWitnessBadge();
   }
 }, 3000);
@@ -81,22 +77,14 @@ function updateDomContext(settings, userEmail, tenantDomain) {
   if (tenantDomain) document.documentElement.setAttribute("data-saare-tenant", tenantDomain);
 }
 
+// CORRECCIÓN: Se elimina el `localStorage` de la web (que causaba falsos positivos) y se lee estrictamente de chrome.storage
 function syncStorageAndContext() {
-  let localUser = "";
-  let localTenant = "ENTERPRISE";
-  try {
-    localUser = localStorage.getItem("saare_user_email") || "";
-    localTenant = localStorage.getItem("saare_tenant_domain") || "ENTERPRISE";
-  } catch (e) {}
-
   if (typeof chrome !== "undefined" && chrome.storage) {
     chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
-      const finalUser = local?.saare_user_email || localUser || "ciso@saare.es";
-      const finalTenant = local?.saare_tenant_domain || localTenant || "ENTERPRISE";
+      const finalUser = local?.saare_user_email || "ciso@saare.es";
+      const finalTenant = local?.saare_tenant_domain || "ENTERPRISE";
       updateDomContext(local?.saare_settings || DEFAULT_SETTINGS_V10, finalUser, finalTenant);
     });
-  } else {
-    updateDomContext(DEFAULT_SETTINGS_V10, localUser || "ciso@saare.es", localTenant || "ENTERPRISE");
   }
 }
 
@@ -116,12 +104,10 @@ try {
 function sendEvidenceToBackground(verdictData) {
   const text = verdictData.cleanPrompt || verdictData.rawPrompt || verdictData.prompt || "";
 
-  // 1. Filtrar ruido técnico y fragmentos de UI
   if (isNoisePayload(text)) {
     return;
   }
 
-  // 2. Resolver usuario y tenant garantizando que nunca queden vacíos
   const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "ciso@saare.es";
   const currentDomTenant = document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE";
 

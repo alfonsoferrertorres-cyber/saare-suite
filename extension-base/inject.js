@@ -46,6 +46,13 @@
     };
   }
 
+  function getIdentityContext() {
+    return {
+      user: document.documentElement.getAttribute("data-saare-user") || "ciso@saare.es",
+      tenant: document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE"
+    };
+  }
+
   function computeL7Seal(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -169,7 +176,9 @@
 
   function evaluatePayload(rawBody, url) {
     const settings = getSettings();
+    const identity = getIdentityContext();
     const str = parseBody(rawBody);
+    
     if (!str || isIgnoredRequest(url, str)) return null;
 
     const cleanPrompt = extractCleanPrompt(str) || str.substring(0, 500);
@@ -181,11 +190,21 @@
     const runRandomId = Math.random().toString(36).substring(2, 10).toUpperCase();
     const canonicalVerdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
+    // PLANTILLA BASE DEL VEREDICTO
+    const baseVerdict = {
+      verdict_schema: "SGP_1.0",
+      verdictId: canonicalVerdictId,
+      user: identity.user,
+      tenant: identity.tenant,
+      cryptoSeal: seal,
+      parentHash: CANONICAL_PARENT_HASH,
+      timestamp: timestampIso
+    };
+
     // 01. ORQUESTADORES & WORKFLOWS GUARD
     if (settings.orquestacion_workflows_guard && DLP.tool_mutation.test(cleanPrompt)) {
       return {
-        verdict_schema: "SGP_1.0",
-        verdictId: canonicalVerdictId,
+        ...baseVerdict,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
         executionPermit: null,
@@ -197,10 +216,7 @@
         reason: "El perfil de privilegios mínimos deniega mutaciones destructivas o comandos directos sin permiso.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-TOOL-${runRandomId}`,
-        cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH,
-        timestamp: timestampIso
+        evidence_id: `EV-TOOL-${runRandomId}`
       };
     }
 
@@ -208,8 +224,7 @@
     if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
       const match = cleanPrompt.match(DLP.invoices)[0];
       return {
-        verdict_schema: "SGP_1.0",
-        verdictId: canonicalVerdictId,
+        ...baseVerdict,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
         executionPermit: null,
@@ -221,18 +236,14 @@
         reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no justificado.`,
         cleanPrompt: sanitize(cleanPrompt),
         sanitizedPrompt: sanitize(cleanPrompt),
-        evidence_id: `EV-GRANT-${runRandomId}`,
-        cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH,
-        timestamp: timestampIso
+        evidence_id: `EV-GRANT-${runRandomId}`
       };
     }
 
     // 03. PROTECCIÓN DEL HONOR & DEEPFAKES
     if (settings.deepfake_fake_disprover && (DLP.voice_clone.test(cleanPrompt) || DLP.unsupported.test(cleanPrompt))) {
       return {
-        verdict_schema: "SGP_1.0",
-        verdictId: canonicalVerdictId,
+        ...baseVerdict,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
         executionPermit: null,
@@ -244,18 +255,14 @@
         reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-HONOR-${runRandomId}`,
-        cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH,
-        timestamp: timestampIso
+        evidence_id: `EV-HONOR-${runRandomId}`
       };
     }
 
     // 04. ROBUSTEZ L7 & ANTI-JAILBREAK
     if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
       return {
-        verdict_schema: "SGP_1.0",
-        verdictId: canonicalVerdictId,
+        ...baseVerdict,
         decision: "DENY",
         enforcement: { action: "BLOCK" },
         executionPermit: null,
@@ -267,10 +274,7 @@
         reason: "Bloqueo Seguridad L7: Intento de Jailbreak o manipulación perimetral neutralizado conforme al Art. 15 del EU AI Act.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-SEC-${runRandomId}`,
-        cryptoSeal: seal,
-        parentHash: CANONICAL_PARENT_HASH,
-        timestamp: timestampIso
+        evidence_id: `EV-SEC-${runRandomId}`
       };
     }
 
@@ -301,8 +305,7 @@
         const displayPrompt = sanitize(cleanPrompt);
 
         return {
-          verdict_schema: "SGP_1.0",
-          verdictId: canonicalVerdictId,
+          ...baseVerdict,
           decision: "DENY",
           enforcement: { action: "BLOCK" },
           executionPermit: null,
@@ -314,10 +317,7 @@
           reason: "Bloqueo Privacidad: Detección ex-ante de datos regulados en búfer volátil de runtime.",
           cleanPrompt: displayPrompt,
           sanitizedPrompt: displayPrompt,
-          evidence_id: `EV-PII-${runRandomId}`,
-          cryptoSeal: seal,
-          parentHash: CANONICAL_PARENT_HASH,
-          timestamp: timestampIso
+          evidence_id: `EV-PII-${runRandomId}`
         };
       }
     }
@@ -326,8 +326,7 @@
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
-      verdict_schema: "SGP_1.0",
-      verdictId: canonicalVerdictId,
+      ...baseVerdict,
       decision: "ALLOW",
       enforcement: { action: "PASS" },
       executionPermit: { status: "ISSUED" },
@@ -339,13 +338,11 @@
       reason: "Inferencia autorizada bajo perímetro determinista L7.",
       cleanPrompt: cleanPrompt,
       sanitizedPrompt: cleanPrompt,
-      evidence_id: `EV-ALLOW-${runRandomId}`,
-      cryptoSeal: seal,
-      parentHash: CANONICAL_PARENT_HASH,
-      timestamp: timestampIso
+      evidence_id: `EV-ALLOW-${runRandomId}`
     };
   }
 
+  // --- XHR INTERCEPTOR ---
   const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
@@ -358,19 +355,35 @@
     if (verdict) {
       window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
       if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
-        throw new Error(`[SAARE JUDGE] Acción rechazada por política.`);
+        throw new Error(`[SAARE JUDGE] Acción rechazada por política corporativa o regulatoria.`);
       }
     }
     return rawSend.apply(this, arguments);
   };
 
+  // --- FETCH INTERCEPTOR ---
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
-    const url = typeof resource === "string" ? resource : (resource?.url || "");
+    let url = "";
+    let bodyToEvaluate = null;
+
+    if (typeof resource === "string") {
+      url = resource;
+    } else if (resource instanceof Request) {
+      url = resource.url;
+    } else if (resource && resource.url) {
+      url = resource.url;
+    }
+
     if (config && config.body) {
-      const verdict = evaluatePayload(config.body, url);
+      bodyToEvaluate = config.body;
+    }
+
+    if (bodyToEvaluate) {
+      const verdict = evaluatePayload(bodyToEvaluate, url);
       if (verdict) {
         window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
+        
         if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
           return new Response(JSON.stringify({
             verdict: "DENY",
@@ -389,6 +402,7 @@
         }
       }
     }
+    
     return rawFetch.apply(this, arguments);
   };
 })();
