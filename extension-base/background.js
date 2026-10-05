@@ -1,7 +1,7 @@
 // extension-base/background.js — Servidor de Fondo del Sensor L7 v10.5.2
 
-// ⚠️ CORRECCIÓN: Apuntando al Control Plane local para pruebas con Wrangler
-const WORKER_URL = "http://127.0.0.1:8787"; 
+// ✅ CORREGIDO: Apuntando al Control Plane oficial en producción
+const WORKER_URL = "https://api.saare.es";
 // Para producción, cambia a: const WORKER_URL = "https://api.saare.es";
 
 function isNoisePayload(text) {

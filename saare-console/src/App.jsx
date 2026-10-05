@@ -129,7 +129,7 @@ export default function App() {
   }, []);
 
   /**
-   * Mapeo unificado para Bóveda D1 y KV
+   * Mapeo unificado y robusto para Bóveda D1 y KV
    */
   const mapEvidences = useCallback((remoteEvidences) => {
     if (!Array.isArray(remoteEvidences)) return [];
@@ -148,6 +148,21 @@ export default function App() {
       const payloadHash = item.merkle_root || item.merkleRoot || item.proofBundle?.payloadHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
       const rawTime = item.timestamp || item.created_at || new Date().toISOString();
 
+      // Detección automática robusta del tipo de categoría para el filtrado UI
+      let inferredType = item.type;
+      const catUpper = (item.cat || item.category || '').toUpperCase();
+      const promptUpper = String(cleanPrompt).toUpperCase();
+
+      if (!inferredType) {
+        if (catUpper.includes('PRIVACY') || catUpper.includes('PII') || catUpper.includes('DNI') || promptUpper.includes('DNI') || promptUpper.includes('IBAN')) {
+          inferredType = 'PRIVACIDAD';
+        } else if (catUpper.includes('WORKFLOW') || catUpper.includes('TOOL') || catUpper.includes('GRANT') || catUpper.includes('ALLOW')) {
+          inferredType = 'WORKFLOWS';
+        } else {
+          inferredType = isDeny ? 'PRIVACIDAD' : 'WORKFLOWS';
+        }
+      }
+
       return {
         id: evidenceId,
         time: rawTime && !isNaN(Date.parse(rawTime)) ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
@@ -159,7 +174,7 @@ export default function App() {
         verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
         decision: isDeny ? 'DENY' : 'ALLOW',
         anchored: item.anchored !== undefined ? item.anchored : 1,
-        type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
+        type: inferredType,
         user: item.user || item.user_id || userEmail,
         tenant: item.tenant || item.tenant_id || tenantId,
         merkleRoot: payloadHash,
@@ -224,12 +239,10 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
-    // POLING FALLBACK DE SEGURIDAD (Garantiza datos actualizados si SSE tiene microcortes)
     const pollingInterval = setInterval(() => {
       fetchTelemetryOnce();
     }, 3000);
 
-    // CANAL DE TELEMETRÍA EN TIEMPO REAL (SSE)
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
     try {
@@ -248,7 +261,6 @@ export default function App() {
       };
 
       es.onerror = () => {
-        // Cierre silencioso ante pérdida de señal; el Polling de 3s mantiene la pantalla viva
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
         }
@@ -264,6 +276,34 @@ export default function App() {
     };
   }, [isAuthenticated, userEmail, tenantId, userRole, fetchTelemetryOnce, mapEvidences]);
 
+  // FILTRADO INDEXADO REACTIVO Y ROBUSTO
+  const filteredEvidences = evidences.filter(item => {
+    if (!item) return false;
+    
+    // Filtro por pestañas de categoría con normalización estricta
+    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
+    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
+
+    // Filtros por rango de fechas
+    if (startDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const startDate = new Date(startDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
+    }
+
+    if (endDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const endDate = new Date(endDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        if (itemDate > endDate) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Métricas dinámicas calculadas sobre el total de evidencias reales
   const totalInspecciones = evidences.length;
   const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
@@ -535,7 +575,7 @@ export default function App() {
         verdict: "ERROR_VERIFICATION",
         details: "No se pudo establecer conexión con el nodo de auditoría o el hash es inválido."
       });
-      triggerGovernance("⚠️ Error de conexión al consultar el nodo de auditoría.");
+      triggerGovernance("⚠️️ Error de conexión al consultar el nodo de auditoría.");
     }
   };
 
@@ -747,29 +787,6 @@ export default function App() {
 
     triggerGovernance('Matriz de Invariantes descargada.');
   };
-
-  const filteredEvidences = evidences.filter(item => {
-    if (!item) return false;
-    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
-    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
-
-    if (startDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const startDate = new Date(startDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
-    }
-
-    if (endDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const endDate = new Date(endDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
-        endDate.setHours(23, 59, 59, 999);
-        if (itemDate > endDate) return false;
-      }
-    }
-
-    return true;
-  });
 
   const activeDirectivesCount = directives.filter(d => d.active).length;
 
