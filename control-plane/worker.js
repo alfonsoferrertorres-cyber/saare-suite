@@ -119,7 +119,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
       const anchorId = `ANK-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
 
-      await env.DB.exec(`
+      await env.DB.prepare(`
         CREATE TABLE IF NOT EXISTS merkle_anchors (
           id TEXT PRIMARY KEY,
           tenant_id TEXT,
@@ -127,7 +127,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
           batch_size INTEGER,
           created_at TEXT
         );
-      `);
+      `).run();
 
       await env.DB.prepare(
         "INSERT INTO merkle_anchors (id, tenant_id, merkle_root, batch_size, created_at) VALUES (?, ?, ?, ?, ?)"
@@ -151,15 +151,15 @@ async function trackVerdictUsage(tenantId, env) {
   if (!env || !env.DB) return 1;
   const currentMonth = new Date().toISOString().substring(0, 7);
   try {
-    await env.DB.exec(`
+    await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS tenant_usage (
         tenant_id TEXT,
         billing_period TEXT,
         verdict_count INTEGER DEFAULT 0,
         PRIMARY KEY (tenant_id, billing_period)
       );
-    `);
-    
+    `).run();
+
     const row = await env.DB.prepare(`
       INSERT INTO tenant_usage (tenant_id, billing_period, verdict_count)
       VALUES (?, ?, 1)
@@ -760,17 +760,6 @@ export default {
             };
           }
 
-          if (userRecord && userRecord.is_verified === 0) {
-            if (env.DB) {
-              try {
-                await env.DB.prepare("UPDATE users SET is_verified = 1 WHERE email = ?").bind(cleanEmail).run();
-                userRecord.is_verified = 1;
-              } catch (e) {}
-            } else {
-              userRecord.is_verified = 1;
-            }
-          }
-
           if (userRecord) {
             if (userRecord.is_verified === 0) {
               return new Response(JSON.stringify({ error: "Cuenta pendiente de verificación por correo." }), {
@@ -1201,7 +1190,7 @@ export default {
 
         if (env.DB) {
           try {
-            await env.DB.exec(`
+            await env.DB.prepare(`
               CREATE TABLE IF NOT EXISTS runs (
                 id TEXT PRIMARY KEY,
                 evidence_id TEXT,
@@ -1215,7 +1204,7 @@ export default {
                 payload_json TEXT,
                 created_at TEXT
               );
-            `);
+            `).run();
 
             await env.DB.prepare(`
               INSERT INTO runs (id, evidence_id, trace_id, verdictId, tenant, user, decision, verdict, prompt, payload_json, created_at)
