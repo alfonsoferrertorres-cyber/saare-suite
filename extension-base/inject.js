@@ -1,4 +1,4 @@
-﻿/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0) */
+﻿/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Hardened) */
 (function() {
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -16,7 +16,7 @@
 
   function getSettings() {
     try {
-      const raw = document.documentElement.getAttribute('data-saare-settings');
+      const raw = document.documentElement?.getAttribute('data-saare-settings');
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
@@ -31,7 +31,9 @@
           subOptions: parsed.subOptions || {}
         };
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[SAARE] Error parsing settings attributes, falling back to defaults:", e);
+    }
 
     return {
       cumplimiento_corporativo_integral: true,
@@ -48,8 +50,8 @@
 
   function getIdentityContext() {
     return {
-      user: document.documentElement.getAttribute("data-saare-user") || "ciso@saare.es",
-      tenant: document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE"
+      user: document.documentElement?.getAttribute("data-saare-user") || "ciso@saare.es",
+      tenant: document.documentElement?.getAttribute("data-saare-tenant") || "ENTERPRISE"
     };
   }
 
@@ -190,7 +192,6 @@
     const runRandomId = Math.random().toString(36).substring(2, 10).toUpperCase();
     const canonicalVerdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    // PLANTILLA BASE DEL VEREDICTO
     const baseVerdict = {
       verdict_schema: "SGP_1.0",
       verdictId: canonicalVerdictId,
@@ -222,7 +223,7 @@
 
     // 02. SUBVENCIONES Y FONDOS PÚBLICOS
     if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
-      const match = cleanPrompt.match(DLP.invoices)[0];
+      const match = cleanPrompt.match(DLP.invoices)?.[0] || "REF_DESCONOCIDA";
       return {
         ...baseVerdict,
         decision: "DENY",
@@ -322,7 +323,6 @@
       }
     }
 
-    // 06. VEREDICTO ALLOW
     if (!settings.auditoria_dictamen_normativo) return null;
 
     return {
@@ -351,12 +351,19 @@
 
   const rawSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
-    const verdict = evaluatePayload(body, this._saare_url);
-    if (verdict) {
-      window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
-      if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
-        throw new Error(`[SAARE JUDGE] Acción rechazada por política corporativa o regulatoria.`);
+    try {
+      const verdict = evaluatePayload(body, this._saare_url);
+      if (verdict) {
+        window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
+        if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
+          throw new Error(`[SAARE JUDGE] Acción rechazada por política corporativa o regulatoria.`);
+        }
       }
+    } catch (err) {
+      if (err.message && err.message.includes("[SAARE JUDGE]")) {
+        throw err;
+      }
+      console.error("[SAARE XHR Error]:", err);
     }
     return rawSend.apply(this, arguments);
   };
@@ -371,6 +378,11 @@
       url = resource;
     } else if (resource instanceof Request) {
       url = resource.url;
+      try {
+        // Clonamos el request para poder leer el body sin afectar la ejecución original
+        const clonedReq = resource.clone();
+        bodyToEvaluate = await clonedReq.text();
+      } catch {}
     } else if (resource && resource.url) {
       url = resource.url;
     }
@@ -380,26 +392,30 @@
     }
 
     if (bodyToEvaluate) {
-      const verdict = evaluatePayload(bodyToEvaluate, url);
-      if (verdict) {
-        window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
-        
-        if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
-          return new Response(JSON.stringify({
-            verdict: "DENY",
-            decision: "DENY",
-            enforcement: { action: "BLOCK" },
-            error: "SAARE Judge: Bloqueo Ex-Ante en Runtime",
-            verdictId: verdict.verdictId,
-            policy: verdict.policy,
-            reason: verdict.reason,
-            evidence_id: verdict.evidence_id,
-            crypto_seal: verdict.cryptoSeal
-          }), {
-            status: 403,
-            headers: { "Content-Type": "application/json" }
-          });
+      try {
+        const verdict = evaluatePayload(bodyToEvaluate, url);
+        if (verdict) {
+          window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
+          
+          if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
+            return new Response(JSON.stringify({
+              verdict: "DENY",
+              decision: "DENY",
+              enforcement: { action: "BLOCK" },
+              error: "SAARE Judge: Bloqueo Ex-Ante en Runtime",
+              verdictId: verdict.verdictId,
+              policy: verdict.policy,
+              reason: verdict.reason,
+              evidence_id: verdict.evidence_id,
+              crypto_seal: verdict.cryptoSeal
+            }), {
+              status: 403,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
         }
+      } catch (err) {
+        console.error("[SAARE Fetch Error]:", err);
       }
     }
     

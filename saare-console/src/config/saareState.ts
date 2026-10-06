@@ -5,7 +5,8 @@ const isLocal = typeof window !== 'undefined' && (
 );
 
 export const SAARE_CONFIG = {
-  WORKER_URL: isLocal ? "http://127.0.0.1:8787/api/v1" : "https://api.saare.es/api/v1",
+  API_HOST: isLocal ? 'http://127.0.0.1:3001' : 'https://api.saare.es',
+  WORKER_URL: isLocal ? "http://127.0.0.1:3001/api/v1" : "https://api.saare.es/api/v1",
   DEFAULT_TENANT: "ENTERPRISE",
   DEFAULT_ROLE: "CISO_ADMIN",
   TELEMETRY_INTERVAL_MS: 3000,
@@ -14,10 +15,7 @@ export const SAARE_CONFIG = {
   SPEC_VERSION: "v8.1 SRP"
 };
 
-// Modos de Vista Comercial y Perfiles de Consola
 export type ViewMode = 'EXECUTIVE' | 'GRC_AUDIT' | 'CYBER_RESILIENCE';
-
-// Taxonomía Probatoria Canónica S.A.A.R.E.
 export type ClaimLevel = 'DECLARED' | 'IMPLEMENTED' | 'TESTED' | 'VERIFIED' | 'CERTIFIED';
 
 export interface ProofBundle {

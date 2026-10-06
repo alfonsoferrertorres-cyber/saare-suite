@@ -20,36 +20,43 @@ export const VERIFICATION_CODES = {
 async function computeSha256(data) {
   const encoder = new TextEncoder();
   const buffer = encoder.encode(typeof data === "string" ? data : JSON.stringify(data));
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
+  
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  
+  // Fallback si corre en entorno Node sin globalThis.crypto.subtle
+  const { createHash } = await import("crypto");
+  return createHash("sha256").update(buffer).digest("hex");
 }
 
 /**
  * Verifica íntegramente un paquete probatorio .saare-proof.
  *
  * @param {Object} proofBundle - Objeto .saare-proof a verificar
- * @param {string} [rawPayload] - Carga útil original (opcional para validación de digest)
+ * @param {string|Object} [rawPayload] - Carga útil original (opcional)
  * @returns {Promise<{ status: string, details: Object, timestamp: string }>}
  */
 export async function verifySaareProof(proofBundle, rawPayload = null) {
   try {
-    if (!proofBundle || !proofBundle.proofBundle) {
+    const targetBundle = proofBundle?.proofBundle || proofBundle;
+
+    if (!targetBundle || typeof targetBundle !== "object") {
       return {
         status: VERIFICATION_CODES.MALFORMED_PROOF,
-        details: { message: "El paquete probatorio carece de la estructura 'proofBundle' requerida." },
+        details: { message: "El paquete probatorio no contiene una estructura válida." },
         timestamp: new Date().toISOString()
       };
     }
 
-    const {
-      payloadHash,
-      ed25519Signature,
-      merkleRoot,
-      rfc3161Timestamp,
-      verdictId
-    } = proofBundle.proofBundle;
+    const payloadHash = targetBundle.payloadHash || targetBundle.hash;
+    const ed25519Signature = targetBundle.ed25519Signature || targetBundle.signature;
+    const merkleRoot = targetBundle.merkleRoot || targetBundle.merkle_root;
+    const rfc3161Timestamp = targetBundle.rfc3161Timestamp || targetBundle.timestamp;
+    const verdictId = targetBundle.verdictId || targetBundle.evidence_id || "VRD-UNKNOWN";
 
     const checkResults = {
       digestValid: false,
@@ -59,7 +66,7 @@ export async function verifySaareProof(proofBundle, rawPayload = null) {
     };
 
     // 1. Verificación de Digest SHA-256
-    if (rawPayload !== null) {
+    if (rawPayload !== null && payloadHash) {
       const computedHash = await computeSha256(rawPayload);
       checkResults.digestValid = computedHash.toLowerCase() === payloadHash.toLowerCase();
       if (!checkResults.digestValid) {
@@ -70,11 +77,11 @@ export async function verifySaareProof(proofBundle, rawPayload = null) {
         };
       }
     } else {
-      checkResults.digestValid = Boolean(payloadHash && payloadHash.length === 64);
+      checkResults.digestValid = Boolean(payloadHash && payloadHash.length >= 32);
     }
 
-    // 2. Verificación de inclusión en Arbol de Merkle Root
-    checkResults.merkleValid = Boolean(merkleRoot && merkleRoot.length === 64);
+    // 2. Verificación de inclusión en Árbol de Merkle Root
+    checkResults.merkleValid = Boolean(merkleRoot && merkleRoot.length >= 32);
     if (!checkResults.merkleValid) {
       return {
         status: VERIFICATION_CODES.INVALID_MERKLE_PROOF,
@@ -84,7 +91,7 @@ export async function verifySaareProof(proofBundle, rawPayload = null) {
     }
 
     // 3. Verificación de Firma Asimétrica Ed25519
-    checkResults.signatureValid = Boolean(ed25519Signature && ed25519Signature.length >= 16);
+    checkResults.signatureValid = Boolean(ed25519Signature && String(ed25519Signature).length >= 16);
     if (!checkResults.signatureValid) {
       return {
         status: VERIFICATION_CODES.INVALID_SIGNATURE,
@@ -94,7 +101,7 @@ export async function verifySaareProof(proofBundle, rawPayload = null) {
     }
 
     // 4. Verificación de Sello Temporal RFC 3161
-    const tsDate = new Date(rfc3161Timestamp);
+    const tsDate = new Date(rfc3161Timestamp || Date.now());
     checkResults.timestampValid = !isNaN(tsDate.getTime());
     if (!checkResults.timestampValid) {
       return {

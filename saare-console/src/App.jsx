@@ -11,6 +11,7 @@ import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
+import { apiService } from './services/apiService';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
 
 import cabeceraImg from './assets/cabecera.png';
@@ -129,11 +130,16 @@ export default function App() {
   }, []);
 
   /**
-   * Mapeo unificado y robusto para Bóveda D1 y KV
+   * Mapeo unificado, tolerante y robusto para Bóveda D1, KV y respuestas de red
    */
   const mapEvidences = useCallback((remoteEvidences) => {
-    if (!Array.isArray(remoteEvidences)) return [];
-    return remoteEvidences.map((item, idx) => {
+    const list = Array.isArray(remoteEvidences) 
+      ? remoteEvidences 
+      : (remoteEvidences?.evidences || remoteEvidences?.runs || remoteEvidences?.data || []);
+
+    if (!Array.isArray(list)) return [];
+
+    return list.map((item, idx) => {
       if (!item) return null;
       const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
       let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || '';
@@ -148,7 +154,6 @@ export default function App() {
       const payloadHash = item.merkle_root || item.merkleRoot || item.proofBundle?.payloadHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
       const rawTime = item.timestamp || item.created_at || new Date().toISOString();
 
-      // Detección automática robusta del tipo de categoría para el filtrado UI
       let inferredType = item.type;
       const catUpper = (item.cat || item.category || '').toUpperCase();
       const promptUpper = String(cleanPrompt).toUpperCase();
@@ -197,23 +202,19 @@ export default function App() {
 
   const fetchTelemetryOnce = useCallback(async () => {
     try {
-      const res = await saareFetch(`/runs?t=${Date.now()}`, { method: 'GET' });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        const remoteEvidences = data.evidences || data.runs || [];
-        if (data.vaultSource) setVaultSource(data.vaultSource);
-        setEvidences(mapEvidences(remoteEvidences));
+      // Uso de apiService para mantener consistencia con el backend
+      const remoteEvidences = await apiService.getTelemetryTraces(100);
+      const mapped = mapEvidences(remoteEvidences);
+      setEvidences(mapped);
+      
+      const statusData = await apiService.getNodeStatus();
+      if (statusData && statusData.vaultSource) {
+        setVaultSource(statusData.vaultSource);
       }
     } catch (e) {
       console.error("Error al obtener telemetría inicial:", e);
     }
-  }, [handleLogout, mapEvidences]);
+  }, [mapEvidences]);
 
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
@@ -226,11 +227,8 @@ export default function App() {
 
     const fetchCustomRules = async () => {
       try {
-        const res = await saareFetch('/custom-rules', { method: 'GET' });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.rules)) setCustomFilters(data.rules);
-        }
+        const rules = await apiService.getCustomRules();
+        if (Array.isArray(rules)) setCustomFilters(rules);
       } catch (e) {
         console.error("Error al obtener reglas personalizadas:", e);
       }
@@ -252,8 +250,8 @@ export default function App() {
       es.onmessage = (event) => {
         try {
           const streamData = JSON.parse(event.data);
-          if (streamData.evidences || streamData.runs) {
-            setEvidences(mapEvidences(streamData.evidences || streamData.runs));
+          if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
+            setEvidences(mapEvidences(streamData));
           } else if (streamData.status === 'RUNTIME_ACTIVE') {
             fetchTelemetryOnce();
           }
@@ -280,11 +278,9 @@ export default function App() {
   const filteredEvidences = evidences.filter(item => {
     if (!item) return false;
     
-    // Filtro por pestañas de categoría con normalización estricta
     if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
     if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
-    // Filtros por rango de fechas
     if (startDateFilter) {
       const itemDate = new Date(item.rawTimestamp);
       const startDate = new Date(startDateFilter);
@@ -303,7 +299,6 @@ export default function App() {
     return true;
   });
 
-  // Métricas dinámicas calculadas sobre el total de evidencias reales
   const totalInspecciones = evidences.length;
   const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
@@ -333,17 +328,14 @@ export default function App() {
     }
 
     try {
-      await saareFetch('/integrations/siem', {
-        method: 'POST',
-        body: JSON.stringify({
-          evidenceId: ev.id,
-          tenant: ev.tenant,
-          operator: ev.user,
-          blockedPayload: ev.prompt,
-          verdict: ev.decision,
-          merkleRoot: ev.merkleRoot,
-          policyEngineRule: ev.cat
-        })
+      await apiService.exportToSiem({
+        evidenceId: ev.id,
+        tenant: ev.tenant,
+        operator: ev.user,
+        blockedPayload: ev.prompt,
+        verdict: ev.decision,
+        merkleRoot: ev.merkleRoot,
+        policyEngineRule: ev.cat
       });
       triggerGovernance(`Evento SIEM notificado para ${ev.id}.`);
     } catch (e) {
@@ -405,11 +397,7 @@ export default function App() {
 
   const handleVerifyLicense = async () => {
     try {
-      const res = await saareFetch('/auth/verifylicense', {
-        method: 'POST',
-        body: JSON.stringify({ tenant: tenantId, user: userEmail, scope: 'all' })
-      });
-      const data = await res.json();
+      const data = await apiService.verifyLicense({ tenant: tenantId, user: userEmail, scope: 'all' });
       if (data.valid || data.success) {
         triggerGovernance("Licencia Enterprise S.A.A.R.E. verificada en Bóveda Central.");
       } else {
@@ -439,21 +427,15 @@ export default function App() {
     const t0 = performance.now();
 
     try {
-      const res = await saareFetch('/intercept', {
-        method: 'POST',
-        body: JSON.stringify({
-          prompt: testPrompt,
-          user: userEmail,
-          tenant: tenantId,
-          evidence_id: auditedEvidenceId || undefined
-        })
+      const data = await apiService.interceptPrompt({
+        prompt: testPrompt,
+        user: userEmail,
+        tenant: tenantId,
+        evidence_id: auditedEvidenceId || undefined
       });
 
       const t1 = performance.now();
       const latencyMs = (t1 - t0 + 0.85).toFixed(2) + " ms";
-
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
 
       let clean = testPrompt
         .replace(/(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/gi, "[REDACTED_DNI]")
@@ -474,7 +456,7 @@ export default function App() {
         }
       });
 
-      const isDeny = res.status === 403 || data.decision === 'DENY' || clean !== testPrompt;
+      const isDeny = data.decision === 'DENY' || clean !== testPrompt;
       const evidenceId = data.evidence_id || auditedEvidenceId || `EV-L7-${Math.floor(Math.random() * 899999 + 100000)}`;
 
       const evalResult = {
@@ -515,11 +497,7 @@ export default function App() {
     setSimulationRunning(true);
     triggerGovernance(`Ejecutando escenario de resiliencia: ${scenario}...`);
     try {
-      const res = await saareFetch('/resilience/check', {
-        method: 'POST',
-        body: JSON.stringify({ scenario, tenantId })
-      });
-      const data = await res.json();
+      const data = await apiService.runResilienceCheck({ scenario, tenantId });
       setSimulationResult(data);
       triggerGovernance(`Simulación ${scenario} finalizada con veredicto PASS.`);
     } catch (err) {
@@ -533,16 +511,14 @@ export default function App() {
     const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
 
     try {
-      const syncRes = await saareFetch('/vault/sync', { method: 'GET' });
-      if (syncRes.ok) {
-        const syncData = await syncRes.json();
-        if (syncData.source) setVaultSource(syncData.source);
+      const syncData = await apiService.syncVault();
+      if (syncData && syncData.source) {
+        setVaultSource(syncData.source);
       }
 
-      const verifyRes = await saareFetch(`/verify/${encodeURIComponent(hashToVerify)}`, { method: 'GET' });
-      const verifyData = await verifyRes.json();
+      const verifyData = await apiService.verifyEvidence(hashToVerify);
 
-      if (verifyRes.ok && (verifyData.verified || verifyData.status === 'VERIFIED')) {
+      if (verifyData && (verifyData.verified || verifyData.status === 'VERIFIED')) {
         setSelectedJson({
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
@@ -575,7 +551,7 @@ export default function App() {
         verdict: "ERROR_VERIFICATION",
         details: "No se pudo establecer conexión con el nodo de auditoría o el hash es inválido."
       });
-      triggerGovernance("⚠️️ Error de conexión al consultar el nodo de auditoría.");
+      triggerGovernance("⚠ Error de conexión al consultar el nodo de auditoría.");
     }
   };
 
@@ -601,10 +577,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/custom-rules', {
-        method: 'POST',
-        body: JSON.stringify({ rules: updated })
-      });
+      await apiService.saveCustomRules(updated);
       triggerGovernance(`Filtro "${newRuleName}" activado en el Policy Engine.`);
     } catch (e) {
       triggerGovernance("Error al sincronizar regla personalizada.");
@@ -625,10 +598,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/custom-rules', {
-        method: 'POST',
-        body: JSON.stringify({ rules: updated })
-      });
+      await apiService.saveCustomRules(updated);
       triggerGovernance("Filtro eliminado del perfil del Tenant.");
     } catch (e) {
       triggerGovernance("Error al revocar filtro.");
@@ -643,8 +613,7 @@ export default function App() {
 
     try {
       triggerGovernance("Iniciando verificación de resiliencia ex-ante...");
-      const res = await saareFetch('/resilience/check', { method: 'POST' });
-      const data = await res.json();
+      const data = await apiService.runResilienceCheck({ scenario: 'FULL_CHECK', tenantId });
       setResilienceReport(data);
       triggerGovernance(`Audit Invariantes: ${data.verdict || 'COMPLETADO'}`);
     } catch (err) {
