@@ -1,64 +1,43 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const inputUser = document.getElementById("input-user");
-  const inputToken = document.getElementById("input-token");
-  const dispTenant = document.getElementById("disp-tenant");
-  const btnSave = document.getElementById("btn-save-creds");
+document.addEventListener('DOMContentLoaded', () => {
+  function updateDisplay(user, tenant, token) {
+    const finalUser = user || 'auditor@tenant.local';
+    const finalTenant = tenant || (finalUser.includes('@') ? finalUser.split('@')[1].split('.')[0].toUpperCase() : 'ORGANIZACION_AUDITADA');
+    
+    const dispUser = document.getElementById('disp-user');
+    const dispTenant = document.getElementById('disp-tenant');
+    const btnLink = document.getElementById('btn-link');
 
-  const viewForm = document.getElementById("view-form");
-  const viewVerified = document.getElementById("view-verified");
-  const verifiedUser = document.getElementById("verified-user");
-  const verifiedTenant = document.getElementById("verified-tenant");
-  const btnReconfig = document.getElementById("btn-reconfig");
+    if (dispUser) dispUser.innerText = finalUser;
+    if (dispTenant) dispTenant.innerText = finalTenant;
 
-  function renderState() {
-    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (res) => {
-        const tenant = res?.saare_tenant_domain || "ENTERPRISE";
-        const email = res?.saare_user_email || "";
-        const token = res?.saare_token || "";
-
-        dispTenant.innerText = tenant;
-
-        if (email && token) {
-          // Si ya hay datos, mostrar vista de Credenciales Verificadas / Auditando
-          verifiedTenant.innerText = tenant;
-          verifiedUser.innerText = email;
-          viewForm.style.display = "none";
-          viewVerified.style.display = "block";
-        } else {
-          // Si faltan datos, mostrar el formulario de configuración
-          viewForm.style.display = "block";
-          viewVerified.style.display = "none";
-        }
-      });
+    if (token && btnLink) {
+      btnLink.href = `https://console.saare.es/?user=${encodeURIComponent(finalUser)}&token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(finalTenant)}&status=ACTIVE`;
     }
   }
 
-  renderState();
-
-  if (btnSave) {
-    btnSave.addEventListener("click", () => {
-      const email = inputUser.value.trim().toLowerCase();
-      const token = inputToken.value.trim();
-
-      if (!email || !token) {
-        alert("Por favor introduce un email y token válidos.");
-        return;
-      }
-
-      chrome.storage.local.set({
-        saare_user_email: email,
-        saare_token: token
-      }, () => {
-        renderState();
+  function fallbackLocal() {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get(['saare_user_email', 'saare_tenant_domain', 'saare_bootstrap_token', 'saareUser', 'saareTenant'], (res) => {
+        const user = res?.saare_user_email || res?.saareUser;
+        const tenant = res?.saare_tenant_domain || res?.saareTenant;
+        const token = res?.saare_bootstrap_token;
+        updateDisplay(user, tenant, token);
       });
-    });
+    } else {
+      updateDisplay(null, null, null);
+    }
   }
 
-  if (btnReconfig) {
-    btnReconfig.addEventListener("click", () => {
-      viewVerified.style.display = "none";
-      viewForm.style.display = "block";
+  // 1. Lectura de credenciales gestionadas por MDM/GPO empresarial
+  if (typeof chrome !== "undefined" && chrome.storage?.managed) {
+    chrome.storage.managed.get(['saare_user_email', 'saare_tenant_domain', 'saare_bootstrap_token'], (managed) => {
+      if (chrome.runtime.lastError || !managed?.saare_user_email) {
+        fallbackLocal();
+      } else {
+        updateDisplay(managed.saare_user_email, managed.saare_tenant_domain, managed.saare_bootstrap_token);
+      }
     });
+  } else {
+    fallbackLocal();
   }
 });

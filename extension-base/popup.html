@@ -108,49 +108,10 @@
     <div class="val" style="color: #ca8a04; margin: 0;">Ephemeral Zero-Disk Persistence</div>
   </div>
 
-  <a href="https://console.saare.es" target="_blank" class="btn-console" id="btn-link">
+  <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" class="btn-console" id="btn-link">
     Abrir SAARE GRC Console ↗
   </a>
 
-  <script>
-    function updateDisplay(user, tenant, token) {
-      const finalUser = user || 'auditor@tenant.local';
-      const finalTenant = tenant || (finalUser.includes('@') ? finalUser.split('@')[1].split('.')[0].toUpperCase() : 'ORGANIZACION_AUDITADA');
-      
-      document.getElementById('disp-user').innerText = finalUser;
-      document.getElementById('disp-tenant').innerText = finalTenant;
-
-      if (token) {
-        document.getElementById('btn-link').href = `https://console.saare.es/?user=${encodeURIComponent(finalUser)}&token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(finalTenant)}&status=ACTIVE`;
-      }
-    }
-
-    // 1. Intento de lectura de credenciales gestionadas por MDM/GPO
-    if (typeof chrome !== "undefined" && chrome.storage?.managed) {
-      chrome.storage.managed.get(['saare_user_email', 'saare_tenant_domain', 'saare_bootstrap_token'], (managed) => {
-        if (managed?.saare_user_email) {
-          updateDisplay(managed.saare_user_email, managed.saare_tenant_domain, managed.saare_bootstrap_token);
-        } else {
-          fallbackLocal();
-        }
-      });
-    } else {
-      fallbackLocal();
-    }
-
-    // 2. Fallback a almacenamiento local de la extensión
-    function fallbackLocal() {
-      if (typeof chrome !== "undefined" && chrome.storage?.local) {
-        chrome.storage.local.get(['saare_user_email', 'saare_tenant_domain', 'saare_bootstrap_token', 'saareUser', 'saareTenant'], (res) => {
-          const user = res.saare_user_email || res.saareUser;
-          const tenant = res.saare_tenant_domain || res.saareTenant;
-          const token = res.saare_bootstrap_token;
-          updateDisplay(user, tenant, token);
-        });
-      } else {
-        updateDisplay(null, null, null);
-      }
-    }
-  </script>
+  <script src="popup.js"></script>
 </body>
 </html>
