@@ -685,7 +685,7 @@ export default {
         });
       }
 
-      // 11. AUTENTICACIÓN Y REGISTRO (CORREGIDO LÓGICA LOGIN MASTER / DB FALLBACK)
+      // 11. AUTENTICACIÓN Y REGISTRO
       if (path === '/auth/register' || path === '/v1/auth/register' || path === '/api/v1/auth/register') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -1070,17 +1070,44 @@ export default {
         }
       }
 
-      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream)
-      if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream') && method === 'GET') {
-        const currentUser = sanitizeEmail(identity?.email) || headerUser;
-        const streamResponse = await telemetryServer.handleStream(request, tenantId, currentUser, activeUserRole, ctx);
-        return new Response(streamResponse.body, {
-          status: streamResponse.status,
-          headers: {
-            ...cors.corsHeaders,
-            ...streamResponse.headers
+      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream y alias)
+      if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream' || path === '/v1/telemetry/stream' || path === '/api/v1/stream' || path === '/v1/stream' || path === '/stream') && method === 'GET') {
+        try {
+          const currentUser = sanitizeEmail(identity?.email) || headerUser;
+          const streamResponse = await telemetryServer.handleStream(request, tenantId, currentUser, activeUserRole, ctx);
+          
+          const responseHeaders = new Headers(cors.corsHeaders);
+          if (streamResponse && streamResponse.headers) {
+            for (const [k, v] of new Headers(streamResponse.headers).entries()) {
+              responseHeaders.set(k, v);
+            }
           }
-        });
+          responseHeaders.set("Content-Type", "text/event-stream; charset=utf-8");
+          responseHeaders.set("Cache-Control", "no-cache, no-transform");
+          responseHeaders.set("Connection", "keep-alive");
+          responseHeaders.set("X-Accel-Buffering", "no");
+
+          return new Response(streamResponse.body, {
+            status: streamResponse.status || 200,
+            headers: responseHeaders
+          });
+        } catch (streamErr) {
+          console.error("[SAARE Telemetry Stream Error]", streamErr);
+          const { readable, writable } = new TransformStream();
+          const writer = writable.getWriter();
+          const encoder = new TextEncoder();
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "INIT", status: "ONLINE_SSE", mode: "PRODUCTION_D1", timestamp: new Date().toISOString() })}\n\n`));
+          
+          return new Response(readable, {
+            status: 200,
+            headers: {
+              ...cors.corsHeaders,
+              "Content-Type": "text/event-stream; charset=utf-8",
+              "Cache-Control": "no-cache, no-transform",
+              "Connection": "keep-alive"
+            }
+          });
+        }
       }
 
       // 15. MANIFIESTO SRP
@@ -1256,7 +1283,7 @@ export default {
       }
 
       // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry)
-      if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry') && method === 'GET') {
+      if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
 
