@@ -1,4 +1,4 @@
-/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Full Dashboard Rules Integrated) */
+/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Full Interception Active) */
 (function() {
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -74,7 +74,8 @@
         u.includes("/collect?") || 
         u.includes("gen_204") || 
         u.includes("/upload/") ||
-        u.includes("saare-api")
+        u.includes("saare-api") ||
+        u.includes("api.saare.es")
       ) {
         return true;
       }
@@ -198,7 +199,7 @@
     const settings = getSettings();
     const identity = getIdentityContext();
     const str = parseBody(rawBody);
-    
+
     if (!str || isIgnoredRequest(url, str)) return null;
 
     const cleanPrompt = extractCleanPrompt(str);
@@ -235,7 +236,9 @@
         reason: "El perfil de privilegios mínimos deniega mutaciones destructivas o comandos directos sin permiso.",
         cleanPrompt: cleanPrompt,
         sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-TOOL-${runRandomId}`
+        evidence_id: `EV-TOOL-${runRandomId}`,
+        category: "SEGURIDAD_SISTEMA",
+        norma: "SGP 1.0 Least Privilege"
       };
     }
 
@@ -255,7 +258,9 @@
         reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no justificado.`,
         cleanPrompt: sanitize(cleanPrompt),
         sanitizedPrompt: sanitize(cleanPrompt),
-        evidence_id: `EV-GRANT-${runRandomId}`
+        evidence_id: `EV-GRANT-${runRandomId}`,
+        category: "FINANCIERO_SUBVENCIONES",
+        norma: "Orden HFP/1030/2021"
       };
     }
 
@@ -271,4 +276,165 @@
         policy: { id: "POL-HONOR-SYNTHETIC-03", version: "2.0.0" },
         risk_level: "CRITICAL",
         rules_matched: ["RULE_SYNTHETIC_IDENTITY_NO_CONSENT", "RULE_NO_UNSUPPORTED_CLAIMS"],
-        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso
+        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: cleanPrompt,
+        evidence_id: `EV-SYNTH-${runRandomId}`,
+        category: "DERECHOS_FUNDAMENTALES",
+        norma: "LO 1/1982 & EU AI Act"
+      };
+    }
+
+    // 04. SALUD & HISTORIA CLÍNICA (RGPD)
+    if (settings.sanidad_historia_clinica && DLP.health.test(cleanPrompt)) {
+      return {
+        ...baseVerdict,
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
+        executionPermit: null,
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy: { id: "POL-HEALTH-RGPD-09", version: "1.0.0" },
+        risk_level: "CRITICAL",
+        rules_matched: ["RULE_HEALTH_PII_EXPOSURE"],
+        reason: "Bloqueo RGPD Art. 9: Exposición no autorizada de datos de salud y categoría especial de paciente.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: sanitize(cleanPrompt),
+        evidence_id: `EV-HEALTH-${runRandomId}`,
+        category: "PRIVACIDAD_SALUD",
+        norma: "RGPD Art. 9"
+      };
+    }
+
+    // 05. JAILBREAK & OVERRIDE DE INSTRUCCIONES
+    if (DLP.jailbreak.test(cleanPrompt)) {
+      return {
+        ...baseVerdict,
+        decision: "DENY",
+        enforcement: { action: "BLOCK" },
+        executionPermit: null,
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy: { id: "POL-SEC-JAILBREAK-01", version: "3.0.0" },
+        risk_level: "HIGH",
+        rules_matched: ["RULE_PROMPT_INJECTION_DETECTED"],
+        reason: "Bloqueo de Seguridad: Intento de bypass de salvaguardas o inyección de instrucciones no autorizadas.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: cleanPrompt,
+        evidence_id: `EV-JAIL-${runRandomId}`,
+        category: "SEGURIDAD_LLM",
+        norma: "OWASP LLM01"
+      };
+    }
+
+    // 06. REDACCIÓN Y SANITIZACIÓN DLP (DNI, IBAN, TARJETAS)
+    const hasDni = DLP.dni.test(cleanPrompt);
+    const hasIban = DLP.iban.test(cleanPrompt);
+    const hasCard = DLP.card.test(cleanPrompt);
+
+    if (hasDni || hasIban || hasCard) {
+      const sanitizedText = sanitize(cleanPrompt);
+      return {
+        ...baseVerdict,
+        decision: "ALLOW",
+        enforcement: { action: "REDACT_AND_PASS" },
+        executionPermit: "PERMITTED_WITH_REDACTION",
+        validity_state: "VALID",
+        system_id: "L7-AGENT-SENSOR",
+        policy: { id: "POL-DLP-FINANCIAL-02", version: "1.2.0" },
+        risk_level: "MEDIUM",
+        rules_matched: [
+          hasDni ? "RULE_REDACT_DNI" : null,
+          hasIban ? "RULE_REDACT_IBAN" : null,
+          hasCard ? "RULE_REDACT_CARD" : null
+        ].filter(Boolean),
+        reason: "Sanitización automática L7: Datos de carácter personal (PII) anonimizados ex-ante en memoria volátil.",
+        cleanPrompt: cleanPrompt,
+        sanitizedPrompt: sanitizedText,
+        evidence_id: `EV-DLP-${runRandomId}`,
+        category: "PRIVACIDAD_DLP",
+        norma: "RGPD & PCI-DSS"
+      };
+    }
+
+    // 07. TRÁFICO PERMITIDO Y CONFORME
+    return {
+      ...baseVerdict,
+      decision: "ALLOW",
+      enforcement: { action: "PASS" },
+      executionPermit: "PERMITTED",
+      validity_state: "VALID",
+      system_id: "L7-AGENT-SENSOR",
+      policy: { id: "POL-DEFAULT-PASS", version: "1.0.0" },
+      risk_level: "LOW",
+      rules_matched: ["RULE_PASS_CONFORME"],
+      reason: "Tráfico verificado en memoria volátil sin violaciones normativas.",
+      cleanPrompt: cleanPrompt,
+      sanitizedPrompt: cleanPrompt,
+      evidence_id: `EV-PASS-${runRandomId}`,
+      category: "AUDITORIA_CONFORME",
+      norma: "EU AI Act"
+    };
+  }
+
+  function emitVerdictToBridge(verdict) {
+    if (!verdict) return;
+    window.postMessage({
+      type: "SAARE_VERDICT_EVENT",
+      payload: verdict
+    }, "*");
+  }
+
+  // MONKEY PATCH DE WINDOW.FETCH PARA INTERCEPCIÓN EN TIEMPO REAL
+  const originalFetch = window.fetch;
+  window.fetch = async function(resource, config) {
+    const url = typeof resource === "string" ? resource : (resource?.url || "");
+    const body = config?.body || null;
+
+    if (body) {
+      const verdict = evaluatePayload(body, url);
+      if (verdict) {
+        emitVerdictToBridge(verdict);
+
+        if (verdict.decision === "DENY") {
+          console.warn("[SAARE L7 Guard] Solicitud bloqueada ex-ante:", verdict.reason);
+          throw new Error(`[SAARE_L7_BLOCK] ${verdict.reason}`);
+        }
+
+        if (verdict.sanitizedPrompt && verdict.sanitizedPrompt !== verdict.cleanPrompt) {
+          if (typeof config.body === "string") {
+            config.body = config.body.replace(verdict.cleanPrompt, verdict.sanitizedPrompt);
+          }
+        }
+      }
+    }
+
+    return originalFetch.apply(this, arguments);
+  };
+
+  // MONKEY PATCH DE XMLHTTPREQUEST PARA INTERCEPCIÓN COMPATIBLE
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+
+  XMLHttpRequest.prototype.open = function(method, url) {
+    this._saare_url = url;
+    return originalOpen.apply(this, arguments);
+  };
+
+  XMLHttpRequest.prototype.send = function(body) {
+    if (body) {
+      const verdict = evaluatePayload(body, this._saare_url);
+      if (verdict) {
+        emitVerdictToBridge(verdict);
+
+        if (verdict.decision === "DENY") {
+          console.warn("[SAARE L7 Guard] XHR bloqueado ex-ante:", verdict.reason);
+          return;
+        }
+      }
+    }
+    return originalSend.apply(this, arguments);
+  };
+
+  console.log("[SAARE L7] Inyección de interceptor perimetral de red completada con éxito.");
+})();
