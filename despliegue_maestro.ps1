@@ -17,7 +17,6 @@ pnpm install --no-frozen-lockfile
 # 2. Empaquetado del Sensor L7 (Extension Base) para Console y Suite (Landing)
 Write-Host "==> [2/7] Empaquetando Sensor L7..." -ForegroundColor Cyan
 if (Test-Path "extension-base") {
-    # Definir destinos de carpetas public donde debe residir el ZIP
     $publicTargets = @(
         "saare-console\public",
         "saare-suite\public",
@@ -26,6 +25,7 @@ if (Test-Path "extension-base") {
     )
 
     $zipPath = "extension-base.zip"
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
     Compress-Archive -Path "extension-base\*" -DestinationPath $zipPath -Force
 
     foreach ($target in $publicTargets) {
@@ -42,6 +42,8 @@ if (Test-Path "extension-base") {
 Write-Host "==> [3/7] Ejecutando Puerta de Resiliencia..." -ForegroundColor Cyan
 if (Test-Path "resilienceGate_2.js") { 
     node resilienceGate_2.js 
+} elseif (Test-Path "control-plane\resilienceGate_2.js") {
+    node control-plane\resilienceGate_2.js
 } else {
     Throw "Error: No se encontró resilienceGate_2.js"
 }
@@ -59,8 +61,15 @@ $distTargets = @(
 )
 foreach ($dist in $distTargets) {
     if (Test-Path $dist) {
-        $sourceZip = if (Test-Path "saare-console\public\extension-base.zip") { "saare-console\public\extension-base.zip" } else { "apps\saare-console\public\extension-base.zip" }
-        if (Test-Path $sourceZip) {
+        $sourceZip = if (Test-Path "saare-console\public\extension-base.zip") { 
+            "saare-console\public\extension-base.zip" 
+        } elseif (Test-Path "apps\saare-console\public\extension-base.zip") { 
+            "apps\saare-console\public\extension-base.zip" 
+        } else { 
+            $null 
+        }
+        
+        if ($sourceZip -and (Test-Path $sourceZip)) {
             Copy-Item $sourceZip -Destination "$dist\extension-base.zip" -Force
         }
     }
@@ -87,9 +96,12 @@ if (Test-Path $suiteDist) {
 Write-Host "==> [6/7] Desplegando Control Plane Worker a Producción..." -ForegroundColor Cyan
 $controlPlanePath = if (Test-Path "control-plane") { "control-plane" } else { "apps/control-plane" }
 if (Test-Path $controlPlanePath) {
-    Set-Location $controlPlanePath
-    npx wrangler deploy
-    Set-Location $PSScriptRoot
+    Push-Location $controlPlanePath
+    try {
+        npx wrangler deploy
+    } finally {
+        Pop-Location
+    }
 }
 
 # 7. Sincronización con el repositorio de GitHub
@@ -97,9 +109,12 @@ Write-Host "==> [7/7] Sincronizando repositorio con GitHub..." -ForegroundColor 
 git add .
 $gitStatus = git status --porcelain
 if ($gitStatus) {
+    $currentBranch = (git branch --show-current).Trim()
+    if (-not $currentBranch) { $currentBranch = "main" }
+    
     git commit -m "chore(release): despliegue maestro verificado de produccion v8.4 (console + suite landing)"
-    git push origin main
-    Write-Host "Cambios subidos correctamente a GitHub." -ForegroundColor Green
+    git push origin HEAD
+    Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
     Write-Host "No hay cambios pendientes en Git." -ForegroundColor Yellow
 }
