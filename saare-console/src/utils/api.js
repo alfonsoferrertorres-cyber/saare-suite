@@ -1,40 +1,43 @@
-// saare-console/src/utils/api.js — Cliente HTTP para saare-console (SGP 1.0)
+// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
 
 const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 
-// Saneamiento robusto de URL base para evitar duplicación de rutas
+// Normalización estricta de la URL base configurada en entorno
 const cleanEnvUrl = rawEnvUrl 
   ? rawEnvUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
   : null;
 
-const isLocal = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const isLocal = typeof window !== "undefined" && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1'
+);
 
-// Corrección: Puerto 3001 alineado con control-plane-local (Express) y fallback a https://api.saare.es
+// Puerto 3001 alineado con el Control Plane / Server local y fallback producción
 export const API_HOST = isLocal ? 'http://127.0.0.1:3001' : (cleanEnvUrl || 'https://api.saare.es');
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
-  return typeof url === 'string' && url.startsWith(API_HOST);
+  return typeof url === 'string' && (url.startsWith(API_HOST) || url.startsWith('/'));
 }
 
 /**
- * Cliente HTTP universal para la Consola GRC de S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
- * @param {string} endpoint - Ruta del endpoint o URL absoluta
- * @param {RequestInit} options - Opciones nativas de fetch
+ * Cliente HTTP unificado para la Consola GRC de S.A.A.R.E.
+ * @param {string} endpoint - Ruta relativa o URL absoluta
+ * @param {RequestInit} options - Opciones de fetch
  * @returns {Promise<Response>}
  */
 export async function saareFetch(endpoint, options = {}) {
   const isAbsolute = typeof endpoint === 'string' && (endpoint.startsWith('http://') || endpoint.startsWith('https://'));
   let finalUrl = endpoint;
 
-  // 1. Normalización estricta para erradicar el bug de duplicación (/api/v1/api/v1/)
+  // 1. Normalización anti-duplicación de prefijos (/api/v1)
   if (!isAbsolute) {
-    let relativePath = String(endpoint).replace(/^\/+/, '');
+    let relativePath = String(endpoint || '').replace(/^\/+/, '');
     relativePath = relativePath.replace(/^api\/(v1\/)?/, '');
     finalUrl = `${API_BASE_URL}/${relativePath}`;
   }
 
-  // 2. Extracción de credenciales, rol y contexto desde la sesión unificada
+  // 2. Extracción segura de credenciales y contexto RBAC desde localStorage
   let token = null;
   let currentUser = null;
   let currentTenant = null;
@@ -61,7 +64,7 @@ export async function saareFetch(endpoint, options = {}) {
     }
   }
 
-  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant RBAC
+  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant
   const defaultHeaders = {
     'Accept': 'application/json',
     'x-saare-spec': 'SGP-1.0',
@@ -79,7 +82,7 @@ export async function saareFetch(endpoint, options = {}) {
       headers: defaultHeaders
     });
 
-    // 4. Gestión global de sesión expirada o no autorizada
+    // 4. Limpieza automática de sesión si el token ha expirado
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('saare_auth_token');
       localStorage.removeItem('saare_session_user');
@@ -97,7 +100,7 @@ export async function saareFetch(endpoint, options = {}) {
 }
 
 /**
- * Helpers especializados para simplificar llamadas desde la UI de saare-console
+ * Helpers API con parseo automático de JSON
  */
 export const api = {
   get: async (endpoint, options = {}) => {
@@ -146,3 +149,5 @@ export const api = {
     return res.ok ? res.json() : {};
   }
 };
+
+export default saareFetch;

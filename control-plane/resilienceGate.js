@@ -1,26 +1,23 @@
 // resilienceGate.js - V2.0 Edge-Optimized Adversarial Assurance Gate
-
-const INVARIANTS = {
+const INVARIANTS_TEMPLATE = {
   "INV-001": { desc: "Request REJECTED nunca se convierte en ALLOW por fallo interno", status: "PENDING" },
-  "INV-002": { desc: "idempotency_key concurrente no produce m鷏tiples ejecuciones efectivas", status: "PENDING" },
-  "INV-003": { desc: "Evidencia con payload alterado falla criptogr醘icamente", status: "PENDING" },
-  "INV-004": { desc: "P閞dida del Inspector L7 (Timeout/Crash) provoca FAIL-CLOSED", status: "PENDING" },
+  "INV-002": { desc: "idempotency_key concurrente no produce m煤ltiples ejecuciones efectivas", status: "PENDING" },
+  "INV-003": { desc: "Evidencia con payload alterado falla criptogr谩ficamente", status: "PENDING" },
+  "INV-004": { desc: "P茅rdida del Inspector L7 (Timeout/Crash) provoca FAIL-CLOSED", status: "PENDING" },
   "INV-005": { desc: "Escenario o Tenant inexistente desencadena rechazo por defecto", status: "PENDING" },
-  "INV-006": { desc: "Usuario sin autorizaci髇 no ejecuta operaci髇 protegida (RBAC Estricto)", status: "PENDING" },
-  "INV-007": { desc: "Receipt hist髍ico contin鷄 verific醤dose tras rotaci髇 de claves Ed25519", status: "PENDING" },
-  "INV-008": { desc: "Fallo o latencia de OTel/Telemetr韆 no modifica el veredicto de seguridad", status: "PENDING" },
-  // Nuevos Invariantes Ampliados
+  "INV-006": { desc: "Usuario sin autorizaci贸n no ejecuta operaci贸n protegida (RBAC Estricto)", status: "PENDING" },
+  "INV-007": { desc: "Receipt hist贸rico contin煤a verific谩ndose tras rotaci贸n de claves Ed25519", status: "PENDING" },
+  "INV-008": { desc: "Fallo o latencia de OTel/Telemetr铆a no modifica el veredicto de seguridad", status: "PENDING" },
   "INV-009": { desc: "Exceder el Rate Limit devuelve estado HTTP seguro (429), nunca un 500", status: "PENDING" },
-  "INV-010": { desc: "Comparaci髇 de firmas resiste ataques de tiempo (Timing Attacks)", status: "PENDING" },
+  "INV-010": { desc: "Comparaci贸n de firmas resiste ataques de tiempo (Timing Attacks)", status: "PENDING" },
   "INV-011": { desc: "Aislamiento Multi-Tenant: Tenant A no puede leer estado del Tenant B", status: "PENDING" }
 };
 
-// Utilidad Edge para convertir ArrayBuffer a Hex
 function buf2hex(buffer) {
   return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function testPayloadFuzzing() {
+async function testPayloadFuzzing(invariants) {
   const hostilePayloads = [
     { name: "JSON Truncado", data: "{\"scenario\": \"dora\", \"body\": " },
     { name: "Payload Oversized", data: "X".repeat(6 * 1024 * 1024) },
@@ -31,23 +28,20 @@ async function testPayloadFuzzing() {
   for (const item of hostilePayloads) {
     try {
       if (item.data.length > 5 * 1024 * 1024) throw new Error("Payload too large");
-      const parsed = JSON.parse(item.data);
-      // Validar que la poluci髇 de prototipos no afecta al objeto base
+      JSON.parse(item.data);
       if ({}.admin === true) allSafe = false; 
     } catch (e) {
-      // El fallo controlado es el comportamiento esperado
+      // El fallo controlado en sanitizaci贸n es el comportamiento esperado
     }
   }
-  INVARIANTS["INV-001"].status = allSafe ? "PASS" : "FAIL";
+  invariants["INV-001"].status = allSafe ? "PASS" : "FAIL";
 }
 
-async function testIdempotencyConcurrence() {
+async function testIdempotencyConcurrence(invariants) {
   const executionStore = new Map();
   const idempotencyKey = "key_race_condition_9901";
   
-  // Simulamos concurrencia as韓crona real usando Promesas
   async function processRequest(key) {
-    // Simular latencia de red/DB
     await new Promise(resolve => setTimeout(resolve, Math.random() * 10)); 
     if (executionStore.has(key)) return { status: "IDEMPOTENT_REPLAY" };
     
@@ -60,10 +54,10 @@ async function testIdempotencyConcurrence() {
   const results = await Promise.all(requests);
   
   const effectiveExecutions = results.filter(r => r.status === "EXECUTED").length;
-  INVARIANTS["INV-002"].status = effectiveExecutions === 1 ? "PASS" : "FAIL";
+  invariants["INV-002"].status = effectiveExecutions === 1 ? "PASS" : "FAIL";
 }
 
-async function testCryptoTampering() {
+async function testCryptoTampering(invariants) {
   const encoder = new TextEncoder();
   const canonical = JSON.stringify({ decision: "REJECTED", evidenceId: "ev_990" });
   const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(canonical));
@@ -71,30 +65,29 @@ async function testCryptoTampering() {
   const tamperedCanonical = JSON.stringify({ decision: "VALIDATED", evidenceId: "ev_990" });
   const tamperedHashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(tamperedCanonical));
   
-  INVARIANTS["INV-003"].status = buf2hex(hashBuf) !== buf2hex(tamperedHashBuf) ? "PASS" : "FAIL";
+  invariants["INV-003"].status = buf2hex(hashBuf) !== buf2hex(tamperedHashBuf) ? "PASS" : "FAIL";
 }
 
-async function testL7ProxyFailure() {
-  const l7ProxyResponse = null; // Simula un timeout o ca韉a del servicio
+async function testL7ProxyFailure(invariants) {
+  const l7ProxyResponse = null;
   const verdict = !l7ProxyResponse ? "REJECTED_FAIL_CLOSED" : "ALLOW";
-  INVARIANTS["INV-004"].status = verdict === "REJECTED_FAIL_CLOSED" ? "PASS" : "FAIL";
+  invariants["INV-004"].status = verdict === "REJECTED_FAIL_CLOSED" ? "PASS" : "FAIL";
 }
 
-async function testMissingScenario() {
+async function testMissingScenario(invariants) {
   const registry = new Set(["banca_dora_pci_dss", "cumplimiento_corporativo_es"]);
   const targetScenario = "escenario_no_existente_v99";
-  INVARIANTS["INV-005"].status = !registry.has(targetScenario) ? "PASS" : "FAIL";
+  invariants["INV-005"].status = !registry.has(targetScenario) ? "PASS" : "FAIL";
 }
 
-async function testRBACEnforcement() {
+async function testRBACEnforcement(invariants) {
   const userRole = "DPO_GRC_LEVEL_2";
   const protectedAction = "DELETE_POLICY";
-  // Solo CISO_ADMIN (Nivel 4) o CISO_SECOPS_LEVEL_3 (Nivel 3) pueden realizar acciones cr韙icas de pol韙ica
   const authorized = (userRole === "CISO_ADMIN" || userRole === "CISO_SECOPS_LEVEL_3") && protectedAction === "DELETE_POLICY";
-  INVARIANTS["INV-006"].status = !authorized ? "PASS" : "FAIL";
+  invariants["INV-006"].status = !authorized ? "PASS" : "FAIL";
 }
 
-async function testKeyRotation() {
+async function testKeyRotation(invariants) {
   const encoder = new TextEncoder();
   const data = encoder.encode("HISTORICAL_EVIDENCE_RECEIPT");
 
@@ -106,24 +99,21 @@ async function testKeyRotation() {
   const isValidOriginal = await crypto.subtle.verify("Ed25519", keyPairV1.publicKey, signatureV1, data);
   const isInvalidWithNewKey = await crypto.subtle.verify("Ed25519", keyPairV2.publicKey, signatureV1, data);
   
-  INVARIANTS["INV-007"].status = (isValidOriginal && !isInvalidWithNewKey) ? "PASS" : "FAIL";
+  invariants["INV-007"].status = (isValidOriginal && !isInvalidWithNewKey) ? "PASS" : "FAIL";
 }
 
-async function testOTelTelemetryFailure() {
-  // Simular fallo en la exportaci髇 de trazas no bloqueante
+async function testOTelTelemetryFailure(invariants) {
   const finalVerdict = "REJECTED";
-  INVARIANTS["INV-008"].status = finalVerdict === "REJECTED" ? "PASS" : "FAIL";
+  invariants["INV-008"].status = finalVerdict === "REJECTED" ? "PASS" : "FAIL";
 }
 
-async function testRateLimitFailSafe() {
+async function testRateLimitFailSafe(invariants) {
   const errorThrown = new Error("KV Store Timeout");
-  // El manejador de errores de Rate Limit debe degradar elegantemente a 429 o permitir temporalmente, no 500
   const httpStatus = errorThrown.message.includes("Timeout") ? 429 : 500;
-  INVARIANTS["INV-009"].status = httpStatus === 429 ? "PASS" : "FAIL";
+  invariants["INV-009"].status = httpStatus === 429 ? "PASS" : "FAIL";
 }
 
-async function testTimingAttackMitigation() {
-  // Simular validaci髇 de HMAC usando comparaci髇 de tiempo constante (sin salir del bucle prematuramente)
+async function testTimingAttackMitigation(invariants) {
   const encoder = new TextEncoder();
   const a = encoder.encode("a1b2c3d4e5f6g7h8");
   const b = encoder.encode("a1b2c3z9y8x7w6v5");
@@ -134,14 +124,14 @@ async function testTimingAttackMitigation() {
   } else {
     let result = 0;
     for (let i = 0; i < a.length; i++) {
-      result |= a[i] ^ b[i]; // Bitwise XOR evita evaluaci髇 de cortocircuito
+      result |= a[i] ^ b[i];
     }
     isMatch = result === 0;
   }
-  INVARIANTS["INV-010"].status = !isMatch ? "PASS" : "FAIL";
+  invariants["INV-010"].status = !isMatch ? "PASS" : "FAIL";
 }
 
-async function testMultiTenantIsolation() {
+async function testMultiTenantIsolation(invariants) {
   const memoryState = {
     "tenant_A": { secret: "apiKey_A" },
     "tenant_B": { secret: "apiKey_B" }
@@ -152,38 +142,36 @@ async function testMultiTenantIsolation() {
   }
   
   const leakedSecret = getTenantSecret("tenant_B") === memoryState["tenant_A"].secret;
-  INVARIANTS["INV-011"].status = !leakedSecret ? "PASS" : "FAIL";
+  invariants["INV-011"].status = !leakedSecret ? "PASS" : "FAIL";
 }
 
-// Funci髇 principal de orquestaci髇 (Exportada para su uso en Workers)
 export async function runResilienceTests() {
   const startTime = Date.now();
+  const invariants = JSON.parse(JSON.stringify(INVARIANTS_TEMPLATE));
   
   await Promise.all([
-    testPayloadFuzzing(),
-    testIdempotencyConcurrence(),
-    testCryptoTampering(),
-    testL7ProxyFailure(),
-    testMissingScenario(),
-    testRBACEnforcement(),
-    testKeyRotation(),
-    testOTelTelemetryFailure(),
-    testRateLimitFailSafe(),
-    testTimingAttackMitigation(),
-    testMultiTenantIsolation()
+    testPayloadFuzzing(invariants),
+    testIdempotencyConcurrence(invariants),
+    testCryptoTampering(invariants),
+    testL7ProxyFailure(invariants),
+    testMissingScenario(invariants),
+    testRBACEnforcement(invariants),
+    testKeyRotation(invariants),
+    testOTelTelemetryFailure(invariants),
+    testRateLimitFailSafe(invariants),
+    testTimingAttackMitigation(invariants),
+    testMultiTenantIsolation(invariants)
   ]);
 
-  const totalPassed = Object.values(INVARIANTS).filter(d => d.status === "PASS").length;
-  const totalInvariants = Object.keys(INVARIANTS).length;
+  const totalPassed = Object.values(invariants).filter(d => d.status === "PASS").length;
+  const totalInvariants = Object.keys(invariants).length;
   const isApproved = totalPassed === totalInvariants;
 
-  const report = {
+  return {
     timestamp: new Date().toISOString(),
     executionTimeMs: Date.now() - startTime,
     verdict: isApproved ? "PASS (RELEASE APPROVED)" : "FAIL (RELEASE BLOCKED)",
     score: `${totalPassed}/${totalInvariants}`,
-    details: INVARIANTS
+    details: invariants
   };
-
-  return report;
 }

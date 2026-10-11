@@ -1,5 +1,5 @@
 /**
- * S.A.A.R.E. Evidence Vault Engine (SGP 1.0 / v8.2)
+ * S.A.A.R.E. Evidence Vault Engine (SGP 1.0 / v8.4)
  * High-performance double-custody persistence engine across Cloudflare D1, KV, and Volatile RAM.
  */
 
@@ -18,30 +18,29 @@ export class EvidenceVaultEngine {
     try {
       await this.env.DB.exec(`
         CREATE TABLE IF NOT EXISTS consolidated_traces (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          trace_id TEXT UNIQUE NOT NULL,
-          evidence_id TEXT NOT NULL,
+          trace_id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL,
-          user TEXT NOT NULL,
-          payload_hash TEXT NOT NULL,
-          evaluator_chain TEXT,
-          verdict_data TEXT,
-          anchored INTEGER DEFAULT 0,
-          created_at TEXT NOT NULL
+          user_email TEXT NOT NULL,
+          final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER',
+          final_action TEXT NOT NULL DEFAULT 'ALLOWED',
+          rule_applied TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          anchored INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS runs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id TEXT PRIMARY KEY,
           evidence_id TEXT UNIQUE NOT NULL,
           trace_id TEXT NOT NULL,
-          tenant TEXT NOT NULL,
+          verdictId TEXT NOT NULL,
+          decision TEXT NOT NULL,
           user TEXT NOT NULL,
+          tenant TEXT NOT NULL,
+          verdict TEXT NOT NULL,
           prompt TEXT,
           responseOutput TEXT,
-          decision TEXT,
-          verdict TEXT,
-          payload_json TEXT,
-          created_at TEXT NOT NULL
+          payload_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
       `);
     } catch (err) {
@@ -56,6 +55,7 @@ export class EvidenceVaultEngine {
     const timestamp = tracePayload.timestamp || new Date().toISOString();
     const traceId = tracePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
     const evidenceId = tracePayload.evidence_id || `EV-L7-${Date.now()}`;
+    const verdictId = tracePayload.verdictId || `VRD-2026-${evidenceId.replace('EV-L7-', '')}`;
     const tenantId = tracePayload.tenant_id || tracePayload.tenant || "ENTERPRISE";
     const user = tracePayload.user || "anonymous";
 
@@ -70,6 +70,7 @@ export class EvidenceVaultEngine {
       id: evidenceId,
       evidence_id: evidenceId,
       trace_id: traceId,
+      verdictId: verdictId,
       tenant: tenantId,
       user: user,
       prompt: tracePayload.prompt || "",
@@ -86,22 +87,24 @@ export class EvidenceVaultEngine {
         await this.initializeSchema();
 
         await this.env.DB.prepare(`
-          INSERT OR REPLACE INTO consolidated_traces (trace_id, evidence_id, tenant_id, user, payload_hash, evaluator_chain, verdict_data, anchored, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-        `).bind(traceId, evidenceId, tenantId, user, payloadHash, evaluatorChainJson, verdictDataJson, timestamp).run();
+          INSERT OR REPLACE INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(traceId, tenantId, user, tracePayload.evaluator_chain?.final_evaluator || 'EDGE_WORKER', decision === 'DENY' ? 'BLOCKED' : 'ALLOWED', timestamp).run();
 
         await this.env.DB.prepare(`
-          INSERT OR REPLACE INTO runs (evidence_id, trace_id, tenant, user, prompt, responseOutput, decision, verdict, payload_json, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO runs (id, evidence_id, trace_id, verdictId, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           evidenceId,
+          evidenceId,
           traceId,
-          tenantId,
+          verdictId,
+          decision,
           user,
+          tenantId,
+          verdict,
           tracePayload.prompt || "",
           tracePayload.responseOutput || "",
-          decision,
-          verdict,
           JSON.stringify(fullRecord),
           timestamp
         ).run();
@@ -113,11 +116,9 @@ export class EvidenceVaultEngine {
     // 2. Persistencia en KV (Registro Individual + Array 'runs_${tenantId}' para la Consola)
     if (this.env && this.env.SAARE_VAULT_KV) {
       try {
-        // Clave de traza individual
         const kvKey = `trace:${tenantId}:${traceId}`;
         await this.env.SAARE_VAULT_KV.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
 
-        // Actualización del array principal que lee la Consola GRC
         const runsKey = `runs_${tenantId}`;
         const existingKv = (await this.env.SAARE_VAULT_KV.get(runsKey, 'json')) || [];
         const updatedKv = [fullRecord, ...(Array.isArray(existingKv) ? existingKv : [])].slice(0, 100);
@@ -158,7 +159,7 @@ export class EvidenceVaultEngine {
     if (this.env && this.env.DB) {
       try {
         const { results } = await this.env.DB.prepare(`
-          SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY id DESC LIMIT ?
+          SELECT * FROM runs WHERE tenant = ? ORDER BY created_at DESC LIMIT ?
         `).bind(tenantId, limit).all();
 
         if (results && results.length > 0) return results;

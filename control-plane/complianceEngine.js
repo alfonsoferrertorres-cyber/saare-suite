@@ -1,10 +1,5 @@
 // control-plane/complianceEngine.js — Motor de Mapeo Regulatorio S.A.A.R.E. (SGP 1.0)
-import { ScenarioRegistry } from "./scenarioRegistry.js";
 
-/**
- * Catálogo de Marcos Regulatorios y Requisitos Técnicos
- * Mapeo: Framework -> Requirement -> Control -> Evidence
- */
 const REGULATORY_FRAMEWORKS = {
   EU_AI_ACT: {
     id: "EU_AI_ACT_2024_1689",
@@ -59,16 +54,10 @@ const REGULATORY_FRAMEWORKS = {
 
 export class ComplianceEngine {
   /**
-   * Evalúa y mapea la ejecución de una intercepción L7 contra los marcos regulatorios aplicables.
-   *
-   * @param {string} scenarioId - Identificador del escenario o regla activada
-   * @param {string} verdict - 'APPROVED', 'REJECTED', 'ALLOW', 'DENY'
-   * @param {string} reason - Justificación técnica del veredicto
-   * @returns {Object} Mapeo estructurado: Framework -> Requirement -> S.A.A.R.E. Control -> Evidence
+   * Mapea la ejecución de intercepción L7 contra los marcos regulatorios aplicables.
    */
   static mapExecutionToCompliance(scenarioId, verdict, reason) {
     const isDeny = verdict === "REJECTED" || verdict === "DENY";
-    const registryValid = Array.isArray(ScenarioRegistry) && ScenarioRegistry.length > 0;
 
     const fallbackScenario = {
       id: scenarioId || "RULE_7DIM_PERIMETER",
@@ -82,13 +71,8 @@ export class ComplianceEngine {
       }
     };
 
-    const scenario = registryValid
-      ? (ScenarioRegistry.find(s => s.id === scenarioId) || ScenarioRegistry[0] || fallbackScenario)
-      : fallbackScenario;
-
-    // Construcción del mapeo jerárquico (Framework -> Requirement -> Control -> Evidence)
     const mappedFrameworks = [];
-    const activeMapping = scenario.compliance_mapping || fallbackScenario.compliance_mapping;
+    const activeMapping = fallbackScenario.compliance_mapping;
 
     for (const [fwKey, reqKeys] of Object.entries(activeMapping)) {
       const frameworkMeta = REGULATORY_FRAMEWORKS[fwKey];
@@ -112,8 +96,8 @@ export class ComplianceEngine {
     }
 
     return {
-      scenarioId: scenario.id,
-      scenarioTitle: scenario.title,
+      scenarioId: fallbackScenario.id,
+      scenarioTitle: fallbackScenario.title,
       verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
       decision: isDeny ? "DENY" : "ALLOW",
       reason: reason || (isDeny ? "Activación de control ex-ante por riesgo detectado" : "Evaluación de políticas satisfactoria"),

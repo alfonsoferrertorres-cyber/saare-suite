@@ -39,7 +39,7 @@ export class AuthMiddleware {
   }
 
   /**
-   * Genera y firma un Token JWT HMAC-SHA256 para la sesión
+   * Genera y firma un Token JWT HMAC-SHA256 para la sesión.
    */
   async signToken(payload, expiresInSeconds = 86400) {
     const header = { alg: "HS256", typ: "JWT" };
@@ -71,7 +71,7 @@ export class AuthMiddleware {
   }
 
   /**
-   * Verifica la validez y la firma de un token JWT o API Key entrante
+   * Verifica la validez y la firma de un token JWT o API Key entrante.
    */
   async verifyAndDecodeToken(token) {
     if (!token) {

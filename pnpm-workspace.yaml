@@ -1,15 +1,13 @@
 packages:
-  - 'saare-console'
-  - 'saare-suite'
+  - 'packages/*'
   - 'control-plane'
   - 'control-plane-local'
-  - 'packages/*'
-
+  - 'saare-console'
+  - 'saare-suite'
+  - 'extension-base'
+  - 'controls'
+  - 'policies'
 allowBuilds:
   core-js: true
   esbuild: true
   workerd: true
-
-minimumReleaseAgeExclude:
-  - miniflare@5.20260925.0-alpha
-  - wrangler@4.141.0

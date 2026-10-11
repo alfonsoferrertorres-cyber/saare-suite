@@ -57,7 +57,7 @@ export class EnterpriseKeyManager {
   }
 
   pemToArrayBuffer(pem) {
-    const b64Lines = pem.replace(/(-----(BEGIN|END).*-----)/g, '').replace(/\s+/g, '');
+    const b64Lines = pem.replace(/-----(BEGIN|END)[^-----]+-----/g, '').replace(/[\r\n\s]+/g, '');
     const b64Decoded = atob(b64Lines);
     const buffer = new Uint8Array(b64Decoded.length);
     for (let i = 0; i < b64Decoded.length; i++) {

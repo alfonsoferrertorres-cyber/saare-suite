@@ -6,10 +6,12 @@ export class TenantManager {
   }
 
   async registerTenant(tenantId, name, config = {}) {
-    const cleanId = tenantId ? tenantId.trim() : "ENTERPRISE";
+    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
     const tenantData = {
       tenantId: cleanId,
+      tenant_id: cleanId,
       name: name || cleanId,
+      plan_id: config.planId || config.plan || "PROFESSIONAL_649",
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
@@ -31,7 +33,7 @@ export class TenantManager {
   }
 
   async getTenant(tenantId) {
-    const cleanId = (tenantId || "ENTERPRISE").trim();
+    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
 
     if (this.cache.has(cleanId)) {
       return this.cache.get(cleanId);
@@ -47,10 +49,11 @@ export class TenantManager {
       } catch (e) {}
     }
 
-    // Dynamic Fallback para organizaciones registradas sobre la marcha
     const dynamicTenant = {
       tenantId: cleanId,
+      tenant_id: cleanId,
       name: cleanId === "ENTERPRISE" ? "Organización Enterprise" : `Organización (${cleanId})`,
+      plan_id: "PROFESSIONAL_649",
       status: "ACTIVE",
       activeScenarios: ["banca_dora_pci_dss"]
     };

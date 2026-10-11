@@ -1,15 +1,20 @@
+// src/components/FriaWizardModal.jsx
 import React, { useState } from 'react';
 
-export default function FriaWizardModal({ onClose, onSave }) {
+export default function FriaWizardModal({ isOpen = true, onClose, onSave, onGenerateReport, tenantId }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    systemName: 'Agente Financiero - Tesorería',
+    useCaseName: 'Agente Financiero - Tesorería',
+    department: 'Dirección Operativa y Tesorería',
+    aiModel: 'S.A.A.R.E. L7 Sovereign Agent Engine',
     purpose: 'Automatización de pagos y transferencias a proveedores',
-    riskCategory: 'ALTO_RIESGO',
+    highRiskCategory: 'ALTO_RIESGO',
     affectedGroups: 'Clientes, Proveedores, Empleados',
-    humanOversightMode: 'HUMAN_IN_THE_LOOP',
+    humanOversight: 'HUMAN_IN_THE_LOOP',
     mitigationControls: ['Intercepción L7 Ex-Ante', 'Sanitización de PII', 'Firma Criptográfica Ed25519']
   });
+
+  if (!isOpen) return null;
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
@@ -19,9 +24,14 @@ export default function FriaWizardModal({ onClose, onSave }) {
       ...formData,
       completedAt: new Date().toISOString(),
       friaId: `FRIA-2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      normativeSpec: 'EU AI Act Art. 27 / SGP 1.0'
+      normativeSpec: 'EU AI Act Art. 27 / SGP 1.0',
+      tenantId: tenantId || 'ENTERPRISE'
     };
-    if (onSave) onSave(finalReport);
+
+    const callback = onGenerateReport || onSave;
+    if (typeof callback === 'function') {
+      callback(finalReport);
+    }
     if (onClose) onClose();
   };
 
@@ -52,17 +62,38 @@ export default function FriaWizardModal({ onClose, onSave }) {
               </label>
               <input
                 type="text"
-                value={formData.systemName}
-                onChange={(e) => setFormData({ ...formData, systemName: e.target.value })}
+                value={formData.useCaseName}
+                onChange={(e) => setFormData({ ...formData, useCaseName: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
               />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
+                Departamento y Modelo Base
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Departamento"
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <input
+                  type="text"
+                  placeholder="Modelo IA"
+                  value={formData.aiModel}
+                  onChange={(e) => setFormData({ ...formData, aiModel: e.target.value })}
+                  className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
                 Finalidad Prevista y Contexto Operativo
               </label>
               <textarea
-                rows={3}
+                rows={2}
                 value={formData.purpose}
                 onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-300 focus:outline-none focus:border-cyan-500 resize-none"
@@ -79,8 +110,8 @@ export default function FriaWizardModal({ onClose, onSave }) {
                 Categoría de Riesgo (EU AI Act Anexo III)
               </label>
               <select
-                value={formData.riskCategory}
-                onChange={(e) => setFormData({ ...formData, riskCategory: e.target.value })}
+                value={formData.highRiskCategory}
+                onChange={(e) => setFormData({ ...formData, highRiskCategory: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
               >
                 <option value="ALTO_RIESGO">Alto Riesgo (Anexo III - Infraestructuras / Servicios Esenciales)</option>
@@ -110,8 +141,8 @@ export default function FriaWizardModal({ onClose, onSave }) {
                 Modelo de Supervisión Humana
               </label>
               <select
-                value={formData.humanOversightMode}
-                onChange={(e) => setFormData({ ...formData, humanOversightMode: e.target.value })}
+                value={formData.humanOversight}
+                onChange={(e) => setFormData({ ...formData, humanOversight: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
               >
                 <option value="HUMAN_IN_THE_LOOP">Human-in-the-Loop (Autorización humana previa)</option>

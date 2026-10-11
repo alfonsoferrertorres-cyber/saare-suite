@@ -7,7 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "start": "node telemetryServer.js",
-    "despacho": "node scripts/generar_despacho.js"
+    "despacho": "node generar_despacho.js",
+    "resilience": "node resilienceRunner.js"
   },
   "dependencies": {
     "jszip": "^3.10.2"

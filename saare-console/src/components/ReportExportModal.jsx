@@ -20,7 +20,7 @@ export function ReportExportModal({ useCaseId, onClose }) {
           📋 Exportación de Informes Auditados (PDF)
         </h3>
         <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '20px' }}>
-          Seleccione el tipo de expediente formal a generar para la organización <strong>{useCaseId}</strong>:
+          Seleccione el tipo de expediente formal a generar para la organización: <strong>{useCaseId || 'ORGANIZACION_AUDITADA'}</strong>
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>

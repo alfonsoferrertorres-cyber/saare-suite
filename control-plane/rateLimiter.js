@@ -1,25 +1,26 @@
+// rateLimiter.js — Limitador de Tasa Distribuido por Isolates
 export class DistributedRateLimiter {
-  constructor(windowMs = 60000, defaultMaxRequests = 5) {
+  constructor(windowMs = 60000, defaultMaxRequests = 100) {
     this.windowMs = windowMs;
     this.defaultMaxRequests = defaultMaxRequests;
-    // Nota: En CF Workers, esto protege a nivel de Isolate (nodo local), no a nivel global.
     this.requests = new Map();
   }
 
   isAllowed(tenantId, maxRequests = this.defaultMaxRequests) {
     const now = Date.now();
+    const cleanTenant = tenantId ? String(tenantId).trim() : "DEFAULT";
     
-    if (!this.requests.has(tenantId)) {
-      this.requests.set(tenantId, []);
+    if (!this.requests.has(cleanTenant)) {
+      this.requests.set(cleanTenant, []);
     }
     
-    let timestamps = this.requests.get(tenantId);
+    let timestamps = this.requests.get(cleanTenant);
     
-    // Filtrar solicitudes fuera de la ventana deslizante para evitar fugas de memoria
+    // Filtrado de la ventana deslizante para evitar consumo excesivo de memoria
     timestamps = timestamps.filter(t => now - t < this.windowMs);
     
     if (timestamps.length >= maxRequests) {
-      this.requests.set(tenantId, timestamps); // Actualizar el mapa
+      this.requests.set(cleanTenant, timestamps);
       return {
         allowed: false,
         remaining: 0,
@@ -29,7 +30,7 @@ export class DistributedRateLimiter {
     }
     
     timestamps.push(now);
-    this.requests.set(tenantId, timestamps);
+    this.requests.set(cleanTenant, timestamps);
     
     return {
       allowed: true,

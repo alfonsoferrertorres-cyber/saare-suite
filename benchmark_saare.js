@@ -1,4 +1,4 @@
-// benchmark_saare.js
+// benchmark_saare.js — S.A.A.R.E. Benchmark Test
 import http from 'k6/http';
 import { check } from 'k6';
 
@@ -17,14 +17,20 @@ export const options = {
 };
 
 export default function () {
-  const url = 'https://api.saare.es/v1/intercept';
-  const payload = JSON.stringify({ prompt: 'Usuario DNI 12345678X solicitando acceso' });
-  const params = { headers: { 'Content-Type': 'application/json' } };
+  const url = __ENV.TARGET_URL || 'https://api.saare.es/v1/intercept';
+  const payload = JSON.stringify({ 
+    prompt: 'Usuario DNI 12345678X solicitando acceso a expediente bancario' 
+  });
+  const params = { 
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Saare-Tenant': 'ENTERPRISE'
+    } 
+  };
   
   const res = http.post(url, payload, params);
   
-  // Acepta 200 (Permitido) o 403 (Bloqueado por PII de forma correcta)
   check(res, { 
-    'petición evaluada correctamente': (r) => r.status === 200 || r.status === 403 
+    'Petición evaluada correctamente (Allow/Deny)': (r) => r.status === 200 || r.status === 403 
   });
 }

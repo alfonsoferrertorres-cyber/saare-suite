@@ -1,3 +1,4 @@
+// saare-console/src/services/apiService.ts — Servicio Central S.A.A.R.E. (TS)
 import { saareFetch } from '../utils/api';
 
 export const apiService = {
@@ -83,7 +84,6 @@ export const apiService = {
         bodyData = { ...payloadOrPrompt, ...(context || {}) };
       }
 
-      // Apunta a /intercept en lugar de /judge para compatibilidad total con server.js y Cloudflare
       const res = await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify(bodyData)

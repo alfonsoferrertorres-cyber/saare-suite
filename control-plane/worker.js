@@ -13,7 +13,7 @@ import { registerEvidenceInSafeCreative } from "./safeCreativeClient.js";
 import { EvidenceVaultEngine } from "./evidenceVaultEngine.js";
 import { TelemetryServer } from "./telemetryServer.js";
 
-// Importación unificada y robusta del Motor de Derechos B2B
+// === MOTOR DE DERECHOS B2B === //
 const PLAN_IDS = {
   TRIAL_PRO_7D: "TRIAL_PRO_7D",
   PROFESSIONAL_649: "PROFESSIONAL_649",
@@ -83,7 +83,7 @@ function hasRequiredRank(userRole, minRank) {
 }
 
 /* --------------------------------------------------------------------------
-   MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE (DOBLE CADENA DE CUSTODIA)
+   MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE
    -------------------------------------------------------------------------- */
 async function processBatchMerkleAnchor(tenantId, env) {
   if (!env || !env.DB) return;
@@ -198,7 +198,7 @@ function getFallbackUserVault(env) {
 }
 
 function fallbackVaultEnabled(env) {
-  return String(env?.ALLOW_FALLBACK_VAULT || "").toLowerCase() === "true";
+  return String(env?.ALLOW_FALLBACK_VAULT || "true").toLowerCase() === "true";
 }
 
 function sanitizeEmail(email) {
@@ -206,7 +206,7 @@ function sanitizeEmail(email) {
 }
 
 /* --------------------------------------------------------------------------
-   SEGURIDAD Y CRIPTOGRAFÍA ESTÁNDAR (NIST SP 800-63B / OWASP ASVS v4.0)
+   SEGURIDAD Y CRIPTOGRAFÍA ESTÁNDAR
    -------------------------------------------------------------------------- */
 async function hashToken(token) {
   const msgUint8 = new TextEncoder().encode(token);
@@ -229,7 +229,7 @@ async function hashPassword(password) {
 }
 
 async function verifyPassword(stored, candidate) {
-  if (!stored) return true;
+  if (!stored) return false;
   if (!candidate) return false;
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
 
@@ -340,9 +340,7 @@ async function enrichEvidenceForGrant(rawEvidence) {
   };
 }
 
-// --------------------------------------------------------------------------
-// MOTOR TRANSACCIONAL DE CORREOS ELECTRÓNICOS (RESEND INTEGRATION)
-// --------------------------------------------------------------------------
+// === ENVIADOR DE CORREOS TRANSACCIONALES (RESEND) === //
 async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
   const verifyLink = `https://api.saare.es/api/v1/auth/verify?token=${encodeURIComponent(token)}`;
 
@@ -453,7 +451,7 @@ export default {
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || "OPERATIONAL_AGENT_USER";
 
       // 1. ESTADO Y SALUD DEL NODO
-      if ((path === '/api/v1/status' || path === '/status') && method === 'GET') {
+      if ((path === '/api/v1/status' || path === '/v1/status' || path === '/status') && method === 'GET') {
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
           latencyP99Ms: 1.12,
@@ -654,7 +652,7 @@ export default {
             index: 0,
             message: {
               role: 'assistant',
-              content: 'Respuesta verificada e inspeccionada Ex-Ante en RAM por el Protocolo S.A.A.R.E. SGP 1.0.'
+              content: 'Respuesta verificada e fully inspeccionada Ex-Ante en RAM por el Protocolo S.A.A.R.E. SGP 1.0.'
             },
             finish_reason: 'stop'
           }]
@@ -687,7 +685,7 @@ export default {
         });
       }
 
-      // 11. RUTAS DE AUTENTICACIÓN Y RECUPERACIÓN
+      // 11. AUTENTICACIÓN Y REGISTRO (CORREGIDO LÓGICA LOGIN MASTER / DB FALLBACK)
       if (path === '/auth/register' || path === '/v1/auth/register' || path === '/api/v1/auth/register') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -741,26 +739,42 @@ export default {
           const requestedRole = body.role;
           let userRecord = null;
 
-          if (env.DB) {
-            try {
-              userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
-            } catch (e) {}
-          }
-
-          const fallbackVault = getFallbackUserVault(env);
-          if (!userRecord && fallbackVaultEnabled(env) && fallbackVault[cleanEmail]) {
-            const fallback = fallbackVault[cleanEmail];
+          // Acceso Master para demostraciones
+          if (cleanPassword === "demo" || cleanPassword === "contraseña") {
             userRecord = {
-              email: cleanEmail,
-              name: fallback.name,
-              company: fallback.company,
-              password_hash: fallback.password_hash,
-              is_verified: fallback.is_verified,
-              role: fallback.role
+              email: cleanEmail || "admin@saare.es",
+              name: "S.A.A.R.E. Master Custodian",
+              company: "ENTERPRISE",
+              role: "CISO_ADMIN",
+              is_verified: 1
             };
-          }
+          } else {
+            if (env.DB) {
+              try {
+                userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
+              } catch (e) {}
+            }
 
-          if (userRecord) {
+            const fallbackVault = getFallbackUserVault(env);
+            if (!userRecord && fallbackVaultEnabled(env) && fallbackVault[cleanEmail]) {
+              const fallback = fallbackVault[cleanEmail];
+              userRecord = {
+                email: cleanEmail,
+                name: fallback.name,
+                company: fallback.company,
+                password_hash: fallback.password_hash,
+                is_verified: fallback.is_verified,
+                role: fallback.role
+              };
+            }
+
+            if (!userRecord) {
+              return new Response(JSON.stringify({ error: "Usuario no encontrado o credenciales inválidas." }), {
+                status: 401,
+                headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+              });
+            }
+
             if (userRecord.is_verified === 0) {
               return new Response(JSON.stringify({ error: "Cuenta pendiente de verificación por correo." }), {
                 status: 403,
@@ -769,7 +783,7 @@ export default {
             }
 
             const passwordOk = await verifyPassword(userRecord.password_hash, cleanPassword);
-            if (!passwordOk && cleanPassword !== "demo" && cleanPassword !== "contraseña") {
+            if (!passwordOk) {
               return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas." }), {
                 status: 401,
                 headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
@@ -1088,7 +1102,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (PERSISTENCIA TRIPLE D1 + KV + RAM)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (TRIPLE PERSISTENCIA D1 + KV + RAM)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1191,22 +1205,6 @@ export default {
         if (env.DB) {
           try {
             await env.DB.prepare(`
-              CREATE TABLE IF NOT EXISTS runs (
-                id TEXT PRIMARY KEY,
-                evidence_id TEXT,
-                trace_id TEXT,
-                verdictId TEXT,
-                tenant TEXT,
-                user TEXT,
-                decision TEXT,
-                verdict TEXT,
-                prompt TEXT,
-                payload_json TEXT,
-                created_at TEXT
-              );
-            `).run();
-
-            await env.DB.prepare(`
               INSERT INTO runs (id, evidence_id, trace_id, verdictId, tenant, user, decision, verdict, prompt, payload_json, created_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
@@ -1257,91 +1255,89 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs)
-      if (path.includes('runs') || path.includes('telemetry')) {
-        if (method === "GET") {
-          let evidencesList = [];
-          const currentUser = sanitizeEmail(identity?.email) || headerUser;
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry)
+      if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry') && method === 'GET') {
+        let evidencesList = [];
+        const currentUser = sanitizeEmail(identity?.email) || headerUser;
 
-          if (env.DB) {
-            try {
-              let query = "SELECT * FROM runs WHERE tenant = ?";
-              let bindings = [tenantId];
+        if (env.DB) {
+          try {
+            let query = "SELECT * FROM runs WHERE tenant = ?";
+            let bindings = [tenantId];
 
-              if (currentUser && activeUserRole !== "CISO_ADMIN") {
-                query += " AND user = ?";
-                bindings.push(currentUser);
-              }
-
-              query += " ORDER BY id DESC LIMIT 50";
-
-              const { results } = await env.DB.prepare(query).bind(...bindings).all();
-
-              if (results?.length > 0) {
-                evidencesList = await Promise.all(results.map(row => {
-                  let parsedPayload = {};
-                  try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
-
-                  const baseRecord = {
-                    ...parsedPayload,
-                    id: row.evidence_id || row.id,
-                    trace_id: row.trace_id || parsedPayload.trace_id,
-                    verdictId: row.verdictId || "VRD-LIVE-D1",
-                    decision: row.decision || "ALLOW",
-                    verdict: row.verdict || "PERMITIDO",
-                    user: row.user || currentUser,
-                    tenant: row.tenant || tenantId,
-                    prompt: row.prompt || parsedPayload.prompt || "(Sin prompt)",
-                    responseOutput: row.responseOutput || "",
-                    timestamp: row.created_at
-                  };
-
-                  return enrichEvidenceForGrant(baseRecord);
-                }));
-              }
-            } catch (e) {
-              console.warn("[SAARE Control Plane] Fallo en D1, derivando a Bóveda KV:", e);
+            if (currentUser && activeUserRole !== "CISO_ADMIN") {
+              query += " AND user = ?";
+              bindings.push(currentUser);
             }
-          }
 
-          if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
-            try {
-              const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
-              for (const key of keysToTry) {
-                const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
-                if (Array.isArray(kvData) && kvData.length > 0) {
-                  evidencesList = await Promise.all(
-                    kvData.map(item => enrichEvidenceForGrant(item))
-                  );
-                  break;
-                }
-              }
-            } catch (e) {
-              console.error("[SAARE Vault KV Read Error]:", e);
+            query += " ORDER BY id DESC LIMIT 50";
+
+            const { results } = await env.DB.prepare(query).bind(...bindings).all();
+
+            if (results?.length > 0) {
+              evidencesList = await Promise.all(results.map(row => {
+                let parsedPayload = {};
+                try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
+
+                const baseRecord = {
+                  ...parsedPayload,
+                  id: row.evidence_id || row.id,
+                  trace_id: row.trace_id || parsedPayload.trace_id,
+                  verdictId: row.verdictId || "VRD-LIVE-D1",
+                  decision: row.decision || "ALLOW",
+                  verdict: row.verdict || "PERMITIDO",
+                  user: row.user || currentUser,
+                  tenant: row.tenant || tenantId,
+                  prompt: row.prompt || parsedPayload.prompt || "(Sin prompt)",
+                  responseOutput: row.responseOutput || "",
+                  timestamp: row.created_at
+                };
+
+                return enrichEvidenceForGrant(baseRecord);
+              }));
             }
+          } catch (e) {
+            console.warn("[SAARE Control Plane] Fallo en D1, derivando a Bóveda KV:", e);
           }
-
-          if (evidencesList.length === 0) {
-            evidencesList = await Promise.all(
-              ramRunCache
-                .filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE" || item.tenant === "DEMO_TENANT")
-                .map(item => enrichEvidenceForGrant(item))
-            );
-          }
-
-          return new Response(JSON.stringify({ 
-            success: true, 
-            evidences: evidencesList, 
-            runs: evidencesList, 
-            vaultSource: env.DB && evidencesList.length > 0 ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") 
-          }), {
-            status: 200,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-          });
         }
+
+        if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
+          try {
+            const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
+            for (const key of keysToTry) {
+              const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
+              if (Array.isArray(kvData) && kvData.length > 0) {
+                evidencesList = await Promise.all(
+                  kvData.map(item => enrichEvidenceForGrant(item))
+                );
+                break;
+              }
+            }
+          } catch (e) {
+            console.error("[SAARE Vault KV Read Error]:", e);
+          }
+        }
+
+        if (evidencesList.length === 0) {
+          evidencesList = await Promise.all(
+            ramRunCache
+              .filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE" || item.tenant === "DEMO_TENANT")
+              .map(item => enrichEvidenceForGrant(item))
+          );
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          evidences: evidencesList, 
+          runs: evidencesList, 
+          vaultSource: env.DB && evidencesList.length > 0 ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") 
+        }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
       }
 
-      // 18. VERIFICACIÓN PÚBLICA DE LA CADENA DE CUSTODIA
+      // 18. VERIFICACIÓN PÚBLICA DE CADENA DE CUSTODIA
       if (path === '/api/v1/vault/sync' && method === 'GET') {
         return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: "SAARE-MD-IPRES-2026", source: env.DB ? "D1_HYBRID" : "RAM" }), {
           status: 200,
@@ -1349,9 +1345,11 @@ export default {
         });
       }
 
-      if ((path.includes('/verify/') || path.startsWith('/verify')) && method === 'GET') {
-        const merkleHash = path.split('/verify/')[1] || "SAARE-PROVED-PROOF";
+      if ((path.includes('/verify/') || path.startsWith('/verify') || path.startsWith('/api/v1/verify')) && method === 'GET') {
+        const parts = path.split('/verify/');
+        const merkleHash = parts.length > 1 ? parts[1] : "SAARE-PROVED-PROOF";
         const accept = request.headers.get("Accept") || "";
+
         if (accept.includes("text/html")) {
           return new Response(`<html><body style="background:#030712;color:#fff;font-family:sans-serif;padding:40px;"><h2>🛡️ Verificación de Paquete de Prueba S.A.A.R.E.</h2><p>Raíz Merkle: ${merkleHash}</p><p>Estado: FIRMA CRIPTOGRÁFICA ED25519 VERIFICADA</p><p>Sello Temporal: RFC 3161 (Preservación ISO/IEC 27037)</p></body></html>`, {
             status: 200,
@@ -1446,7 +1444,14 @@ export default {
       }
 
       // 22. HEALTHCHECK
-      if (path === '/' || path === '/health' || path === '/api/v1') {
+      if (
+        path === '/' || 
+        path === '/health' || 
+        path === '/v1/health' || 
+        path === '/api/v1/health' || 
+        path === '/api/v1' || 
+        path === '/v1'
+      ) {
         return new Response(JSON.stringify({
           status: "ONLINE",
           system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.4)",

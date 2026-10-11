@@ -1,8 +1,10 @@
+// saare-console/src/components/ExecutiveView.jsx
 import React from 'react';
 
-export const ExecutiveView = ({ tenantId, evidences = [] }) => {
-  const totalAudited = evidences.length;
-  const totalBlocked = evidences.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
+export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
+  const safeEvidences = Array.isArray(evidences) ? evidences : [];
+  const totalAudited = safeEvidences.length;
+  const totalBlocked = safeEvidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
@@ -49,3 +51,5 @@ export const ExecutiveView = ({ tenantId, evidences = [] }) => {
     </div>
   );
 };
+
+export default ExecutiveView;

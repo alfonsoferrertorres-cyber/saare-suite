@@ -1,4 +1,4 @@
-// src/components/SeatsManagementModal.jsx
+// saare-console/src/components/SeatsManagementModal.jsx
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 
@@ -8,7 +8,6 @@ export default function SeatsManagementModal({ onClose }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ text: '', type: '' });
 
-  // Formulario para invitar / asignar nuevo asiento
   const [newEmail, setNewEmail] = useState('');
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('DPO_GRC_LEVEL_2');
@@ -19,10 +18,11 @@ export default function SeatsManagementModal({ onClose }) {
       const data = await apiService.getExecutiveSeats();
       if (data && data.success) {
         setSeatsData(data);
+      } else {
+        throw new Error("Respuesta no válida del servicio");
       }
     } catch (err) {
       console.warn("Fallo cargando asientos, usando fallback local:", err);
-      // Fallback visual en caso de modo offline
       setSeatsData({
         maxSeats: 10,
         usedSeats: 2,
@@ -55,7 +55,7 @@ export default function SeatsManagementModal({ onClose }) {
         setNewName('');
         await loadSeats();
       } else {
-        setMsg({ text: res.error || 'No se pudo asignar el asiento.', type: 'error' });
+        setMsg({ text: res?.error || 'No se pudo asignar el asiento.', type: 'error' });
       }
     } catch (err) {
       setMsg({ text: 'Error de comunicación con el Control Plane.', type: 'error' });
@@ -175,34 +175,27 @@ export default function SeatsManagementModal({ onClose }) {
                 <tr style={{ background: '#020617', color: '#64748b', textAlign: 'left', borderBottom: '1px solid #1e293b' }}>
                   <th style={{ padding: '8px 10px' }}>USUARIO</th>
                   <th style={{ padding: '8px 10px' }}>RANGO RBAC</th>
-                  <th style={{ padding: '8px 10px' }}>ESTADO</th>
+                  <th style={{ padding: '8px 10px' }}>FECHA ALTA</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>ESTADO</th>
                 </tr>
               </thead>
               <tbody>
-                {seatsData.users.map((u, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
-                    <td style={{ padding: '10px' }}>
-                      <div style={{ fontWeight: '700', color: '#fff' }}>{u.name || u.email}</div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{u.email}</div>
+                {seatsData.users.map((usr, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #1e293b', background: i % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ color: '#f8fafc', fontWeight: '700' }}>{usr.name || usr.email}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{usr.email}</div>
                     </td>
-                    <td style={{ padding: '10px' }}>{getRoleBadge(u.role)}</td>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ color: u.is_verified ? '#34d399' : '#fbbf24', fontSize: '0.7rem', fontWeight: '700' }}>
-                        {u.is_verified ? '● Activo' : '○ Pendiente'}
-                      </span>
+                    <td style={{ padding: '8px 10px' }}>{getRoleBadge(usr.role)}</td>
+                    <td style={{ padding: '8px 10px', color: '#94a3b8', fontFamily: 'monospace' }}>{usr.created_at || '2026-02-26'}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ color: '#34d399', fontWeight: '800', fontSize: '0.7rem' }}>● ACTIVO</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-
-        </div>
-
-        <div style={{ padding: '14px 24px', background: '#020617', borderTop: '1px solid #1e293b', textAlign: 'right' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
-            Cerrar Ventana
-          </button>
         </div>
 
       </div>

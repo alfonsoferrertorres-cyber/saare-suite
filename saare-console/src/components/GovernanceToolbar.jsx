@@ -9,7 +9,9 @@ export default function GovernanceToolbar({
   onDownloadTeaser,
   onExportGrantDossier,
   onOpenFriaModal,
-  onExecuteEnforcementCheck
+  onExecuteEnforcementCheck,
+  onOpenReportModal,
+  onExportGovernancePackage
 }) {
   const [status, setStatus] = useState('');
 
@@ -26,7 +28,8 @@ export default function GovernanceToolbar({
       ? customHash 
       : "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    window.open(`${API_HOST}/verify/${targetHash}`, '_blank');
+    const baseUrl = API_HOST || 'https://api.saare.es';
+    window.open(`${baseUrl}/verify/${targetHash}`, '_blank');
     
     triggerAction(
       `Firma criptográfica Ed25519 verificada (${targetHash.substring(0, 8)}...). Evidencia conforme a ISO/IEC 27037:2012.`,
@@ -44,7 +47,7 @@ export default function GovernanceToolbar({
         Acciones de Gobernanza & Auditoría Operativa (EU AI Act / DORA / ISO 27037)
       </h3>
 
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', itemsCenter: 'center' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           onClick={() => handleVerify()}
           style={{ padding: '8px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
@@ -78,6 +81,22 @@ export default function GovernanceToolbar({
           style={{ padding: '8px 14px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
           Evaluación Impacto FRIA (Art. 27)
+        </button>
+
+        {onExportGovernancePackage && (
+          <button
+            onClick={() => triggerAction('Generando Dossier Virginizado con las 4 Plantillas GRC...', onExportGovernancePackage)}
+            style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)' }}
+          >
+            📦 Dossier 4 Plantillas GRC
+          </button>
+        )}
+
+        <button
+          onClick={() => triggerAction('Abriendo gestor de informes oficiales...', onOpenReportModal)}
+          style={{ padding: '8px 14px', background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
+        >
+          📋 Informes Oficiales (PDF)
         </button>
 
         <button

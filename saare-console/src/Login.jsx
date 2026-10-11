@@ -1,11 +1,10 @@
-// src/Login.jsx
+// saare-console/src/Login.jsx
 import React, { useState } from 'react';
 import { API_BASE_URL } from './utils/api';
 
 export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER_FREE' }) {
-  const [activeTab, setActiveTab] = useState('demo'); // 'login' | 'demo'
+  const [activeTab, setActiveTab] = useState('demo');
 
-  // Inicialización dinámica: recupera datos previamente guardados en el navegador o inicia en blanco
   const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || '');
   const [password, setPassword] = useState('');
   const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || '');
@@ -38,7 +37,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
         const userRole = data.user?.role || role;
         const userTenant = data.user?.tenantName || cleanTenant;
 
-        // Almacenar credenciales del operador autenticado
         localStorage.setItem('saare_token', userToken);
         localStorage.setItem('saare_user_email', userEmail);
         localStorage.setItem('saare_user_role', userRole);
@@ -62,7 +60,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
       console.warn("Backend no disponible, iniciando en MODO AUTÓNOMO LOCAL:", err);
     }
 
-    // FALLBACK DE RESCATE LOCAL (Modo Autónomo cuando la API local o remota no responde)
     localStorage.setItem('saare_token', mockToken);
     localStorage.setItem('saare_user_email', cleanEmail);
     localStorage.setItem('saare_user_role', role);

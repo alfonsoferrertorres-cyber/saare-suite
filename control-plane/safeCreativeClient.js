@@ -9,17 +9,11 @@
 const SAFE_CREATIVE_SANDBOX_URL = "https://api-sandbox.safecreative.org/v2/";
 const SAFE_CREATIVE_PROD_URL = "https://api.safecreative.org/v2/";
 
-/**
- * Obtiene la URL del endpoint según el entorno activo.
- */
 function getApiEndpoint(env) {
   const isProduction = env?.ENVIRONMENT === "production" || env?.SAFE_CREATIVE_ENV === "production";
   return isProduction ? SAFE_CREATIVE_PROD_URL : SAFE_CREATIVE_SANDBOX_URL;
 }
 
-/**
- * Genera la firma de la petición HTTP para la API de Safe Creative usando HMAC-SHA1 / HMAC-SHA256.
- */
 async function generateAuthSignature(sharedSecret, params) {
   const sortedKeys = Object.keys(params).sort();
   const canonicalString = sortedKeys.map(k => `${k}=${encodeURIComponent(params[k])}`).join('&');
@@ -39,18 +33,10 @@ async function generateAuthSignature(sharedSecret, params) {
     .join('');
 }
 
-/**
- * Registra una evidencia o anclaje de Merkle en la API de Safe Creative.
- *
- * @param {object} anchorData - { id, merkleRoot, batchSize, timestamp }
- * @param {object} env - Variables de entorno del Cloudflare Worker
- * @returns {object} Estado del registro de evidencia documental
- */
 export async function registerEvidenceInSafeCreative(anchorData, env) {
   const apiKey = env?.SAFE_CREATIVE_API_KEY;
   const sharedSecret = env?.SAFE_CREATIVE_SHARED_SECRET;
 
-  // Fallback seguro en entorno local/dev sin credenciales contractuales de Safe Creative
   if (!apiKey || !sharedSecret) {
     console.warn("[SAARE Custody Engine] Credentials missing for Safe Creative API. Using local cryptographic proof fallback.");
     return {
@@ -111,7 +97,6 @@ export async function registerEvidenceInSafeCreative(anchorData, env) {
       anchorId: anchorData.id,
       merkleRoot: anchorData.merkleRoot,
       timestampToken: result.timestamp_token || `rfc3161:tst_sc_${timestamp}`,
-      // Se marca cualificado únicamente si el proveedor de sellado time-stamp confirma servicio cualificado eIDAS
       isQualifiedTSA: Boolean(result.eidas_qualified),
       auditClaim: "Technical lineage and evidence of authorship/integrity registered via Safe Creative API."
     };
@@ -119,7 +104,6 @@ export async function registerEvidenceInSafeCreative(anchorData, env) {
   } catch (error) {
     console.error("[SAARE Custody Engine] Failed to register anchor in Safe Creative:", error.message);
     
-    // Fail-Closed Graceful Degradation: Preservar evidencia localmente sin interrumpir la ejecución
     return {
       status: "LOCAL_FALLBACK_ON_ERROR",
       provider: "SAARE_INTERNAL_VAULT",

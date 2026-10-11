@@ -9,10 +9,12 @@ import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
+import SoAModal from './components/SoAModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 import { apiService } from './services/apiService';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
+import { generateVirginizedGovernancePackage } from './services/governanceTemplatesEngine';
 
 import cabeceraImg from './assets/cabecera.png';
 
@@ -70,6 +72,7 @@ export default function App() {
   const [auditTokenModal, setAuditTokenModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
+  const [showSoaModal, setShowSoaModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSeatsModal, setShowSeatsModal] = useState(false);
   const [resilienceReport, setResilienceReport] = useState(null);
@@ -129,9 +132,6 @@ export default function App() {
     setEvidences([]);
   }, []);
 
-  /**
-   * Mapeo unificado, tolerante y robusto para Bóveda D1, KV y respuestas de red
-   */
   const mapEvidences = useCallback((remoteEvidences) => {
     const list = Array.isArray(remoteEvidences) 
       ? remoteEvidences 
@@ -202,7 +202,6 @@ export default function App() {
 
   const fetchTelemetryOnce = useCallback(async () => {
     try {
-      // Uso de apiService para mantener consistencia con el backend
       const remoteEvidences = await apiService.getTelemetryTraces(100);
       const mapped = mapEvidences(remoteEvidences);
       setEvidences(mapped);
@@ -274,7 +273,6 @@ export default function App() {
     };
   }, [isAuthenticated, userEmail, tenantId, userRole, fetchTelemetryOnce, mapEvidences]);
 
-  // FILTRADO INDEXADO REACTIVO Y ROBUSTO
   const filteredEvidences = evidences.filter(item => {
     if (!item) return false;
     
@@ -393,6 +391,37 @@ export default function App() {
     URL.revokeObjectURL(url);
 
     triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) generado y sellado criptográficamente.");
+  };
+
+  const handleExportGovernancePackage = () => {
+    if (!hasRequiredRank(userRole, 2)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      return;
+    }
+
+    try {
+      const pkg = generateVirginizedGovernancePackage({
+        tenantId,
+        userEmail,
+        userRole,
+        evidences,
+        customFilters
+      });
+
+      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `DOSSIER_GOBERNANZA_4TEMPLATES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}_2026.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      triggerGovernance("Dossier Completo de Gobernanza (4 Plantillas Clave Virginizadas) generado.");
+    } catch (err) {
+      triggerGovernance(`Error generando dossier: ${err.message}`);
+    }
   };
 
   const handleVerifyLicense = async () => {
@@ -949,6 +978,19 @@ export default function App() {
                   </button>
 
                   <button
+                    onClick={() => setShowSoaModal(true)}
+                    style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
+                    📜 SoA ISO 27001/42001
+                  </button>
+
+                  <button
+                    onClick={handleExportGovernancePackage}
+                    style={{ padding: '10px 14px', background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)' }}
+                    title="Exportar dossier con las 4 plantillas clave de gobernanza virginizadas">
+                    📦 Dossier 4 Plantillas GRC
+                  </button>
+
+                  <button
                     onClick={() => setShowExportModal(true)}
                     style={{ padding: '10px 14px', background: '#059669', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)' }}>
                     📋 Informes Auditados (PDF)
@@ -1468,6 +1510,13 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE DECLARACIÓN DE APLICABILIDAD (SoA ISO 27001 / ISO 42001) */}
+      <SoAModal 
+        isOpen={showSoaModal}
+        onClose={() => setShowSoaModal(false)}
+        tenantId={tenantId}
+      />
 
       {/* MODAL DE FRIA (EU AI ACT ART. 27) */}
       <FriaWizardModal 

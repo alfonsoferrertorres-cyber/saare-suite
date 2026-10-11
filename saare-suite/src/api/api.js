@@ -1,4 +1,25 @@
-export const API_HOST = import.meta.env.VITE_SAARE_API_HOST || 'http://localhost:8787';
+// saare-suite/src/api/api.js — Cliente API Unificado S.A.A.R.E. (SGP 1.0)
+
+// 1. Resolver la URL base priorizando puerto 3001 en local y servidor Cloudflare en producción
+const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env
+  ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_CONTROL_PLANE_URL || import.meta.env.VITE_SAARE_API_HOST)
+  : null;
+
+// Sanear la URL eliminando sufijos /api/v1 duplicados y barras finales
+const cleanEnvUrl = rawEnvUrl
+  ? rawEnvUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '')
+  : null;
+
+const isLocal = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+);
+
+export const API_HOST = isLocal
+  ? 'http://127.0.0.1:3001'
+  : (cleanEnvUrl || 'https://control-plane.alfonsoferrertorres.workers.dev');
+
+export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 /**
  * Cliente HTTP unificado para el protocolo SGP 1.0 (MS3V S.A.A.R.E. SL)
@@ -15,8 +36,10 @@ async function apiFetch(endpoint, options = {}) {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
   try {
-    const response = await fetch(`${API_HOST}${endpoint}`, {
+    const response = await fetch(`${API_HOST}${formattedEndpoint}`, {
       ...options,
       headers: {
         ...defaultHeaders,
@@ -27,13 +50,18 @@ async function apiFetch(endpoint, options = {}) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(data.error || `Error HTTP ${response.status}: Rechazado por Control Plane.`);
+      throw new Error(data.error || data.message || `Error HTTP ${response.status}: Rechazado por Control Plane.`);
     }
 
     return data;
   } catch (err) {
-    // Si la API no está desplegada en local, retorna simulación exitosa para no romper la interfaz
-    return { success: true, simulated: true, message: "Modo Local / Demo activo" };
+    console.warn(`[SAARE API Fallback] Conexión simulada para ${formattedEndpoint}:`, err.message);
+    return { 
+      success: true, 
+      simulated: true, 
+      message: "Modo Local / Demo activo",
+      error: err.message
+    };
   }
 }
 
@@ -51,7 +79,7 @@ export const landingApi = {
   registerTrial: (email, company, planType) =>
     apiFetch('/api/v1/trial', {
       method: 'POST',
-      headers: { 'x-saare-tenant': company.toUpperCase() },
+      headers: { 'x-saare-tenant': (company || 'ENTERPRISE').toUpperCase() },
       body: JSON.stringify({ email, company, planType }),
     }),
 
@@ -62,18 +90,17 @@ export const landingApi = {
       body: JSON.stringify(formData),
     }),
 
-  // Intercepción Ex-Ante L7
+  // Intercepción Ex-Ante L7 (Alineado con /api/v1/intercept de server.js)
   checkEnforcement: (payload) =>
-    apiFetch('/api/v1/enforce/check', {
+    apiFetch('/api/v1/intercept', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
 
-  // Verificación de Evidencia eIDAS / RFC 3161
+  // Verificación de Evidencia eIDAS / RFC 3161 / ISO 27037
   verifyEvidence: (hashOrProof) =>
-    apiFetch('/api/v1/evidence/verify', {
-      method: 'POST',
-      body: JSON.stringify({ proof: hashOrProof }),
+    apiFetch(`/api/v1/verify/${encodeURIComponent(hashOrProof)}`, {
+      method: 'GET',
     }),
 
   // Gestión de Contraseñas y OTP
@@ -89,10 +116,12 @@ export const landingApi = {
       body: JSON.stringify({ email, otp }),
     }),
 
-  // Telemetría & Nodos
+  // Telemetría & Estado del Nodo
   getNodeStatus: () =>
-    apiFetch('/api/v1/status', { method: 'GET' }),
+    apiFetch('/api/v1/health', { method: 'GET' }),
 
   getPublicSummary: () =>
-    apiFetch('/api/v1/compliance/public-summary', { method: 'GET' }),
+    apiFetch('/api/v1/metrics/kpis', { method: 'GET' }),
 };
+
+export default landingApi;

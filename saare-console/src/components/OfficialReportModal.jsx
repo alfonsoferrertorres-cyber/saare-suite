@@ -1,3 +1,4 @@
+// src/components/OfficialReportModal.jsx
 import React from 'react';
 import { pdfGeneratorService } from '../services/pdfGeneratorService';
 
@@ -8,9 +9,13 @@ export default function OfficialReportModal({ onClose, reportData }) {
 
   const handleDownloadPdf = async () => {
     try {
-      await pdfGeneratorService.generateFromElement('official-report-document', {
-        filename: `SAARE_INFORME_OFICIAL_${tenantDomain}_${Date.now()}.pdf`
-      });
+      if (pdfGeneratorService?.generateFromElement) {
+        await pdfGeneratorService.generateFromElement('official-report-document', {
+          filename: `SAARE_INFORME_OFICIAL_${tenantDomain}_${Date.now()}.pdf`
+        });
+      } else {
+        window.print();
+      }
     } catch (err) {
       console.error('[REPORT_MODAL] Error generando PDF:', err);
       window.print();
@@ -22,7 +27,7 @@ export default function OfficialReportModal({ onClose, reportData }) {
       {/* Contenedor tipo Hoja Oficial con Membrete */}
       <div 
         id="official-report-document"
-        className="bg-white text-slate-900 w-full max-w-4xl maxHeight-[90vh] overflow-y-auto rounded-xl p-8 md:p-10 shadow-2xl relative font-sans border border-slate-200"
+        className="bg-white text-slate-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-8 md:p-10 shadow-2xl relative font-sans border border-slate-200"
       >
         {/* Encabezado / Membrete Oficial */}
         <div className="border-b-2 border-sky-600 pb-5 mb-6 flex flex-col md:flex-row justify-between items-start gap-4">

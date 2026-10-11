@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "id",
+    "name",
     "dimension",
     "actionOnTrigger",
     "rules"
@@ -13,6 +14,22 @@
     "id": {
       "type": "string",
       "pattern": "^CTL-[A-Z0-9_]{3,32}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "enabled": {
+      "type": "boolean"
     },
     "dimension": {
       "type": "string",
@@ -28,7 +45,7 @@
     },
     "actionOnTrigger": {
       "type": "string",
-      "enum": ["ALLOW", "DENY", "SANITYZE", "REVIEW"]
+      "enum": ["ALLOW", "DENY", "SANITIZE", "SANITYZE", "REVIEW"]
     },
     "rules": {
       "type": "array",
@@ -37,7 +54,8 @@
         "required": ["condition", "pattern"],
         "properties": {
           "condition": { "type": "string" },
-          "pattern": { "type": "string" }
+          "pattern": { "type": "string" },
+          "description": { "type": "string" }
         }
       }
     }
