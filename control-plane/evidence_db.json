@@ -1,22 +1,23 @@
 [
   {
-    "evidenceId": "EV-625434",
-    "id": "EV-729099",
-    "runId": "RUN-1786701010760",
-    "timestamp": "11:50:10",
-    "token": "SAARE-TOKEN-ENT-M57TOVV",
-    "user": "Alfonso Ferrer (Auditor SOC)",
-    "prompt": "\"Procesar nomina con DNI 12345678Z\"",
-    "promptSummary": "Procesar nomina con DNI 12345678Z",
-    "verdict": "RECHAZADO",
-    "scene": "España - LOPDGDD & AEPD",
-    "scenarioApplied": "España - LOPDGDD & AEPD",
-    "action": "PDF Sellado",
-    "cryptoSeal": "AES256-AEPD-ES-5721E75F",
+    "evidenceId": "{{EVIDENCE_ID}}",
+    "id": "{{EVIDENCE_ID}}",
+    "runId": "{{RUN_ID}}",
+    "timestamp": "{{TIMESTAMP_ISO}}",
+    "token": "{{SAARE_TENANT_TOKEN}}",
+    "user": "{{OPERATOR_USER_EMAIL}}",
+    "tenant": "{{TENANT_DOMAIN}}",
+    "prompt": "{{RAW_PROMPT_PAYLOAD}}",
+    "promptSummary": "{{SANITIZED_PROMPT_SUMMARY}}",
+    "verdict": "{{DECISION_VERDICT}}",
+    "scene": "EU AI Act & LOPDGDD Compliance",
+    "scenarioApplied": "{{POLICY_RULE_APPLIED}}",
+    "action": "FORENSIC_SEAL_GENERATED",
+    "cryptoSeal": "{{ED25519_MERKLE_ROOT}}",
     "complianceTags": [
       "EU-AI-ACT",
-      "ENS-ALTO",
-      "eIDAS"
+      "ISO-27037",
+      "ENS-ALTO"
     ]
   }
 ]

@@ -1,6 +1,7 @@
-// extension-base/background.js — Servidor de Fondo del Sensor L7 v10.5.3
+// extension-base/background.js — Servidor de Fondo del Sensor L7 v10.5.5 (Corregido)
 
-const WORKER_URL = "https://api.saare.es"; // Cambiar a "http://localhost:8787" en pruebas locales
+// Para desarrollo local usa "http://localhost:3001". En producción cambia a "https://api.saare.es"
+const WORKER_URL = "http://localhost:3001";
 
 function isNoisePayload(text) {
   if (!text || typeof text !== "string") return true;
@@ -22,23 +23,42 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Inicialización de identidad al instalar o recargar la extensión
 chrome.runtime.onInstalled.addListener(async () => {
   try {
+    // 1. Intentar leer config.json (inyectado dinámicamente en el ZIP por saare-console)
+    try {
+      const configRes = await fetch(chrome.runtime.getURL("config.json"));
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData?.user && configData?.tenant) {
+          await chrome.storage.local.set({
+            saare_user_email: String(configData.user).toLowerCase().trim(),
+            saare_tenant_domain: String(configData.tenant).trim(),
+            saare_token: String(configData.token || "sk_saare_live_session")
+          });
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fallback: Leer storage_managed.json (soporta formato JSON Schema y claves directas)
     const res = await fetch(chrome.runtime.getURL("storage_managed.json"));
     if (res.ok) {
       const managedData = await res.json();
-      const user = managedData?.saare_user_email?.Value || "ciso@saare.es";
-      const tenant = managedData?.saare_tenant_domain?.Value || "ENTERPRISE";
-      const token = managedData?.saare_token?.Value || "sk_saare_live_session";
+      const props = managedData?.properties || {};
+      const user = props.saare_user_email?.default || managedData?.saare_user_email?.Value || "ciso@saare.es";
+      const tenant = props.saare_tenant_domain?.default || managedData?.saare_tenant_domain?.Value || "ENTERPRISE";
+      const token = props.saare_token?.default || managedData?.saare_token?.Value || "sk_saare_live_session";
 
       await chrome.storage.local.set({
-        saare_user_email: user.toLowerCase().trim(),
-        saare_tenant_domain: tenant.trim(), // Preserva la caja exacta (evita toUpperCase)
-        saare_token: token
+        saare_user_email: String(user).toLowerCase().trim(),
+        saare_tenant_domain: String(tenant).trim(),
+        saare_token: String(token)
       });
     }
   } catch (e) {
-    console.warn("[SAARE Background] Falling back to default identity initialization.", e);
+    console.warn("[SAARE Background] Error inicializando identidad:", e);
   }
 });
 
@@ -48,7 +68,7 @@ async function resolveIdentity(payloadUser) {
       if (local?.saare_user_email && local?.saare_token) {
         return resolve({
           user: local.saare_user_email.toLowerCase().trim(),
-          tenant: (local.saare_tenant_domain || "ENTERPRISE").trim(), // Mantiene el tenant original
+          tenant: (local.saare_tenant_domain || "ENTERPRISE").trim(),
           token: local.saare_token
         });
       }
@@ -59,15 +79,15 @@ async function resolveIdentity(payloadUser) {
           const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
           const finalToken = managed?.saare_token || "sk_saare_live_session";
           resolve({
-            user: finalUser.toLowerCase().trim(),
-            tenant: finalTenant.trim(), // Mantiene el tenant original
-            token: finalToken
+            user: String(finalUser).toLowerCase().trim(),
+            tenant: String(finalTenant).trim(),
+            token: String(finalToken)
           });
         });
       } else {
         const finalUser = payloadUser || "ciso@saare.es";
         resolve({
-          user: finalUser.toLowerCase().trim(),
+          user: String(finalUser).toLowerCase().trim(),
           tenant: "ENTERPRISE",
           token: "sk_saare_live_session"
         });
@@ -100,11 +120,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         timestamp: message.payload?.timestamp || new Date().toISOString()
       };
 
+      // Guardar localmente en el búfer RAM de la extensión
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const currentLogs = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...currentLogs].slice(0, 100) });
       });
 
+      // Enviar la intercepción en vivo al servidor backend local
       fetch(`${WORKER_URL}/api/v1/intercept`, {
         method: "POST",
         headers: {

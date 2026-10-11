@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SAARE Execution Authorization Sensor",
-  "version": "10.2.2",
+  "version": "10.2.3",
   "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™",
   "icons": {
     "16": "icons/logo_saare.png",
@@ -46,7 +46,8 @@
     {
       "resources": [
         "inject.js",
-        "storage_managed.json"
+        "storage_managed.json",
+        "config.json"
       ],
       "matches": [
         "https://gemini.google.com/*",
@@ -67,6 +68,7 @@
   "host_permissions": [
     "https://api.saare.es/*",
     "http://localhost:3000/*",
-    "http://localhost:3001/*"
+    "http://localhost:3001/*",
+    "http://127.0.0.1:3001/*"
   ]
 }
