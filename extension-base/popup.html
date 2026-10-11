@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    * { box-sizing: border-box; }
     body {
-      width: 310px;
+      width: 320px;
       margin: 0;
-      padding: 16px;
+      padding: 14px;
       background-color: #030712;
       color: #f3f4f6;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      box-sizing: border-box;
     }
     .header {
       display: flex;
@@ -44,6 +44,16 @@
       border-radius: 12px;
       font-size: 9.5px;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dot-green {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
     }
     .info-card {
       background: #111827;
@@ -51,7 +61,7 @@
       border-radius: 8px;
       padding: 12px;
       font-size: 11px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .label {
       color: #9ca3af;
@@ -66,6 +76,45 @@
       margin-bottom: 8px;
       word-break: break-all;
     }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stat-box {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 15px;
+      font-weight: 900;
+      color: #10b981;
+      font-family: monospace;
+    }
+    .stat-lbl {
+      font-size: 8px;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .last-log-box {
+      background: #0f172a;
+      border: 1px dashed #334155;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 10px;
+      margin-bottom: 10px;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
     .btn-console {
       display: block;
       width: 100%;
@@ -77,11 +126,28 @@
       border-radius: 6px;
       font-weight: bold;
       font-size: 11.5px;
-      box-sizing: border-box;
       transition: background 0.2s ease;
+      border: none;
+      cursor: pointer;
     }
     .btn-console:hover {
       background: #0369a1;
+    }
+    .btn-secondary {
+      background: #1f2937;
+      color: #9ca3af;
+      border: 1px solid #374151;
+      padding: 6px 0;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: #374151;
+      color: #f3f4f6;
     }
   </style>
 </head>
@@ -91,7 +157,7 @@
       <img src="icons/logo_saare.png" alt="SAARE" class="brand-logo" />
       <span class="title">SAARE SENSOR L7</span>
     </div>
-    <span class="badge-status">● ACTIVO</span>
+    <span class="badge-status"><span class="dot-green"></span> BLINDAJE ACTIVO</span>
   </div>
 
   <div class="info-card">
@@ -108,9 +174,28 @@
     <div class="val" style="color: #ca8a04; margin: 0;">Ephemeral Zero-Disk Persistence</div>
   </div>
 
-  <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" class="btn-console" id="btn-link">
-    Abrir SAARE GRC Console ↗
-  </a>
+  <div class="grid-stats">
+    <div class="stat-box">
+      <div class="stat-num" id="disp-count">0</div>
+      <div class="stat-lbl">Eventos en Búfer RAM</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="disp-status-shield" style="color: #38bdf8;">100%</div>
+      <div class="stat-lbl">Integridad L7</div>
+    </div>
+  </div>
+
+  <div class="last-log-box">
+    <div class="label">Última Evidencia Capturada</div>
+    <div class="val" id="disp-last-verdict" style="color: #a7f3d0; margin-bottom: 0;">Esperando actividad en IA...</div>
+  </div>
+
+  <div class="actions">
+    <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" class="btn-console" id="btn-link">
+      Abrir SAARE GRC Console ↗
+    </a>
+    <button class="btn-secondary" id="btn-clear-ram">🧹 Limpiar Búfer Volátil RAM</button>
+  </div>
 
   <script src="popup.js"></script>
 </body>

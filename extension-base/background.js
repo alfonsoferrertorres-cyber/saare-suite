@@ -33,7 +33,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
       await chrome.storage.local.set({
         saare_user_email: user.toLowerCase().trim(),
-        saare_tenant_domain: tenant.toUpperCase().trim(),
+        saare_tenant_domain: tenant.trim(), // Preserva la caja exacta (evita toUpperCase)
         saare_token: token
       });
     }
@@ -48,7 +48,7 @@ async function resolveIdentity(payloadUser) {
       if (local?.saare_user_email && local?.saare_token) {
         return resolve({
           user: local.saare_user_email.toLowerCase().trim(),
-          tenant: (local.saare_tenant_domain || "ENTERPRISE").toUpperCase().trim(),
+          tenant: (local.saare_tenant_domain || "ENTERPRISE").trim(), // Mantiene el tenant original
           token: local.saare_token
         });
       }
@@ -60,7 +60,7 @@ async function resolveIdentity(payloadUser) {
           const finalToken = managed?.saare_token || "sk_saare_live_session";
           resolve({
             user: finalUser.toLowerCase().trim(),
-            tenant: finalTenant.toUpperCase().trim(),
+            tenant: finalTenant.trim(), // Mantiene el tenant original
             token: finalToken
           });
         });

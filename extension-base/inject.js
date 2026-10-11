@@ -1,4 +1,4 @@
-﻿/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Hardened) */
+/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Full Dashboard Rules Integrated) */
 (function() {
   const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -128,16 +128,34 @@
       if (fReqValue) {
         try {
           const outer = JSON.parse(fReqValue);
-          if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
-            try {
-              const inner = JSON.parse(outer[1]);
-              if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
-                const prompt = inner[0][0];
-                if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
-                  return prompt.trim();
+          if (Array.isArray(outer)) {
+            function deepFindPrompt(arr) {
+              for (const item of arr) {
+                if (typeof item === "string") {
+                  if (item.startsWith("[") && item.endsWith("]")) {
+                    try {
+                      const parsedSub = JSON.parse(item);
+                      const found = deepFindPrompt(parsedSub);
+                      if (found) return found;
+                    } catch {}
+                  } else if (
+                    item.length > 1 && 
+                    !item.startsWith("!") && 
+                    !item.startsWith("at=") && 
+                    !item.includes("bard_activity") &&
+                    !item.includes("f.req=")
+                  ) {
+                    return item;
+                  }
+                } else if (Array.isArray(item)) {
+                  const found = deepFindPrompt(item);
+                  if (found) return found;
                 }
               }
-            } catch {}
+              return null;
+            }
+            const prompt = deepFindPrompt(outer);
+            if (prompt) return prompt.trim();
           }
         } catch {}
       }
@@ -183,8 +201,8 @@
     
     if (!str || isIgnoredRequest(url, str)) return null;
 
-    const cleanPrompt = extractCleanPrompt(str) || str.substring(0, 500);
-    if (!cleanPrompt || cleanPrompt.length < 1) return null;
+    const cleanPrompt = extractCleanPrompt(str);
+    if (!cleanPrompt || cleanPrompt.length < 1 || cleanPrompt.includes("f.req=")) return null;
 
     const seal = computeL7Seal(cleanPrompt);
     const subOpts = settings.subOptions;
@@ -253,172 +271,4 @@
         policy: { id: "POL-HONOR-SYNTHETIC-03", version: "2.0.0" },
         risk_level: "CRITICAL",
         rules_matched: ["RULE_SYNTHETIC_IDENTITY_NO_CONSENT", "RULE_NO_UNSUPPORTED_CLAIMS"],
-        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-HONOR-${runRandomId}`
-      };
-    }
-
-    // 04. ROBUSTEZ L7 & ANTI-JAILBREAK
-    if (settings.razonamiento_activo_l7 && DLP.jailbreak.test(cleanPrompt) && subOpts.anti_dan_jailbreak !== false) {
-      return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-AI-ACT-ROBUSTNESS-15", version: "3.4.0" },
-        risk_level: "HIGH",
-        rules_matched: ["RULE_PROMPT_INJECTION_MITIGATION", "RULE_ACTIVE_SHIELD_ENFORCE"],
-        reason: "Bloqueo Seguridad L7: Intento de Jailbreak o manipulación perimetral neutralizado conforme al Art. 15 del EU AI Act.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-SEC-${runRandomId}`
-      };
-    }
-
-    // 05. PRIVACIDAD, PII, SALUD & BANCA
-    if (settings.cumplimiento_corporativo_integral || settings.banca_dora_pci || settings.sanidad_historia_clinica) {
-      const isDni = subOpts.dlp_dni_nie !== false && (DLP.dni.test(cleanPrompt) || DLP.dni.test(str));
-      const isIban = settings.banca_dora_pci && subOpts.dlp_iban_cards !== false && (DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, "")));
-      const isCard = settings.banca_dora_pci && subOpts.dlp_iban_cards !== false && (DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, "")));
-      const isHealth = settings.sanidad_historia_clinica && subOpts.dlp_health_art9 !== false && (DLP.health.test(cleanPrompt) || DLP.health.test(str));
-
-      if (isDni || isIban || isCard || isHealth) {
-        let policyId = "POL-RGPD-PII-01";
-        let rules = ["RULE_PII_DNI_DETECTED"];
-        let riskLevel = "HIGH";
-
-        if (isHealth) {
-          policyId = "POL-RGPD-HEALTH-ART9";
-          rules = ["RULE_SPECIAL_CATEGORY_HEALTH_DATA"];
-        } else if (isIban) {
-          policyId = "POL-DORA-FIN-IBAN";
-          rules = ["RULE_FINANCIAL_DATA_PROTECTION"];
-        } else if (isCard) {
-          policyId = "POL-PCI-DSS-PAN";
-          rules = ["RULE_PAYMENT_CARD_DETECTED"];
-          riskLevel = "CRITICAL";
-        }
-
-        const displayPrompt = sanitize(cleanPrompt);
-
-        return {
-          ...baseVerdict,
-          decision: "DENY",
-          enforcement: { action: "BLOCK" },
-          executionPermit: null,
-          validity_state: "VALID",
-          system_id: "L7-AGENT-SENSOR",
-          policy: { id: policyId, version: "4.2.1" },
-          risk_level: riskLevel,
-          rules_matched: rules,
-          reason: "Bloqueo Privacidad: Detección ex-ante de datos regulados en búfer volátil de runtime.",
-          cleanPrompt: displayPrompt,
-          sanitizedPrompt: displayPrompt,
-          evidence_id: `EV-PII-${runRandomId}`
-        };
-      }
-    }
-
-    if (!settings.auditoria_dictamen_normativo) return null;
-
-    return {
-      ...baseVerdict,
-      decision: "ALLOW",
-      enforcement: { action: "PASS" },
-      executionPermit: { status: "ISSUED" },
-      validity_state: "VALID",
-      system_id: "L7-AGENT-SENSOR",
-      policy: { id: "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
-      risk_level: "LOW",
-      rules_matched: ["RULE_PAYLOAD_CONFORME"],
-      reason: "Inferencia autorizada bajo perímetro determinista L7.",
-      cleanPrompt: cleanPrompt,
-      sanitizedPrompt: cleanPrompt,
-      evidence_id: `EV-ALLOW-${runRandomId}`
-    };
-  }
-
-  // --- XHR INTERCEPTOR ---
-  const rawOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    this._saare_url = url;
-    return rawOpen.apply(this, arguments);
-  };
-
-  const rawSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
-    try {
-      const verdict = evaluatePayload(body, this._saare_url);
-      if (verdict) {
-        window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
-        if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
-          throw new Error(`[SAARE JUDGE] Acción rechazada por política corporativa o regulatoria.`);
-        }
-      }
-    } catch (err) {
-      if (err.message && err.message.includes("[SAARE JUDGE]")) {
-        throw err;
-      }
-      console.error("[SAARE XHR Error]:", err);
-    }
-    return rawSend.apply(this, arguments);
-  };
-
-  // --- FETCH INTERCEPTOR ---
-  const rawFetch = window.fetch;
-  window.fetch = async function(resource, config) {
-    let url = "";
-    let bodyToEvaluate = null;
-
-    if (typeof resource === "string") {
-      url = resource;
-    } else if (resource instanceof Request) {
-      url = resource.url;
-      try {
-        // Clonamos el request para poder leer el body sin afectar la ejecución original
-        const clonedReq = resource.clone();
-        bodyToEvaluate = await clonedReq.text();
-      } catch {}
-    } else if (resource && resource.url) {
-      url = resource.url;
-    }
-
-    if (config && config.body) {
-      bodyToEvaluate = config.body;
-    }
-
-    if (bodyToEvaluate) {
-      try {
-        const verdict = evaluatePayload(bodyToEvaluate, url);
-        if (verdict) {
-          window.postMessage({ type: "SAARE_VERDICT_EVENT", payload: verdict }, "*");
-          
-          if (verdict.decision === "DENY" || verdict.enforcement?.action === "BLOCK") {
-            return new Response(JSON.stringify({
-              verdict: "DENY",
-              decision: "DENY",
-              enforcement: { action: "BLOCK" },
-              error: "SAARE Judge: Bloqueo Ex-Ante en Runtime",
-              verdictId: verdict.verdictId,
-              policy: verdict.policy,
-              reason: verdict.reason,
-              evidence_id: verdict.evidence_id,
-              crypto_seal: verdict.cryptoSeal
-            }), {
-              status: 403,
-              headers: { "Content-Type": "application/json" }
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[SAARE Fetch Error]:", err);
-      }
-    }
-    
-    return rawFetch.apply(this, arguments);
-  };
-})();
+        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso

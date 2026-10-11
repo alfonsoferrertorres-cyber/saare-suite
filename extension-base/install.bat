@@ -4,8 +4,12 @@ chcp 65001 >nul
 title SAARE Sovereign Sensor - Instalador Asistido
 color 0B
 
-:: Copiar la ruta exacta de la carpeta actual al portapapeles (sin saltos de línea)
-<nul set /p="%~dp0" | clip
+:: Obtener la ruta de la carpeta actual y sanitizar la barra final
+set "SENSOR_PATH=%~dp0"
+if "%SENSOR_PATH:~-1%"=="\" set "SENSOR_PATH=%SENSOR_PATH:~0,-1%"
+
+:: Copiar la ruta exacta al portapapeles sin comillas ni saltos de línea
+<nul set /p "=%SENSOR_PATH%" | clip
 
 echo ========================================================
 echo   S.A.A.R.E. L7 EX-ANTE EXECUTION GUARD - INSTALADOR

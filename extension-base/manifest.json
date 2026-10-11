@@ -3,12 +3,18 @@
   "name": "SAARE Execution Authorization Sensor",
   "version": "10.2.2",
   "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™",
+  "icons": {
+    "16": "icons/logo_saare.png",
+    "48": "icons/logo_saare.png",
+    "128": "icons/logo_saare.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_title": "SAARE Execution Guard Node",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": "icons/logo_saare.png"
   },
   "content_scripts": [
     {

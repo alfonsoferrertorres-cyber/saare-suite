@@ -5,7 +5,7 @@
   },
   "saare_tenant_domain": {
     "Value": "ENTERPRISE",
-    "Description": "Tenant canónico de la Bóveda KV."
+    "Description": "Tenant canónico de la Bóveda."
   },
   "saare_token": {
     "Value": "sk_saare_live_session",
