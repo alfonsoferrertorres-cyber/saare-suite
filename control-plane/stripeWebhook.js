@@ -1,4 +1,5 @@
 ﻿// control-plane/stripeWebhook.js — S.A.A.R.E. Enterprise SGP 1.0 (Stripe Sync Engine)
+import { PLAN_IDS, sanitizePlanId } from "@saare/entitlements";
 
 async function verifyStripeSignature(payload, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
@@ -44,6 +45,14 @@ function mapPriceToRole(priceId) {
   return "BOARD_EXECUTIVE_LEVEL_1";
 }
 
+// Map de Price IDs / Metadata a IDs canónicos de PLAN_IDS de @saare/entitlements
+function mapPriceToPlanId(priceId, metadataPlan) {
+  if (metadataPlan) return sanitizePlanId(metadataPlan);
+  if (priceId === "price_1UHuuwFlwFW4ifPS66wDvS4n") return PLAN_IDS.ENTERPRISE_1500;
+  if (priceId === "price_1UHuypFlwFW4ifPSyDz1vT47") return PLAN_IDS.PROFESSIONAL_649;
+  return sanitizePlanId(priceId);
+}
+
 export async function handleStripeWebhook(request, env) {
   const bodyText = await request.text();
   const signature = request.headers.get("stripe-signature");
@@ -77,7 +86,8 @@ export async function handleStripeWebhook(request, env) {
     const session = event.data.object;
     const customerEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase().trim();
     const customerName = session.customer_details?.name || session.metadata?.organization || "Organización Suscrita";
-    const priceId = session.metadata?.price_id || session.metadata?.plan || "price_1UHuypFlwFW4ifPSyDz1vT47";
+    const priceId = session.metadata?.price_id || session.metadata?.price || "price_1UHuypFlwFW4ifPSyDz1vT47";
+    const planId = mapPriceToPlanId(priceId, session.metadata?.plan || session.metadata?.planId);
     const assignedRole = mapPriceToRole(priceId);
     
     // Asignación unificada de Tenant ID
@@ -103,7 +113,9 @@ export async function handleStripeWebhook(request, env) {
       customerEmail,
       companyName: customerName,
       status: "ACTIVE",
-      plan: priceId,
+      plan: planId,
+      planId: planId,
+      priceId: priceId,
       role: assignedRole,
       createdAt: new Date().toISOString()
     };
@@ -140,12 +152,12 @@ export async function handleStripeWebhook(request, env) {
           );
         `);
 
-        // Sincronizar tabla de Tenants con Tenant ID
+        // Sincronizar tabla de Tenants registrando el planId normalizado
         await env.DB.prepare(`
           INSERT INTO tenants (id, email, name, plan, status, updated_at)
           VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))
           ON CONFLICT(email) DO UPDATE SET id = excluded.id, plan = excluded.plan, status = 'ACTIVE', updated_at = datetime('now')
-        `).bind(tenantId, customerEmail, customerName, priceId).run();
+        `).bind(tenantId, customerEmail, customerName, planId).run();
 
         // Sincronizar Usuario Aprovisionado (asignando company = tenantId para coincidencia en RBAC)
         await env.DB.prepare(`
@@ -167,6 +179,7 @@ export async function handleStripeWebhook(request, env) {
       status: "PROVISIONED", 
       tenantId, 
       user: customerEmail, 
+      planId: planId,
       role: assignedRole 
     }), { 
       status: 200, 

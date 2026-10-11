@@ -1,0 +1,14 @@
+{
+  "name": "@saare/controls",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./schema.json": "./schema.json"
+  },
+  "scripts": {
+    "build": "node -e \"console.log('@saare/controls listo')\""
+  }
+}

@@ -1,64 +1,83 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const inputUser = document.getElementById("input-user");
-  const inputToken = document.getElementById("input-token");
-  const dispTenant = document.getElementById("disp-tenant");
-  const btnSave = document.getElementById("btn-save-creds");
+document.addEventListener('DOMContentLoaded', () => {
+  function updateDisplay(user, tenant, token) {
+    const finalUser = user || 'auditor@tenant.local';
+    const finalTenant = tenant || (finalUser.includes('@') ? finalUser.split('@')[1] : 'ORGANIZACION_AUDITADA');
+    
+    const dispUser = document.getElementById('disp-user');
+    const dispTenant = document.getElementById('disp-tenant');
+    const btnLink = document.getElementById('btn-link');
 
-  const viewForm = document.getElementById("view-form");
-  const viewVerified = document.getElementById("view-verified");
-  const verifiedUser = document.getElementById("verified-user");
-  const verifiedTenant = document.getElementById("verified-tenant");
-  const btnReconfig = document.getElementById("btn-reconfig");
+    if (dispUser) dispUser.innerText = finalUser;
+    if (dispTenant) dispTenant.innerText = finalTenant;
 
-  function renderState() {
-    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (res) => {
-        const tenant = res?.saare_tenant_domain || "ENTERPRISE";
-        const email = res?.saare_user_email || "";
-        const token = res?.saare_token || "";
+    if (token && btnLink) {
+      btnLink.href = `https://console.saare.es/?user=${encodeURIComponent(finalUser)}&token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(finalTenant)}&status=ACTIVE`;
+    }
+  }
 
-        dispTenant.innerText = tenant;
+  function loadTelemetryLogs() {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get(['saare_logs'], (res) => {
+        const logs = Array.isArray(res?.saare_logs) ? res.saare_logs : [];
+        const countEl = document.getElementById('disp-count');
+        const lastLogEl = document.getElementById('disp-last-verdict');
 
-        if (email && token) {
-          // Si ya hay datos, mostrar vista de Credenciales Verificadas / Auditando
-          verifiedTenant.innerText = tenant;
-          verifiedUser.innerText = email;
-          viewForm.style.display = "none";
-          viewVerified.style.display = "block";
-        } else {
-          // Si faltan datos, mostrar el formulario de configuración
-          viewForm.style.display = "block";
-          viewVerified.style.display = "none";
+        if (countEl) countEl.innerText = logs.length;
+
+        if (lastLogEl) {
+          if (logs.length > 0) {
+            const last = logs[0];
+            const id = last.evidence_id || last.verdictId || 'EV-L7-ACTIVE';
+            const decision = last.decision || 'ALLOW';
+            const time = last.timestamp ? new Date(last.timestamp).toLocaleTimeString() : 'En vivo';
+            const color = decision === 'DENY' ? '#f87171' : '#a7f3d0';
+            
+            lastLogEl.style.color = color;
+            lastLogEl.innerText = `[${time}] ${id} · ${decision}`;
+          } else {
+            lastLogEl.style.color = '#9ca3af';
+            lastLogEl.innerText = 'Sin eventos en memoria volátil';
+          }
         }
       });
     }
   }
 
-  renderState();
-
-  if (btnSave) {
-    btnSave.addEventListener("click", () => {
-      const email = inputUser.value.trim().toLowerCase();
-      const token = inputToken.value.trim();
-
-      if (!email || !token) {
-        alert("Por favor introduce un email y token válidos.");
-        return;
-      }
-
-      chrome.storage.local.set({
-        saare_user_email: email,
-        saare_token: token
-      }, () => {
-        renderState();
+  function fallbackLocal() {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get(['saare_user_email', 'saare_tenant_domain', 'saare_bootstrap_token', 'saare_token'], (res) => {
+        const user = res?.saare_user_email;
+        const tenant = res?.saare_tenant_domain;
+        const token = res?.saare_token || res?.saare_bootstrap_token;
+        updateDisplay(user, tenant, token);
       });
-    });
+    } else {
+      updateDisplay(null, null, null);
+    }
   }
 
-  if (btnReconfig) {
-    btnReconfig.addEventListener("click", () => {
-      viewVerified.style.display = "none";
-      viewForm.style.display = "block";
+  if (typeof chrome !== "undefined" && chrome.storage?.managed) {
+    chrome.storage.managed.get(['saare_user_email', 'saare_tenant_domain', 'saare_token', 'saare_bootstrap_token'], (managed) => {
+      if (chrome.runtime.lastError || !managed?.saare_user_email) {
+        fallbackLocal();
+      } else {
+        updateDisplay(managed.saare_user_email, managed.saare_tenant_domain, managed.saare_token || managed.saare_bootstrap_token);
+      }
+    });
+  } else {
+    fallbackLocal();
+  }
+
+  loadTelemetryLogs();
+
+  const btnClear = document.getElementById('btn-clear-ram');
+  if (btnClear) {
+    btnClear.addEventListener('click', () => {
+      if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.set({ saare_logs: [] }, () => {
+          loadTelemetryLogs();
+        });
+      }
     });
   }
 });

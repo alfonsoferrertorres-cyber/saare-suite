@@ -1,14 +1,29 @@
 // saare-console/src/services/cryptoService.ts
 
-import { ProofBundle } from '../config/saareState';
+export interface ProofBundle {
+  version?: string;
+  spec?: string;
+  verdictId?: string;
+  payloadHash?: string;
+  ed25519Signature?: string;
+  merkleRoot?: string;
+  rfc3161Timestamp?: string;
+  claimLevel?: string;
+  verificationGraph?: {
+    hashAlgorithm?: string;
+    signatureAlgorithm?: string;
+    tsaStandard?: string;
+    independentVerifyStatus?: string;
+  };
+}
 
 export interface MinimalTelemetry {
   cryptoSeal?: string;
   merkleRoot?: string;
   proofBundle?: ProofBundle;
-  dnshCompliance?: any;
-  auditStandard?: any;
-  [key: string]: any;
+  dnshCompliance?: unknown;
+  auditStandard?: unknown;
+  [key: string]: unknown;
 }
 
 /**
@@ -74,3 +89,5 @@ export class CryptoService {
     return `${hash.substring(0, 6)}...${hash.substring(hash.length - 6)}`;
   }
 }
+
+export default CryptoService;

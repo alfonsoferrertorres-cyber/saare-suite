@@ -1,5 +1,5 @@
-// saare-console/src/App.jsx
-import React, { useState, useEffect, useRef } from 'react';
+// saare-console/src/App.jsx — Panel Principal GRC & Ciberresiliencia S.A.A.R.E. (SGP 1.0)
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
@@ -8,9 +8,13 @@ import FriaWizardModal from './components/FriaWizardModal';
 import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
+import SeatsManagementModal from './components/SeatsManagementModal';
+import SoAModal from './components/SoAModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
+import { apiService } from './services/apiService';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
+import { generateVirginizedGovernancePackage } from './services/governanceTemplatesEngine';
 
 import cabeceraImg from './assets/cabecera.png';
 
@@ -68,7 +72,9 @@ export default function App() {
   const [auditTokenModal, setAuditTokenModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
+  const [showSoaModal, setShowSoaModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showSeatsModal, setShowSeatsModal] = useState(false);
   const [resilienceReport, setResilienceReport] = useState(null);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
@@ -107,13 +113,34 @@ export default function App() {
     }
   }, []);
 
-  /**
-   * Mapeo unificado para Bóveda D1 y KV en App.jsx
-   * Sincronizado con las columnas nativas de D1 (consolidated_traces / merkle_anchors)
-   */
-  const mapEvidences = (remoteEvidences) => {
-    if (!Array.isArray(remoteEvidences)) return [];
-    return remoteEvidences.map((item, idx) => {
+  const triggerGovernance = useCallback((msg) => {
+    setGovernanceStatus(msg);
+    setTimeout(() => setGovernanceStatus(''), 4500);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    localStorage.removeItem('saare_token');
+    localStorage.removeItem('saare_user_email');
+    localStorage.removeItem('saare_user_role');
+    localStorage.removeItem('saare_tenant_domain');
+    setIsAuthenticated(false);
+    setUserEmail('');
+    setUserRole('OPERATIONAL_AGENT_USER');
+    setEvidences([]);
+  }, []);
+
+  const mapEvidences = useCallback((remoteEvidences) => {
+    const list = Array.isArray(remoteEvidences) 
+      ? remoteEvidences 
+      : (remoteEvidences?.evidences || remoteEvidences?.runs || remoteEvidences?.data || []);
+
+    if (!Array.isArray(list)) return [];
+
+    return list.map((item, idx) => {
+      if (!item) return null;
       const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
       let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || '';
       let cleanResponse = item.responseOutput || item.llmResponse || '';
@@ -127,9 +154,23 @@ export default function App() {
       const payloadHash = item.merkle_root || item.merkleRoot || item.proofBundle?.payloadHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
       const rawTime = item.timestamp || item.created_at || new Date().toISOString();
 
+      let inferredType = item.type;
+      const catUpper = (item.cat || item.category || '').toUpperCase();
+      const promptUpper = String(cleanPrompt).toUpperCase();
+
+      if (!inferredType) {
+        if (catUpper.includes('PRIVACY') || catUpper.includes('PII') || catUpper.includes('DNI') || promptUpper.includes('DNI') || promptUpper.includes('IBAN')) {
+          inferredType = 'PRIVACIDAD';
+        } else if (catUpper.includes('WORKFLOW') || catUpper.includes('TOOL') || catUpper.includes('GRANT') || catUpper.includes('ALLOW')) {
+          inferredType = 'WORKFLOWS';
+        } else {
+          inferredType = isDeny ? 'PRIVACIDAD' : 'WORKFLOWS';
+        }
+      }
+
       return {
         id: evidenceId,
-        time: rawTime ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
+        time: rawTime && !isNaN(Date.parse(rawTime)) ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
         rawTimestamp: rawTime,
         cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
         sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
@@ -137,8 +178,8 @@ export default function App() {
         responseOutput: String(cleanResponse || ''),
         verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
         decision: isDeny ? 'DENY' : 'ALLOW',
-        anchored: item.anchored !== undefined ? item.anchored : 1, // Campo de inmutabilidad D1
-        type: item.type || (isDeny ? 'PRIVACIDAD' : 'WORKFLOWS'),
+        anchored: item.anchored !== undefined ? item.anchored : 1,
+        type: inferredType,
         user: item.user || item.user_id || userEmail,
         tenant: item.tenant || item.tenant_id || tenantId,
         merkleRoot: payloadHash,
@@ -156,28 +197,23 @@ export default function App() {
         latency: item.latency || 115,
         rawJson: item
       };
-    });
-  };
+    }).filter(Boolean);
+  }, [userEmail, tenantId]);
 
-  const fetchTelemetryOnce = async () => {
+  const fetchTelemetryOnce = useCallback(async () => {
     try {
-      const res = await saareFetch(`/runs?t=${Date.now()}`, { method: 'GET' });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        const remoteEvidences = data.evidences || data.runs || [];
-        if (data.vaultSource) setVaultSource(data.vaultSource);
-        setEvidences(mapEvidences(remoteEvidences));
+      const remoteEvidences = await apiService.getTelemetryTraces(100);
+      const mapped = mapEvidences(remoteEvidences);
+      setEvidences(mapped);
+      
+      const statusData = await apiService.getNodeStatus();
+      if (statusData && statusData.vaultSource) {
+        setVaultSource(statusData.vaultSource);
       }
     } catch (e) {
       console.error("Error al obtener telemetría inicial:", e);
     }
-  };
+  }, [mapEvidences]);
 
   useEffect(() => {
     if (!isAuthenticated || !userEmail) return;
@@ -190,11 +226,8 @@ export default function App() {
 
     const fetchCustomRules = async () => {
       try {
-        const res = await saareFetch('/custom-rules', { method: 'GET' });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.rules)) setCustomFilters(data.rules);
-        }
+        const rules = await apiService.getCustomRules();
+        if (Array.isArray(rules)) setCustomFilters(rules);
       } catch (e) {
         console.error("Error al obtener reglas personalizadas:", e);
       }
@@ -203,8 +236,12 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
+    const pollingInterval = setInterval(() => {
+      fetchTelemetryOnce();
+    }, 3000);
+
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
-    
+
     try {
       const es = new EventSource(streamUrl);
       eventSourceRef.current = es;
@@ -212,36 +249,59 @@ export default function App() {
       es.onmessage = (event) => {
         try {
           const streamData = JSON.parse(event.data);
-          if (streamData.evidences || streamData.runs) {
-            setEvidences(mapEvidences(streamData.evidences || streamData.runs));
+          if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
+            setEvidences(mapEvidences(streamData));
           } else if (streamData.status === 'RUNTIME_ACTIVE') {
             fetchTelemetryOnce();
           }
-        } catch (err) {
-          console.error("Error parseando SSE payload:", err);
-        }
+        } catch (err) {}
       };
 
-      es.onerror = (err) => {
-        console.warn("Conexión SSE interrumpida, reconectando...", err);
+      es.onerror = () => {
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+        }
       };
-    } catch (e) {
-      console.error("EventSource no soportado en este entorno:", e);
-    }
+    } catch (e) {}
 
     return () => {
       clearInterval(intervalClock);
+      clearInterval(pollingInterval);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
     };
-  }, [isAuthenticated, userEmail, tenantId, userRole]);
+  }, [isAuthenticated, userEmail, tenantId, userRole, fetchTelemetryOnce, mapEvidences]);
+
+  const filteredEvidences = evidences.filter(item => {
+    if (!item) return false;
+    
+    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
+    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
+
+    if (startDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const startDate = new Date(startDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
+    }
+
+    if (endDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const endDate = new Date(endDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        if (itemDate > endDate) return false;
+      }
+    }
+
+    return true;
+  });
 
   const totalInspecciones = evidences.length;
-  const totalDeny = evidences.filter(e => e.decision === 'DENY' || e.verdict === 'RECHAZADO').length;
+  const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
   const avgLatencyMs = totalInspecciones > 0 
-    ? (evidences.reduce((acc, curr) => acc + (Number(curr.latency) || 115), 0) / totalInspecciones).toFixed(1)
+    ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 115), 0) / totalInspecciones).toFixed(1)
     : '115.0';
 
   const handleDownloadSingleEvidencePdf = async (ev) => {
@@ -266,17 +326,14 @@ export default function App() {
     }
 
     try {
-      await saareFetch('/integrations/siem', {
-        method: 'POST',
-        body: JSON.stringify({
-          evidenceId: ev.id,
-          tenant: ev.tenant,
-          operator: ev.user,
-          blockedPayload: ev.prompt,
-          verdict: ev.decision,
-          merkleRoot: ev.merkleRoot,
-          policyEngineRule: ev.cat
-        })
+      await apiService.exportToSiem({
+        evidenceId: ev.id,
+        tenant: ev.tenant,
+        operator: ev.user,
+        blockedPayload: ev.prompt,
+        verdict: ev.decision,
+        merkleRoot: ev.merkleRoot,
+        policyEngineRule: ev.cat
       });
       triggerGovernance(`Evento SIEM notificado para ${ev.id}.`);
     } catch (e) {
@@ -290,9 +347,9 @@ export default function App() {
       return;
     }
 
-    const deniedEvidences = evidences.filter(e => e.verdict === 'RECHAZADO' || e.decision === 'DENY');
+    const deniedEvidences = evidences.filter(e => e && (e.verdict === 'RECHAZADO' || e.decision === 'DENY'));
     const sampleMerkle = evidences[0]?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
-    
+
     const friaReport = {
       documentHeader: {
         type: "FUNDAMENTAL_RIGHTS_IMPACT_ASSESSMENT_FRIA",
@@ -336,13 +393,40 @@ export default function App() {
     triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) generado y sellado criptográficamente.");
   };
 
+  const handleExportGovernancePackage = () => {
+    if (!hasRequiredRank(userRole, 2)) {
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      return;
+    }
+
+    try {
+      const pkg = generateVirginizedGovernancePackage({
+        tenantId,
+        userEmail,
+        userRole,
+        evidences,
+        customFilters
+      });
+
+      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `DOSSIER_GOBERNANZA_4TEMPLATES_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}_2026.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      triggerGovernance("Dossier Completo de Gobernanza (4 Plantillas Clave Virginizadas) generado.");
+    } catch (err) {
+      triggerGovernance(`Error generando dossier: ${err.message}`);
+    }
+  };
+
   const handleVerifyLicense = async () => {
     try {
-      const res = await saareFetch('/auth/verifylicense', {
-        method: 'POST',
-        body: JSON.stringify({ tenant: tenantId, user: userEmail, scope: 'all' })
-      });
-      const data = await res.json();
+      const data = await apiService.verifyLicense({ tenant: tenantId, user: userEmail, scope: 'all' });
       if (data.valid || data.success) {
         triggerGovernance("Licencia Enterprise S.A.A.R.E. verificada en Bóveda Central.");
       } else {
@@ -372,21 +456,15 @@ export default function App() {
     const t0 = performance.now();
 
     try {
-      const res = await saareFetch('/intercept', {
-        method: 'POST',
-        body: JSON.stringify({
-          prompt: testPrompt,
-          user: userEmail,
-          tenant: tenantId,
-          evidence_id: auditedEvidenceId || undefined
-        })
+      const data = await apiService.interceptPrompt({
+        prompt: testPrompt,
+        user: userEmail,
+        tenant: tenantId,
+        evidence_id: auditedEvidenceId || undefined
       });
 
       const t1 = performance.now();
       const latencyMs = (t1 - t0 + 0.85).toFixed(2) + " ms";
-
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
 
       let clean = testPrompt
         .replace(/(?:\b\d{7,8}[A-Za-z]\b|\bdni\b.*?\b\d{7,8}[A-Za-z]?\b)/gi, "[REDACTED_DNI]")
@@ -399,11 +477,15 @@ export default function App() {
           try {
             const reg = new RegExp(rule.pattern, "gi");
             clean = clean.replace(reg, `[CUSTOM_BLOCK: ${rule.name.toUpperCase()}]`);
-          } catch (e) {}
+          } catch (e) {
+            if (clean.toLowerCase().includes(rule.pattern.toLowerCase())) {
+              clean = clean.replace(new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "gi"), `[CUSTOM_BLOCK: ${rule.name.toUpperCase()}]`);
+            }
+          }
         }
       });
 
-      const isDeny = res.status === 403 || data.decision === 'DENY' || clean !== testPrompt;
+      const isDeny = data.decision === 'DENY' || clean !== testPrompt;
       const evidenceId = data.evidence_id || auditedEvidenceId || `EV-L7-${Math.floor(Math.random() * 899999 + 100000)}`;
 
       const evalResult = {
@@ -444,11 +526,7 @@ export default function App() {
     setSimulationRunning(true);
     triggerGovernance(`Ejecutando escenario de resiliencia: ${scenario}...`);
     try {
-      const res = await saareFetch('/resilience/check', {
-        method: 'POST',
-        body: JSON.stringify({ scenario, tenantId })
-      });
-      const data = await res.json();
+      const data = await apiService.runResilienceCheck({ scenario, tenantId });
       setSimulationResult(data);
       triggerGovernance(`Simulación ${scenario} finalizada con veredicto PASS.`);
     } catch (err) {
@@ -460,18 +538,16 @@ export default function App() {
 
   const handleSyncVaultAndVerify = async (merkleHash) => {
     const hashToVerify = (merkleHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842').trim();
-    
+
     try {
-      const syncRes = await saareFetch('/vault/sync', { method: 'GET' });
-      if (syncRes.ok) {
-        const syncData = await syncRes.json();
-        if (syncData.source) setVaultSource(syncData.source);
+      const syncData = await apiService.syncVault();
+      if (syncData && syncData.source) {
+        setVaultSource(syncData.source);
       }
 
-      const verifyRes = await saareFetch(`/verify/${encodeURIComponent(hashToVerify)}`, { method: 'GET' });
-      const verifyData = await verifyRes.json();
+      const verifyData = await apiService.verifyEvidence(hashToVerify);
 
-      if (verifyRes.ok && (verifyData.verified || verifyData.status === 'VERIFIED')) {
+      if (verifyData && (verifyData.verified || verifyData.status === 'VERIFIED')) {
         setSelectedJson({
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
@@ -504,7 +580,7 @@ export default function App() {
         verdict: "ERROR_VERIFICATION",
         details: "No se pudo establecer conexión con el nodo de auditoría o el hash es inválido."
       });
-      triggerGovernance("⚠️ Error de conexión al consultar el nodo de auditoría.");
+      triggerGovernance("⚠ Error de conexión al consultar el nodo de auditoría.");
     }
   };
 
@@ -530,10 +606,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/custom-rules', {
-        method: 'POST',
-        body: JSON.stringify({ rules: updated })
-      });
+      await apiService.saveCustomRules(updated);
       triggerGovernance(`Filtro "${newRuleName}" activado en el Policy Engine.`);
     } catch (e) {
       triggerGovernance("Error al sincronizar regla personalizada.");
@@ -554,10 +627,7 @@ export default function App() {
     setCustomFilters(updated);
 
     try {
-      await saareFetch('/custom-rules', {
-        method: 'POST',
-        body: JSON.stringify({ rules: updated })
-      });
+      await apiService.saveCustomRules(updated);
       triggerGovernance("Filtro eliminado del perfil del Tenant.");
     } catch (e) {
       triggerGovernance("Error al revocar filtro.");
@@ -572,18 +642,12 @@ export default function App() {
 
     try {
       triggerGovernance("Iniciando verificación de resiliencia ex-ante...");
-      const res = await saareFetch('/resilience/check', { method: 'POST' });
-      const data = await res.json();
+      const data = await apiService.runResilienceCheck({ scenario: 'FULL_CHECK', tenantId });
       setResilienceReport(data);
       triggerGovernance(`Audit Invariantes: ${data.verdict || 'COMPLETADO'}`);
     } catch (err) {
       triggerGovernance(`Error en audit de resiliencia: ${err.message}`);
     }
-  };
-
-  const triggerGovernance = (msg) => {
-    setGovernanceStatus(msg);
-    setTimeout(() => setGovernanceStatus(''), 4500);
   };
 
   const handleDownloadExtension = async () => {
@@ -655,10 +719,10 @@ export default function App() {
         description: "Operación Zero-Disk en RAM que evita procesamiento innecesario en servidores cloud."
       },
       grantBreakdown: {
-        kitConsulting: evidences.filter(e => e.cat?.includes("PII") || e.sub?.includes("AI Act")),
-        kitDigital: evidences.filter(e => e.type === "WORKFLOWS" || e.cat === "AUDITORIA_CONFORME"),
-        impulsoIA: evidences.filter(e => e.cat?.includes("FINANCIAL") || e.sub?.includes("DORA")),
-        incibeCdti: evidences.filter(e => e.merkleRoot)
+        kitConsulting: evidences.filter(e => e?.cat?.includes("PII") || e?.sub?.includes("AI Act")),
+        kitDigital: evidences.filter(e => e?.type === "WORKFLOWS" || e?.cat === "AUDITORIA_CONFORME"),
+        impulsoIA: evidences.filter(e => e?.cat?.includes("FINANCIAL") || e?.sub?.includes("DORA")),
+        incibeCdti: evidences.filter(e => e?.merkleRoot)
       },
       evidenceSummary: {
         totalEvidences: evidences.length,
@@ -722,40 +786,6 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
-  const handleLogout = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    localStorage.removeItem('saare_token');
-    localStorage.removeItem('saare_user_email');
-    localStorage.removeItem('saare_user_role');
-    localStorage.removeItem('saare_tenant_domain');
-    setIsAuthenticated(false);
-    setUserEmail('');
-    setUserRole('OPERATIONAL_AGENT_USER');
-    setEvidences([]);
-  };
-
-  const filteredEvidences = evidences.filter(item => {
-    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
-    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
-
-    if (startDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const startDate = new Date(startDateFilter);
-      if (itemDate < startDate) return false;
-    }
-
-    if (endDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const endDate = new Date(endDateFilter);
-      endDate.setHours(23, 59, 59, 999);
-      if (itemDate > endDate) return false;
-    }
-
-    return true;
-  });
-
   const activeDirectivesCount = directives.filter(d => d.active).length;
 
   if (!isAuthenticated || !userEmail) {
@@ -766,14 +796,14 @@ export default function App() {
             if (data.token) {
               localStorage.setItem('saare_token', data.token);
             }
-            const email = data.email || data.user?.email;
+            const email = data.email || data.user?.email || '';
             const role = data.role || data.user?.role || 'CISO_ADMIN';
             const tDomain = data.tenantName || data.user?.tenantName || SAARE_CONFIG.DEFAULT_TENANT;
-            
+
             setUserEmail(email);
             setUserRole(role);
             setTenantId(tDomain);
-            
+
             localStorage.setItem('saare_user_email', email);
             localStorage.setItem('saare_user_role', role);
             localStorage.setItem('saare_tenant_domain', tDomain);
@@ -861,6 +891,23 @@ export default function App() {
               🟥 CYBER & RESILIENCE (SOC)
             </button>
 
+            {/* BOTÓN PARA ABRIR EL MODAL DE GESTIÓN DE ASIENTOS Y ROLES EMPLEADOS */}
+            <button
+              onClick={() => setShowSeatsModal(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #38bdf8',
+                background: '#0f172a',
+                color: '#38bdf8',
+                fontWeight: '800',
+                fontSize: '0.72rem',
+                cursor: 'pointer'
+              }}
+              title="Gestión de Licencias y Asientos del Nodo Organismo">
+              👥 ASIENTOS RBAC
+            </button>
+
             {/* SIMULADOR / SELECTOR RÁPIDO DE ROL EN INTERFAZ */}
             <select
               value={userRole}
@@ -928,6 +975,19 @@ export default function App() {
                     style={{ padding: '10px 14px', background: hasRequiredRank(userRole, 3) ? '#8b5cf6' : '#334155', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', textAlign: 'center', boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)' }}
                     title={!hasRequiredRank(userRole, 3) ? "Requiere rol SecOps/CISO (Nivel 3)" : ""}>
                     🧪 Invariant Audit
+                  </button>
+
+                  <button
+                    onClick={() => setShowSoaModal(true)}
+                    style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
+                    📜 SoA ISO 27001/42001
+                  </button>
+
+                  <button
+                    onClick={handleExportGovernancePackage}
+                    style={{ padding: '10px 14px', background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)' }}
+                    title="Exportar dossier con las 4 plantillas clave de gobernanza virginizadas">
+                    📦 Dossier 4 Plantillas GRC
                   </button>
 
                   <button
@@ -1008,6 +1068,7 @@ export default function App() {
                   setShowFriaModal(true);
                 }}
                 onExecuteEnforcementCheck={handleExecuteTestExAnte}
+                onOpenReportModal={() => setShowReportModal(true)}
               />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', background: '#020617', padding: '12px 16px', borderRadius: '8px', border: '1px solid #1e293b' }}>
@@ -1450,6 +1511,14 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE DECLARACIÓN DE APLICABILIDAD (SoA ISO 27001 / ISO 42001) */}
+      <SoAModal 
+        isOpen={showSoaModal}
+        onClose={() => setShowSoaModal(false)}
+        tenantId={tenantId}
+      />
+
+      {/* MODAL DE FRIA (EU AI ACT ART. 27) */}
       <FriaWizardModal 
         isOpen={showFriaModal}
         onClose={() => setShowFriaModal(false)}
@@ -1458,6 +1527,7 @@ export default function App() {
         tenantId={tenantId}
       />
 
+      {/* MODAL DE EXPORTACIÓN DE INFORMES AUDITADOS */}
       {showExportModal && (
         <ReportExportModal 
           useCaseId={tenantId} 
@@ -1465,6 +1535,14 @@ export default function App() {
         />
       )}
 
+      {/* MODAL DE GESTIÓN DE ASIENTOS Y ROLES RBAC */}
+      {showSeatsModal && (
+        <SeatsManagementModal 
+          onClose={() => setShowSeatsModal(false)} 
+        />
+      )}
+
+      {/* MODAL DE AUDITORÍA DE INVARIANTES */}
       {resilienceReport && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #8b5cf6', borderRadius: '12px', width: '90%', maxWidth: '650px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1479,6 +1557,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE VISUALIZACIÓN JSON DE EVIDENCIA */}
       {selectedJson && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1495,6 +1574,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE EXPORTACIÓN DE HASH D1 */}
       {auditTokenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
@@ -1516,6 +1596,7 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL DE REPORTE OFICIAL */}
       {showReportModal && (
         <OfficialReportModal onClose={() => setShowReportModal(false)} />
       )}

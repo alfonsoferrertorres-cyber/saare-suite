@@ -1,19 +1,30 @@
-// control-plane/authMiddleware.js — Middleware Unificado de Autenticación y Generación JWT
 export function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
 function base64UrlEncode(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 }
 
 function base64UrlDecode(str) {
-  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (base64.length % 4) { base64 += '='; }
-  return atob(base64);
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) {
+    base64 += "=";
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 export class AuthMiddleware {
@@ -28,7 +39,7 @@ export class AuthMiddleware {
   }
 
   /**
-   * Genera y firma un Token JWT HMAC-SHA256 para el usuario autenticado
+   * Genera y firma un Token JWT HMAC-SHA256 para la sesión.
    */
   async signToken(payload, expiresInSeconds = 86400) {
     const header = { alg: "HS256", typ: "JWT" };
@@ -60,16 +71,18 @@ export class AuthMiddleware {
   }
 
   /**
-   * Verifica la validez y la firma de un token JWT o API Key entrante
+   * Verifica la validez y la firma de un token JWT o API Key entrante.
    */
   async verifyAndDecodeToken(token) {
     if (!token) {
       throw new Error("[AUTH_ERROR] Token o API Key no proporcionada");
     }
 
-    const cleanToken = token.startsWith("Bearer ") ? token.replace("Bearer ", "").trim() : token.trim();
+    const cleanToken = token.startsWith("Bearer ")
+      ? token.replace("Bearer ", "").trim()
+      : token.trim();
 
-    // SOPORTE PARA API KEYS DIRECTAS DE CUSTODIO
+    // 1. Validar API Keys maestras o de servicio
     if (cleanToken.startsWith("sk_saare_")) {
       return {
         sub: "api_key_user",
@@ -80,7 +93,7 @@ export class AuthMiddleware {
       };
     }
 
-    // VERIFICACIÓN CRIPTOGRÁFICA DE JWT OIDC
+    // 2. Validar JWT OIDC
     const parts = cleanToken.split(".");
     if (parts.length !== 3) {
       throw new Error("[AUTH_ERROR] Estructura JWT no válida");
@@ -89,7 +102,7 @@ export class AuthMiddleware {
     const [headerB64, payloadB64, signatureB64] = parts;
     const encoder = new TextEncoder();
     const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
-    
+
     const key = await crypto.subtle.importKey(
       "raw",
       encoder.encode(this.jwtSecret),
@@ -98,22 +111,27 @@ export class AuthMiddleware {
       ["verify"]
     );
 
-    const signatureBytes = Uint8Array.from(base64UrlDecode(signatureB64), c => c.charCodeAt(0));
-    const isValidSignature = await crypto.subtle.verify("HMAC", key, signatureBytes, dataToVerify);
+    const signatureBytes = base64UrlDecode(signatureB64);
+    const isValidSignature = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      signatureBytes,
+      dataToVerify
+    );
 
     if (!isValidSignature) {
       throw new Error("[AUTH_ERROR] Firma JWT inválida o manipulada");
     }
 
-    const payloadBytes = Uint8Array.from(base64UrlDecode(payloadB64), c => c.charCodeAt(0));
+    const payloadBytes = base64UrlDecode(payloadB64);
     const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
-    
+
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
     }
 
     const userGroups = payload.groups || [];
-    let assignedRole = payload.role || "OPERATIONAL_AGENT_USER"; 
+    let assignedRole = payload.role || "OPERATIONAL_AGENT_USER";
     for (const group of userGroups) {
       if (this.roleMapping[group]) {
         assignedRole = this.roleMapping[group];
@@ -123,7 +141,7 @@ export class AuthMiddleware {
 
     return {
       sub: payload.sub,
-      email: payload.email,
+      email: sanitizeEmail(payload.email),
       tenantId: payload.tenant_id || payload.tenantId || "ENTERPRISE",
       role: assignedRole,
       groups: userGroups

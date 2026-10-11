@@ -1,4 +1,4 @@
-// control-plane/subsidiesWebhook.js — Módulo de Despacho e Integración de Webhooks (SAARE Core v7)
+// control-plane/subsidiesWebhook.js — Módulo de Despacho e Integración de Webhooks (SAARE Core SGP 1.0)
 const ramWebhookConfigCache = new Map();
 
 /**
@@ -49,7 +49,13 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
       return { success: false, reason: "No webhook target configured" };
     }
 
-    const bodyString = JSON.stringify(payload);
+    const enrichedPayload = {
+      ...payload,
+      specVersion: "SGP-1.0",
+      trustAnchor: "SAARE-MD-IPRES-2026"
+    };
+
+    const bodyString = JSON.stringify(enrichedPayload);
     
     // Generar firma HMAC-SHA256 con el secret_token
     const signature = await generateHmacSignature(config.secret_token, bodyString);
@@ -57,7 +63,8 @@ export async function dispatchWebhookEvent(tenantId, payload, env) {
     const headers = {
       'Content-Type': 'application/json',
       'X-Saare-Signature': signature,
-      'X-Saare-Tenant-ID': tenantId
+      'X-Saare-Tenant-ID': tenantId,
+      'X-Saare-Spec': 'SGP-1.0'
     };
 
     if (config.secret_token) {
@@ -97,7 +104,7 @@ export async function handleWebhookTestRoute(request, url, env) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Saare-Signature'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Saare-Signature, X-Saare-Tenant-ID'
   };
 
   // Manejo de preflight CORS (OPTIONS)
@@ -113,7 +120,7 @@ export async function handleWebhookTestRoute(request, url, env) {
       timestamp: new Date().toISOString(),
       tenant_id: tenantId,
       status: 'OPERATIONAL',
-      platform: 'MS3V S.A.A.R.E. SL Core v7'
+      platform: 'S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.4)'
     };
 
     const result = await dispatchWebhookEvent(tenantId, payload, env);

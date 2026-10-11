@@ -1,5 +1,5 @@
 -- ============================================================================
--- S.A.A.R.E. Enterprise — D1 Database Schema Architecture (SGP 1.0 / v8.1)
+-- S.A.A.R.E. Enterprise — D1 Database Schema Architecture (SGP 1.0 / v8.4)
 -- ============================================================================
 
 -- 1. TABLA DE ORGANIZACIONES Y LICENCIAS (TENANTS)
@@ -39,11 +39,11 @@ CREATE TABLE IF NOT EXISTS consolidated_traces (
     trace_id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
     user_email TEXT NOT NULL,
-    final_evaluator_node TEXT NOT NULL, -- 'DOM_HOOK', 'DAEMON_LOCAL' o 'EDGE_WORKER'
-    final_action TEXT NOT NULL,         -- 'BLOCKED' o 'ALLOWED'
+    final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER',
+    final_action TEXT NOT NULL DEFAULT 'ALLOWED',
     rule_applied TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    anchored INTEGER NOT NULL DEFAULT 0 -- 0: Pendiente de Merkle, 1: Anclado en Lote
+    anchored INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_consolidated_tenant_action ON consolidated_traces(tenant_id, final_action);
@@ -52,19 +52,18 @@ CREATE INDEX IF NOT EXISTS idx_consolidated_anchored ON consolidated_traces(tena
 
 -- 4. BÓVEDA DE EVIDENCIAS Y EJECUCIONES (APPEND-ONLY ISO/IEC 27037)
 CREATE TABLE IF NOT EXISTS runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    verdictId TEXT NOT NULL,
+    id TEXT PRIMARY KEY,
     evidence_id TEXT UNIQUE NOT NULL,
     trace_id TEXT NOT NULL,
-    decision TEXT NOT NULL, -- 'ALLOW' o 'DENY'
+    verdictId TEXT NOT NULL,
+    decision TEXT NOT NULL,
     user TEXT NOT NULL,
     tenant TEXT NOT NULL,
-    verdict TEXT NOT NULL,  -- 'PERMITIDO' o 'RECHAZADO'
+    verdict TEXT NOT NULL,
     prompt TEXT,
     responseOutput TEXT,
     payload_json TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY(trace_id) REFERENCES consolidated_traces(trace_id) ON DELETE CASCADE
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_evidence_id ON runs(evidence_id);

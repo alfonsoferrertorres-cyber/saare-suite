@@ -1,39 +1,43 @@
-// saare-console/src/utils/api.js
+// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
 
-const ENV_URL = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
-const isLocal = typeof window !== "undefined" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 
-// Raíz base del API Gateway
-export const API_HOST = isLocal ? 'http://127.0.0.1:8787' : (ENV_URL || 'https://api.saare.es');
+// Normalización estricta de la URL base configurada en entorno
+const cleanEnvUrl = rawEnvUrl 
+  ? rawEnvUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
+  : null;
+
+const isLocal = typeof window !== "undefined" && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1'
+);
+
+// Puerto 3001 alineado con el Control Plane / Server local y fallback producción
+export const API_HOST = isLocal ? 'http://127.0.0.1:3001' : (cleanEnvUrl || 'https://api.saare.es');
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
-  return url.startsWith(API_HOST) || url.startsWith(API_BASE_URL);
+  return typeof url === 'string' && (url.startsWith(API_HOST) || url.startsWith('/'));
 }
 
 /**
- * Cliente HTTP universal para el Control Plane de S.A.A.R.E. (SGP 1.0 / v8.1 SRP)
- * @param {string} endpoint - Ruta del endpoint o URL absoluta
- * @param {RequestInit} options - Opciones nativas de fetch
+ * Cliente HTTP unificado para la Consola GRC de S.A.A.R.E.
+ * @param {string} endpoint - Ruta relativa o URL absoluta
+ * @param {RequestInit} options - Opciones de fetch
  * @returns {Promise<Response>}
  */
 export async function saareFetch(endpoint, options = {}) {
-  const isAbsolute = typeof endpoint === 'string' && endpoint.startsWith('http');
-  let cleanEndpoint = endpoint;
+  const isAbsolute = typeof endpoint === 'string' && (endpoint.startsWith('http://') || endpoint.startsWith('https://'));
+  let finalUrl = endpoint;
 
-  // 1. Normalización de URL y versionado (Prevención de duplicados de prefijo)
+  // 1. Normalización anti-duplicación de prefijos (/api/v1)
   if (!isAbsolute) {
-    if (!cleanEndpoint.startsWith('/')) cleanEndpoint = `/${cleanEndpoint}`;
-    
-    // Antepone /api/v1 solo si el endpoint no incluye ya /api/v1 o /api/...
-    if (!cleanEndpoint.startsWith('/api/v1') && !cleanEndpoint.startsWith('/api/')) {
-      cleanEndpoint = `/api/v1${cleanEndpoint}`;
-    }
-    
-    cleanEndpoint = `${API_HOST}${cleanEndpoint}`;
+    let relativePath = String(endpoint || '').replace(/^\/+/, '');
+    relativePath = relativePath.replace(/^api\/(v1\/)?/, '');
+    finalUrl = `${API_BASE_URL}/${relativePath}`;
   }
 
-  // 2. Extracción de credenciales, rol y contexto desde la sesión unificada
+  // 2. Extracción segura de credenciales y contexto RBAC desde localStorage
   let token = null;
   let currentUser = null;
   let currentTenant = null;
@@ -60,60 +64,90 @@ export async function saareFetch(endpoint, options = {}) {
     }
   }
 
-  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant RBAC
+  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant
   const defaultHeaders = {
     'Accept': 'application/json',
-    ...(options.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
-    ...(token && isOwnApi(cleanEndpoint) ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...(currentUser && isOwnApi(cleanEndpoint) ? { 'x-saare-user': currentUser } : {}),
-    ...(currentTenant && isOwnApi(cleanEndpoint) ? { 'x-saare-tenant': currentTenant } : {}),
-    ...(currentRole && isOwnApi(cleanEndpoint) ? { 'x-saare-role': currentRole } : {}),
+    'x-saare-spec': 'SGP-1.0',
+    ...(options.body && typeof options.body === 'string' ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
+    ...(token && isOwnApi(finalUrl) ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(currentUser && isOwnApi(finalUrl) ? { 'x-saare-user': currentUser } : {}),
+    ...(currentTenant && isOwnApi(finalUrl) ? { 'x-saare-tenant': currentTenant } : {}),
+    ...(currentRole && isOwnApi(finalUrl) ? { 'x-saare-role': currentRole } : {}),
     ...(options.headers || {})
   };
 
   try {
-    const response = await fetch(cleanEndpoint, {
+    const response = await fetch(finalUrl, {
       ...options,
       headers: defaultHeaders
     });
 
-    // 4. Gestión global de sesión expirada o no autorizada
+    // 4. Limpieza automática de sesión si el token ha expirado
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('saare_auth_token');
       localStorage.removeItem('saare_session_user');
       localStorage.removeItem('saare_token');
       localStorage.removeItem('saare_user_email');
       localStorage.removeItem('saare_user_role');
+      localStorage.removeItem('saare_tenant_domain');
     }
 
     return response;
   } catch (error) {
-    console.error('Error de conexión con SAARE Control Plane:', error);
+    console.error('[SAARE_CONSOLE_API] Error de conexión con Control Plane:', error);
     throw new Error(`Error de conexión con el Control Plane: ${error.message}`);
   }
 }
 
 /**
- * Helpers especializados para simplificar llamadas desde la UI
+ * Helpers API con parseo automático de JSON
  */
 export const api = {
-  get: (endpoint, options = {}) => saareFetch(endpoint, { ...options, method: 'GET' }),
-  post: (endpoint, body, options = {}) => saareFetch(endpoint, { 
-    ...options, 
-    method: 'POST', 
-    body: JSON.stringify(body) 
-  }),
-  put: (endpoint, body, options = {}) => saareFetch(endpoint, { 
-    ...options, 
-    method: 'PUT', 
-    body: JSON.stringify(body) 
-  }),
-  delete: (endpoint, options = {}) => saareFetch(endpoint, { ...options, method: 'DELETE' }),
+  get: async (endpoint, options = {}) => {
+    const res = await saareFetch(endpoint, { ...options, method: 'GET' });
+    if (!res.ok) throw new Error(`GET error ${res.status}: ${res.statusText}`);
+    return res.json();
+  },
   
-  getSrpManifest: () => saareFetch('/manifest/srp', { method: 'GET' }),
+  post: async (endpoint, body, options = {}) => {
+    const res = await saareFetch(endpoint, { 
+      ...options, 
+      method: 'POST', 
+      body: typeof body === 'string' ? body : JSON.stringify(body) 
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || errJson.error || `POST error ${res.status}`);
+    }
+    return res.json();
+  },
   
-  getKpis: (startDate, endDate) => {
+  put: async (endpoint, body, options = {}) => {
+    const res = await saareFetch(endpoint, { 
+      ...options, 
+      method: 'PUT', 
+      body: typeof body === 'string' ? body : JSON.stringify(body) 
+    });
+    if (!res.ok) throw new Error(`PUT error ${res.status}: ${res.statusText}`);
+    return res.json();
+  },
+  
+  delete: async (endpoint, options = {}) => {
+    const res = await saareFetch(endpoint, { ...options, method: 'DELETE' });
+    if (!res.ok) throw new Error(`DELETE error ${res.status}: ${res.statusText}`);
+    return res.json();
+  },
+  
+  getSrpManifest: async () => {
+    const res = await saareFetch('/manifest/srp', { method: 'GET' });
+    return res.ok ? res.json() : null;
+  },
+  
+  getKpis: async (startDate, endDate) => {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
-    return saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
+    const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
+    return res.ok ? res.json() : {};
   }
 };
+
+export default saareFetch;

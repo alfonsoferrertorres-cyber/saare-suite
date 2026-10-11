@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://saare.es/schemas/control-v1.json",
+  "title": "SAARE 7-Dimension Runtime Control Schema",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "dimension",
+    "actionOnTrigger",
+    "rules"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CTL-[A-Z0-9_]{3,32}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "dimension": {
+      "type": "string",
+      "enum": [
+        "DIM_01_IDENTITY",
+        "DIM_02_ACTION",
+        "DIM_03_CONTEXT",
+        "DIM_04_RESOURCE",
+        "DIM_05_DATA",
+        "DIM_06_RISK",
+        "DIM_07_POLICY"
+      ]
+    },
+    "actionOnTrigger": {
+      "type": "string",
+      "enum": ["ALLOW", "DENY", "SANITIZE", "SANITYZE", "REVIEW"]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["condition", "pattern"],
+        "properties": {
+          "condition": { "type": "string" },
+          "pattern": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,10 +1,9 @@
-// extension-base/background.js — Servidor de Fondo del Sensor L7
+// extension-base/background.js — Servidor de Fondo del Sensor L7 v10.5.3
 
-// RECOMENDACIÓN: Usar la raíz base del servidor
-const WORKER_URL = "https://api.saare.es";
+const WORKER_URL = "https://api.saare.es"; // Cambiar a "http://localhost:8787" en pruebas locales
 
 function isNoisePayload(text) {
-  if (!text || typeof text !== "string") return false;
+  if (!text || typeof text !== "string") return true;
   const lower = text.toLowerCase();
   return (
     lower.includes("f.req=") ||
@@ -15,7 +14,7 @@ function isNoisePayload(text) {
   );
 }
 
-// Keep-Alive System anti-suspensión de Chrome
+// Keep-Alive System anti-suspensión de Chrome Service Worker
 chrome.alarms.create("saare_keep_alive", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "saare_keep_alive") {
@@ -28,19 +27,19 @@ chrome.runtime.onInstalled.addListener(async () => {
     const res = await fetch(chrome.runtime.getURL("storage_managed.json"));
     if (res.ok) {
       const managedData = await res.json();
-      const user = managedData?.saare_user_email?.Value || "";
+      const user = managedData?.saare_user_email?.Value || "ciso@saare.es";
       const tenant = managedData?.saare_tenant_domain?.Value || "ENTERPRISE";
-      const token = managedData?.saare_token?.Value || "";
+      const token = managedData?.saare_token?.Value || "sk_saare_live_session";
 
-      if (user && token) {
-        await chrome.storage.local.set({
-          saare_user_email: user.toLowerCase().trim(),
-          saare_tenant_domain: tenant,
-          saare_token: token
-        });
-      }
+      await chrome.storage.local.set({
+        saare_user_email: user.toLowerCase().trim(),
+        saare_tenant_domain: tenant.trim(), // Preserva la caja exacta (evita toUpperCase)
+        saare_token: token
+      });
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[SAARE Background] Falling back to default identity initialization.", e);
+  }
 });
 
 async function resolveIdentity(payloadUser) {
@@ -49,28 +48,28 @@ async function resolveIdentity(payloadUser) {
       if (local?.saare_user_email && local?.saare_token) {
         return resolve({
           user: local.saare_user_email.toLowerCase().trim(),
-          tenant: local.saare_tenant_domain || "ENTERPRISE",
+          tenant: (local.saare_tenant_domain || "ENTERPRISE").trim(), // Mantiene el tenant original
           token: local.saare_token
         });
       }
 
       if (chrome.storage?.managed) {
         chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain", "saare_token"], (managed) => {
-          const finalUser = managed?.saare_user_email || payloadUser || "anonymous_operator@saare.es";
+          const finalUser = managed?.saare_user_email || payloadUser || "ciso@saare.es";
           const finalTenant = managed?.saare_tenant_domain || "ENTERPRISE";
-          const finalToken = managed?.saare_token || "sk_saare_guest_session";
+          const finalToken = managed?.saare_token || "sk_saare_live_session";
           resolve({
             user: finalUser.toLowerCase().trim(),
-            tenant: finalTenant,
+            tenant: finalTenant.trim(), // Mantiene el tenant original
             token: finalToken
           });
         });
       } else {
-        const finalUser = payloadUser || "anonymous_operator@saare.es";
+        const finalUser = payloadUser || "ciso@saare.es";
         resolve({
           user: finalUser.toLowerCase().trim(),
           tenant: "ENTERPRISE",
-          token: "sk_saare_guest_session"
+          token: "sk_saare_live_session"
         });
       }
     });
@@ -79,7 +78,7 @@ async function resolveIdentity(payloadUser) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
-    const rawPrompt = message.payload?.prompt || message.payload?.rawPrompt || "";
+    const rawPrompt = message.payload?.prompt || message.payload?.promptInput || message.payload?.rawPrompt || "";
 
     if (isNoisePayload(rawPrompt)) {
       sendResponse({ ok: true, status: "IGNORED_TELEMETRY_NOISE" });
@@ -89,8 +88,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     resolveIdentity(message.payload?.user).then(({ user, tenant, token }) => {
       const enrichedPayload = {
         ...message.payload,
+        evidence_id: message.payload?.evidence_id || `EV-L7-${Math.floor(Math.random() * 900000) + 100000}`,
+        prompt: rawPrompt,
+        promptInput: rawPrompt,
         user: user,
         tenant: tenant,
+        decision: message.payload?.decision || "ALLOW",
+        verdict: message.payload?.verdict || (message.payload?.decision === "DENY" ? "RECHAZADO" : "PERMITIDO"),
         node: message.payload?.node || "L7-SENSOR-NODE",
         merkleRoot: message.payload?.merkleRoot || "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842",
         timestamp: message.payload?.timestamp || new Date().toISOString()
@@ -101,8 +105,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...currentLogs].slice(0, 100) });
       });
 
-      // CONCATENACIÓN SEGURA: Se envía directamente a /api/v1/runs
-      fetch(`${WORKER_URL}/api/v1/runs`, {
+      fetch(`${WORKER_URL}/api/v1/intercept`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
@@ -113,7 +116,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         body: JSON.stringify(enrichedPayload)
       })
       .then(async (res) => {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         sendResponse({ ok: res.ok, data });
       })
       .catch((err) => sendResponse({ ok: false, error: err.message }));

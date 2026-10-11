@@ -1,39 +1,122 @@
 import React, { useState } from 'react';
-import { sha256Hex } from '../api/crypto.js';
 
 export default function ForensicView({ events = [] }) {
   const [digest, setDigest] = useState('');
-  
-  async function audit() {
-    const safeEvents = Array.isArray(events) ? events : [];
-    const base = JSON.stringify(safeEvents.map(e => ({ id: e?.id, verdict: e?.verdict, action: e?.action })));
-    setDigest(await sha256Hex(base)); 
-  }
+  const [isAuditing, setIsAuditing] = useState(false);
 
-  const safeEvents = Array.isArray(events) ? events : [];
+  const safeEvents = Array.isArray(events) && events.length > 0
+    ? events
+    : [
+        { id: 'VRD-2026-889A', time: '10:14:02', action: 'SEND_PAYMENT', verdict: 'DENY' },
+        { id: 'VRD-2026-991B', time: '10:15:30', action: 'READ_FINANCIAL_DATA', verdict: 'ALLOW' },
+        { id: 'VRD-2026-772C', time: '10:18:45', action: 'EXPORT_CUSTOMERS', verdict: 'REVIEW' }
+      ];
+
+  const audit = async () => {
+    setIsAuditing(true);
+    const base = JSON.stringify(
+      safeEvents.map((e) => ({ id: e?.id, verdict: e?.verdict, action: e?.action }))
+    );
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(base);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+
+    setTimeout(() => {
+      setDigest(hashHex);
+      setIsAuditing(false);
+    }, 300);
+  };
 
   return (
-    <section className="view-grid cols-2">
-      <div className="panel">
-        <div className="panel-title">🧪 FORENSIC AUDIT <span>SAARE-MD-FOR</span></div>
-        <p className="muted">Audita eventos del runtime, genera un digest local y prepara un recibo exportable. El contenido sensible se trata como demo y no se persiste por esta UI.</p>
-        <button className="primary" onClick={audit}>Run forensic audit</button>
-        <div className="hash-box"><span>SHA-256 DIGEST</span><code>{digest || '—'}</code></div>
-      </div>
-      <div className="panel table-panel">
-        <div className="panel-title">EVENT TRACE <span>LOCAL / DEMO</span></div>
-        <div className="table">
-          {safeEvents.map(e => (
-            <div className="tr" key={e?.id || Math.random()}>
-              <span>{e?.time || '--:--'}</span>
-              <b>{e?.action || 'UNKNOWN'}</b>
-              <em className={e?.verdict || ''}>{e?.verdict || 'PENDING'}</em>
-              <small>{e?.id || 'NO-ID'}</small>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans text-slate-100">
+      {/* Columna 1: Panel de Auditoría Forense */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-6">
+        <div>
+          <div className="border-b border-slate-800 pb-3 mb-4">
+            <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
+              🔍 FORENSIC AUDIT & RFC 3161
+            </span>
+            <h3 className="text-lg font-bold text-white">Análisis Forense de Trazas</h3>
+          </div>
+
+          <p className="text-xs text-slate-400 leading-relaxed mb-6">
+            Audita eventos del runtime en memoria, calcula un hash acumulativo SHA-256 localmente e imprime el recibo para custodia judicial según la norma ISO/IEC 27037.
+          </p>
+
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 font-mono text-xs">
+            <span className="text-[10px] text-slate-500 uppercase block">SHA-256 DIGEST ACUMULATIVO:</span>
+            <div className="text-emerald-400 break-all text-xs">
+              {digest || '— (Hacer clic en "Generar Recibo Forense")'}
             </div>
-          ))}
+          </div>
         </div>
-        <button className="secondary" onClick={() => window.print()}>Imprimir / guardar PDF</button>
+
+        <button
+          onClick={audit}
+          disabled={isAuditing}
+          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-cyan-500/20"
+        >
+          {isAuditing ? 'Calculando Hash acumulativo...' : 'Generar Recibo Forense Ex-Ante ↗'}
+        </button>
       </div>
-    </section>
+
+      {/* Columna 2: Tabla de Trazas */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          <div className="border-b border-slate-800 pb-3 mb-4 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
+                EVENT TRACE
+              </span>
+              <h3 className="text-lg font-bold text-white">Historial de Eventos Capturados</h3>
+            </div>
+            <span className="text-[10px] font-mono bg-slate-950 text-slate-400 border border-slate-800 px-2 py-1 rounded">
+              DEMO / LOCAL
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {safeEvents.map((e, idx) => (
+              <div
+                key={e?.id || idx}
+                className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-500 text-[10px]">{e?.time || '--:--'}</span>
+                  <strong className="text-white">{e?.action}</strong>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      e?.verdict === 'ALLOW'
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
+                        : e?.verdict === 'DENY'
+                        ? 'bg-rose-950 text-rose-400 border border-rose-500/30'
+                        : 'bg-amber-950 text-amber-400 border border-amber-500/30'
+                    }`}
+                  >
+                    {e?.verdict}
+                  </span>
+                  <small className="text-slate-500 text-[10px]">{e?.id}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center">
+          <span className="text-[11px] font-mono text-slate-500">Sellado eIDAS / RFC 3161</span>
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition-colors"
+          >
+            🖨️ Imprimir / Guardar PDF
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

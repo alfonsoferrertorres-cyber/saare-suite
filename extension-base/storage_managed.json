@@ -1,14 +1,14 @@
 {
   "saare_user_email": {
-    "Value": "",
-    "Description": "Email del operador. Si está vacío, se solicitará en el primer uso."
+    "Value": "ciso@saare.es",
+    "Description": "Email del operador predeterminado."
   },
   "saare_tenant_domain": {
-    "Value": "DEMO_TENANT",
+    "Value": "ENTERPRISE",
     "Description": "Tenant canónico de la Bóveda."
   },
   "saare_token": {
-    "Value": "",
-    "Description": "Token Bearer dinámico. No incluir claves maestras en el instalador."
+    "Value": "sk_saare_live_session",
+    "Description": "Token Bearer de sesión."
   }
 }

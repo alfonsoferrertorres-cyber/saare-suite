@@ -1,21 +1,20 @@
 {
-  "name": "saare-monorepo-root",
+  "name": "cloud-isv-desarrollo",
   "private": true,
-  "packageManager": "pnpm@12.3.4",
   "type": "module",
   "scripts": {
-    "clean": "powershell -Command \"Remove-Item -Recurse -Force **/dist -ErrorAction SilentlyContinue\"",
-    "server": "pnpm run server:local",
-    "server:local": "pnpm --filter control-plane-local dev",
-    "dev": "pnpm --parallel run dev",
-    "dev:console": "pnpm --filter saare-console run dev",
-    "dev:landing": "pnpm --filter saare-suite run dev",
-    "build:all": "pnpm --filter saare-console run build && pnpm --filter saare-suite run build",
-    "deploy:prod": "pnpm run clean && pnpm --filter saare-console run build && pnpm --filter saare-suite run build && pnpm --filter saare-console exec wrangler pages deploy dist --project-name=saare-console && pnpm --filter saare-suite exec wrangler pages deploy dist --project-name=saare-suite && pnpm --filter control-plane exec wrangler deploy"
+    "dev": "turbo run dev",
+    "dev:local": "pnpm --filter control-plane-local dev",
+    "dev:cloud": "pnpm --filter control-plane dev",
+    "build": "turbo run build",
+    "clean": "rimraf '**/node_modules' '**/dist' '**/.turbo' '**/.wrangler'",
+    "lint": "turbo run lint",
+    "resilience": "node resilienceGate_2.js",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
   },
   "devDependencies": {
-    "prettier": "^3.9.6",
-    "rimraf": "^6.1.3",
-    "turbo": "^2.10.12"
-  }
+    "rimraf": "^6.0.1",
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@12.3.4+sha512.961aa41fb077da3a04a441d9f8e15ebc0c96da8ef710b2eb67bf9ee7cb0610eabd48f1fd85f51cffe73846785fa0f87c56a3a872a1d893f8446741b5cce45457"
 }

@@ -1,6 +1,6 @@
 // control-plane/resilienceRunner.js — S.A.A.R.E. Enterprise SGP 1.0
-const API_BASE_URL = process.env.SAARE_API_URL || "https://api.saare.es";
-const TENANT_ID = process.env.TEST_TENANT_ID || "ENTERPRISE_TEST_NODE";
+const API_BASE_URL = (typeof process !== "undefined" && process.env?.SAARE_API_URL) || "https://api.saare.es";
+const TENANT_ID = (typeof process !== "undefined" && process.env?.TEST_TENANT_ID) || "ENTERPRISE_TEST_NODE";
 const TEST_USER = "qa_operator@saare.es";
 
 const TEST_SUITE = [
@@ -31,7 +31,7 @@ const TEST_SUITE = [
   }
 ];
 
-async function executeResilienceTestSuite() {
+export async function executeResilienceTestSuite() {
   console.log(`\n===============================================================`);
   console.log(`🛡️  S.A.A.R.E. RESILIENCE LAB — BATERÍA DE PRUEBAS EX-ANTE L7`);
   console.log(`Target Endpoint: ${API_BASE_URL}/v1/judge`);
@@ -99,4 +99,6 @@ async function executeResilienceTestSuite() {
   console.log(`   - Estado del Perímetro: ${successRate === "100.0" ? "SEALED_AND_VERIFIED" : "DEGRADED"}\n`);
 }
 
-executeResilienceTestSuite();
+if (typeof process !== "undefined" && process.argv && process.argv[1]?.includes("resilienceRunner")) {
+  executeResilienceTestSuite();
+}
