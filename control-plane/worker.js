@@ -13,47 +13,14 @@ import { registerEvidenceInSafeCreative } from "./safeCreativeClient.js";
 import { EvidenceVaultEngine } from "./evidenceVaultEngine.js";
 import { TelemetryServer } from "./telemetryServer.js";
 
-// === MOTOR DE DERECHOS B2B === //
-const PLAN_IDS = {
-  TRIAL_PRO_7D: "TRIAL_PRO_7D",
-  PROFESSIONAL_649: "PROFESSIONAL_649",
-  ENTERPRISE_1499: "ENTERPRISE_1499"
-};
-
-function sanitizePlanId(planId) {
-  if (!planId) return PLAN_IDS.PROFESSIONAL_649;
-  const upper = String(planId).toUpperCase();
-  if (upper.includes("TRIAL")) return PLAN_IDS.TRIAL_PRO_7D;
-  if (upper.includes("ENTERPRISE")) return PLAN_IDS.ENTERPRISE_1499;
-  return PLAN_IDS.PROFESSIONAL_649;
-}
-
-function getPlanEntitlements(planId) {
-  const cleanPlan = sanitizePlanId(planId);
-  if (cleanPlan === PLAN_IDS.TRIAL_PRO_7D) {
-    return { name: "Trial Profesional 7D", max_users: 3, max_evidence_monthly: 500, resilience_lab: true, export_dossier: true, control_layer_l7: true };
-  }
-  if (cleanPlan === PLAN_IDS.ENTERPRISE_1499) {
-    return { name: "Enterprise Unlimited", max_users: 100, max_evidence_monthly: 100000, resilience_lab: true, export_dossier: true, control_layer_l7: true };
-  }
-  return { name: "Professional B2B", max_users: 15, max_evidence_monthly: 10000, resilience_lab: true, export_dossier: true, control_layer_l7: true };
-}
-
-function checkQuota(planId, quotaKey, currentUsage) {
-  const entitlements = getPlanEntitlements(planId);
-  const limit = entitlements[quotaKey] || 10000;
-  return {
-    allowed: currentUsage <= limit,
-    limit,
-    current: currentUsage,
-    remaining: Math.max(0, limit - currentUsage)
-  };
-}
-
-function isFeatureAllowed(planId, featureKey) {
-  const entitlements = getPlanEntitlements(planId);
-  return Boolean(entitlements[featureKey]);
-}
+// === IMPORTACIÓN ÚNICA DE DERECHOS B2B DESDE EL PAQUETE CENTRAL === //
+import {
+  PLAN_IDS,
+  sanitizePlanId,
+  getPlanEntitlements,
+  checkQuota,
+  isFeatureAllowed
+} from "@saare/entitlements";
 
 // Subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
