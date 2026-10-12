@@ -82,7 +82,7 @@ export default function App() {
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
 
-  // INTERCEPCIÓN EN TIEMPO REAL (SIN SIMULACIONES)
+  // INTERCEPCIÓN EN TIEMPO REAL
   const [livePrompt, setLivePrompt] = useState("");
   const [liveResult, setLiveResult] = useState(null);
   const [isIntercepting, setIsIntercepting] = useState(false);
@@ -127,7 +127,6 @@ export default function App() {
     setEvidences([]);
   }, []);
 
-  // MAPEO ESTRICTO DE TELEMETRÍA REAL (SIN TEXTO PLANO DE PRUEBA O HASHES FICTICIOS)
   const mapEvidences = useCallback((remoteEvidences) => {
     const list = Array.isArray(remoteEvidences) 
       ? remoteEvidences 
@@ -139,7 +138,7 @@ export default function App() {
       if (!item) return null;
 
       const evidenceId = item.evidence_id || item.id;
-      if (!evidenceId) return null; // Ignorar elementos sin ID real de trazabilidad
+      if (!evidenceId) return null;
 
       const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
       let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || '';
@@ -730,6 +729,7 @@ export default function App() {
               src={cabeceraImg} 
               alt="S.A.A.R.E. Console Header" 
               style={{ width: '100%', height: 'auto', maxHeight: '200px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
         </div>
@@ -841,12 +841,10 @@ export default function App() {
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
         <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', border: '1px solid #1e293b' }}>
 
-          {/* 1. PERFIL EXECUTIVE (CEO / DIRECCIÓN) */}
           {viewMode === 'EXECUTIVE' && (
             <ExecutiveView tenantId={tenantId} evidences={evidences} userRole={userRole} />
           )}
 
-          {/* 2. PERFILES GRC & AUDIT O CYBER & RESILIENCE */}
           {viewMode !== 'EXECUTIVE' && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
@@ -1399,8 +1397,8 @@ export default function App() {
               <button
                 onClick={() => setAuditTokenModal(false)}
                 style={{ flex: 1, padding: '10px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-                Cerrar
-              </button>
+                  Cerrar
+                </button>
             </div>
           </div>
         </div>
