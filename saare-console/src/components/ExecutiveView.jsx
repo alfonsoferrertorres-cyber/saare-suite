@@ -4,20 +4,27 @@ import React from 'react';
 export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
   const safeEvidences = Array.isArray(evidences) ? evidences : [];
   const totalAudited = safeEvidences.length;
-  const totalBlocked = safeEvidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
+  const totalBlocked = safeEvidences.filter(
+    e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')
+  ).length;
+
+  const blockRate = totalAudited > 0 ? ((totalBlocked / totalAudited) * 100).toFixed(1) : '0.0';
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
+      {/* Encabezado Corporativo */}
       <div style={{ background: '#020617', border: '1px solid #0284c7', padding: '24px', borderRadius: '12px' }}>
         <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.2rem', fontWeight: '900' }}>
           🏛️ RESILIENCIA ESTRUCTURAL & GOBERNANZA DE IA — DIRECCIÓN
         </h3>
         <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
-          Organización: <strong>{tenantId}</strong> | Estado General: <span style={{ color: '#4ade80', fontWeight: '900' }}>CONFORME & AUDITADO</span>
+          Organización: <strong>{tenantId}</strong> | Estado General:{' '}
+          <span style={{ color: '#4ade80', fontWeight: '900' }}>CONFORME & AUDITADO</span> | Anclaje:{' '}
+          <span style={{ color: '#38bdf8', fontWeight: '700' }}>D1-EU-WESTERN-EUROPE</span>
         </p>
       </div>
 
-      {/* MATRIZ DE RESILIENCIA ESTRUCTURAL (VECTOR V8.1) */}
+      {/* MATRIZ DE RESILIENCIA ESTRUCTURAL (SGP 1.0 / v8.4) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         {[
           { label: 'GOBERNANZA DE IA', status: 'VERIFIED', color: '#10b981' },
@@ -34,10 +41,12 @@ export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
         ))}
       </div>
 
-      {/* INDICADORES CLAVE DE NEGOCIO */}
+      {/* INDICADORES CLAVE DE NEGOCIO Y TELEMETRÍA */}
       <div style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '20px', borderRadius: '10px' }}>
-        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#f8fafc' }}>Resumen de Actividad Corporativa</h4>
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#f8fafc' }}>
+          Resumen de Actividad Corporativa y Bóveda D1
+        </h4>
+        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
           <div>
             <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Interacciones Auditadas:</span>
             <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8' }}>{totalAudited}</div>
@@ -45,6 +54,10 @@ export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
           <div>
             <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Fugas Preventivamente Interceptadas:</span>
             <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ef4444' }}>{totalBlocked}</div>
+          </div>
+          <div>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tasa de Intercepción Activa:</span>
+            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#10b981' }}>{blockRate}%</div>
           </div>
         </div>
       </div>

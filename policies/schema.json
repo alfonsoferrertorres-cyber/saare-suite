@@ -16,7 +16,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^POL-[A-Z0-9_]{3,32}$"
+      "pattern": "^POL[-_][A-Z0-9_]{3,32}$"
     },
     "name": {
       "type": "string",
@@ -58,7 +58,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^CTL-[A-Z0-9_]{3,32}$"
+        "pattern": "^CTL[-_][A-Z0-9_]{3,32}$"
       },
       "minItems": 1
     },

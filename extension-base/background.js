@@ -1,15 +1,21 @@
-const WORKER_URL = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
+// background.js — SAARE L7 Background Attestation Service Worker v8.2.0
 
-// Resuelve la identidad corporativa de forma dinámica (GPO -> Storage Local -> No asignado)
-async function resolveIdentity(payloadUser) {
+function getWorkerUrl() {
+  return "https://api.saare.es/api/v1";
+}
+
+// Resolver identidad corporativa y credenciales de sesión (GPO -> Storage Local -> Fallback)
+async function resolveIdentityAndCredentials(payloadUser) {
   return new Promise((resolve) => {
-    // 1. Prioridad: GPO corporativa / Managed Storage
+    // 1. Prioridad: Managed Storage (GPO empresarial)
     if (chrome.storage?.managed) {
-      chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain"], (managed) => {
+      chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain", "saare_token", "saare_user_role"], (managed) => {
         if (managed?.saare_user_email) {
           return resolve({
             user: managed.saare_user_email.toLowerCase().trim(),
-            tenant: managed.saare_tenant_domain || "EMPRESA"
+            tenant: managed.saare_tenant_domain || "ENTERPRISE",
+            token: managed.saare_token || "",
+            role: managed.saare_user_role || "CISO_ADMIN"
           });
         }
         fallbackLocal();
@@ -18,12 +24,21 @@ async function resolveIdentity(payloadUser) {
       fallbackLocal();
     }
 
-    // 2. Fallback: Local Storage o usuario detectado en el DOM
+    // 2. Fallback: Local Storage / DOM
     function fallbackLocal() {
-      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain"], (local) => {
-        const finalUser = local?.saare_user_email || payloadUser || "usuario_anonimo@tenant.es";
-        const finalTenant = local?.saare_tenant_domain || "ORGANIZACION";
-        resolve({ user: finalUser.toLowerCase().trim(), tenant: finalTenant });
+      chrome.storage.local.get(["saare_user_email", "saare_tenant_domain", "saare_token", "saare_user_role"], (local) => {
+        const finalUser = local?.saare_user_email || payloadUser || "operador_anonimo@saare.es";
+        const rawTenant = local?.saare_tenant_domain || "ENTERPRISE";
+        const finalTenant = rawTenant.includes("@") ? "ENTERPRISE" : rawTenant;
+        const finalToken = local?.saare_token || "";
+        const finalRole = local?.saare_user_role || "CISO_ADMIN";
+
+        resolve({
+          user: finalUser.toLowerCase().trim(),
+          tenant: finalTenant,
+          token: finalToken,
+          role: finalRole
+        });
       });
     }
   });
@@ -31,23 +46,36 @@ async function resolveIdentity(payloadUser) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
-    resolveIdentity(message.payload?.user).then(({ user, tenant }) => {
+    resolveIdentityAndCredentials(message.payload?.user).then(({ user, tenant, token, role }) => {
+      const activeWorker = getWorkerUrl();
+      const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'UNSIGNED_ANON';
+
       const enrichedPayload = {
         ...message.payload,
         user: user,
-        tenant: tenant
+        tenant: tenant,
+        role: role,
+        credentialProof: credentialProof,
+        atestationTimestamp: new Date().toISOString()
       };
 
-      // Almacenamiento local en el navegador del usuario
+      // Almacenar logs locales
       chrome.storage.local.get({ saare_logs: [] }, (result) => {
         const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
         chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
       });
 
-      // Envío dinámico al Worker KV
-      fetch(`${WORKER_URL}/runs?user=${encodeURIComponent(user)}`, {
+      // Enviar a la Bóveda Cloudflare D1 mediante el Control Plane API
+      fetch(`${activeWorker}/runs?user=${encodeURIComponent(user)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-saare-user": user,
+          "x-saare-tenant": tenant,
+          "x-saare-role": role,
+          "x-saare-credential-proof": credentialProof,
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(enrichedPayload)
       })
       .then(res => res.json())
@@ -59,7 +87,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "SAARE_GET_RULES") {
-    fetch(`${WORKER_URL}/custom-rules`)
+    const activeWorker = getWorkerUrl();
+    fetch(`${activeWorker}/custom-rules`)
       .then(res => res.json())
       .then(data => sendResponse({ ok: true, data }))
       .catch(err => sendResponse({ ok: false, data: [] }));

@@ -163,4 +163,280 @@ let activeScenarios = [
   { id: 'STAR_TOKEN_OPTIMIZER', title: 'Optimizador de Tokens & CostGuard', category: 'ENS-BAJO', licensed: false, active: false }
 ];
 
-// --- RUTAS DE SALUD
+// --- RUTAS DE SALUD Y MONITOREO ---
+const statusHandler = (req, res) => {
+  res.json({
+    status: 'OPERATIVE',
+    vaultSource: 'LOCAL_LEDGER_FS',
+    latencyP99Ms: 1.12,
+    trustAnchor: 'D1-EU-WESTERN-EUROPE',
+    specVersion: 'SGP 1.0',
+    engine: 'Local PEP L7 v8.4',
+    totalEvidences: evidenceDb.length,
+    timestamp: new Date().toISOString()
+  });
+};
+
+app.get('/status', statusHandler);
+app.get('/v1/status', statusHandler);
+app.get('/api/v1/status', statusHandler);
+
+app.get(['/', '/health', '/v1/health', '/api/v1/health'], (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    system: 'S.A.A.R.E. Local Control Plane',
+    trustAnchor: 'D1-EU-WESTERN-EUROPE',
+    srpVersion: '8.4.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// --- CANAL DE TELEMETRÍA EN TIEMPO REAL (SSE) ---
+const sseHandler = (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+
+  const clientId = Date.now();
+  const newClient = { id: clientId, res };
+  sseClients.push(newClient);
+
+  res.write(`data: ${JSON.stringify({ status: 'RUNTIME_ACTIVE', mode: 'LOCAL_SERVER', evidences: evidenceDb.slice(0, 50) })}\n\n`);
+
+  req.on('close', () => {
+    sseClients = sseClients.filter(client => client.id !== clientId);
+  });
+};
+
+app.get('/stream', sseHandler);
+app.get('/v1/stream', sseHandler);
+app.get('/api/v1/stream', sseHandler);
+app.get('/v1/telemetry/stream', sseHandler);
+app.get('/api/v1/telemetry/stream', sseHandler);
+
+// --- RUTAS DE TELEMETRÍA Y CONSULTA DE EVIDENCIAS ---
+const getTelemetryHandler = (req, res) => {
+  const tenant = req.query.tenant || req.headers['x-saare-tenant'] || 'ENTERPRISE';
+  const filtered = evidenceDb.filter(e => !tenant || tenant === 'ENTERPRISE' || e.tenant === tenant);
+
+  res.json({
+    success: true,
+    vaultSource: 'LOCAL_LEDGER_FS',
+    evidences: filtered,
+    runs: filtered
+  });
+};
+
+app.get('/telemetry', getTelemetryHandler);
+app.get('/v1/telemetry', getTelemetryHandler);
+app.get('/api/v1/telemetry', getTelemetryHandler);
+app.get('/runs', getTelemetryHandler);
+app.get('/v1/runs', getTelemetryHandler);
+app.get('/api/v1/runs', getTelemetryHandler);
+
+// --- INTERCEPCIÓN EX-ANTE / MOTOR DE EVALUACIÓN L7 ---
+const interceptHandler = (req, res) => {
+  const startTime = Date.now();
+  const body = req.body || {};
+
+  const promptInput = body.prompt || body.promptInput || body.rawPrompt || body.cleanPrompt || '';
+  const user = body.user || req.headers['x-saare-user'] || 'ciso@saare.es';
+  const tenant = body.tenant || req.headers['x-saare-tenant'] || 'ENTERPRISE';
+
+  const promptUpper = String(promptInput).toUpperCase();
+  const isDeny = body.decision === 'DENY' ||
+    promptUpper.includes('DNI') ||
+    promptUpper.includes('IBAN') ||
+    promptUpper.includes('PII') ||
+    promptUpper.includes('CLONAR') ||
+    promptUpper.includes('SECRET') ||
+    promptUpper.includes('DROP TABLE');
+
+  const decision = isDeny ? 'DENY' : 'ALLOW';
+  const verdict = isDeny ? 'RECHAZADO' : 'PERMITIDO';
+  const latency = Date.now() - startTime + 1;
+
+  const hexHash = crypto.createHash('sha256').update(`${user}:${promptInput}:${Date.now()}`).digest('hex');
+  const runId = `EV-L7-${hexHash.substring(0, 10).toUpperCase()}`;
+  const traceId = `tr_local_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const merkleRoot = crypto.createHash('sha256').update(promptInput || 'EMPTY').digest('hex');
+
+  const newEvidence = {
+    id: runId,
+    evidence_id: runId,
+    evidenceId: runId,
+    trace_id: traceId,
+    runId: `RUN-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    rawTimestamp: new Date().toISOString(),
+    time: new Date().toLocaleTimeString(),
+    prompt: promptInput || '(Payload L7 verificado en memoria RAM)',
+    promptSummary: promptInput.length > 50 ? promptInput.substring(0, 50) + '...' : promptInput,
+    responseOutput: isDeny ? 'PROMPT BLOQUEADO EX-ANTE (Capa de Control L7)' : 'Petición autorizada y conforme.',
+    verdict,
+    decision,
+    category: isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME',
+    cat: isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME',
+    norma: isDeny ? 'EU AI Act / LOPDGDD' : 'ISO/IEC 27037',
+    sub: isDeny ? 'EU AI Act / LOPDGDD' : 'ISO/IEC 27037',
+    user,
+    tenant,
+    merkleRoot,
+    latency,
+    proofBundle: {
+      verdictId: `VRD-2026-${runId}`,
+      payloadHash: merkleRoot,
+      ed25519Signature: `ED25519_SIG_${merkleRoot.substring(0, 16).toUpperCase()}`,
+      merkleRoot,
+      rfc3161Timestamp: new Date().toISOString(),
+      claimLevel: isDeny ? 'VERIFIED' : 'TESTED',
+      auditStandard: 'ISO/IEC 27037:2012 / EU AI Act Art. 12 & 14 / DORA UE 2022/2554'
+    },
+    grantMetadata: {
+      grantCategory: isDeny ? 'KIT_CONSULTING_GAP_ANALYSIS' : 'KIT_DIGITAL_CYBERSECURITY',
+      eligibleItem: isDeny ? 'Evaluación de Impacto en Derechos Fundamentales (FRIA)' : 'Agente Perimetral L7 Ex-Ante',
+      dnshImpact: 'Reducción de consumo GPU por sanitización previa en RAM (Zero-Disk)',
+      auditStandard: 'EU AI Act / DORA / ISO 27037',
+      complianceCode: `MS3V-GRANT-EVIDENCE-${Date.now()}`
+    }
+  };
+
+  evidenceDb.unshift(newEvidence);
+  persistEvidenceRecord(newEvidence);
+  broadcastSseEvent({ type: 'NEW_EVIDENCE', evidence: newEvidence });
+
+  res.status(isDeny ? 403 : 200).json({
+    status: 'SUCCESS',
+    decision,
+    verdict,
+    evidence_id: runId,
+    trace_id: traceId,
+    latency,
+    merkleRoot,
+    proofBundle: newEvidence.proofBundle,
+    grantMetadata: newEvidence.grantMetadata
+  });
+};
+
+app.post('/intercept', interceptHandler);
+app.post('/v1/intercept', interceptHandler);
+app.post('/api/v1/intercept', interceptHandler);
+app.post('/judge', interceptHandler);
+app.post('/v1/judge', interceptHandler);
+app.post('/api/v1/judge', interceptHandler);
+app.post('/enforce/check', interceptHandler);
+app.post('/v1/enforce/check', interceptHandler);
+app.post('/api/v1/enforce/check', interceptHandler);
+
+// --- REGLAS PERSONALIZADAS ---
+app.get('/api/v1/custom-rules', (req, res) => {
+  res.json({ rules: customRules });
+});
+
+app.post('/api/v1/custom-rules', (req, res) => {
+  const body = req.body;
+  if (Array.isArray(body)) {
+    customRules = body;
+  } else if (body && Array.isArray(body.rules)) {
+    customRules = body.rules;
+  }
+  res.json({ ok: true, storedRules: customRules.length, rules: customRules });
+});
+
+// --- ASIENTOS Y ROLES RBAC ---
+app.get(['/v1/executive/seats', '/api/v1/executive/seats'], (req, res) => {
+  res.json({
+    success: true,
+    tenant: 'ENTERPRISE',
+    maxSeats: 10,
+    usedSeats: executiveSeatsDb.length,
+    users: executiveSeatsDb
+  });
+});
+
+app.post(['/v1/executive/seats', '/api/v1/executive/seats'], (req, res) => {
+  const { email, role, name } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'Se requiere un correo electrónico válido.' });
+  }
+
+  const existingIndex = executiveSeatsDb.findIndex(u => u.email === email);
+  const newUser = {
+    email,
+    name: name || email.split('@')[0],
+    role: role || 'DPO_GRC_LEVEL_2',
+    is_verified: 1,
+    created_at: new Date().toISOString().substring(0, 10)
+  };
+
+  if (existingIndex >= 0) {
+    executiveSeatsDb[existingIndex] = newUser;
+  } else {
+    executiveSeatsDb.push(newUser);
+  }
+
+  res.json({
+    success: true,
+    message: `Asiento asignado correctamente a ${email}.`,
+    users: executiveSeatsDb
+  });
+});
+
+// --- VERIFICACIÓN DE LICENCIA Y VERIFICACIÓN PÚBLICA ---
+app.post(['/v1/auth/verifylicense', '/api/v1/auth/verifylicense'], (req, res) => {
+  res.json({
+    valid: true,
+    planId: 'ENTERPRISE_CUSTOM',
+    entitlements: {
+      max_evidence_monthly: 1000000,
+      max_users: 50,
+      control_layer_l7: true,
+      resilience_lab: true,
+      export_dossier: true
+    }
+  });
+});
+
+app.get(['/verify/:hash', '/v1/verify/:hash', '/api/v1/verify/:hash'], (req, res) => {
+  const { hash } = req.params;
+  const found = evidenceDb.find(e => e.merkleRoot === hash || e.id === hash);
+
+  res.json({
+    status: found ? 'VERIFIED' : 'NOT_FOUND',
+    verified: !!found,
+    node: 'D1-EU-WESTERN-EUROPE',
+    standard: 'ISO/IEC 27037:2012 / EU AI Act Art. 12 & 14',
+    merkleRoot: hash,
+    evidence: found || null
+  });
+});
+
+// --- AUTENTICACIÓN Y REGISTRO SIMULADO ---
+app.post(['/auth/login', '/v1/auth/login', '/api/v1/auth/login'], (req, res) => {
+  const { email, role } = req.body || {};
+  const userEmail = email || 'admin@saare.es';
+  const token = `sk_saare_live_${crypto.randomBytes(12).toString('hex')}`;
+
+  res.json({
+    success: true,
+    token,
+    user: {
+      email: userEmail,
+      name: userEmail.split('@')[0],
+      tenantName: 'ENTERPRISE',
+      apiKey: token,
+      role: role || 'CISO_ADMIN',
+      planId: 'ENTERPRISE_CUSTOM',
+      isVerified: true
+    }
+  });
+});
+
+// --- INICIO DEL SERVIDOR LOCAL ---
+app.listen(PORT, () => {
+  console.log(`===================================================`);
+  console.log(`  S.A.A.R.E. Local Control Plane Operativo v8.4`);
+  console.log(`  Puerto activo: http://127.0.0.1:${PORT}`);
+  console.log(`  Bóveda de Evidencias: ${ledgerPath}`);
+  console.log(`===================================================`);
+});

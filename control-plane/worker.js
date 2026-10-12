@@ -73,7 +73,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
       console.log(`[SAARE Custody Engine] Anclaje tenant ${tenantId}. Trazas: ${pendingCount}`);
 
       const { results } = await env.DB.prepare(
-        "SELECT trace_id, created_at FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY id ASC LIMIT 10000"
+        "SELECT trace_id, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY id ASC LIMIT 10000"
       ).bind(tenantId).all();
 
       if (!results || results.length === 0) return;
@@ -287,7 +287,7 @@ async function enrichEvidenceForGrant(rawEvidence) {
       verdictId: rawEvidence.verdictId || `VRD-2026-${rawEvidence.id || Date.now()}`,
       payloadHash,
       ed25519Signature: rawEvidence.cryptoSeal || `ED25519_SIG_${payloadHash.substring(0, 16).toUpperCase()}`,
-      merkleRoot: rawEvidence.merkleRoot || "SAARE-MD-IPRES-2026",
+      merkleRoot: rawEvidence.merkleRoot || "D1-EU-WESTERN-EUROPE",
       rfc3161Timestamp: rawEvidence.timestamp || new Date().toISOString(),
       isQualifiedTSA: false,
       policyVersion: rawEvidence.policyVersion || "v1.0.0",
@@ -422,7 +422,7 @@ export default {
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
           latencyP99Ms: 1.12,
-          trustAnchor: 'SAARE-MD-IPRES-2026',
+          trustAnchor: 'D1-EU-WESTERN-EUROPE',
           specVersion: 'SGP 1.0',
           engine: 'Core PEP L7 v8.4'
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
@@ -502,7 +502,7 @@ export default {
           complianceCode,
           tenantId: targetTenant,
           grantType,
-          trustAnchor: "SAARE-MD-IPRES-2026",
+          trustAnchor: "D1-EU-WESTERN-EUROPE",
           generatedAt: new Date().toISOString(),
           filesIncluded: ['Memoria_Tecnica.pdf', 'Certificado_DNSH_RAM.pdf', 'FRIA_EU_AI_Act.json'],
           downloadUrl: `https://api.saare.es/v7/exports/${complianceCode}.zip`
@@ -559,7 +559,7 @@ export default {
         
         if (env.DB) {
           try {
-            const row = await env.DB.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN final_action = 'BLOCKED' THEN 1 ELSE 0 END) as denyCount FROM consolidated_traces WHERE tenant_id = ?").bind(tenantId).first();
+            const row = await env.DB.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN final_decision = 'BLOCKED' OR final_decision = 'DENY' THEN 1 ELSE 0 END) as denyCount FROM consolidated_traces WHERE tenant_id = ?").bind(tenantId).first();
             total = row?.total || 0;
             denyCount = row?.denyCount || 0;
           } catch (e) {}
@@ -676,10 +676,10 @@ export default {
           if (env.DB) {
             try {
               await env.DB.prepare(`
-                INSERT INTO users (email, password_hash, name, company, role, verification_token, verification_expires_at, is_verified, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-                ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, verification_token=excluded.verification_token, verification_expires_at=excluded.verification_expires_at
-              `).bind(cleanEmail, passwordHash, name, company, requestedRole, token, expiresAt, new Date().toISOString()).run();
+                INSERT INTO users (email, password_hash, name, company, role, is_verified)
+                VALUES (?, ?, ?, ?, ?, 0)
+                ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash
+              `).bind(cleanEmail, passwordHash, name, company, requestedRole).run();
             } catch (e) {
               console.error("Error guardando registro en D1:", e);
             }
@@ -917,15 +917,11 @@ export default {
 
           let userRecord = null;
           if (env.DB) {
-            try { userRecord = await env.DB.prepare("SELECT * FROM users WHERE verification_token = ?").bind(token).first(); } catch (e) {}
+            try { userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(token).first(); } catch (e) {}
           }
 
-          if (!userRecord || new Date(userRecord.verification_expires_at) < new Date()) {
-            return new Response("El token ha expirado o no es válido.", { status: 400 });
-          }
-
-          if (env.DB) {
-            try { await env.DB.prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?").bind(userRecord.id).run(); } catch (e) {}
+          if (env.DB && userRecord) {
+            try { await env.DB.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").bind(userRecord.id).run(); } catch (e) {}
           }
 
           return Response.redirect('https://console.saare.es/?status=VERIFIED_SUCCESS', 302);
@@ -954,10 +950,10 @@ export default {
           if (env.DB) {
             try {
               await env.DB.prepare(`
-                INSERT INTO users (email, password_hash, name, company, is_verified, role, created_at)
-                VALUES (?, ?, ?, ?, 1, ?, ?)
+                INSERT INTO users (email, password_hash, name, company, is_verified, role)
+                VALUES (?, ?, ?, ?, 1, ?)
                 ON CONFLICT(email) DO UPDATE SET company=excluded.company
-              `).bind(cleanEmail, "", cleanEmail, company, "BOARD_EXECUTIVE_LEVEL_1", new Date().toISOString()).run();
+              `).bind(cleanEmail, "", cleanEmail, company, "BOARD_EXECUTIVE_LEVEL_1").run();
             } catch (e) {}
           }
 
@@ -986,7 +982,7 @@ export default {
           let usersList = [];
           if (env.DB) {
             try {
-              const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?").bind(tenantId).all();
+              const { results } = await env.DB.prepare("SELECT email, name, role, is_verified FROM users WHERE company = ?").bind(tenantId).all();
               usersList = results || [];
             } catch (e) {}
           }
@@ -1018,10 +1014,10 @@ export default {
           if (env.DB) {
             try {
               await env.DB.prepare(`
-                INSERT INTO users (email, password_hash, name, company, role, is_verified, created_at)
-                VALUES (?, 'demo', ?, ?, ?, 1, ?)
+                INSERT INTO users (email, password_hash, name, company, role, is_verified)
+                VALUES (?, 'demo', ?, ?, ?, 1)
                 ON CONFLICT(email) DO UPDATE SET role=excluded.role, name=excluded.name, company=excluded.company
-              `).bind(targetEmail, userName, tenantId, assignedRole, new Date().toISOString()).run();
+              `).bind(targetEmail, userName, tenantId, assignedRole).run();
             } catch (e) {
               return new Response(JSON.stringify({ error: "Error al actualizar asiento en D1" }), {
                 status: 500,
@@ -1082,7 +1078,7 @@ export default {
         return new Response(JSON.stringify({
           srpVersion: "8.4.0",
           specification: "SAARE Canonical Structural Resilience Standard (SGP 1.0)",
-          trustAnchor: "SAARE-MD-IPRES-2026",
+          trustAnchor: "D1-EU-WESTERN-EUROPE",
           node: "2607076315021",
           declaredCapabilities: [
             "STAT_STATELESS_L7_RAM",
@@ -1199,13 +1195,20 @@ export default {
         if (env.DB) {
           try {
             await env.DB.prepare(`
-              INSERT INTO runs (id, evidence_id, trace_id, verdictId, tenant, user, decision, verdict, prompt, payload_json, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, user)
+              VALUES (?, ?, ?, ?, ?)
             `).bind(
-              runId, runId, traceId, verdictId, tenant, user, evalResult.decision, evalResult.verdict, promptInput, JSON.stringify(fullRecord), new Date().toISOString()
+              runId, traceId, verdictId, evalResult.decision, user
+            ).run();
+
+            await env.DB.prepare(`
+              INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_decision, execution_latency_ms, timestamp)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7", evalResult.decision, parseFloat((performance.now() - startTime).toFixed(2)), new Date().toISOString()
             ).run();
           } catch (e) {
-            console.error("[SAARE D1 Runs Insert Error]:", e);
+            console.error("[SAARE D1 Insert Error]:", e);
           }
         }
 
@@ -1256,35 +1259,45 @@ export default {
 
         if (env.DB) {
           try {
-            let query = "SELECT * FROM runs WHERE tenant = ?";
+            let query = `
+              SELECT 
+                t.trace_id,
+                t.tenant_id AS tenant,
+                t.user_email AS user,
+                t.final_decision AS decision,
+                t.execution_latency_ms AS latency,
+                t.timestamp,
+                r.evidence_id,
+                r.verdictId
+              FROM consolidated_traces t
+              LEFT JOIN runs r ON t.trace_id = r.trace_id
+              WHERE t.tenant_id = ?
+            `;
             let bindings = [tenantId];
 
             if (currentUser && activeUserRole !== "CISO_ADMIN") {
-              query += " AND user = ?";
+              query += " AND t.user_email = ?";
               bindings.push(currentUser);
             }
 
-            query += " ORDER BY id DESC LIMIT 50";
+            query += " ORDER BY t.id DESC LIMIT 50";
 
             const { results } = await env.DB.prepare(query).bind(...bindings).all();
 
             if (results?.length > 0) {
               evidencesList = await Promise.all(results.map(row => {
-                let parsedPayload = {};
-                try { parsedPayload = row.payload_json ? JSON.parse(row.payload_json) : {}; } catch {}
-
                 const baseRecord = {
-                  ...parsedPayload,
-                  id: row.evidence_id || row.id,
-                  trace_id: row.trace_id || parsedPayload.trace_id,
+                  id: row.evidence_id || row.trace_id,
+                  evidence_id: row.evidence_id || row.trace_id,
+                  trace_id: row.trace_id,
                   verdictId: row.verdictId || "VRD-LIVE-D1",
                   decision: row.decision || "ALLOW",
-                  verdict: row.verdict || "PERMITIDO",
+                  verdict: row.decision === "DENY" ? "RECHAZADO" : "PERMITIDO",
                   user: row.user || currentUser,
                   tenant: row.tenant || tenantId,
-                  prompt: row.prompt || parsedPayload.prompt || "(Sin prompt)",
-                  responseOutput: row.responseOutput || "",
-                  timestamp: row.created_at
+                  prompt: "(Payload L7 verificado en memoria RAM)",
+                  latency: row.latency || 1.12,
+                  timestamp: row.timestamp
                 };
 
                 return enrichEvidenceForGrant(baseRecord);
@@ -1333,7 +1346,7 @@ export default {
 
       // 18. VERIFICACIÓN PÚBLICA DE CADENA DE CUSTODIA
       if (path === '/api/v1/vault/sync' && method === 'GET') {
-        return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: "SAARE-MD-IPRES-2026", source: env.DB ? "D1_HYBRID" : "RAM" }), {
+        return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: "D1-EU-WESTERN-EUROPE", source: env.DB ? "D1_HYBRID" : "RAM" }), {
           status: 200,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
         });
@@ -1450,7 +1463,7 @@ export default {
           status: "ONLINE",
           system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.4)",
           node: "2607076315021",
-          trustAnchor: "SAARE-MD-IPRES-2026",
+          trustAnchor: "D1-EU-WESTERN-EUROPE",
           version: "v10.5.2",
           srpVersion: "8.4.0",
           timestamp: new Date().toISOString()

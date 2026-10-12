@@ -1,4 +1,4 @@
-/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.1.0 */
+/* S.A.A.R.E. L7 RAM Network Interceptor & Credential Attestation v8.2.0 */
 (function() {
   const DLP = {
     dni: /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i,
@@ -51,7 +51,6 @@
     try { return JSON.stringify(body); } catch { return String(body); }
   }
 
-  // Extracción estructural posicional de alta fidelidad
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
 
@@ -73,8 +72,6 @@
       if (fReqValue) {
         try {
           const outer = JSON.parse(fReqValue);
-
-          // StreamGenerate [null, "[[\"mensaje\", 0, ...], ...]"]
           if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
             try {
               const inner = JSON.parse(outer[1]);
@@ -86,33 +83,12 @@
               }
             } catch {}
           }
-
-          // batchexecute [[["RPC_ID", "[[\"mensaje\", 0, ...], ...]", null, "generic"], ...]]
-          if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
-            for (const batch of outer) {
-              if (Array.isArray(batch)) {
-                for (const call of batch) {
-                  if (Array.isArray(call) && call.length >= 2 && typeof call[1] === "string") {
-                    try {
-                      const inner = JSON.parse(call[1]);
-                      if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
-                        const prompt = inner[0][0];
-                        if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
-                          return prompt.trim();
-                        }
-                      }
-                    } catch {}
-                  }
-                }
-              }
-            }
-          }
         } catch {}
       }
       return "";
     }
 
-    // 2. JSON estándar (ChatGPT, Claude, DeepSeek, Copilot)
+    // 2. JSON Estándar (ChatGPT, Claude, DeepSeek, etc.)
     try {
       const json = JSON.parse(rawText);
       if (json.messages && Array.isArray(json.messages)) {
@@ -151,7 +127,6 @@
     const cleanPrompt = extractCleanPrompt(str);
     if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
-    // 1. Verificación DLP perimetral
     const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
     const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
     const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
@@ -181,7 +156,6 @@
       };
     }
 
-    // 2. Auditoría conforme limpia
     return {
       verdict: "PERMITIDO",
       category: "AUDITORIA_CONFORME",
@@ -193,7 +167,7 @@
     };
   }
 
-  // Interceptar XHR (Gemini)
+  // Intercepción XHR
   const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
@@ -214,7 +188,7 @@
     return rawSend.apply(this, arguments);
   };
 
-  // Interceptar Fetch (ChatGPT, Claude, etc.)
+  // Intercepción Fetch
   const rawFetch = window.fetch;
   window.fetch = async function(resource, config) {
     const url = typeof resource === "string" ? resource : (resource?.url || "");

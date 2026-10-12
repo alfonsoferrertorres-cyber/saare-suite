@@ -19,7 +19,7 @@ export default function SeatsManagementModal({ onClose }) {
       if (data && data.success) {
         setSeatsData({
           maxSeats: data.maxSeats || 10,
-          usedSeats: data.usedSeats || 0,
+          usedSeats: data.usedSeats || (Array.isArray(data.users) ? data.users.length : 0),
           users: Array.isArray(data.users) ? data.users : []
         });
       } else {
@@ -52,7 +52,12 @@ export default function SeatsManagementModal({ onClose }) {
     setMsg({ text: '', type: '' });
 
     try {
-      const res = await apiService.assignExecutiveSeat(newEmail.trim(), newRole, newName.trim());
+      const res = await apiService.assignExecutiveSeat({
+        email: newEmail.trim(),
+        role: newRole,
+        name: newName.trim()
+      });
+
       if (res && res.success) {
         setMsg({ text: `Asiento asignado correctamente a ${newEmail}`, type: 'success' });
         setNewEmail('');

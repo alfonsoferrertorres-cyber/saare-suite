@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SAARE L7 Governance Agent",
-  "version": "8.1.0",
-  "description": "Universal Compliance & Dynamic Rules Engine for GenAI",
+  "version": "8.2.0",
+  "description": "Universal Compliance, Identity Attestation & Dynamic Rules Engine for GenAI",
   "background": {
     "service_worker": "background.js"
   },

@@ -1,6 +1,7 @@
+// saare-console/src/components/OfficialReportModal.jsx
 import React from 'react';
 
-export default function OfficialReportModal({ onClose, sectorTitle }) {
+export default function OfficialReportModal({ onClose, sectorTitle, evidences = [] }) {
   // Lectura unificada de sesión desde el almacenamiento local
   const sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
   const userEmail = sessionUser.email || localStorage.getItem('saare_user_email') || 'legal@saare.es';
@@ -9,6 +10,14 @@ export default function OfficialReportModal({ onClose, sectorTitle }) {
   const handlePrint = () => {
     window.print();
   };
+
+  // Filtrar evidencias reales registradas o tomar la muestra activa de la Bóveda D1
+  const displayEvidences = Array.isArray(evidences) && evidences.length > 0 
+    ? evidences.slice(0, 50) 
+    : [];
+
+  // Obtener el primer Merkle Root real disponible para la firma
+  const activeMerkleRoot = displayEvidences.find(e => e?.merkleRoot)?.merkleRoot || 'NO_RECORD_ANCHORED';
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-5 font-mono text-xs">
@@ -52,7 +61,7 @@ export default function OfficialReportModal({ onClose, sectorTitle }) {
 
           <div>
             <h3 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2">
-              2. Auditoría de Veredictos e Intercepciones L7
+              2. Auditoría de Veredictos e Intercepciones L7 ({displayEvidences.length} Registros)
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse mt-3 text-xs">
@@ -60,23 +69,34 @@ export default function OfficialReportModal({ onClose, sectorTitle }) {
                   <tr className="bg-slate-100 border-b-2 border-slate-300 text-left">
                     <th className="p-2.5 text-slate-700">ID Evidencia</th>
                     <th className="p-2.5 text-slate-700">Timestamp</th>
-                    <th className="p-2.5 text-slate-700">Clasificación OWASP / NIST</th>
+                    <th className="p-2.5 text-slate-700">Payload / Categoría</th>
                     <th className="p-2.5 text-slate-700">Dictamen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  <tr>
-                    <td className="p-2.5 font-mono">EV-OWASP-101</td>
-                    <td className="p-2.5">En vivo</td>
-                    <td className="p-2.5">LLM01:2025 - Prompt Injection</td>
-                    <td className="p-2.5 text-red-600 font-bold">RECHAZADO (DENY)</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-mono">EV-OWASP-102</td>
-                    <td className="p-2.5">En vivo</td>
-                    <td className="p-2.5">LLM02:2025 - Sensitive Data Disclosure</td>
-                    <td className="p-2.5 text-red-600 font-bold">RECHAZADO (DENY)</td>
-                  </tr>
+                  {displayEvidences.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="p-4 text-center text-slate-500">
+                        No hay evidencias registradas en la Bóveda para exportar en este informe.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayEvidences.map((ev, index) => {
+                      const isDeny = ev.decision === 'DENY' || ev.verdict === 'RECHAZADO';
+                      return (
+                        <tr key={ev.id || index}>
+                          <td className="p-2.5 font-mono text-sky-700 font-bold">{ev.id}</td>
+                          <td className="p-2.5 text-slate-500">{ev.time || 'En vivo'}</td>
+                          <td className="p-2.5 max-w-[280px] truncate" title={ev.prompt}>
+                            <span className="font-semibold text-slate-800">{ev.cat || 'INSPECCION_L7'}:</span> {ev.prompt || '(Sin payload text)'}
+                          </td>
+                          <td className={`p-2.5 font-bold ${isDeny ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {isDeny ? 'RECHAZADO (DENY)' : 'PERMITIDO (ALLOW)'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -87,9 +107,9 @@ export default function OfficialReportModal({ onClose, sectorTitle }) {
               3. Validación Criptográfica y Cadena de Custodia (ISO/IEC 27037)
             </h3>
             <div className="bg-slate-50 p-4 rounded border border-slate-300 text-xs font-mono space-y-1.5">
-              <div><strong>Merkle Root Hash:</strong> 6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842[cite: 5, 16]</div>
-              <div><strong>Ed25519 Signature:</strong> 3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41...[cite: 5, 16]</div>
-              <div><strong>TSA Record:</strong> SAARE-OWASP-2026 • Estado: Verificado e Inmutable[cite: 5, 16]</div>
+              <div className="break-all"><strong>Merkle Root Hash:</strong> {activeMerkleRoot}</div>
+              <div><strong>Estado de Certificación:</strong> {activeMerkleRoot !== 'NO_RECORD_ANCHORED' ? 'Verificado e Inmutable en Bóveda D1' : 'En Espera de Anclaje Criptográfico'}</div>
+              <div><strong>Normativa Aplicable:</strong> ISO/IEC 27037:2012 / EU AI Act Art. 15 / DORA</div>
             </div>
           </div>
         </div>

@@ -1,19 +1,17 @@
-const API_BASE = "https://saare-api.alfonsoferrertorres.workers.dev/api/v1";
+const API_BASE = "https://api.saare.es/api/v1";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const statusEl = document.getElementById("status-indicator");
   const tenantEl = document.getElementById("tenant-name");
   const userEl = document.getElementById("user-account");
 
-  // Resolver identidad dinámica
   function resolveIdentity() {
     return new Promise((resolve) => {
-      // 1. GPO empresarial
       if (chrome.storage?.managed) {
         chrome.storage.managed.get(["saare_tenant_domain", "saare_user_email"], (managedRes) => {
           if (!chrome.runtime.lastError && (managedRes?.saare_tenant_domain || managedRes?.saare_user_email)) {
             return resolve({
-              tenant: managedRes.saare_tenant_domain || "Directiva GPO",
+              tenant: managedRes.saare_tenant_domain || "ENTERPRISE",
               user: managedRes.saare_user_email || "Usuario GPO"
             });
           }
@@ -23,11 +21,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         fallbackLocal();
       }
 
-      // 2. Almacenamiento local
       function fallbackLocal() {
         chrome.storage?.local.get(["saare_tenant_domain", "saare_user_email"], (localRes) => {
+          const rawTenant = localRes?.saare_tenant_domain || "ENTERPRISE";
           resolve({
-            tenant: localRes?.saare_tenant_domain || "Organización no vinculada",
+            tenant: rawTenant.includes("@") ? "ENTERPRISE" : rawTenant,
             user: localRes?.saare_user_email || "Sin identificar"
           });
         });
@@ -39,12 +37,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   tenantEl.innerText = identity.tenant;
   userEl.innerText = identity.user;
 
-  // Comprobar enlace con el Control-Plane
   try {
     const res = await fetch(`${API_BASE}/custom-rules`);
     if (res.ok) {
       statusEl.className = "status connected";
-      statusEl.innerText = "🟢 CONTROL-PLANE VINCULADO";
+      statusEl.innerText = "🟢 BÓVEDA D1 VINCULADA";
     } else {
       throw new Error();
     }

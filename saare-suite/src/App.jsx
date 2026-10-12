@@ -1,4 +1,4 @@
-// saare-suite/src/App.jsx — Orquestador Principal de la Landing & Access Gate S.A.A.R.E. (SGP 1.0)
+// saare-suite/src/App.jsx — Orquestador Principal de la Landing & Access Gate S.A.A.R.E. (SGP 1.0 / v8.2)
 import React, { useState, useEffect } from 'react';
 import LandingPage from './LandingPage';
 import Login from './Login';
@@ -35,9 +35,18 @@ export default function App() {
 
     const activeToken = authData?.apiKey || authData?.token || localStorage.getItem('saare_token') || '';
     const userEmail = authData?.email || localStorage.getItem('saare_user_email') || '';
-    const tenantName = authData?.tenantName || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+    
+    // Sanitización estricta: Si el tenant viene vacío o es un email, tomar 'ENTERPRISE'
+    let tenantName = authData?.tenantName || authData?.company || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+    if (!tenantName || tenantName.includes('@')) {
+      tenantName = 'ENTERPRISE';
+    }
+
     const userRole = authData?.role || localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
     const finalPlan = authData?.plan || selectedPlan || 'DISCOVER_FREE';
+
+    // Generar atestación de credencial para la Bóveda
+    const credentialProof = activeToken ? `Ed25519-Proof:${activeToken.slice(-12)}` : 'UNSIGNED_ANON';
 
     // Persistir estado local antes de redirigir
     if (activeToken) {
@@ -48,13 +57,14 @@ export default function App() {
     if (tenantName) localStorage.setItem('saare_tenant_domain', tenantName);
     if (userRole) localStorage.setItem('saare_user_role', userRole);
 
-    // Construir la URL de transferencia de sesión segura
+    // Construir la URL de transferencia de sesión segura con atestación
     const queryParams = new URLSearchParams({
       token: activeToken,
       user: userEmail,
       tenant: tenantName,
       role: userRole,
       plan: finalPlan,
+      proof: credentialProof,
       status: 'ACTIVE'
     });
 

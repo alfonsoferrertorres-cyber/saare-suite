@@ -1,5 +1,5 @@
-// policies/index.js — Registro Maestro de Políticas de Gobernanza S.A.A.R.E.
-import policySchema from './schema.json' assert { type: 'json' };
+// policies/index.js — Registro Maestro de Políticas de Gobernanza S.A.A.R.E. (SGP 1.0)
+import policySchema from './schema.json' with { type: 'json' };
 
 export const DEFAULT_POLICIES = [
   {

@@ -1,5 +1,5 @@
-// controls/index.js — Catálogo de Controles de Ejecución de 7 Dimensiones S.A.A.R.E.
-import controlSchema from './schema.json' assert { type: 'json' };
+// controls/index.js — Catálogo de Controles de Ejecución de 7 Dimensiones S.A.A.R.E. (SGP 1.0)
+import controlSchema from './schema.json' with { type: 'json' };
 
 export const DIMENSIONS = {
   DIM_01_IDENTITY: "DIM_01_IDENTITY",
