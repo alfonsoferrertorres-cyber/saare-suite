@@ -1,12 +1,23 @@
+// src/components/KpiHeaderSection.jsx
 import React from 'react';
 
 export const KpiHeaderSection = ({ evidences = [] }) => {
-  const totalEvidences = evidences.length;
-  const denyCount = evidences.filter(e => e.dictamen === 'DENY' || e.verdict === 'DENY').length;
+  const safeEvidences = Array.isArray(evidences) ? evidences : [];
+  const totalEvidences = safeEvidences.length;
+
+  const denyCount = safeEvidences.filter(
+    e => e && (e.dictamen === 'DENY' || e.verdict === 'DENY' || e.decision === 'DENY' || e.verdict === 'RECHAZADO')
+  ).length;
+
   const denyPercentage = totalEvidences > 0 ? ((denyCount / totalEvidences) * 100).toFixed(1) : '0.0';
 
-  // Cálculo ficticio o real de latencia promedio si viene en los registros
-  const avgLatency = evidences.reduce((acc, curr) => acc + (curr.latency || 115), 0) / (totalEvidences || 1);
+  // Cálculo seguro de latencia promedio con fallback a 1.12ms (latencia base del Engine)
+  const totalLatency = safeEvidences.reduce((acc, curr) => {
+    const lat = curr?.metrics?.latency_ms || curr?.latency || 1.12;
+    return acc + (typeof lat === 'number' ? lat : parseFloat(lat) || 1.12);
+  }, 0);
+
+  const avgLatency = totalEvidences > 0 ? (totalLatency / totalEvidences) : 1.12;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -37,10 +48,14 @@ export const KpiHeaderSection = ({ evidences = [] }) => {
       <div className="bg-slate-900/80 border border-slate-700/60 p-4 rounded-xl shadow-lg">
         <p className="text-xs font-semibold uppercase text-slate-400">Latencia Media Inspection</p>
         <div className="flex items-baseline justify-between mt-2">
-          <span className="text-3xl font-extrabold text-emerald-400">{avgLatency.toFixed(1)} <span className="text-sm font-normal">ms</span></span>
+          <span className="text-3xl font-extrabold text-emerald-400">
+            {avgLatency.toFixed(2)} <span className="text-sm font-normal">ms</span>
+          </span>
           <span className="text-xs text-emerald-500/80">RAM Zero-Storage</span>
         </div>
       </div>
     </div>
   );
 };
+
+export default KpiHeaderSection;
