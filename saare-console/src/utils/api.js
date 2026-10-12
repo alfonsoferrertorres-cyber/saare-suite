@@ -12,15 +12,20 @@ const isLocal = typeof window !== "undefined" && (
   window.location.hostname === '127.0.0.1'
 );
 
-// Fallback alineado de forma unificada con el Worker de Cloudflare
+// Dominio corporativo oficial de producción
 export const API_HOST = isLocal 
   ? 'http://127.0.0.1:3001' 
-  : (cleanEnvUrl || 'https://saare-api.alfonsoferrertorres.workers.dev');
+  : (cleanEnvUrl || 'https://api.saare.es');
 
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
-  return typeof url === 'string' && (url.startsWith(API_HOST) || url.startsWith('/') || url.includes('saare-api'));
+  return typeof url === 'string' && (
+    url.startsWith(API_HOST) || 
+    url.startsWith('/') || 
+    url.includes('saare.es') || 
+    url.includes('control-plane')
+  );
 }
 
 /**

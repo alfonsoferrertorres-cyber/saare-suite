@@ -1,4 +1,4 @@
-// saare-console/src/Login.jsx
+// saare-console/src/Login.jsx — S.A.A.R.E. Access Gate (SGP 1.0)
 import React, { useState } from 'react';
 import { API_BASE_URL } from './utils/api';
 
@@ -19,23 +19,28 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
     setErrorMsg('');
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanTenant = tenant.trim() || 'ORGANIZACION_DEMO';
-    const mockToken = `sk_saare_demo_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const cleanTenant = tenant.trim() || 'ENTERPRISE';
 
     try {
-      const endpoint = activeTab === 'demo' ? '/auth/demo' : '/auth/login';
+      // Usar endpoints soportados directamente por worker.js
+      const endpoint = activeTab === 'demo' ? '/trial' : '/auth/login';
+      
+      const payload = activeTab === 'demo'
+        ? { email: cleanEmail, company: cleanTenant, planType: plan, agents: 5 }
+        : { email: cleanEmail, password, tenant: cleanTenant, role, plan };
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password, tenant: cleanTenant, role, plan })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         const data = await response.json();
-        const userToken = data.token || mockToken;
+        const userToken = data.token || `sk_saare_live_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const userEmail = data.user?.email || cleanEmail;
         const userRole = data.user?.role || role;
-        const userTenant = data.user?.tenantName || cleanTenant;
+        const userTenant = data.user?.tenantName || data.tenantName || cleanTenant;
 
         localStorage.setItem('saare_token', userToken);
         localStorage.setItem('saare_user_email', userEmail);
@@ -52,27 +57,14 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
         return;
       } else {
         const errorData = await response.json().catch(() => ({}));
-        if (activeTab === 'login') {
-          setErrorMsg(errorData.message || 'Error de autenticación. Verifique sus datos.');
-        }
+        setErrorMsg(errorData.message || errorData.error || 'Error de autenticación. Verifique sus credenciales.');
       }
     } catch (err) {
-      console.warn("Backend no disponible, iniciando en MODO AUTÓNOMO LOCAL:", err);
+      console.error("[SAARE LOGIN ERROR] No se pudo conectar con el Control Plane:", err);
+      setErrorMsg('No se pudo establecer conexión con el Control Plane. Verifique que la API esté online.');
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem('saare_token', mockToken);
-    localStorage.setItem('saare_user_email', cleanEmail);
-    localStorage.setItem('saare_user_role', role);
-    localStorage.setItem('saare_tenant_domain', cleanTenant);
-
-    onLoginSuccess({
-      token: mockToken,
-      email: cleanEmail,
-      role: role,
-      tenantName: cleanTenant,
-      plan: plan
-    });
-    setLoading(false);
   };
 
   return (
@@ -126,24 +118,26 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
             <input 
               type="text" 
               required 
-              placeholder="Nombre de la Organización o Dominio"
+              placeholder="Ej. ENTERPRISE"
               value={tenant} 
               onChange={(e) => setTenant(e.target.value)} 
               style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña</label>
-            <input 
-              type="password" 
-              required 
-              placeholder="••••••••"
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
-            />
-          </div>
+          {activeTab === 'login' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña</label>
+              <input 
+                type="password" 
+                required 
+                placeholder="••••••••"
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
+              />
+            </div>
+          )}
 
           <div>
             <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Rol Inicial RBAC</label>
