@@ -10,10 +10,10 @@ export class EvidenceVaultEngine {
   }
 
   /**
-   * Inicializa la estructura de tablas en D1 si no existen.
+   * Inicializa la estructura de tablas en D1 si no existen (Ejecución única con caché en memoria).
    */
   async initializeSchema() {
-    if (!this.env || !this.env.DB) return;
+    if (!this.env || !this.env.DB || EvidenceVaultEngine.schemaInitialized) return;
 
     try {
       await this.env.DB.exec(`
@@ -43,6 +43,7 @@ export class EvidenceVaultEngine {
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
       `);
+      EvidenceVaultEngine.schemaInitialized = true;
     } catch (err) {
       console.error("[Vault Engine] Error inicializando esquemas SQL D1:", err.message);
     }
@@ -60,8 +61,10 @@ export class EvidenceVaultEngine {
     const user = tracePayload.user || "anonymous";
 
     const payloadHash = tracePayload.payload_hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    const evaluatorChainJson = JSON.stringify(tracePayload.evaluator_chain || { final_evaluator: "PEP_L7_RAM" });
-    const verdictDataJson = JSON.stringify(tracePayload.verdict_data || { verdict: "PERMITIDO", action: "ALLOWED" });
+    
+    const finalEvaluatorNode = typeof tracePayload.evaluator_chain === 'object' 
+      ? (tracePayload.evaluator_chain?.final_evaluator || 'EDGE_WORKER_PEP_L7')
+      : String(tracePayload.evaluator_chain || 'EDGE_WORKER_PEP_L7');
 
     const decision = tracePayload.decision || (tracePayload.verdict_data?.action === 'BLOCKED' ? 'DENY' : 'ALLOW');
     const verdict = tracePayload.verdict || tracePayload.verdict_data?.verdict || (decision === 'DENY' ? 'RECHAZADO' : 'PERMITIDO');
@@ -89,7 +92,14 @@ export class EvidenceVaultEngine {
         await this.env.DB.prepare(`
           INSERT OR REPLACE INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).bind(traceId, tenantId, user, tracePayload.evaluator_chain?.final_evaluator || 'EDGE_WORKER', decision === 'DENY' ? 'BLOCKED' : 'ALLOWED', timestamp).run();
+        `).bind(
+          traceId, 
+          tenantId, 
+          user, 
+          finalEvaluatorNode, 
+          decision === 'DENY' ? 'BLOCKED' : 'ALLOWED', 
+          timestamp
+        ).run();
 
         await this.env.DB.prepare(`
           INSERT OR REPLACE INTO runs (id, evidence_id, trace_id, verdictId, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
@@ -179,3 +189,8 @@ export class EvidenceVaultEngine {
     return [];
   }
 }
+
+// Banderín global para caché de inicialización de esquema
+EvidenceVaultEngine.schemaInitialized = false;
+
+export default EvidenceVaultEngine;

@@ -12,12 +12,15 @@ const isLocal = typeof window !== "undefined" && (
   window.location.hostname === '127.0.0.1'
 );
 
-// Puerto 3001 alineado con el Control Plane / Server local y fallback producción
-export const API_HOST = isLocal ? 'http://127.0.0.1:3001' : (cleanEnvUrl || 'https://api.saare.es');
+// Fallback alineado de forma unificada con el Worker de Cloudflare
+export const API_HOST = isLocal 
+  ? 'http://127.0.0.1:3001' 
+  : (cleanEnvUrl || 'https://saare-api.alfonsoferrertorres.workers.dev');
+
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 function isOwnApi(url) {
-  return typeof url === 'string' && (url.startsWith(API_HOST) || url.startsWith('/'));
+  return typeof url === 'string' && (url.startsWith(API_HOST) || url.startsWith('/') || url.includes('saare-api'));
 }
 
 /**
@@ -100,7 +103,7 @@ export async function saareFetch(endpoint, options = {}) {
 }
 
 /**
- * Helpers API con parseo automático de JSON
+ * Helpers API con parseo automático de JSON y manejo seguro de errores
  */
 export const api = {
   get: async (endpoint, options = {}) => {
@@ -139,14 +142,14 @@ export const api = {
   },
   
   getSrpManifest: async () => {
-    const res = await saareFetch('/manifest/srp', { method: 'GET' });
-    return res.ok ? res.json() : null;
+    const res = await saareFetch('/manifest/srp', { method: 'GET' }).catch(() => null);
+    return res && res.ok ? res.json() : null;
   },
   
   getKpis: async (startDate, endDate) => {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
-    const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
-    return res.ok ? res.json() : {};
+    const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' }).catch(() => null);
+    return res && res.ok ? res.json() : {};
   }
 };
 
