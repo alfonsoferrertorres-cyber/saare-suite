@@ -1,0 +1,1 @@
+powershell -ExecutionPolicy Bypass -File .\despliegue_maestro.ps1

@@ -1,200 +1,124 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <style>
-    * { box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 290px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #090d16;
+      color: #ffffff;
+      padding: 16px;
       margin: 0;
-      padding: 14px;
-      background-color: #030712;
-      color: #f3f4f6;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-sizing: border-box;
     }
     .header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #1f2937;
-      padding-bottom: 10px;
+      gap: 8px;
       margin-bottom: 12px;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .brand-logo {
+    .header-badge {
+      background: #d97706;
+      color: #000;
+      font-weight: 900;
       width: 22px;
       height: 22px;
-      object-fit: contain;
-    }
-    .title {
-      font-weight: 900;
-      font-size: 13px;
-      color: #ffffff;
-      letter-spacing: 0.8px;
-    }
-    .badge-status {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
-      border: 1px solid #22c55e;
-      padding: 2px 7px;
-      border-radius: 12px;
-      font-size: 9.5px;
-      font-weight: bold;
+      border-radius: 4px;
       display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      font-size: 13px;
     }
-    .dot-green {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: #22c55e;
-      box-shadow: 0 0 6px #22c55e;
-    }
-    .info-card {
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 11px;
-      margin-bottom: 10px;
-    }
-    .label {
-      color: #9ca3af;
-      font-size: 9px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-      font-weight: 700;
-    }
-    .val {
+    h3 {
+      margin: 0;
       color: #38bdf8;
-      font-family: monospace;
-      margin-bottom: 8px;
-      word-break: break-all;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      font-weight: 800;
     }
-    .grid-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .stat-box {
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 6px;
+    .status {
       padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
       text-align: center;
+      margin-bottom: 14px;
+      transition: all 0.25s ease;
+      letter-spacing: 0.3px;
     }
-    .stat-num {
-      font-size: 15px;
-      font-weight: 900;
-      color: #10b981;
-      font-family: monospace;
+    .status.connected {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid #10b981;
     }
-    .stat-lbl {
-      font-size: 8px;
-      color: #6b7280;
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-top: 2px;
+    .status.disconnected {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid #ef4444;
     }
-    .last-log-box {
+    .status.checking {
+      background-color: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .card {
       background: #0f172a;
-      border: 1px dashed #334155;
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 10px;
-      margin-bottom: 10px;
-    }
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .btn-console {
-      display: block;
-      width: 100%;
-      text-align: center;
-      background: #0284c7;
-      color: #ffffff;
-      text-decoration: none;
-      padding: 9px 0;
-      border-radius: 6px;
-      font-weight: bold;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
       font-size: 11.5px;
-      transition: background 0.2s ease;
-      border: none;
-      cursor: pointer;
     }
-    .btn-console:hover {
-      background: #0369a1;
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      color: #94a3b8;
     }
-    .btn-secondary {
-      background: #1f2937;
-      color: #9ca3af;
-      border: 1px solid #374151;
-      padding: 6px 0;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      transition: all 0.2s ease;
+    .row:last-child {
+      margin-bottom: 0;
     }
-    .btn-secondary:hover {
-      background: #374151;
-      color: #f3f4f6;
+    .row strong {
+      color: #e2e8f0;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .footer {
+      font-size: 10.5px;
+      color: #64748b;
+      line-height: 1.4;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="brand">
-      <img src="icons/logo_saare.png" alt="SAARE" class="brand-logo" />
-      <span class="title">SAARE SENSOR L7</span>
-    </div>
-    <span class="badge-status"><span class="dot-green"></span> BLINDAJE ACTIVO</span>
+    <div class="header-badge">S</div>
+    <h3>S.A.A.R.E. L7 Agent</h3>
   </div>
 
-  <div class="info-card">
-    <div class="label">Organización / Tenant</div>
-    <div class="val" id="disp-tenant">Consultando...</div>
+  <div id="status-indicator" class="status checking">⏳ SINCRONIZANDO CON VAULT...</div>
 
-    <div class="label">Usuario / Testigo Operador</div>
-    <div class="val" id="disp-user">Consultando...</div>
-
-    <div class="label">Protocolo de Custodia</div>
-    <div class="val" style="color: #4ade80;">SGP 1.0 (Fail-Closed)</div>
-
-    <div class="label">Procesamiento RAM</div>
-    <div class="val" style="color: #ca8a04; margin: 0;">Ephemeral Zero-Disk Persistence</div>
-  </div>
-
-  <div class="grid-stats">
-    <div class="stat-box">
-      <div class="stat-num" id="disp-count">0</div>
-      <div class="stat-lbl">Eventos en Búfer RAM</div>
+  <div class="card">
+    <div class="row">
+      <span>Organización:</span>
+      <strong id="tenant-name">Cargando...</strong>
     </div>
-    <div class="stat-box">
-      <div class="stat-num" id="disp-status-shield" style="color: #38bdf8;">100%</div>
-      <div class="stat-lbl">Integridad L7</div>
+    <div class="row">
+      <span>Identidad:</span>
+      <strong id="user-account" style="color: #38bdf8;">Cargando...</strong>
+    </div>
+    <div class="row">
+      <span>Motor RAM:</span>
+      <strong style="color: #34d399;">Stateless L7 Activo</strong>
     </div>
   </div>
 
-  <div class="last-log-box">
-    <div class="label">Última Evidencia Capturada</div>
-    <div class="val" id="disp-last-verdict" style="color: #a7f3d0; margin-bottom: 0;">Esperando actividad en IA...</div>
-  </div>
-
-  <div class="actions">
-    <a href="https://console.saare.es" target="_blank" rel="noopener noreferrer" class="btn-console" id="btn-link">
-      Abrir SAARE GRC Console ↗
-    </a>
-    <button class="btn-secondary" id="btn-clear-ram">🧹 Limpiar Búfer Volátil RAM</button>
+  <div class="footer">
+    Blindaje perimetral activo sobre Gemini, ChatGPT, Claude y DeepSeek.
   </div>
 
   <script src="popup.js"></script>

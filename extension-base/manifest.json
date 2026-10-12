@@ -1,29 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "SAARE Execution Authorization Sensor",
-  "version": "10.2.3",
-  "description": "AI Execution Authorization Infrastructure (SGP 1.0) · SAARE VERDICT™",
-  "icons": {
-    "16": "icons/logo_saare.png",
-    "32": "icons/logo_saare.png",
-    "48": "icons/logo_saare.png",
-    "128": "icons/logo_saare.png"
-  },
+  "name": "SAARE L7 Governance Agent",
+  "version": "8.1.0",
+  "description": "Universal Compliance & Dynamic Rules Engine for GenAI",
   "background": {
     "service_worker": "background.js"
-  },
-  "action": {
-    "default_title": "SAARE Execution Guard Node",
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/logo_saare.png",
-      "32": "icons/logo_saare.png",
-      "48": "icons/logo_saare.png",
-      "128": "icons/logo_saare.png"
-    }
-  },
-  "storage": {
-    "managed_schema": "storage_managed.json"
   },
   "content_scripts": [
     {
@@ -36,19 +17,13 @@
         "https://chat.deepseek.com/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": [
-        "content.js"
-      ],
+      "js": ["content.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "inject.js",
-        "storage_managed.json",
-        "config.json"
-      ],
+      "resources": ["inject.js"],
       "matches": [
         "https://gemini.google.com/*",
         "https://chatgpt.com/*",
@@ -60,15 +35,5 @@
       ]
     }
   ],
-  "permissions": [
-    "storage",
-    "alarms",
-    "downloads"
-  ],
-  "host_permissions": [
-    "https://api.saare.es/*",
-    "http://localhost:3000/*",
-    "http://localhost:3001/*",
-    "http://127.0.0.1:3001/*"
-  ]
+  "permissions": ["storage"]
 }

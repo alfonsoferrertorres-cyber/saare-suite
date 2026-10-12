@@ -1,157 +1,86 @@
-// extension-base/content.js — SAARE L7 TELEMETRY & DOM BRIDGE v10.5.4 (SGP 1.0 - Full Alignment)
-console.log("[SAARE L7 Engine] DOM Bridge & Execution Guard Active");
+// SAARE L7 TELEMETRY & DOM BRIDGE v8.1.0
+console.log("[SAARE L7 Engine] Interceptor Activo en Memoria");
 
-const DEFAULT_SETTINGS_V10 = {
-  cumplimiento_corporativo_integral: true,
-  auditoria_dictamen_normativo: true,
-  razonamiento_activo_l7: true
-};
+const injectScript = document.createElement("script");
+injectScript.src = chrome.runtime.getURL("inject.js");
+injectScript.onload = function() { this.remove(); };
+(document.head || document.documentElement).appendChild(injectScript);
 
-// Frases de interfaz, saludos iniciales y firmas de ruido de Gemini / OpenAI / Claude
-const KNOWN_UI_NOISE = [
-  "f.req=",
-  "bard_activity",
-  "connectiondurationms",
-  "documentrequestid",
-  "¡hola! ¿en qué te puedo ayudar hoy?",
-  "gemini no es un ser humano",
-  "accede para vincular las apps de google",
-  "saludo inicial",
-  "tu privacidad y gemini",
-  "cometer errores, incluso con información sobre personas"
-];
+function getActiveAccountFromDom() {
+  const profileEl = document.querySelector('a[aria-label*="@"], button[aria-label*="@"], img[alt*="@"], div[aria-label*="@"]');
+  const label = profileEl ? (profileEl.getAttribute('aria-label') || profileEl.getAttribute('alt') || '') : '';
+  const match = label.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0].toLowerCase().trim() : null;
+}
 
-// 1. FILTRO DE RUIDO Y TELEMETRÍA AUTOMÁTICA
-function isNoisePayload(text) {
-  if (!text || typeof text !== "string") return true;
-  const clean = text.trim();
+function showModal(text, violationInfo) {
+  let old = document.getElementById("saare-block-modal");
+  if (old) old.remove();
+
+  const banner = document.createElement("div");
+  banner.id = "saare-block-modal";
+  banner.style = "position:fixed; bottom:20px; right:20px; width:460px; background:#0f172a; color:#ffffff; padding:16px; border-radius:8px; border:2px solid #ef4444; box-shadow:0 12px 28px rgba(0,0,0,0.6); z-index:999999; font-family:system-ui,-apple-system,sans-serif;";
   
-  if (clean.length < 2) return true;
+  const normTitle = violationInfo?.norma || "RGPD / EU AI Act";
+  const reasonText = violationInfo?.reason || "Carga regulada detectada";
 
-  const lower = clean.toLowerCase();
-  return KNOWN_UI_NOISE.some(noise => lower.includes(noise));
-}
-
-function renderActivityWitnessBadge() {
-  if (document.getElementById("saare-witness-badge")) return;
-
-  const badge = document.createElement("div");
-  badge.id = "saare-witness-badge";
-  badge.style.cssText = `
-    position: fixed; bottom: 16px; right: 16px; z-index: 999999;
-    background: rgba(3, 7, 18, 0.85); border: 1px solid #059669; color: #34d399;
-    padding: 4px 10px; border-radius: 20px; font-size: 0.70rem;
-    font-family: monospace; font-weight: 800; display: flex; align-items: center; gap: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-    transition: all 0.3s ease; opacity: 0.75; cursor: pointer; user-select: none;
+  banner.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-weight:900; font-size:0.85rem; color:#ef4444;">🛡️ S.A.A.R.E. RUNTIME INTERCEPTOR (L7)</span>
+      <span style="background:#dc2626; color:#fff; font-size:0.7rem; font-weight:900; padding:3px 8px; border-radius:4px;">BLOQUEADO</span>
+    </div>
+    <p style="font-size:0.82rem; margin:0 0 8px 0; color:#cbd5e1; line-height:1.4;">
+      <strong>Normativa:</strong> <span style="color:#f87171;">${normTitle}</span><br>
+      <strong>Causa:</strong> ${reasonText}
+    </p>
+    <div style="background:#1e293b; border-left:3px solid #ef4444; padding:8px 10px; border-radius:4px; font-size:0.8rem; color:#93c5fd; margin-bottom:10px; word-break:break-all;">
+      Carga Neutralizada: "${text.substring(0, 150)}"
+    </div>
   `;
-
-  badge.innerHTML = `
-    <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
-    <span id="saare-witness-text">S.A.A.R.E. L7</span>
-  `;
-
-  badge.addEventListener("mouseenter", () => {
-    badge.style.opacity = "1";
-    document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7 ENFORCER: MODO BLINDAJE ACTIVO";
-  });
-
-  badge.addEventListener("mouseleave", () => {
-    badge.style.opacity = "0.75";
-    document.getElementById("saare-witness-text").innerText = "S.A.A.R.E. L7";
-  });
-
-  (document.body || document.documentElement).appendChild(badge);
+  document.body.appendChild(banner);
+  setTimeout(() => { if (banner) banner.remove(); }, 6000);
 }
 
-// BUCLE DE REINYECCIÓN AUTOMÁTICA EN NAVEGACIÓN SPA
-setInterval(() => {
-  if (!document.getElementById("saare-witness-badge")) {
-    renderActivityWitnessBadge();
-  }
-}, 3000);
+function sendEvidenceToBackground(auditData) {
+  const text = auditData.cleanPrompt || auditData.sanitizedPrompt || "";
+  if (!text || text.trim() === "") return;
 
-function updateDomContext(settings, userEmail, tenantDomain) {
-  if (settings) document.documentElement.setAttribute("data-saare-settings", JSON.stringify(settings));
-  if (userEmail) document.documentElement.setAttribute("data-saare-user", userEmail.trim().toLowerCase());
-  if (tenantDomain) document.documentElement.setAttribute("data-saare-tenant", tenantDomain.trim());
-}
-
-// SINCRONIZACIÓN DE CONTEXTO Y ALMACENAMIENTO DE NAVEGADOR
-function syncStorageAndContext() {
-  if (typeof chrome !== "undefined" && chrome.storage) {
-    chrome.storage.local.get(["saare_settings", "saare_user_email", "saare_tenant_domain"], (local) => {
-      const finalUser = local?.saare_user_email || "ciso@saare.es";
-      const finalTenant = local?.saare_tenant_domain || "ENTERPRISE";
-      updateDomContext(local?.saare_settings || DEFAULT_SETTINGS_V10, finalUser, finalTenant);
-    });
-  }
-}
-
-syncStorageAndContext();
-
-if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
-  chrome.storage.onChanged.addListener(() => { syncStorageAndContext(); });
-}
-
-// INYECCIÓN DEL SCRIPT PRINCIPAL INTERCEPTOR EN EL DOM
-try {
-  const injectScript = document.createElement("script");
-  injectScript.src = chrome.runtime.getURL("inject.js");
-  injectScript.onload = function () { this.remove(); };
-  (document.head || document.documentElement).appendChild(injectScript);
-} catch (e) {}
-
-// ENVÍO DE EVIDENCIAS AL BACKGROUND SERVICE WORKER
-function sendEvidenceToBackground(verdictData) {
-  const text = verdictData.cleanPrompt || verdictData.sanitizedPrompt || verdictData.prompt || verdictData.promptInput || "";
-
-  if (isNoisePayload(text)) {
-    return;
-  }
-
-  const currentDomUser = document.documentElement.getAttribute("data-saare-user") || "ciso@saare.es";
-  const currentDomTenant = document.documentElement.getAttribute("data-saare-tenant") || "ENTERPRISE";
-
-  const finalUser = (verdictData.user || currentDomUser).trim().toLowerCase();
-  const finalTenant = (verdictData.tenant || currentDomTenant).trim();
+  const detectedUser = getActiveAccountFromDom();
 
   const payload = {
-    verdict_schema: "SGP_1.0",
-    verdictId: verdictData.verdictId || `VRD-2026-${Math.floor(Math.random() * 90000) + 10000}`,
-    evidence_id: verdictData.evidence_id || `EV-L7-${Math.floor(Math.random() * 90000) + 10000}`,
-    decision: verdictData.decision || "ALLOW",
-    enforcement: verdictData.enforcement || { action: verdictData.decision === "DENY" ? "BLOCK" : "PASS" },
-    status: "VALID",
-    system_id: "L7-BROWSER-SENSOR",
-    policy: verdictData.policy || { id: "POL-CORP-GOVERNANCE-01", version: "1.0.0" },
-    reason: verdictData.reason || "Tráfico conforme verificado en memoria",
-    promptInput: text,
-    user: finalUser,
-    tenant: finalTenant,
-    timestamp: verdictData.timestamp || new Date().toISOString(),
-    cryptoSeal: verdictData.cryptoSeal || "L7-SEAL:ACTIVE",
-    verdict: verdictData.verdict || (verdictData.decision === "DENY" ? "RECHAZADO" : "PERMITIDO"),
-    type: "PRIVACIDAD",
-    cat: verdictData.category || "AUDITORIA_CONFORME",
-    sub: verdictData.norma || "EU AI Act",
-    prompt: text,
-    time: "En vivo"
+    promptInput: text.trim().substring(0, 500),
+    user: detectedUser || undefined,
+    timestamp: new Date().toISOString(),
+    verdict: auditData.verdict,
+    category: auditData.category,
+    norma: auditData.norma,
+    cryptoSeal: auditData.cryptoSeal,
+    violationDetails: {
+      category: auditData.category,
+      norma: auditData.norma,
+      reason: auditData.reason,
+      cryptoSeal: auditData.cryptoSeal
+    }
   };
 
+  if (auditData.verdict === "RECHAZADO") {
+    showModal(text, auditData);
+  }
+
   if (typeof chrome !== "undefined" && chrome.runtime?.id) {
-    chrome.runtime.sendMessage({ type: "SAARE_LOG_EVENT", payload: payload });
+    try {
+      chrome.runtime.sendMessage({
+        type: "SAARE_LOG_EVENT",
+        payload: payload
+      }, () => {
+        if (chrome.runtime.lastError) {}
+      });
+    } catch {}
   }
 }
 
-// ESCUCHADOR DE EVENTOS EMITIDOS POR INJECT.JS EN EL DOM
 window.addEventListener("message", (event) => {
-  if (event.source !== window) return;
-
-  if (event.data?.type === "SAARE_VERDICT_EVENT" || event.data?.type === "SAARE_EVENT") {
-    const verdictData = event.data.payload || event.data.data;
-    if (verdictData) {
-      sendEvidenceToBackground(verdictData);
-    }
+  if (event.data?.type === "SAARE_EVENT" && event.data.data) {
+    sendEvidenceToBackground(event.data.data);
   }
 });

@@ -1,59 +1,10 @@
-/* SAARE L7 Execution Authorization & Network Interceptor (SGP 1.0 - Full Interception Active) */
+/* S.A.A.R.E. L7 RAM Network Interceptor & Sanitizer v8.1.0 */
 (function() {
-  const CANONICAL_PARENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
   const DLP = {
     dni: /(?:^|\D)(\d{7,8}[-\s]?[A-Za-z]|[XYZ]\d{7}[-\s]?[A-Za-z])(?!\w)/i,
     iban: /ES\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{2}[\s-]?\d{10}|ES\d{18,22}/i,
-    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/,
-    health: /(?:diagn[oó]stico|cardiopat[ií]a|receta|historia cl[ií]nica|paciente|tratamiento|patolog[ií]a)\b/i,
-    jailbreak: /(?:modo dan|ignore previous instructions|ignora todas las instrucciones|system prompt|override security|bypass rules)/i,
-    voice_clone: /(?:clonar voz|clonaci[oó]n de voz|avatar sint[eé]tico|suplantar identidad|deepfake voz|audio sint[eé]tico sin consentimiento)/i,
-    invoices: /(?:FAC|INV|EXP)-[A-Z0-9-]{6,16}/i,
-    unsupported: /(?:inventar|sin evidencia|sin respaldo|ignora el contrato|alterar documento)/i,
-    tool_mutation: /(?:delete_customer_account|delete_database|drop_table|truncate_table|execute_raw_sql|exec_shell)/i
+    card: /(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})/
   };
-
-  function getSettings() {
-    try {
-      const raw = document.documentElement?.getAttribute('data-saare-settings');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        return {
-          cumplimiento_corporativo_integral: parsed.cumplimiento_corporativo_integral !== false,
-          auditoria_dictamen_normativo: parsed.auditoria_dictamen_normativo !== false,
-          razonamiento_activo_l7: parsed.razonamiento_activo_l7 !== false,
-          deepfake_fake_disprover: parsed.deepfake_fake_disprover !== false,
-          subvenciones_requisitos_infranqueables: parsed.subvenciones_requisitos_infranqueables !== false,
-          banca_dora_pci: parsed.banca_dora_pci !== false,
-          sanidad_historia_clinica: parsed.sanidad_historia_clinica !== false,
-          orquestacion_workflows_guard: parsed.orquestacion_workflows_guard !== false,
-          subOptions: parsed.subOptions || {}
-        };
-      }
-    } catch (e) {
-      console.warn("[SAARE] Error parsing settings attributes, falling back to defaults:", e);
-    }
-
-    return {
-      cumplimiento_corporativo_integral: true,
-      auditoria_dictamen_normativo: true,
-      razonamiento_activo_l7: true,
-      deepfake_fake_disprover: true,
-      subvenciones_requisitos_infranqueables: true,
-      banca_dora_pci: true,
-      sanidad_historia_clinica: true,
-      orquestacion_workflows_guard: true,
-      subOptions: {}
-    };
-  }
-
-  function getIdentityContext() {
-    return {
-      user: document.documentElement?.getAttribute("data-saare-user") || "ciso@saare.es",
-      tenant: document.documentElement?.getAttribute("data-saare-tenant") || "ENTERPRISE"
-    };
-  }
 
   function computeL7Seal(str) {
     let hash = 0;
@@ -67,16 +18,7 @@
   function isIgnoredRequest(url, bodyStr) {
     if (url) {
       const u = String(url).toLowerCase();
-      if (
-        u.includes("/log?") || 
-        u.includes("play.google.com") || 
-        u.includes("google-analytics") || 
-        u.includes("/collect?") || 
-        u.includes("gen_204") || 
-        u.includes("/upload/") ||
-        u.includes("saare-api") ||
-        u.includes("api.saare.es")
-      ) {
+      if (u.includes("/log?") || u.includes("play.google.com") || u.includes("google-analytics") || u.includes("/collect?") || u.includes("gen_204") || u.includes("/upload/")) {
         return true;
       }
     }
@@ -109,9 +51,11 @@
     try { return JSON.stringify(body); } catch { return String(body); }
   }
 
+  // Extracción estructural posicional de alta fidelidad
   function extractCleanPrompt(rawText) {
     if (!rawText) return "";
 
+    // 1. Google Gemini (f.req)
     if (rawText.includes("f.req")) {
       let fReqValue = "";
       try {
@@ -129,40 +73,46 @@
       if (fReqValue) {
         try {
           const outer = JSON.parse(fReqValue);
-          if (Array.isArray(outer)) {
-            function deepFindPrompt(arr) {
-              for (const item of arr) {
-                if (typeof item === "string") {
-                  if (item.startsWith("[") && item.endsWith("]")) {
-                    try {
-                      const parsedSub = JSON.parse(item);
-                      const found = deepFindPrompt(parsedSub);
-                      if (found) return found;
-                    } catch {}
-                  } else if (
-                    item.length > 1 && 
-                    !item.startsWith("!") && 
-                    !item.startsWith("at=") && 
-                    !item.includes("bard_activity") &&
-                    !item.includes("f.req=")
-                  ) {
-                    return item;
-                  }
-                } else if (Array.isArray(item)) {
-                  const found = deepFindPrompt(item);
-                  if (found) return found;
+
+          // StreamGenerate [null, "[[\"mensaje\", 0, ...], ...]"]
+          if (Array.isArray(outer) && outer.length >= 2 && typeof outer[1] === "string") {
+            try {
+              const inner = JSON.parse(outer[1]);
+              if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
+                const prompt = inner[0][0];
+                if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
+                  return prompt.trim();
                 }
               }
-              return null;
+            } catch {}
+          }
+
+          // batchexecute [[["RPC_ID", "[[\"mensaje\", 0, ...], ...]", null, "generic"], ...]]
+          if (Array.isArray(outer) && outer.length > 0 && Array.isArray(outer[0])) {
+            for (const batch of outer) {
+              if (Array.isArray(batch)) {
+                for (const call of batch) {
+                  if (Array.isArray(call) && call.length >= 2 && typeof call[1] === "string") {
+                    try {
+                      const inner = JSON.parse(call[1]);
+                      if (Array.isArray(inner) && inner.length > 0 && Array.isArray(inner[0])) {
+                        const prompt = inner[0][0];
+                        if (typeof prompt === "string" && prompt.trim() && !prompt.startsWith("!")) {
+                          return prompt.trim();
+                        }
+                      }
+                    } catch {}
+                  }
+                }
+              }
             }
-            const prompt = deepFindPrompt(outer);
-            if (prompt) return prompt.trim();
           }
         } catch {}
       }
       return "";
     }
 
+    // 2. JSON estándar (ChatGPT, Claude, DeepSeek, Copilot)
     try {
       const json = JSON.parse(rawText);
       if (json.messages && Array.isArray(json.messages)) {
@@ -172,7 +122,6 @@
       }
       if (json.prompt) return json.prompt;
       if (json.input) return json.input;
-      if (json.action && json.resource) return `${json.action}:${json.resource}`;
     } catch {}
 
     return "";
@@ -196,245 +145,93 @@
   }
 
   function evaluatePayload(rawBody, url) {
-    const settings = getSettings();
-    const identity = getIdentityContext();
     const str = parseBody(rawBody);
-
     if (!str || isIgnoredRequest(url, str)) return null;
 
     const cleanPrompt = extractCleanPrompt(str);
-    if (!cleanPrompt || cleanPrompt.length < 1 || cleanPrompt.includes("f.req=")) return null;
+    if (!cleanPrompt || cleanPrompt.length < 1) return null;
 
-    const seal = computeL7Seal(cleanPrompt);
-    const subOpts = settings.subOptions;
-    const timestampIso = new Date().toISOString();
-    const runRandomId = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const canonicalVerdictId = `VRD-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    // 1. Verificación DLP perimetral
+    const isDni = DLP.dni.test(cleanPrompt) || DLP.dni.test(str);
+    const isIban = DLP.iban.test(cleanPrompt.replace(/[\s-]/g, "")) || DLP.iban.test(str.replace(/[\s-]/g, ""));
+    const isCard = DLP.card.test(cleanPrompt.replace(/[\s-]+/g, "")) || DLP.card.test(str.replace(/[\s-]+/g, ""));
 
-    const baseVerdict = {
-      verdict_schema: "SGP_1.0",
-      verdictId: canonicalVerdictId,
-      user: identity.user,
-      tenant: identity.tenant,
-      cryptoSeal: seal,
-      parentHash: CANONICAL_PARENT_HASH,
-      timestamp: timestampIso
-    };
+    if (isDni || isIban || isCard) {
+      let category = "PII_DNI";
+      let norma = "España - LOPDGDD & AEPD";
 
-    // 01. ORQUESTADORES & WORKFLOWS GUARD
-    if (settings.orquestacion_workflows_guard && DLP.tool_mutation.test(cleanPrompt)) {
+      if (isIban) {
+        category = "DATOS_BANCARIOS";
+        norma = "RGPD Art. 5, 32 / LOPDGDD";
+      } else if (isCard) {
+        category = "TARJETA_CREDITO";
+        norma = "PCI-DSS / RGPD";
+      }
+
+      const displayPrompt = sanitize(cleanPrompt);
+
       return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-CRM-LEAST-PRIV-03", version: "1.4.0" },
-        risk_level: "CRITICAL",
-        rules_matched: ["RULE_PRIVILEGED_MUTATION_DENIED"],
-        reason: "El perfil de privilegios mínimos deniega mutaciones destructivas o comandos directos sin permiso.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-TOOL-${runRandomId}`,
-        category: "SEGURIDAD_SISTEMA",
-        norma: "SGP 1.0 Least Privilege"
+        verdict: "RECHAZADO",
+        category,
+        norma,
+        reason: "Detección de datos regulados en memoria RAM L7",
+        cleanPrompt: displayPrompt,
+        sanitizedPrompt: displayPrompt,
+        cryptoSeal: computeL7Seal(cleanPrompt)
       };
     }
 
-    // 02. SUBVENCIONES Y FONDOS PÚBLICOS
-    if (settings.subvenciones_requisitos_infranqueables && DLP.invoices.test(cleanPrompt) && subOpts.enforce_no_double_funding !== false) {
-      const match = cleanPrompt.match(DLP.invoices)?.[0] || "REF_DESCONOCIDA";
-      return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-GRANTS-DNSH-05", version: "2.1.0" },
-        risk_level: "HIGH",
-        rules_matched: ["RULE_NO_DOUBLE_FUNDING_INVOICE"],
-        reason: `Bloqueo Subvenciones: Detección de factura [${match}] con potencial solapamiento o principio DNSH no justificado.`,
-        cleanPrompt: sanitize(cleanPrompt),
-        sanitizedPrompt: sanitize(cleanPrompt),
-        evidence_id: `EV-GRANT-${runRandomId}`,
-        category: "FINANCIERO_SUBVENCIONES",
-        norma: "Orden HFP/1030/2021"
-      };
-    }
-
-    // 03. PROTECCIÓN DEL HONOR & DEEPFAKES
-    if (settings.deepfake_fake_disprover && (DLP.voice_clone.test(cleanPrompt) || DLP.unsupported.test(cleanPrompt))) {
-      return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-HONOR-SYNTHETIC-03", version: "2.0.0" },
-        risk_level: "CRITICAL",
-        rules_matched: ["RULE_SYNTHETIC_IDENTITY_NO_CONSENT", "RULE_NO_UNSUPPORTED_CLAIMS"],
-        reason: "Bloqueo Ley Orgánica 1/1982: Detección de intento de clonación sintética de voz/imagen sin acreditación de consentimiento expreso.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-SYNTH-${runRandomId}`,
-        category: "DERECHOS_FUNDAMENTALES",
-        norma: "LO 1/1982 & EU AI Act"
-      };
-    }
-
-    // 04. SALUD & HISTORIA CLÍNICA (RGPD)
-    if (settings.sanidad_historia_clinica && DLP.health.test(cleanPrompt)) {
-      return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-HEALTH-RGPD-09", version: "1.0.0" },
-        risk_level: "CRITICAL",
-        rules_matched: ["RULE_HEALTH_PII_EXPOSURE"],
-        reason: "Bloqueo RGPD Art. 9: Exposición no autorizada de datos de salud y categoría especial de paciente.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: sanitize(cleanPrompt),
-        evidence_id: `EV-HEALTH-${runRandomId}`,
-        category: "PRIVACIDAD_SALUD",
-        norma: "RGPD Art. 9"
-      };
-    }
-
-    // 05. JAILBREAK & OVERRIDE DE INSTRUCCIONES
-    if (DLP.jailbreak.test(cleanPrompt)) {
-      return {
-        ...baseVerdict,
-        decision: "DENY",
-        enforcement: { action: "BLOCK" },
-        executionPermit: null,
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-SEC-JAILBREAK-01", version: "3.0.0" },
-        risk_level: "HIGH",
-        rules_matched: ["RULE_PROMPT_INJECTION_DETECTED"],
-        reason: "Bloqueo de Seguridad: Intento de bypass de salvaguardas o inyección de instrucciones no autorizadas.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: cleanPrompt,
-        evidence_id: `EV-JAIL-${runRandomId}`,
-        category: "SEGURIDAD_LLM",
-        norma: "OWASP LLM01"
-      };
-    }
-
-    // 06. REDACCIÓN Y SANITIZACIÓN DLP (DNI, IBAN, TARJETAS)
-    const hasDni = DLP.dni.test(cleanPrompt);
-    const hasIban = DLP.iban.test(cleanPrompt);
-    const hasCard = DLP.card.test(cleanPrompt);
-
-    if (hasDni || hasIban || hasCard) {
-      const sanitizedText = sanitize(cleanPrompt);
-      return {
-        ...baseVerdict,
-        decision: "ALLOW",
-        enforcement: { action: "REDACT_AND_PASS" },
-        executionPermit: "PERMITTED_WITH_REDACTION",
-        validity_state: "VALID",
-        system_id: "L7-AGENT-SENSOR",
-        policy: { id: "POL-DLP-FINANCIAL-02", version: "1.2.0" },
-        risk_level: "MEDIUM",
-        rules_matched: [
-          hasDni ? "RULE_REDACT_DNI" : null,
-          hasIban ? "RULE_REDACT_IBAN" : null,
-          hasCard ? "RULE_REDACT_CARD" : null
-        ].filter(Boolean),
-        reason: "Sanitización automática L7: Datos de carácter personal (PII) anonimizados ex-ante en memoria volátil.",
-        cleanPrompt: cleanPrompt,
-        sanitizedPrompt: sanitizedText,
-        evidence_id: `EV-DLP-${runRandomId}`,
-        category: "PRIVACIDAD_DLP",
-        norma: "RGPD & PCI-DSS"
-      };
-    }
-
-    // 07. TRÁFICO PERMITIDO Y CONFORME
+    // 2. Auditoría conforme limpia
     return {
-      ...baseVerdict,
-      decision: "ALLOW",
-      enforcement: { action: "PASS" },
-      executionPermit: "PERMITTED",
-      validity_state: "VALID",
-      system_id: "L7-AGENT-SENSOR",
-      policy: { id: "POL-DEFAULT-PASS", version: "1.0.0" },
-      risk_level: "LOW",
-      rules_matched: ["RULE_PASS_CONFORME"],
-      reason: "Tráfico verificado en memoria volátil sin violaciones normativas.",
+      verdict: "PERMITIDO",
+      category: "AUDITORIA_CONFORME",
+      norma: "ISO/IEC 42001 & EU AI Act",
+      reason: "Tráfico conforme verificado en memoria",
       cleanPrompt: cleanPrompt,
       sanitizedPrompt: cleanPrompt,
-      evidence_id: `EV-PASS-${runRandomId}`,
-      category: "AUDITORIA_CONFORME",
-      norma: "EU AI Act"
+      cryptoSeal: computeL7Seal(cleanPrompt)
     };
   }
 
-  function emitVerdictToBridge(verdict) {
-    if (!verdict) return;
-    window.postMessage({
-      type: "SAARE_VERDICT_EVENT",
-      payload: verdict
-    }, "*");
-  }
-
-  // MONKEY PATCH DE WINDOW.FETCH PARA INTERCEPCIÓN EN TIEMPO REAL
-  const originalFetch = window.fetch;
-  window.fetch = async function(resource, config) {
-    const url = typeof resource === "string" ? resource : (resource?.url || "");
-    const body = config?.body || null;
-
-    if (body) {
-      const verdict = evaluatePayload(body, url);
-      if (verdict) {
-        emitVerdictToBridge(verdict);
-
-        if (verdict.decision === "DENY") {
-          console.warn("[SAARE L7 Guard] Solicitud bloqueada ex-ante:", verdict.reason);
-          throw new Error(`[SAARE_L7_BLOCK] ${verdict.reason}`);
-        }
-
-        if (verdict.sanitizedPrompt && verdict.sanitizedPrompt !== verdict.cleanPrompt) {
-          if (typeof config.body === "string") {
-            config.body = config.body.replace(verdict.cleanPrompt, verdict.sanitizedPrompt);
-          }
-        }
-      }
-    }
-
-    return originalFetch.apply(this, arguments);
-  };
-
-  // MONKEY PATCH DE XMLHTTPREQUEST PARA INTERCEPCIÓN COMPATIBLE
-  const originalOpen = XMLHttpRequest.prototype.open;
-  const originalSend = XMLHttpRequest.prototype.send;
-
+  // Interceptar XHR (Gemini)
+  const rawOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     this._saare_url = url;
-    return originalOpen.apply(this, arguments);
+    return rawOpen.apply(this, arguments);
   };
 
+  const rawSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
-    if (body) {
-      const verdict = evaluatePayload(body, this._saare_url);
-      if (verdict) {
-        emitVerdictToBridge(verdict);
+    const check = evaluatePayload(body, this._saare_url);
+    if (check) {
+      if (check.verdict === "RECHAZADO") {
+        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+        throw new Error("[S.A.A.R.E. L7] Transmisión bloqueada en RAM.");
+      } else if (check.verdict === "PERMITIDO") {
+        window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+      }
+    }
+    return rawSend.apply(this, arguments);
+  };
 
-        if (verdict.decision === "DENY") {
-          console.warn("[SAARE L7 Guard] XHR bloqueado ex-ante:", verdict.reason);
-          return;
+  // Interceptar Fetch (ChatGPT, Claude, etc.)
+  const rawFetch = window.fetch;
+  window.fetch = async function(resource, config) {
+    const url = typeof resource === "string" ? resource : (resource?.url || "");
+    if (config && config.body) {
+      const check = evaluatePayload(config.body, url);
+      if (check) {
+        if (check.verdict === "RECHAZADO") {
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
+          return new Response(JSON.stringify({ error: "S.A.A.R.E. Intercept: Bloqueado en RAM" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        } else if (check.verdict === "PERMITIDO") {
+          window.postMessage({ type: "SAARE_EVENT", data: check }, "*");
         }
       }
     }
-    return originalSend.apply(this, arguments);
+    return rawFetch.apply(this, arguments);
   };
-
-  console.log("[SAARE L7] Inyección de interceptor perimetral de red completada con éxito.");
 })();
