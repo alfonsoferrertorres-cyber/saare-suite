@@ -1,45 +1,19 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "public/**",
-        "index.html",
-        "vite.config.*",
-        "wrangler.toml",
-        "tsconfig*.json",
-        "package.json"
-      ],
-      "outputs": [
-        "dist/**",
-        ".wrangler/**"
-      ]
-    },
-    "lint": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "*.config.*",
-        ".eslintrc*"
-      ]
-    },
-    "typecheck": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "tsconfig*.json"
-      ]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "deploy": {
-      "dependsOn": ["build"],
-      "cache": false
-    }
-  }
+  "name": "cloud-isv-desarrollo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:local": "pnpm --filter control-plane-local dev",
+    "dev:cloud": "pnpm --filter control-plane dev",
+    "build": "turbo run build",
+    "clean": "turbo run clean",
+    "lint": "turbo run lint",
+    "resilience": "node resilienceGate_2.js",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@12.11.2"
 }
