@@ -1,14 +1,30 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".build/**", ".wrangler/**"]
+      "inputs": [
+        "src/**",
+        "public/**",
+        "index.html",
+        "vite.config.*",
+        "wrangler.toml",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": [
+        "dist/**",
+        ".wrangler/**"
+      ]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "lint": {}
+    }
   }
 }
