@@ -12,6 +12,7 @@ import { EnterpriseKeyManager, computeSha256 } from "./keyManager.js";
 import { registerEvidenceInSafeCreative } from "./safeCreativeClient.js";
 import { EvidenceVaultEngine } from "./evidenceVaultEngine.js";
 import { TelemetryServer } from "./telemetryServer.js";
+import { generateProofBundle } from "./proofBundle.js";
 
 // === IMPORTACIÓN ÚNICA DE DERECHOS B2B DESDE EL PAQUETE CENTRAL === //
 import {
@@ -196,8 +197,7 @@ async function hashPassword(password) {
 }
 
 async function verifyPassword(stored, candidate) {
-  if (!stored) return false;
-  if (!candidate) return false;
+  if (!stored || !candidate) return false;
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
 
   const parts = stored.split("$");
@@ -244,67 +244,6 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
     .toUpperCase();
 
   return `EV-L7-${hashHex}`;
-}
-
-async function enrichEvidenceForGrant(rawEvidence) {
-  if (!rawEvidence || typeof rawEvidence !== 'object') {
-    return {
-      id: `EV-L7-${Date.now()}`,
-      decision: "ALLOW",
-      verdict: "PERMITIDO",
-      prompt: "(Dato no disponible)",
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  const isDeny = rawEvidence.decision === 'DENY' || rawEvidence.verdict === 'RECHAZADO';
-  const category = String(rawEvidence.category || 'AUDITORIA_CONFORME').toUpperCase();
-
-  let grantCategory = "KIT_DIGITAL_CYBERSECURITY";
-  let eligibleItem = "Agente Perimetral L7 Ex-Ante";
-  let dnshImpact = "Reducción de consumo GPU por sanitización previa en RAM (Zero-Disk)";
-
-  if (category.includes("PII") || category.includes("DNI") || category.includes("IBAN")) {
-    grantCategory = "KIT_CONSULTING_GAP_ANALYSIS";
-    eligibleItem = "Evaluación de Impacto en Derechos Fundamentales (FRIA - EU AI Act)";
-  } else if (category.includes("FINANCIAL") || category.includes("DORA")) {
-    grantCategory = "IMPULSO_ECOSISTEMAS_IA";
-    eligibleItem = "Módulo de Resiliencia Operativa Digital DORA (Reglamento UE 2022/2554)";
-  } else if (category.includes("ISO") || rawEvidence.merkleRoot) {
-    grantCategory = "INCIBE_CDTI_CYBERSECURITY";
-    eligibleItem = "Evidencia Forense Criptográfica ISO/IEC 27037";
-  }
-
-  const encoder = new TextEncoder();
-  const payloadData = encoder.encode(JSON.stringify(rawEvidence.prompt || ""));
-  const payloadHashBuf = await crypto.subtle.digest('SHA-256', payloadData);
-  const payloadHash = Array.from(new Uint8Array(payloadHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-  const claimLevel = isDeny ? 'VERIFIED' : 'TESTED';
-
-  return {
-    ...rawEvidence,
-    proofBundle: {
-      verdictId: rawEvidence.verdictId || `VRD-2026-${rawEvidence.id || Date.now()}`,
-      payloadHash,
-      ed25519Signature: rawEvidence.cryptoSeal || `ED25519_SIG_${payloadHash.substring(0, 16).toUpperCase()}`,
-      merkleRoot: rawEvidence.merkleRoot || "D1-EU-WESTERN-EUROPE",
-      rfc3161Timestamp: rawEvidence.timestamp || new Date().toISOString(),
-      isQualifiedTSA: false,
-      policyVersion: rawEvidence.policyVersion || "v1.0.0",
-      controlVersion: rawEvidence.controlVersion || "v1.0.0",
-      runtimeVersion: "SGP-1.0-v8.4",
-      systemId: rawEvidence.systemId || "SYS-L7-CORE",
-      claimLevel,
-      auditStandard: "ISO/IEC 27037:2012 / EU AI Act Art. 12 & 14 / DORA UE 2022/2554"
-    },
-    grantMetadata: {
-      grantCategory,
-      eligibleItem,
-      dnshImpact,
-      auditStandard: rawEvidence.norma || rawEvidence.sub || "EU AI Act / DORA / ISO 27037",
-      complianceCode: `MS3V-GRANT-EVIDENCE-${Date.now()}`
-    }
-  };
 }
 
 // === ENVIADOR DE CORREOS TRANSACCIONALES (RESEND) === //
@@ -670,7 +609,6 @@ export default {
           }
 
           const token = crypto.randomUUID();
-          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
           const passwordHash = await hashPassword(password);
 
           if (env.DB) {
@@ -706,7 +644,6 @@ export default {
           const requestedRole = body.role;
           let userRecord = null;
 
-          // Acceso Master para demostraciones
           if (cleanPassword === "demo" || cleanPassword === "contraseña") {
             userRecord = {
               email: cleanEmail || "admin@saare.es",
@@ -1092,7 +1029,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (TRIPLE PERSISTENCIA D1 + KV + RAM)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (INTEGRADO CON PROOFBUNDLE.JS)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1149,9 +1086,6 @@ export default {
           isDeny ? 'Detección ex-ante de vulnerabilidad en RAM' : 'Tráfico conforme verificado'
         );
 
-        evalResult.decision = isDeny ? 'DENY' : 'ALLOW';
-        evalResult.verdict = isDeny ? 'RECHAZADO' : 'PERMITIDO';
-
         const runId = await generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
         const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
         const traceId = body.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
@@ -1166,31 +1100,31 @@ export default {
           responseOutput: "",
           evaluator_chain: { final_evaluator: body.node_type || "EDGE_WORKER_PEP_L7" },
           verdict_data: {
-            verdict: evalResult.verdict,
-            action: evalResult.decision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
+            verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
+            action: isDeny ? 'BLOCKED' : 'ALLOWED',
             rule_triggered: body.scenarioId || "RULE_7DIM_FAIL_CLOSED"
           },
           payload_hash: await computeSha256(JSON.stringify(body))
         });
 
-        const fullRecord = await enrichEvidenceForGrant({
+        // Construcción y estandarización vía módulo Módulo proofBundle.js
+        const fullRecord = await generateProofBundle({
           id: runId,
           evidence_id: runId,
           trace_id: traceId,
           verdictId: verdictId,
-          decision: evalResult.decision,
-          verdict: evalResult.verdict,
+          decision: isDeny ? 'DENY' : 'ALLOW',
+          verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
           user: user,
           tenant: tenant,
           prompt: promptInput,
-          responseOutput: "",
           policyVersion: body.policyVersion || "v1.0.0",
           controlVersion: body.controlVersion || "v1.0.0",
           systemId: body.systemId || "SYS-L7-CORE",
           timestamp: new Date().toISOString(),
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody,
           ...evalResult
-        });
+        }, env);
 
         if (env.DB) {
           try {
@@ -1198,14 +1132,14 @@ export default {
               INSERT INTO runs (evidence_id, trace_id, verdictId, decision, user)
               VALUES (?, ?, ?, ?, ?)
             `).bind(
-              runId, traceId, verdictId, evalResult.decision, user
+              runId, traceId, verdictId, fullRecord.decision, user
             ).run();
 
             await env.DB.prepare(`
               INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_decision, execution_latency_ms, timestamp)
               VALUES (?, ?, ?, ?, ?, ?, ?)
             `).bind(
-              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7", evalResult.decision, parseFloat((performance.now() - startTime).toFixed(2)), new Date().toISOString()
+              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7", fullRecord.decision, parseFloat((performance.now() - startTime).toFixed(2)), new Date().toISOString()
             ).run();
           } catch (e) {
             console.error("[SAARE D1 Insert Error]:", e);
@@ -1229,8 +1163,8 @@ export default {
 
         return new Response(JSON.stringify({
           status: "SUCCESS",
-          verdict: evalResult.verdict,
-          decision: evalResult.decision,
+          verdict: fullRecord.verdict,
+          decision: fullRecord.decision,
           sanitizedPayload: promptInput,
           evidence_id: runId,
           trace_id: traceId,
@@ -1242,7 +1176,7 @@ export default {
           grantMetadata: fullRecord.grantMetadata,
           proofBundle: fullRecord.proofBundle
         }), {
-          status: evalResult.decision === "DENY" ? 403 : 200,
+          status: fullRecord.decision === "DENY" ? 403 : 200,
           headers: { 
             ...cors.corsHeaders, 
             "Content-Type": "application/json",
@@ -1300,7 +1234,7 @@ export default {
                   timestamp: row.timestamp
                 };
 
-                return enrichEvidenceForGrant(baseRecord);
+                return generateProofBundle(baseRecord, env);
               }));
             }
           } catch (e) {
@@ -1315,7 +1249,7 @@ export default {
               const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
               if (Array.isArray(kvData) && kvData.length > 0) {
                 evidencesList = await Promise.all(
-                  kvData.map(item => enrichEvidenceForGrant(item))
+                  kvData.map(item => generateProofBundle(item, env))
                 );
                 break;
               }
@@ -1329,7 +1263,7 @@ export default {
           evidencesList = await Promise.all(
             ramRunCache
               .filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE" || item.tenant === "DEMO_TENANT")
-              .map(item => enrichEvidenceForGrant(item))
+              .map(item => generateProofBundle(item, env))
           );
         }
 

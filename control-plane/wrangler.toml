@@ -1,18 +1,26 @@
-name = "control-plane"
-main = "worker.js"
-compatibility_date = "2026-09-25"
-compatibility_flags = [ "nodejs_compat" ]
+name = "saare-control-plane"
+main = "./worker.js"
+compatibility_date = "2026-09-27"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "api.saare.es", custom_domain = true }
+]
 
 [vars]
+WORKER_NAME = "saare-control-plane-prod"
 ENVIRONMENT = "production"
-SAARE_SPEC = "SGP-1.0"
-SAFE_CREATIVE_BASE_URL = "https://api.safecreative.org/v2"
+ALLOW_FALLBACK_VAULT = "true"
+ADMIN_EMAIL = "admin@saare.es"
+SENDER_EMAIL = "S.A.A.R.E. Verification <legal@saare.es>"
 
+# 1. BÓVEDA D1 (Ya migrada con éxito)
 [[d1_databases]]
 binding = "DB"
-database_name = "saare-db"
-database_id = "85108385-a75a-4764-a9e8-973bfb83d899"
+database_name = "saare-vault-d1"
+database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
 
+# 2. BÓVEDA KV (Con el ID real obtenido)
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
