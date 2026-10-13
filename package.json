@@ -7,7 +7,7 @@
     "dev:local": "pnpm --filter control-plane-local dev",
     "dev:cloud": "pnpm --filter control-plane dev",
     "build": "turbo run build",
-    "clean": "rimraf '**/node_modules' '**/dist' '**/.turbo' '**/.wrangler'",
+    "clean": "rimraf \"**/node_modules\" \"**/dist\" \"**/.turbo\" \"**/.wrangler\"",
     "lint": "turbo run lint",
     "resilience": "node resilienceGate_2.js",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
