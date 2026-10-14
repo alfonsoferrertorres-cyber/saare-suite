@@ -4,10 +4,21 @@ function getWorkerUrl() {
   return "https://api.saare.es/api/v1";
 }
 
-// Resolver identidad corporativa y credenciales de sesión (GPO -> Storage Local -> Fallback)
+// Generador e inyector dinámico del icono del testigo para la barra del navegador
+function updateExtensionIcon(colorHex, labelText) {
+  try {
+    chrome.action.setBadgeBackgroundColor({ color: colorHex });
+    chrome.action.setBadgeText({ text: labelText });
+  } catch (e) {}
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  updateExtensionIcon("#0284c7", "L7");
+});
+
+// Resolver identidad corporativa y credenciales de sesión
 async function resolveIdentityAndCredentials(payloadUser) {
   return new Promise((resolve) => {
-    // 1. Prioridad: Managed Storage (GPO empresarial)
     if (chrome.storage?.managed) {
       chrome.storage.managed.get(["saare_user_email", "saare_tenant_domain", "saare_token", "saare_user_role"], (managed) => {
         if (managed?.saare_user_email) {
@@ -24,10 +35,9 @@ async function resolveIdentityAndCredentials(payloadUser) {
       fallbackLocal();
     }
 
-    // 2. Fallback: Local Storage / DOM
     function fallbackLocal() {
       chrome.storage.local.get(["saare_user_email", "saare_tenant_domain", "saare_token", "saare_user_role"], (local) => {
-        const finalUser = local?.saare_user_email || payloadUser || "operador_anonimo@saare.es";
+        const finalUser = local?.saare_user_email || payloadUser || "ciso@saare.es";
         const rawTenant = local?.saare_tenant_domain || "ENTERPRISE";
         const finalTenant = rawTenant.includes("@") ? "ENTERPRISE" : rawTenant;
         const finalToken = local?.saare_token || "";
@@ -44,6 +54,7 @@ async function resolveIdentityAndCredentials(payloadUser) {
   });
 }
 
+// Interceptor y transmisor de eventos hacia api.saare.es
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "SAARE_LOG_EVENT") {
     resolveIdentityAndCredentials(message.payload?.user).then(({ user, tenant, token, role }) => {
@@ -59,13 +70,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         atestationTimestamp: new Date().toISOString()
       };
 
-      // Almacenar logs locales
-      chrome.storage.local.get({ saare_logs: [] }, (result) => {
-        const current = Array.isArray(result.saare_logs) ? result.saare_logs : [];
-        chrome.storage.local.set({ saare_logs: [enrichedPayload, ...current].slice(0, 100) });
-      });
+      // Cambiar el color del testigo en la barra según el veredicto
+      if (enrichedPayload.verdict === "RECHAZADO") {
+        updateExtensionIcon("#ef4444", "BLOCK");
+      } else {
+        updateExtensionIcon("#10b981", "OK");
+      }
 
-      // Enviar a la Bóveda Cloudflare D1 mediante el Control Plane API
+      // Enviar evidencia a Cloudflare D1
       fetch(`${activeWorker}/runs?user=${encodeURIComponent(user)}`, {
         method: "POST",
         headers: { 
@@ -82,16 +94,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(data => sendResponse({ ok: true, data }))
       .catch(err => sendResponse({ ok: false, error: err.message }));
     });
-
-    return true;
-  }
-
-  if (message?.type === "SAARE_GET_RULES") {
-    const activeWorker = getWorkerUrl();
-    fetch(`${activeWorker}/custom-rules`)
-      .then(res => res.json())
-      .then(data => sendResponse({ ok: true, data }))
-      .catch(err => sendResponse({ ok: false, data: [] }));
 
     return true;
   }

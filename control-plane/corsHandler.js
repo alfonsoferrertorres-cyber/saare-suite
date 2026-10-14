@@ -13,11 +13,15 @@ export const DEFAULT_CORS_HEADERS = {
     "x-saare-role",
     "x-saare-plan",
     "x-saare-signature",
+    "x-saare-credential-proof", // <-- Cabecera que provocaba el bloqueo CORS
+    "x-saare-node-id",
     "X-Saare-Tenant",
     "X-Saare-User",
     "X-Saare-Role",
     "X-Saare-Plan",
-    "X-Saare-Signature"
+    "X-Saare-Signature",
+    "X-Saare-Credential-Proof",
+    "X-Saare-Node-Id"
   ].join(", "),
   "Access-Control-Expose-Headers": [
     "X-SAARE-Verdict",

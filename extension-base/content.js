@@ -1,5 +1,5 @@
-// SAARE L7 TELEMETRY & DOM BRIDGE v8.1.0
-console.log("[SAARE L7 Engine] Interceptor Activo en Memoria");
+// SAARE L7 TELEMETRY & DOM BRIDGE v8.2.0
+console.log("[SAARE L7 Engine] Interceptor Activo en Memoria RAM");
 
 const injectScript = document.createElement("script");
 injectScript.src = chrome.runtime.getURL("inject.js");
@@ -21,8 +21,8 @@ function showModal(text, violationInfo) {
   banner.id = "saare-block-modal";
   banner.style = "position:fixed; bottom:20px; right:20px; width:460px; background:#0f172a; color:#ffffff; padding:16px; border-radius:8px; border:2px solid #ef4444; box-shadow:0 12px 28px rgba(0,0,0,0.6); z-index:999999; font-family:system-ui,-apple-system,sans-serif;";
   
-  const normTitle = violationInfo?.norma || "RGPD / EU AI Act";
-  const reasonText = violationInfo?.reason || "Carga regulada detectada";
+  const normTitle = violationInfo?.norma || "EU AI Act / DORA / RGPD";
+  const reasonText = violationInfo?.reason || "Carga regulada detectada ex-ante";
 
   banner.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -34,7 +34,7 @@ function showModal(text, violationInfo) {
       <strong>Causa:</strong> ${reasonText}
     </p>
     <div style="background:#1e293b; border-left:3px solid #ef4444; padding:8px 10px; border-radius:4px; font-size:0.8rem; color:#93c5fd; margin-bottom:10px; word-break:break-all;">
-      Carga Neutralizada: "${text.substring(0, 150)}"
+      Carga Neutralizada en RAM: "${text.substring(0, 150)}"
     </div>
   `;
   document.body.appendChild(banner);
@@ -54,13 +54,7 @@ function sendEvidenceToBackground(auditData) {
     verdict: auditData.verdict,
     category: auditData.category,
     norma: auditData.norma,
-    cryptoSeal: auditData.cryptoSeal,
-    violationDetails: {
-      category: auditData.category,
-      norma: auditData.norma,
-      reason: auditData.reason,
-      cryptoSeal: auditData.cryptoSeal
-    }
+    cryptoSeal: auditData.cryptoSeal
   };
 
   if (auditData.verdict === "RECHAZADO") {

@@ -1,39 +1,35 @@
 {
   "manifest_version": 3,
-  "name": "SAARE L7 Governance Agent",
+  "name": "S.A.A.R.E. L7 Sovereign Agent",
   "version": "8.2.0",
-  "description": "Universal Compliance, Identity Attestation & Dynamic Rules Engine for GenAI",
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://gemini.google.com/*",
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://claude.ai/*",
-        "https://copilot.microsoft.com/*",
-        "https://chat.deepseek.com/*",
-        "https://www.perplexity.ai/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
+  "description": "Sensor perimetral L7 de inspección ex-ante en memoria RAM y atestación criptográfica.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "declarativeNetRequest"
   ],
+  "host_permissions": [
+    "https://api.saare.es/*",
+    "https://console.saare.es/*",
+    "https://*.openai.com/*",
+    "https://*.anthropic.com/*",
+    "https://*.claude.ai/*",
+    "https://*.google.com/*",
+    "https://*.gemini.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "S.A.A.R.E. L7 Witness Agent"
+  },
   "web_accessible_resources": [
     {
       "resources": ["inject.js"],
-      "matches": [
-        "https://gemini.google.com/*",
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://claude.ai/*",
-        "https://copilot.microsoft.com/*",
-        "https://chat.deepseek.com/*",
-        "https://www.perplexity.ai/*"
-      ]
+      "matches": ["<all_urls>"]
     }
-  ],
-  "permissions": ["storage"]
+  ]
 }
