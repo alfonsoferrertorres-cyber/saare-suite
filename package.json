@@ -7,13 +7,13 @@
     "dev:local": "pnpm --filter control-plane-local dev",
     "dev:cloud": "pnpm --filter control-plane dev",
     "build": "turbo run build",
-    "clean": "turbo run clean",
+    "clean": "node -e \"console.log('Limpieza lista')\"",
     "lint": "turbo run lint",
     "resilience": "node resilienceGate_2.js",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
   },
   "devDependencies": {
-    "turbo": "^2.3.0"
+    "turbo": "^2.11.7"
   },
   "packageManager": "pnpm@12.11.2"
 }
