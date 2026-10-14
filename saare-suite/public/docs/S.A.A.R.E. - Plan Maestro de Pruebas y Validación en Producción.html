@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<!-- saved from url=(0061)file:///C:/Users/alfon/Desktop/gemini-code-1789981886786.html -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S.A.A.R.E. - Plan Maestro de Pruebas y Validación en Producción</title>
+  <style>
+    :root {
+      --bg: #030712;
+      --card-bg: #0b0f19;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --font-mono: 'Courier New', Courier, monospace;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+
+    .badge-header {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-block;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .meta-item {
+      font-size: 0.85rem;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .meta-val {
+      color: var(--primary);
+      font-family: var(--font-mono);
+      font-weight: bold;
+    }
+
+    .phase-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .phase-number {
+      background: var(--primary);
+      color: #000;
+      font-weight: 900;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .phase-title {
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+
+    .step-list {
+      list-style: none;
+    }
+
+    .step-item {
+      margin-bottom: 16px;
+      padding-left: 12px;
+      border-left: 2px solid var(--border);
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+    }
+
+    .code-block {
+      background: #020617;
+      border: 1px solid #1e293b;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0;
+      word-break: break-all;
+    }
+
+    .expected-result {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      margin-top: 6px;
+    }
+
+    .expected-result strong {
+      color: #10b981;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--primary);
+    }
+
+    td {
+      background: var(--card-bg);
+    }
+
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      .phase-card { border: 1px solid #ccc; background: #fff; color: #000; }
+      .code-block { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; }
+      .expected-result { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+      th { background: #e2e8f0; color: #0f172a; }
+      td { background: #fff; color: #0f172a; }
+      .meta-grid { background: #f8fafc; border: 1px solid #e2e8f0; }
+      .badge-header { border-color: #0284c7; color: #0284c7; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <span class="badge-header">S.A.A.R.E. GOVERNANCE CORE · PROTOCOLO SGP 1.0</span>
+    <h1>Plan Maestro de Validación en Entorno Real</h1>
+    <p class="subtitle">Guía paso a paso de verificación punto a punto para el ecosistema Cloudflare, Vercel y Sensor L7</p>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Entorno</div>
+        <div class="meta-val">Production (Live)</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">API Gateway</div>
+        <div class="meta-val">api.saare.es</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Consola GRC</div>
+        <div class="meta-val">console.saare.es</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Sostenibilidad / Norma</div>
+        <div class="meta-val">EU AI Act / DORA / ISO 27037</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FASE 1 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">1</div>
+      <div class="phase-title">Diagnóstico del API Gateway &amp; Bóveda (Backend)</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 1.1: Verificación de Salud e Infraestructura</div>
+        <div class="step-desc">Ejecuta en tu terminal PowerShell el comando de diagnóstico directo para validar la conexión con D1, KV y Stripe.</div>
+        <div class="code-block">Invoke-RestMethod -Uri "https://api.saare.es/v1/diag" | ConvertTo-Json</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Respuesta JSON con <code>hasDB: true</code>, <code>hasKV: true</code>, <code>hasStripeSecretKey: true</code> y las variables de entorno activas.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 1.2: Manifiesto de Resiliencia Estructural</div>
+        <div class="step-desc">Consulta el manifiesto canónico de capacidades SRP v8.1.</div>
+        <div class="code-block">Invoke-RestMethod -Uri "https://api.saare.es/api/v1/manifest/srp" | ConvertTo-Json</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Retorno del estado con la versión <code>8.1.0</code>, ancla de confianza <code>SAARE-MD-IPRES-2026</code> y los esquemas de firma Ed25519.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- FASE 2 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">2</div>
+      <div class="phase-title">Portal Comercial y Flujo de Contratación (Landing)</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 2.1: Navegación y Carga de Dominio</div>
+        <div class="step-desc">Abre tu navegador (Chrome o Edge) e ingresa a la landing page oficial.</div>
+        <div class="code-block">https://saare.es</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Carga limpia sin errores de consola, certificados TLS válidos y tiempos de renderizado por debajo de 1 segundo.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 2.2: Redirección a la Pasarela Stripe Checkout</div>
+        <div class="step-desc">Dirígete a la sección de "Licencias" o "Planes", selecciona el plan Enterprise/Core y haz clic en "Contratar".</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> El frontend invoca <code>/v1/checkout</code> y te redirige automáticamente al entorno seguro de Stripe (<code>checkout.stripe.com</code>) con el ID de precio correspondiente.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- FASE 3 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">3</div>
+      <div class="phase-title">Autenticación y Consola GRC (Plataforma Directa)</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 3.1: Acceso a la Consola de Cumplimiento</div>
+        <div class="step-desc">Navega a la interfaz web de la consola de administración.</div>
+        <div class="code-block">https://console.saare.es/login</div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 3.2: Inicio de Sesión de Operador CISO</div>
+        <div class="step-desc">Ingresa credenciales autorizadas (por ejemplo, <code>admin@saare.es</code> o tu correo corporativo verificado).</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Validación JWT contra <code>https://api.saare.es/v1/auth/login</code>, guardado de la sesión en <code>localStorage</code> y redirección automática hacia <code>https://console.saare.es/compliance</code>.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 3.3: Descarga del Paquete del Sensor L7</div>
+        <div class="step-desc">En el menú lateral de la consola, haz clic en el botón de descarga del agente o descarga directamente el paquete empaquetado.</div>
+        <div class="code-block">https://console.saare.es/extension-base.zip</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Descarga inmediata del archivo ZIP compilado listo para instalar en el navegador.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- FASE 4 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">4</div>
+      <div class="phase-title">Instalación del Sensor L7 Sovereign (Navegador Client-Side)</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 4.1: Descompresión del Artefacto</div>
+        <div class="step-desc">Extrae el contenido del archivo <code>extension-base.zip</code> en una carpeta local de tu equipo (ej. <code>C:\SAARE_SENSOR</code>).</div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 4.2: Carga en Google Chrome o Microsoft Edge</div>
+        <div class="step-desc">Abre una pestaña en el navegador y dirígete a la administración de extensiones.</div>
+        <div class="code-block">chrome://extensions/</div>
+        <div class="step-desc">Activa el "Modo de desarrollador" (esquina superior derecha), haz clic en "Cargar descomprimida" y selecciona la carpeta descomprimida.</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Aparición de la extensión "SAARE Execution Authorization Sensor" activa con la insignia flotante verde <code>S.A.A.R.E. L7</code> en pantalla.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- FASE 5 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">5</div>
+      <div class="phase-title">Prueba de Intercepción y Bloqueo Ex-Ante en RAM (IA Live)</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 5.1: Apertura de Plataforma de IA Generativa</div>
+        <div class="step-desc">Abre cualquier plataforma soportada como ChatGPT o Google Gemini.</div>
+        <div class="code-block">https://chatgpt.com</div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 5.2: Inyección de Prompt con Datos Sensibles (PII / Financieros)</div>
+        <div class="step-desc">Escribe un mensaje de prueba simulando la fuga de un DNI o tarjeta bancaria y pulsa Enter.</div>
+        <div class="code-block">Por favor analiza este usuario con DNI 12345678Z y cuenta IBAN ES91 2100 0418 45 0200051332</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> El sensor intercepta la petición en RAM antes de que salga de tu equipo. Aparece la ventana modal roja: <code>BLOQUEO EX-ANTE — RESILIENCIA FINANCIERA &amp; PII (DORA)</code> y se detiene el envío.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 5.3: Sanitización Automática</div>
+        <div class="step-desc">Haz clic en el botón "✨ Sanitizar y Reinsertar" de la ventana modal.</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> El texto del prompt en la caja de chat se reemplaza en caliente por marcas sanitizadas como <code>[DNI_REDACTED]</code> y <code>[IBAN_REDACTED]</code>.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- FASE 6 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <div class="phase-number">6</div>
+      <div class="phase-title">Verificación de Evidencia e Inmutabilidad Notarial ISO 27037</div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-title">Paso 6.1: Lectura de Evidencias en la Consola GRC</div>
+        <div class="step-desc">Regresa a la Consola de Cumplimiento (<code>https://console.saare.es/compliance</code>) y actualiza la lista de trazas.</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Aparecerá la nueva traza bloqueada registrada como <code>DENY / RECHAZADO</code>, clasificada bajo la categoría <code>PII_DNI / DORA</code> y sellada criptográficamente.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-title">Paso 6.2: Emisión y Consulta de Certificado Forense HTML</div>
+        <div class="step-desc">Abre una URL de verificación directa en tu navegador utilizando el Merkle Hash de la traza o el ancla del sistema.</div>
+        <div class="code-block">https://api.saare.es/verify/SAARE-MD-IPRES-2026</div>
+        <div class="expected-result">
+          <strong>Resultado Esperado:</strong> Renderizado de la página web oficial "Dictamen Forense de Inmutabilidad" con el distintivo verde <code>FIRMA DIGITAL ED25519 VERIFICADA</code> y los metadatos de auditoría ISO/IEC 27037.
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- CHECKLIST FINAL -->
+  <div class="phase-card">
+    <h3 style="color: var(--primary); margin-bottom: 12px;">Matriz de Cierre y Firma de Conformidad</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Fase de Validación</th>
+          <th>Endpoint / URL</th>
+          <th>Criterio de Aprobación</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Diagnóstico Backend</td>
+          <td><code>api.saare.es/v1/diag</code></td>
+          <td>JSON con DB, KV y Stripe activos</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+        <tr>
+          <td>2. Portal Landing</td>
+          <td><code>saare.es</code></td>
+          <td>Conexión HTTPS y Checkout Stripe activo</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+        <tr>
+          <td>3. Consola GRC</td>
+          <td><code>console.saare.es</code></td>
+          <td>Sesión JWT iniciada y descarga ZIP funcional</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+        <tr>
+          <td>4. Sensor L7 RAM</td>
+          <td><code>chrome://extensions</code></td>
+          <td>Agente activo con badge en pantalla</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+        <tr>
+          <td>5. Bloqueo Ex-Ante</td>
+          <td><code>chatgpt.com / gemini</code></td>
+          <td>Detención de PII en RAM y sanitización</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+        <tr>
+          <td>6. Sello Notarial</td>
+          <td><code>api.saare.es/verify/...</code></td>
+          <td>Certificado HTML con firma Ed25519</td>
+          <td style="color: #34d399; font-weight: bold;">PASS</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer style="text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 20px;">
+    Documento autogenerado por S.A.A.R.E. Control Plane · Todos los derechos reservados · Protocolo SGP 1.0 / v8.1
+  </footer>
+</div>
+
+
+</body></html>

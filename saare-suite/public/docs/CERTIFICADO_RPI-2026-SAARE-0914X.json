@@ -1,0 +1,21 @@
+﻿{
+  "$schema": "https://saare.es/schemas/rpi-integrity-certificate-v1.json",
+  "certificado_id": "RPI-2026-SAARE-0914X",
+  "denominacion": "CERTIFICADO DE INTEGRIDAD - PROTOCOLO S.A.A.R.E. MODULO DE PROPIEDAD INTELECTUAL",
+  "titular_legal": {
+    "nombre": "Alfonso Ferrer Torres",
+    "nif": "48553065L",
+    "entidad": "Gabinete Tecnico Juridico MS3V"
+  },
+  "evaluacion_analitica": {
+    "varianza_estructural_observada": "0.0024%",
+    "umbral_maximo_tolerancia": "0.0100%",
+    "resolucion": "CONFORME / NO INFRACCION DEMOSTRADA",
+    "id_ejecucion": "S.A.A.R.E. VALIDATED IP AUDIT 2026 0610 0154"
+  },
+  "vinculacion_expediente": {
+    "expediente_maestro": "MS3V-RECON-VALID-2026-ALF-0521",
+    "orden_auditoria": "IA-2026-VAL-AUD-8842-XF",
+    "registro_safe_creative": "2607076315021"
+  }
+}

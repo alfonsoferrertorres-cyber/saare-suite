@@ -1,0 +1,10 @@
+============================================================
+REGISTRO DE HUELLAS DIGITALES (SHA-256) - PROTOCOLO SAARE ms3v
+TITULAR: Alfonso Ferrer Torres
+============================================================
+
+[1] DOCUMENTO: 02_Resumen_Operativo_Protocolo_SAARE_ms3v.pdf
+    HASH: 0D0F762A725624A2D266D3A348481AA91F04861078D4DE1C5118D30D16D35E05
+
+[2] SCRIPT: saare_ms3v_core.py
+    HASH: 5A92A6A4CACAD66A95915C615B3DFA1922260519978A086156DA7CEF0FF8778C
