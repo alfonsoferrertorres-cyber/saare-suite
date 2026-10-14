@@ -1029,7 +1029,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (INTEGRADO CON PROOFBUNDLE.JS)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (CORREGIDO PARA GUARDAR PROMPT, SANITIZED_PAYLOAD Y VERDICT EN D1)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1107,7 +1107,7 @@ export default {
           payload_hash: await computeSha256(JSON.stringify(body))
         });
 
-        // Construcción y estandarización vía módulo Módulo proofBundle.js
+        // Construcción y estandarización vía módulo proofBundle.js
         const fullRecord = await generateProofBundle({
           id: runId,
           evidence_id: runId,
@@ -1135,11 +1135,25 @@ export default {
               runId, traceId, verdictId, fullRecord.decision, user
             ).run();
 
+            // SQL INSERT CORREGIDO CON PROMPT, SANITIZED_PAYLOAD Y VERDICT
             await env.DB.prepare(`
-              INSERT INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_decision, execution_latency_ms, timestamp)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO consolidated_traces (
+                trace_id, tenant_id, user_email, final_evaluator_node, 
+                final_decision, execution_latency_ms, timestamp, 
+                prompt, sanitized_payload, verdict
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
-              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7", fullRecord.decision, parseFloat((performance.now() - startTime).toFixed(2)), new Date().toISOString()
+              traceId,
+              tenant,
+              user,
+              body.node_type || "EDGE_WORKER_PEP_L7",
+              fullRecord.decision,
+              parseFloat((performance.now() - startTime).toFixed(2)),
+              new Date().toISOString(),
+              promptInput,
+              promptInput,
+              fullRecord.verdict
             ).run();
           } catch (e) {
             console.error("[SAARE D1 Insert Error]:", e);
@@ -1186,7 +1200,7 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry)
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry) (CORREGIDO PARA RECUPERAR EL TEXTO REAL DEL PROMPT)
       if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -1201,6 +1215,9 @@ export default {
                 t.final_decision AS decision,
                 t.execution_latency_ms AS latency,
                 t.timestamp,
+                t.prompt,
+                t.sanitized_payload,
+                t.verdict,
                 r.evidence_id,
                 r.verdictId
               FROM consolidated_traces t
@@ -1226,10 +1243,10 @@ export default {
                   trace_id: row.trace_id,
                   verdictId: row.verdictId || "VRD-LIVE-D1",
                   decision: row.decision || "ALLOW",
-                  verdict: row.decision === "DENY" ? "RECHAZADO" : "PERMITIDO",
+                  verdict: row.verdict || (row.decision === "DENY" ? "RECHAZADO" : "PERMITIDO"),
                   user: row.user || currentUser,
                   tenant: row.tenant || tenantId,
-                  prompt: "(Payload L7 verificado en memoria RAM)",
+                  prompt: row.prompt || row.sanitized_payload || "(Payload L7 verificado en memoria RAM)",
                   latency: row.latency || 1.12,
                   timestamp: row.timestamp
                 };
