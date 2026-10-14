@@ -17,12 +17,16 @@
     "vite": "^5.4.21"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "dompurify": "^3.4.15",
+    "esbuild": "^0.28.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
+    "lucide-react": "^1.56.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "tailwind-merge": "^3.7.0"
   }
 }

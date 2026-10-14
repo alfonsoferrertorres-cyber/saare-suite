@@ -1,4 +1,5 @@
 ﻿name = "saare-console"
+pages_build_output_dir = "dist"
 compatibility_date = "2026-09-27"
 
 # Configuración de compilación para SPA (Vite / React)
@@ -9,8 +10,3 @@ output_dir = "dist"
 # Variables de entorno públicas inyectadas en tiempo de cliente (Vite)
 [vars]
 VITE_CONTROL_PLANE_URL = "https://api.saare.es"
-
-# Enrutamiento SPA (Redirecciona cualquier ruta interna al index.html de dist)
-[[routes]]
-pattern = "*saare.es/*"
-script = "index.html"

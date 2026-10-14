@@ -78,7 +78,7 @@ foreach ($dist in $distTargets) {
 # 5. Despliegue de Frontends a Cloudflare Pages (Console + Suite Landing)
 Write-Host "==> [5/7] Desplegando Frontends (saare-console y saare-suite) a Cloudflare Pages..." -ForegroundColor Cyan
 
-# Despliegue saare-console
+# Despliegue saare-console (Consola GRC)
 $consoleDist = if (Test-Path "saare-console\dist") { "saare-console/dist" } else { "apps/saare-console/dist" }
 if (Test-Path $consoleDist) {
     Write-Host " -> Desplegando Consola GRC ($consoleDist)..." -ForegroundColor Gray
@@ -92,7 +92,7 @@ if (Test-Path $suiteDist) {
     npx wrangler pages deploy $suiteDist --project-name=saare-suite --branch=main --commit-dirty=true
 }
 
-# 6. Despliegue del Worker de Producción (Control Plane)
+# 6. Despliegue del Worker de Producción (Control Plane & Governance Engine)
 Write-Host "==> [6/7] Desplegando Control Plane Worker a Producción..." -ForegroundColor Cyan
 $controlPlanePath = if (Test-Path "control-plane") { "control-plane" } else { "apps/control-plane" }
 if (Test-Path $controlPlanePath) {
@@ -112,7 +112,7 @@ if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
     if (-not $currentBranch) { $currentBranch = "main" }
     
-    git commit -m "chore(release): despliegue maestro verificado de produccion v8.4 (console + suite landing)"
+    git commit -m "chore(release): despliegue maestro verificado de produccion v8.4 (console + suite landing + governance templates)"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
