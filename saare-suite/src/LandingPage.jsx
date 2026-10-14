@@ -47,7 +47,7 @@ const getRealtimeCommands = () => {
       outputGenerator: () => [
         `[S.A.A.R.E. SUBSIDIES HUB - EXPEDIENTE PROBATORIO]`,
         `Target Programs: Red.es / INCIBE / Fondos Europeos NextGen EU`,
-        `Timestamp:       ${nowISO}`,
+        `Timestamp:        ${nowISO}`,
         ``,
         `[+] Agrupando evidencias de ciberseguridad L7 e ISO 42001... [OK]`,
         `[+] Generando Memoria Justificativa de Inversión Tecnológica...`,
@@ -64,12 +64,12 @@ const getRealtimeCommands = () => {
       outputGenerator: () => [
         `[S.A.A.R.E. FRIA & DORA COMPLIANCE ENGINE v1.0]`,
         `Target Requirement: EU AI Act Article 27 (Fundamental Rights Impact Assessment)`,
-        `Timestamp:          ${nowISO}`,
+        `Timestamp:           ${nowISO}`,
         ``,
         `[+] Analizando impacto en derechos fundamentales y colectivos vulnerables... [OK]`,
         `[+] Trazabilidad de decisiones algorítmicas y mitigación de sesgos: 100%`,
         `[+] Generando borrador de expediente PDF probatorio para AEPD / Ministerio...`,
-        `[+] Archivo generado: Dossier_FRIA_Art27_Signed.pdf (Hash SHA-256 verificado)`,
+        `[+] Archivo generado: 04_Guia_Metodologica_FRIA_EU_AI_Act.pdf (Hash SHA-256 verificado)`,
         `----------------------------------------------------------------------------------`,
         `[ESTADO FRIA]: CONFORME / LISTO PARA INSPECCIÓN DE AUDITORÍA`
       ]
@@ -149,7 +149,7 @@ export default function LandingPage({ onNavigateToLogin }) {
     runCommand(targetCmd);
   };
 
-  // DESCARGA DIRECTA DE PDF REAL DESDE EL CONTROL PLANE
+  // DESCARGA DIRECTA DE PDF OFICIAL DESDE EL CONTROL PLANE O PUBLIC ASSETS
   const handleDownloadPdf = (pdfFileName) => {
     const baseUrl = String(API_HOST || '').replace(/\/+$/, '');
     const pdfUrl = `${baseUrl}/api/v1/report/pdf?file=${encodeURIComponent(pdfFileName)}`;
@@ -249,10 +249,10 @@ export default function LandingPage({ onNavigateToLogin }) {
                 Plataforma de Gobernanza e IA Con Todo Incluido
               </div>
               <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
-                Gobernanza de IA <span className="text-[#38BDDB]">conectada con el sistema real</span>
+                Gobernanza de IA <span className="text-[#38BDDB]">con rigor pericial y criptográfico</span>
               </h1>
               <p className="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
-                Automatiza la recopilación de documentación, validación de plantillas oficiales, justificación de subvenciones y generación de evidencias técnicas en PDF.
+                Automatiza la recopilación de documentación, validación de plantillas oficiales, justificación de subvenciones y generación de evidencias técnicas en PDF bajo normas eIDAS y Art. 326 LEC.
               </p>
 
               {/* BOTONES DE DISPARO DIRECTO */}
@@ -429,7 +429,7 @@ export default function LandingPage({ onNavigateToLogin }) {
           </div>
         </section>
 
-        {/* PLANTILLAS CON DESCARGA REAL DE PDF Y VERIFICACIÓN CLI */}
+        {/* PLANTILLAS CON DESCARGA OFICIAL DE PDF Y VERIFICACIÓN CLI (ENRUTADO CON NOMBRES REALES) */}
         <section id="templates" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -444,42 +444,42 @@ export default function LandingPage({ onNavigateToLogin }) {
               {[
                 {
                   code: 'PLANTILLA 01',
-                  name: 'IT Risk Assessment (ISO 42001 / DORA)',
+                  name: 'Dictamen Pericial & Cadena de Custodia (Art. 326 LEC / eIDAS)',
                   grant: 'Apto para Kit Digital Ciberseguridad & Ayudas CDTI / ENISA',
                   savings: 'Ahorro estimado: 8.500 € – 14.000 € en consultoría externa',
                   time: 'Tiempo de gestión: De 4 semanas a 24 horas',
-                  desc: 'Estructura la evaluación de riesgos técnicos, activos críticos y controles de seguridad exigidos en auditorías oficiales.',
-                  pdfFile: 'Dossier_Riesgos_ISO42001.pdf',
+                  desc: 'Estructura el dictamen pericial forense, metrología RAM y garantía de admisibilidad judicial ex-ISO/IEC 27037.',
+                  pdfFile: '01_Manual_Dictamen_Pericial_Cadena_Custodia_MS3V.pdf',
                   cmdId: 'escrow-cert',
                 },
                 {
                   code: 'PLANTILLA 02',
-                  name: 'Evaluación de Impacto FRIA (Art. 27 EU AI Act)',
+                  name: 'Guía Metodológica FRIA (Art. 27 EU AI Act & DORA)',
                   grant: 'Obligatorio en licitaciones públicas y subvenciones NextGen EU',
                   savings: 'Ahorro estimado: 10.000 € – 18.000 € + Blindaje antisancción',
                   time: 'Tiempo de gestión: De 30 días a 48 horas',
-                  desc: 'Documenta la evaluación de impacto en derechos fundamentales, gobernanza de datos y supervisión humana exigida en la UE.',
-                  pdfFile: 'Evaluacion_Impacto_FRIA_Art27.pdf',
+                  desc: 'Documenta la evaluación de impacto en derechos fundamentales, matriz de 7 dimensiones y cumplimiento RGPD Art. 25.',
+                  pdfFile: '04_Guia_Metodologica_FRIA_EU_AI_Act.pdf',
                   cmdId: 'fria-scan',
                 },
                 {
                   code: 'PLANTILLA 03',
-                  name: 'EIPD / DPIA & Bias Evaluation (RGPD Art. 35 / AI Act Art. 10)',
+                  name: 'Subsidies Hub & Kit Consulting (Red.es / INCIBE)',
                   grant: 'Convocatorias Red.es / Misiones IA / INCIBE Ciberseguridad',
-                  savings: 'Ahorro estimado: 12.000 € – 20.000 € en auditoría algorítmica',
+                  savings: 'Ahorro estimado: 12.000 € – 20.000 € en justificación de ayudas',
                   time: 'Tiempo de gestión: De 6 semanas a 3 días',
-                  desc: 'Genera el informe pericial de equidad, tratamiento de PII en memoria volátil y aislamiento perimetral L7.',
-                  pdfFile: 'Auditoria_Sesgo_EIPD_Signed.pdf',
+                  desc: 'Mapeo de subvenciones, justificación de Kit Consulting/Digital e inmunidad fiscalizable con certificado RFC 3161.',
+                  pdfFile: '02_Guia_Subsidies_Hub_RedEs_INCIBE.pdf',
                   cmdId: 'subsidies-check',
                 },
                 {
                   code: 'PLANTILLA 04',
-                  name: 'ESG / EINF (Sostenibilidad & Taxonomía UE)',
-                  grant: 'Puntuación prioritaria en Licitaciones Públicas Verdes',
-                  savings: 'Ahorro estimado: 7.000 € – 12.000 € en memorias ESG',
+                  name: 'Integración API L7, Interceptor PEP & SIEM/SOC',
+                  grant: 'Puntuación prioritaria en Arquitectura Zero-Disk RAM',
+                  savings: 'Ahorro estimado: 7.000 € – 12.000 € en despliegue de pasarelas',
                   time: 'Tiempo de gestión: De 3 semanas a 24 horas',
-                  desc: 'Acredita la huella computacional, eficiencia energética y gobernanza ética para informes no financieros corporativos.',
-                  pdfFile: 'Memoria_ESG_Impacto_Algoritmico.pdf',
+                  desc: 'Especificación técnica de socket local, SDKs oficiales e ingesta de logs forenses JSON Canónico RFC 8785.',
+                  pdfFile: '03_Manual_Integracion_API_L7_SIEM.pdf',
                   cmdId: 'audit-l7',
                 },
               ].map((tmpl) => (
@@ -490,9 +490,9 @@ export default function LandingPage({ onNavigateToLogin }) {
                       <button
                         type="button"
                         onClick={() => handleDownloadPdf(tmpl.pdfFile)}
-                        className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-[10px] font-mono text-emerald-400 font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5"
+                        className="rounded-md bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5"
                       >
-                        <span>📥</span> Descargar PDF Real
+                        <span>📥</span> Descargar PDF Oficial
                       </button>
                     </div>
 
