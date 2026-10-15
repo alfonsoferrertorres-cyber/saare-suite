@@ -537,13 +537,25 @@ export default {
         }
       }
 
+      // 8.1. VERIFICACIÓN DE LICENCIA (Ajustado para soporte Sandbox 0 € permanente)
       if (path === '/api/v1/auth/verifylicense' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
         let tenantInfo = null;
         try { tenantInfo = await tenantManager.getTenant(body.tenant || tenantId); } catch (e) {}
-        const planId = sanitizePlanId(tenantInfo?.plan_id || tenantPlan);
+        const rawPlan = body.tier || body.planId || tenantInfo?.plan_id || tenantPlan;
+        const isSandbox = rawPlan === "SANDBOX" || body.sandbox === true || rawPlan === "DISCOVER_FREE";
+        const planId = isSandbox ? "SANDBOX" : sanitizePlanId(rawPlan);
         const entitlements = getPlanEntitlements(planId);
-        return new Response(JSON.stringify({ valid: tenantInfo ? tenantInfo.status === "ACTIVE" : true, planId, entitlements }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+
+        return new Response(JSON.stringify({
+          valid: tenantInfo ? tenantInfo.status === "ACTIVE" : true,
+          tier: isSandbox ? "SANDBOX" : (tenantInfo?.tier || "ENTERPRISE"),
+          priceEur: isSandbox ? 0 : (tenantInfo?.priceEur || 649),
+          expiresAt: isSandbox ? null : (tenantInfo?.expiresAt || null),
+          unlimited: isSandbox ? true : false,
+          planId,
+          entitlements
+        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       // 9. OPENAPI DROP-IN (/v1/chat/completions)
@@ -865,14 +877,16 @@ export default {
         }
       }
 
-      // 12. PRUEBA DE ENTORNO (/v1/trial)
+      // 12. PRUEBA DE ENTORNO (/v1/trial) - EMISIÓN PERMANENTE SANDBOX (0 €)
       if (path === '/v1/trial' || path === '/api/v1/trial' || path === '/trial') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
           const cleanEmail = sanitizeEmail(body.email);
           const company = (body.company || "").trim();
           const agents = Number(body.agents) || 0;
-          const planType = sanitizePlanId(body.planType || body.plan || PLAN_IDS.TRIAL_PRO_7D);
+          const rawPlan = body.planType || body.plan || "SANDBOX";
+          const isSandbox = rawPlan === "SANDBOX" || rawPlan === "DISCOVER_FREE" || rawPlan === PLAN_IDS.TRIAL_PRO_7D;
+          const planType = isSandbox ? "SANDBOX" : sanitizePlanId(rawPlan);
 
           if (!cleanEmail || !company) {
             return new Response(JSON.stringify({ error: "Se requieren correo corporativo y organización." }), {
@@ -881,8 +895,7 @@ export default {
             });
           }
 
-          const trialId = `TRIAL-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          const trialId = `SANDBOX-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
 
           if (env.DB) {
             try {
@@ -897,11 +910,14 @@ export default {
           return new Response(JSON.stringify({
             success: true,
             trialId,
-            expiresAt,
-            planType,
+            expiresAt: null, // Sandbox permanente a 0 € sin límite de caducidad
+            tier: "SANDBOX",
+            priceEur: 0,
+            unlimited: true,
+            planType: "SANDBOX",
             agentsDeclared: agents,
             tenantName: company,
-            message: "Solicitud aprobada. Instrucciones enviadas al correo corporativo."
+            message: "Entorno Sandbox activado permanentemente a 0 €. Credenciales emitidas."
           }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
       }
@@ -1029,7 +1045,7 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (CORREGIDO PARA GUARDAR PROMPT, SANITIZED_PAYLOAD Y VERDICT EN D1)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO D1 CON PROMPT, SANITIZED_PAYLOAD Y VERDICT)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1200,7 +1216,7 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry) (CORREGIDO PARA RECUPERAR EL TEXTO REAL DEL PROMPT)
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry) (RECUPERACIÓN COMPLETA DE PROMPTS Y TRAZAS)
       if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -1320,7 +1336,7 @@ export default {
         });
       }
 
-      // 19. DIAGNÓSTICO
+      // 19. DIAGNÓSTICO DE INFRAESTRUCTURA
       if (path === '/v1/diag' || path === '/api/v1/diag') {
         const envKeys = Object.keys(env || {});
         return new Response(JSON.stringify({
@@ -1401,7 +1417,7 @@ export default {
         return await handleStripeWebhook(request, env);
       }
 
-      // 22. HEALTHCHECK
+      // 22. HEALTHCHECK PRINCIPAL
       if (
         path === '/' || 
         path === '/health' || 

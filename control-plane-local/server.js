@@ -156,13 +156,6 @@ let executiveSeatsDb = [
   { email: 'ciso@empresa.com', name: 'Oficial de Seguridad', role: 'CISO_ADMIN', is_verified: 1, created_at: '2026-02-01' }
 ];
 
-let activeScenarios = [
-  { id: 'ES_CUMPLIMIENTO_ESPANA', title: 'España - LOPDGDD & AEPD', category: 'ENS-ALTO', licensed: true, active: true },
-  { id: 'TOP_PROMPT_INJECTION', title: 'Jailbreak & Prompt Injection Guard', category: 'ENS-ALTO', licensed: true, active: true },
-  { id: 'STAR_FACT_CHECKER', title: 'Fact-Checking Forense & Fake Disprover', category: 'ENS-ALTO', licensed: false, active: false },
-  { id: 'STAR_TOKEN_OPTIMIZER', title: 'Optimizador de Tokens & CostGuard', category: 'ENS-BAJO', licensed: false, active: false }
-];
-
 // --- RUTAS DE SALUD Y MONITOREO ---
 const statusHandler = (req, res) => {
   res.json({
@@ -233,6 +226,25 @@ app.get('/api/v1/telemetry', getTelemetryHandler);
 app.get('/runs', getTelemetryHandler);
 app.get('/v1/runs', getTelemetryHandler);
 app.get('/api/v1/runs', getTelemetryHandler);
+
+// --- SOLICITUD DE PRUEBA / SANDBOX PERMANENTE (0 €) ---
+app.post(['/trial', '/v1/trial', '/api/v1/trial'], (req, res) => {
+  const { email, company, planType } = req.body || {};
+  const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : 'demo@saare.es';
+  const tenantName = company || 'CLIENTE_SANDBOX';
+
+  res.json({
+    success: true,
+    trialId: `SANDBOX-2026-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+    expiresAt: null, // Sandbox permanente a 0 € sin caducidad
+    tier: 'SANDBOX',
+    priceEur: 0,
+    unlimited: true,
+    planType: 'SANDBOX',
+    tenantName,
+    message: 'Entorno Sandbox activado permanentemente a 0 €. Credenciales emitidas.'
+  });
+});
 
 // --- INTERCEPCIÓN EX-ANTE / MOTOR DE EVALUACIÓN L7 ---
 const interceptHandler = (req, res) => {
@@ -384,12 +396,19 @@ app.post(['/v1/executive/seats', '/api/v1/executive/seats'], (req, res) => {
 
 // --- VERIFICACIÓN DE LICENCIA Y VERIFICACIÓN PÚBLICA ---
 app.post(['/v1/auth/verifylicense', '/api/v1/auth/verifylicense'], (req, res) => {
+  const body = req.body || {};
+  const isSandbox = body.tier === 'SANDBOX' || body.sandbox === true || body.planId === 'SANDBOX';
+
   res.json({
     valid: true,
-    planId: 'ENTERPRISE_CUSTOM',
+    tier: isSandbox ? 'SANDBOX' : 'ENTERPRISE',
+    priceEur: isSandbox ? 0 : 649,
+    expiresAt: isSandbox ? null : null, // Sin expiración temporal
+    unlimited: true,
+    planId: isSandbox ? 'SANDBOX' : 'ENTERPRISE_CUSTOM',
     entitlements: {
-      max_evidence_monthly: 1000000,
-      max_users: 50,
+      max_evidence_monthly: isSandbox ? 10000 : 1000000,
+      max_users: isSandbox ? 5 : 50,
       control_layer_l7: true,
       resilience_lab: true,
       export_dossier: true

@@ -202,9 +202,9 @@ importers:
 
   packages/entitlements: {}
 
-  packages/proof-verifier: {}
+  packages/policies: {}
 
-  policies: {}
+  packages/proof-verifier: {}
 
   saare-console:
     dependencies:

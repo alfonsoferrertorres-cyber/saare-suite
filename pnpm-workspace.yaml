@@ -1,4 +1,5 @@
 packages:
+  - 'apps/*'
   - 'packages/*'
   - 'control-plane'
   - 'control-plane-local'

@@ -1,3 +1,4 @@
+// saare-suite/src/components/PricingSection.jsx — Licenciamiento Comercial & Sandbox 0 €
 import React, { useState } from 'react';
 
 export default function PricingSection({ onSelectPlan }) {
@@ -9,61 +10,61 @@ export default function PricingSection({ onSelectPlan }) {
   const plans = [
     {
       id: 'DISCOVER_FREE',
-      name: 'Discover',
-      badge: 'Evaluation',
+      name: 'Sandbox Evaluador',
+      badge: 'Permanente 0 €',
       priceMonthly: 0,
       priceAnnual: 0,
-      period: 'forever',
-      target: 'Developers & Initial Evaluation',
-      capacity: '1 AI System · 2 Users',
-      limit: '100 proofs / month',
-      highlightFeature: 'Basic GRC Console & Initial Report',
-      cta: 'Start Free',
-      ctaStyle: 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700',
+      period: 'Acceso Permanente',
+      target: 'Desarrolladores, DPOs y Auditorías Técnicas',
+      capacity: '1 Sistema IA · 2 Usuarios',
+      limit: 'Ilimitado en Sandbox',
+      highlightFeature: 'Capa de Control L7, Evaluación ISO 42001 y Bóveda Criptográfica',
+      cta: 'Activar Sandbox 0 €',
+      ctaStyle: 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold shadow-lg shadow-cyan-500/20',
       featured: false
     },
     {
       id: 'COMPLIANCE_249',
       name: 'Compliance',
-      badge: 'Governance',
+      badge: 'Gobernanza Base',
       priceMonthly: 249,
       priceAnnual: 199,
-      period: '€ / mo + VAT',
-      target: 'Growing SaaS Products',
-      capacity: '3 AI Systems · 5 Users',
-      limit: '1,000 proofs / month',
-      highlightFeature: 'Automated GRC, Evidence Vault & ISO 42001',
-      cta: 'Start Compliance',
+      period: '€ / mes + IVA',
+      target: 'SaaS en Crecimiento y Pymes',
+      capacity: '3 Sistemas IA · 5 Usuarios',
+      limit: '1.000 evidencias / mes',
+      highlightFeature: 'GRC Automatizado, Bóveda SHA-256 e ISO 42001',
+      cta: 'Contratar Compliance',
       ctaStyle: 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600',
       featured: false
     },
     {
       id: 'PROFESSIONAL_649',
       name: 'Professional',
-      badge: 'Recommended for ISVs',
+      badge: 'Recomendado ISVs',
       priceMonthly: 649,
       priceAnnual: 519,
-      period: '€ / mo + VAT',
-      target: 'B2B Software Enterprises',
-      capacity: '10 AI Systems · 15 Users',
-      limit: '5,000 proofs / month',
-      highlightFeature: 'Advanced Governance + S.A.A.R.E. L7 Control Layer',
-      cta: 'Request Professional',
+      period: '€ / mes + IVA',
+      target: 'Empresas B2B e Integradores',
+      capacity: '10 Sistemas IA · 15 Usuarios',
+      limit: '5.000 evidencias / mes',
+      highlightFeature: 'Gobernanza Avanzada + Intercepción Ex-Ante L7',
+      cta: 'Solicitar Professional',
       ctaStyle: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold shadow-lg shadow-cyan-500/25',
       featured: true
     },
     {
       id: 'ENTERPRISE_1500',
       name: 'Enterprise',
-      badge: 'Scale Governance',
+      badge: 'Corporativo',
       priceMonthly: 1500,
       priceAnnual: 1200,
-      period: '€ / mo + VAT (from)',
-      target: 'Multi-Product Organizations',
-      capacity: '50 AI Systems · 50+ Users',
-      limit: 'Dedicated Node & Custom Limits',
-      highlightFeature: 'SIEM/GRC Integration, CMK & Priority SLA',
-      cta: 'Contact Enterprise',
+      period: '€ / mes + IVA (desde)',
+      target: 'Multinacionales y Gran Cuenta',
+      capacity: '50 Sistemas IA · 50+ Usuarios',
+      limit: 'Nodo Dedicado y Cuotas Custom',
+      highlightFeature: 'Integración SIEM/SOC, Llaves CMK y SLA Prioritario',
+      cta: 'Contactar Enterprise',
       ctaStyle: 'bg-blue-600 hover:bg-blue-500 text-white font-bold',
       featured: false
     }
@@ -76,16 +77,16 @@ export default function PricingSection({ onSelectPlan }) {
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-cyan-400 mb-4 font-mono">
-            Transparent Licensing Structure (SGP 1.0)
+            Estructura de Licenciamiento Transparente (SGP 1.0)
           </div>
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
-            Secure your AI systems. <br />
+            Proteja sus sistemas de IA. <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-              Scale your governance without friction.
+              Escale la gobernanza sin restricciones de prueba.
             </span>
           </h2>
           <p className="text-slate-400 text-base md:text-lg">
-            Executable compliance infrastructure for AI products. Prices excluding VAT.
+            Infraestructura ejecutable para productos con IA. Precios excluyen IVA.
           </p>
 
           <div className="mt-8 inline-flex items-center gap-3 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
@@ -94,16 +95,16 @@ export default function PricingSection({ onSelectPlan }) {
               className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${
                 !isAnnual ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}>
-              Monthly Billing
+              Facturación Mensual
             </button>
             <button
               onClick={() => setBillingCycle('annual')}
               className={`px-5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
                 isAnnual ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'
               }`}>
-              Annual Billing
+              Facturación Anual
               <span className="px-2 py-0.5 text-[10px] bg-emerald-400 text-slate-950 font-extrabold rounded-full uppercase">
-                -20% Off
+                -20% Descuento
               </span>
             </button>
           </div>
@@ -120,8 +121,10 @@ export default function PricingSection({ onSelectPlan }) {
                     ? 'bg-slate-900 border-2 border-cyan-400 shadow-2xl shadow-cyan-500/15 lg:-translate-y-2'
                     : 'bg-slate-900/50 border border-slate-800 hover:border-slate-700'
                 }`}>
-                {plan.featured && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-cyan-400 text-slate-950 font-black text-[10px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                {plan.badge && (
+                  <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 font-black text-[10px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md ${
+                    plan.id === 'DISCOVER_FREE' ? 'bg-emerald-400 text-slate-950' : 'bg-cyan-400 text-slate-950'
+                  }`}>
                     {plan.badge}
                   </div>
                 )}
@@ -141,22 +144,22 @@ export default function PricingSection({ onSelectPlan }) {
                     </div>
                     {isAnnual && typeof price === 'number' && price > 0 && (
                       <p className="text-[10px] text-emerald-400 mt-1 font-mono">
-                        Billed annually ({price * 12} €/year)
+                        Facturado anualmente ({price * 12} €/año)
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-3 text-xs text-slate-300 border-b border-slate-800 pb-6 mb-6">
                     <div>
-                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Capacity</span>
+                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Capacidad</span>
                       <strong className="text-white">{plan.capacity}</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Trace Limit</span>
+                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Límite de Trazas</span>
                       <span className="text-slate-300">{plan.limit}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Key Capability</span>
+                      <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-wider">Característica Clave</span>
                       <span className="text-cyan-400 font-medium">{plan.highlightFeature}</span>
                     </div>
                   </div>
@@ -175,18 +178,18 @@ export default function PricingSection({ onSelectPlan }) {
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-indigo-950 border border-indigo-800 text-[10px] text-indigo-300 mb-2 font-mono">
-              Sovereign & Air-Gapped Infrastructure
+              Infraestructura Soberana & Air-Gapped
             </div>
             <h3 className="text-2xl font-bold text-white">S.A.A.R.E. Private</h3>
-            <p className="text-xs text-cyan-400 font-mono mb-2">Custom Deployment Architecture</p>
+            <p className="text-xs text-cyan-400 font-mono mb-2">Arquitectura de Despliegue Personalizado</p>
             <p className="text-sm text-slate-300 leading-relaxed">
-              On-Premise, isolated VPC, or Sovereign Cloud installation. Designed for financial entities, public sector, and critical infrastructure requiring Customer-Managed Keys (CMK) and HSM modules.
+              Instalación On-Premise, VPC aislada o Nube Soberana. Diseñado para entidades financieras, sector público e infraestructuras críticas que requieren llaves gestionadas por el cliente (CMK) y módulos HSM.
             </p>
           </div>
           <button
             onClick={() => onSelectPlan && onSelectPlan('PRIVATE_CUSTOM')}
             className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl border border-slate-700 shrink-0 transition-colors">
-            Design Private Deployment
+            Diseñar Despliegue Privado
           </button>
         </div>
 
@@ -194,7 +197,7 @@ export default function PricingSection({ onSelectPlan }) {
           <button
             onClick={() => setShowFullComparison(!showFullComparison)}
             className="px-6 py-2.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-900 border border-slate-800 rounded-xl transition-all">
-            {showFullComparison ? 'Hide Specifications Matrix ▲' : 'Show Full Specifications Matrix ▼'}
+            {showFullComparison ? 'Ocultar Matriz de Especificaciones ▲' : 'Mostrar Matriz Completa de Especificaciones ▼'}
           </button>
 
           {showFullComparison && (
@@ -202,8 +205,8 @@ export default function PricingSection({ onSelectPlan }) {
               <table className="w-full text-slate-300">
                 <thead>
                   <tr className="bg-slate-900 border-b border-slate-800 text-slate-200 font-mono">
-                    <th className="p-4">Capability / Module</th>
-                    <th className="p-4">Discover</th>
+                    <th className="p-4">Capacidad / Módulo</th>
+                    <th className="p-4 text-emerald-400">Sandbox (0 €)</th>
                     <th className="p-4">Compliance</th>
                     <th className="p-4 text-cyan-400">Professional</th>
                     <th className="p-4">Enterprise</th>
@@ -212,40 +215,40 @@ export default function PricingSection({ onSelectPlan }) {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-mono">
                   <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Managed AI Systems</td>
-                    <td className="p-4">1</td>
+                    <td className="p-4 font-sans font-semibold text-white">Sistemas IA Gestionados</td>
+                    <td className="p-4 text-emerald-400 font-bold">1</td>
                     <td className="p-4">3</td>
                     <td className="p-4 text-cyan-400 font-bold">10</td>
                     <td className="p-4">50</td>
                     <td className="p-4">Custom</td>
                   </tr>
                   <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Console Users</td>
-                    <td className="p-4">2</td>
+                    <td className="p-4 font-sans font-semibold text-white">Usuarios de Consola</td>
+                    <td className="p-4 text-emerald-400 font-bold">2</td>
                     <td className="p-4">5</td>
                     <td className="p-4 text-cyan-400 font-bold">15</td>
                     <td className="p-4">50+</td>
                     <td className="p-4">Custom</td>
                   </tr>
                   <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Monthly Evidence Logging</td>
-                    <td className="p-4">100</td>
-                    <td className="p-4">1,000</td>
-                    <td className="p-4 text-cyan-400 font-bold">5,000</td>
-                    <td className="p-4">Custom</td>
+                    <td className="p-4 font-sans font-semibold text-white">Límite de Expiración</td>
+                    <td className="p-4 text-emerald-400 font-bold">Sin límite (Permanente)</td>
+                    <td className="p-4">Mensual</td>
+                    <td className="p-4">Mensual</td>
+                    <td className="p-4">Anual / Custom</td>
                     <td className="p-4">Custom</td>
                   </tr>
                   <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Evidence Vault (SHA-256)</td>
-                    <td className="p-4 text-slate-600">Basic</td>
+                    <td className="p-4 font-sans font-semibold text-white">Bóveda de Evidencias (SHA-256)</td>
+                    <td className="p-4 text-emerald-400 font-bold">✓ (Sandbox RAM)</td>
                     <td className="p-4 text-emerald-400">✓</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓ (Advanced)</td>
+                    <td className="p-4 text-emerald-400 font-bold">✓ (Avanzada)</td>
                     <td className="p-4 text-emerald-400">✓</td>
                     <td className="p-4 text-emerald-400">✓</td>
                   </tr>
                   <tr>
-                    <td className="p-4 font-sans font-semibold text-white">S.A.A.R.E. Control Layer (L7 Interception)</td>
-                    <td className="p-4 text-slate-600">—</td>
+                    <td className="p-4 font-sans font-semibold text-white">Capa de Control S.A.A.R.E. (L7 Ex-Ante)</td>
+                    <td className="p-4 text-emerald-400 font-bold">✓</td>
                     <td className="p-4 text-slate-600">—</td>
                     <td className="p-4 text-emerald-400 font-bold">✓</td>
                     <td className="p-4 text-emerald-400 font-bold">✓</td>

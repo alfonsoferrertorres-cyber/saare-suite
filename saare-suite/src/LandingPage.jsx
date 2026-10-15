@@ -5,10 +5,10 @@ import PricingSection from './components/PricingSection';
 import { API_HOST } from './api/api';
 
 const NAV_ITEMS = [
-  { label: 'Solución', href: '#motor' },
-  { label: 'Documentación y Anexos', href: '#templates' },
-  { label: 'Garantía y Seguridad', href: '#legal-guarantee' },
-  { label: 'Precios', href: '#pricing' },
+  { label: 'Prueba Reina (L7)', href: '#motor' },
+  { label: 'Biblioteca Forense', href: '#templates' },
+  { label: 'Garantías y Cumplimiento', href: '#legal-guarantee' },
+  { label: 'Licenciamiento', href: '#pricing' },
 ];
 
 export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
@@ -17,7 +17,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
   const [evaluationForm, setEvaluationForm] = useState({
     workEmail: '',
     company: '',
-    role: 'CTO',
+    role: 'CISO',
     aiSystems: '1-5',
     requirement: '',
     privacyAccepted: false,
@@ -77,7 +77,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
       if (!response.ok) throw new Error('No se pudo enviar la solicitud de evaluación.');
 
       setFormStatus('SUCCESS');
-      setFormMessage('Solicitud recibida correctamente. Nos pondremos en contacto con usted a la mayor brevedad.');
+      setFormMessage('Solicitud recibida correctamente. Su perfil ha sido priorizado para emisión de credenciales Ed25519 y auditoría ex-ante.');
     } catch (error) {
       setFormStatus('ERROR');
       setFormMessage(error?.message || 'No se pudo conectar con el servidor.');
@@ -96,7 +96,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
             </div>
             <div className="leading-none">
               <div className="text-sm font-extrabold tracking-[0.16em] text-white">S.A.A.R.E.</div>
-              <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-cyan-400">Gobernanza y Cumplimiento</div>
+              <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-cyan-400">Gobernanza Ex-Ante & C++20 SOC</div>
             </div>
           </a>
 
@@ -114,31 +114,31 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
               onClick={() => onNavigateToLogin && onNavigateToLogin('DISCOVER_FREE')}
               className="rounded-lg px-4 py-2 text-xs font-bold text-slate-300 transition-colors hover:text-white"
             >
-              Acceso Clientes
+              Acceso Consola
             </button>
             <a
               href="#evaluation"
               className="inline-flex items-center rounded-lg bg-[#38BDDB] px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition-all hover:bg-cyan-400"
             >
-              Solicitar Demostración
+              Solicitar Auditoría Ex-Ante
             </a>
           </div>
         </div>
       </header>
 
       <main id="top">
-        {/* HERO COMERCIAL */}
+        {/* HERO COMERCIAL DE MÁXIMA TRACCIÓN */}
         <section className="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#0B132B] to-[#030712] py-20 lg:py-24">
           <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-                Plataforma de Gobernanza y Cumplimiento Normativo
+                ⚡ Expediente MS3V-RECON-VALID-2026-ALF-0521
               </div>
               <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
-                Gestión y seguridad para <span className="text-[#38BDDB]">sistemas de inteligencia artificial</span>
+                Gobernanza Ex-Ante y Cadena de Custodia para <span className="text-[#38BDDB]">Entornos de IA</span>
               </h1>
               <p className="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
-                Simplifique el cumplimiento del Reglamento Europeo de IA, las normativas ISO y la justificación de subvenciones tecnológicas mediante una arquitectura local segura y privada.
+                Frente a las auditorías reactivas anuales, S.A.A.R.E. blinda, audita y sella cada interacción de negocio en tiempo real. Admisible ante justicia forense (RFC 3161 / ISO 27037).
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
@@ -146,69 +146,73 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                   href="#evaluation"
                   className="rounded-xl bg-[#38BDDB] px-7 py-3.5 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-500/20 transition-all hover:bg-cyan-400 inline-block text-center"
                 >
-                  Solicitar Evaluación Técnica
+                  Solicitar Auditoría Ex-Ante
                 </a>
-                <a
-                  href="#templates"
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPdf('04_ET_MS3V_Prueba_Reina_2026.pdf')}
                   className="rounded-xl border border-cyan-500/40 bg-slate-900 px-7 py-3.5 text-sm font-semibold text-cyan-300 transition-all hover:bg-slate-800 inline-block text-center"
                 >
-                  Ver Documentación y Anexos
-                </a>
+                  📥 Descargar Informe L7 (Prueba Reina)
+                </button>
               </div>
             </div>
 
+            {/* PIPELINE FORENSE ACTIVO */}
             <div className="relative flex justify-center">
-              <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl">
+              <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl font-mono">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-                  <span className="text-xs font-mono uppercase tracking-widest text-slate-400">Estado del Sistema GRC</span>
-                  <span className="rounded bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400">Operativo</span>
+                  <span className="text-xs uppercase tracking-widest text-slate-400">Pipeline Forense v4.0.2</span>
+                  <span className="rounded bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400">SISTEMA ACTIVADO</span>
                 </div>
-                <div className="space-y-3">
-                  {[
-                    { name: 'Justificación de Subvenciones (Red.es / INCIBE)', status: 'Disponible' },
-                    { name: 'Evaluación de Impacto (Art. 27 EU AI Act)', status: 'Plantilla Lista' },
-                    { name: 'Gestión de Riesgos (ISO 42001 / DORA)', status: 'Verificado' },
-                    { name: 'Despliegue Local (On-Premise)', status: 'Configurado' },
-                  ].map((item) => (
-                    <div key={item.name} className="flex items-center justify-between rounded-xl bg-slate-900 p-3.5 border border-slate-800/80">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-cyan-400" />
-                        <span className="text-xs font-bold text-slate-200">{item.name}</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{item.status}</span>
-                    </div>
-                  ))}
+                <div className="space-y-3 text-xs">
+                  <div className="rounded-xl bg-slate-900 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">Inbound Data Stream:</span>
+                    <span className="font-bold text-emerald-400">[PASS 100%]</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">L7 Shield (Saneamiento RAM 0x00):</span>
+                    <span className="font-bold text-cyan-400">Activo (&lt; 0.85 ms)</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">Control SHA-256 / Ed25519:</span>
+                    <span className="font-bold text-purple-400">RFC 8785 Compliant</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">Retención en Disco:</span>
+                    <span className="font-bold text-emerald-400">Zero-Disk (0.00%)</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* MOTOR / FUNCIONAMIENTO */}
+        {/* 3 PILARES DE MÁXIMA FRICCIÓN CORPORATIVA */}
         <section id="motor" className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Enfoque Estructurado</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">¿Cómo ayudamos a su organización?</h2>
-              <p className="text-slate-400 mt-3 text-sm">Facilitamos la adaptación a los marcos regulatorios vigentes sin fricciones operativas para sus equipos técnicos.</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Rigurosidad Judicial y Técnica</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">3 Pilares de Máxima Fricción Corporativa</h2>
+              <p className="text-slate-400 mt-3 text-sm">Garantías diseñadas para soportar escrutinio perjudicial y cumplir de forma nativa con los marcos regulatorios europeos.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
                   step: '01',
-                  title: 'Análisis de Requisitos',
-                  text: 'Identificamos los estándares aplicables a su sector (EU AI Act, ISO 42001, RGPD, DORA) para definir el perímetro de actuación.',
+                  title: 'Inmutabilidad de Origen (SHA-256)',
+                  text: 'Cada prompt, lead o respuesta de IA recibe una huella matemática instantánea inalterable. Cualquier alteración posterior rompe el hash de forma inmediata y detectable.',
                 },
                 {
                   step: '02',
-                  title: 'Integración Local Segura',
-                  text: 'Implementación On-Premise que garantiza que sus datos y modelos operan bajo estrictos criterios de privacidad y control absoluto.',
+                  title: 'Cumplimiento Estricto (RGPD & EU AI Act)',
+                  text: 'Limpieza de memoria volátil ex-ante (0x00) para garantizar Cero Fugas de Datos Personales (PII) tras el sellado de la cadena de custodia.',
                 },
                 {
                   step: '03',
-                  title: 'Generación de Evidencias',
-                  text: 'Emisión automatizada de informes técnicos y documentación probatoria lista para presentar ante auditores o entidades colaboradoras.',
+                  title: 'Verificación Desintermediada',
+                  text: 'Cualquier auditor, cliente o tribunal puede validar la integridad del expediente en milisegundos mediante un script libre de ejecución local (Node.js, Python, PowerShell).',
                 },
               ].map((card) => (
                 <div key={card.step} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
@@ -221,54 +225,91 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
           </div>
         </section>
 
-        {/* PLANTILLAS Y DOCUMENTACIÓN OFICIAL */}
-        <section id="templates" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+        {/* VALOR ESTRATÉGICO / C-LEVEL */}
+        <section className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Biblioteca Documental</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Informes Técnicos, Anexos y Guías de Cumplimiento</h2>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Ventajas Competitivas C-Level</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">¿Por qué los líderes eligen S.A.A.R.E.?</h2>
+              <p className="text-slate-400 mt-3 text-sm">Argumentos comerciales y de seguridad jurídica concebidos para comités de dirección y DPOs.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {[
+                {
+                  title: 'Gobernanza Ex-Ante en Tiempo Real',
+                  desc: 'Mientras que la auditoría tradicional revisa logs de forma reactiva una vez al año, S.A.A.R.E. blinda y sella cada interacción de negocio al vuelo, permitiendo mitigación inmediata.',
+                },
+                {
+                  title: 'Escudo Anti-Sanciones (-7% Global Fine Guard)',
+                  desc: 'Protección robusta frente a la Ley de IA de la UE y DORA. Entrega automática de diligencia debida mediante expedientes matemáticamente incuestionables.',
+                },
+                {
+                  title: 'Confianza de Grado Bancario',
+                  desc: 'Permite a agencias y empresas posicionarse con un argumento comercial único: leads y procesos certificados bajo estándares de seguridad jurídica forense.',
+                },
+                {
+                  title: 'Desintermediación de Auditorías',
+                  desc: 'Cualquier auditor verifica la autenticidad en milisegundos ejecutando scripts locales libres, eliminando costes y fricciones técnicas.',
+                },
+              ].map((item, idx) => (
+                <div key={idx} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
+                  <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* BIBLIOTECA DOCUMENTAL Y FORENSE */}
+        <section id="templates" className="border-b border-slate-800/80 py-20 bg-slate-950">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Verificabilidad Pública</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Biblioteca Documental y Pruebas Periciales</h2>
               <p className="text-slate-400 mt-3 text-sm">
-                Acceda a la documentación oficial de la solución para su revisión por parte de los departamentos legales, de seguridad y de dirección.
+                Descargue los informes técnicos, dictámenes de cadena de custodia y especificaciones periciales para validación directa por su CISO y departamento legal.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {[
                 {
-                  code: 'DOCUMENTO 01',
-                  name: 'Dictamen de Trazabilidad y Cadena de Custodia',
-                  desc: 'Especificaciones técnicas sobre la gestión de registros y la seguridad documental adaptada a los estándares de exigencia corporativa.',
+                  code: 'EVIDENCIA 01',
+                  name: 'Informe Técnico: Prueba Reina y Traza L7',
+                  desc: 'Validación empírica del motor C++20, interceptación de Tool-Calling AST y latencia sub-milisegundo.',
+                  pdfFile: '04_ET_MS3V_Prueba_Reina_2026.pdf',
+                },
+                {
+                  code: 'EVIDENCIA 02',
+                  name: 'Certificado de Ingesta Cero y Soberanía',
+                  desc: 'Garantía perimetral de procesamiento en memoria volátil sin exposición de datos a pasarelas externas.',
+                  pdfFile: '02_Certificado_de_Ingesta_Cero_e_Integridad_Perimetral - S.A.A.R.E__signed.pdf',
+                },
+                {
+                  code: 'EVIDENCIA 03',
+                  name: 'Dictamen Pericial de Cadena de Custodia',
+                  desc: 'Especificaciones técnicas sobre la gestión de registros y la seguridad documental ante auditorías.',
                   pdfFile: '01_Manual_Dictamen_Pericial_Cadena_Custodia_MS3V.pdf',
                 },
                 {
-                  code: 'DOCUMENTO 02',
+                  code: 'EVIDENCIA 04',
                   name: 'Guía Metodológica de Evaluación de Impacto (EU AI Act)',
-                  desc: 'Orientaciones prácticas para el cumplimiento del artículo 27 y la mitigación de riesgos asociados al despliegue de modelos.',
+                  desc: 'Orientaciones prácticas para el cumplimiento del artículo 27 y mitigación de riesgos algorítmicos.',
                   pdfFile: '04_Guia_Metodologica_FRIA_EU_AI_Act.pdf',
                 },
                 {
-                  code: 'DOCUMENTO 03',
-                  name: 'Justificación de Ayudas y Subvenciones Tecnológicas',
-                  desc: 'Documentación de apoyo orientada a respaldar la inversión en ciberseguridad e inteligencia artificial ante organismos oficiales.',
-                  pdfFile: '02_Guia_Subsidies_Hub_RedEs_INCIBE.pdf',
-                },
-                {
-                  code: 'DOCUMENTO 04',
-                  name: 'Especificación de Integración y Seguridad API',
-                  desc: 'Detalles técnicos de acoplamiento local, pasarelas de control perimetral y pautas de integración con sistemas internos (SIEM/SOC).',
+                  code: 'EVIDENCIA 05',
+                  name: 'Manual de Integración API L7 y SIEM/SOC',
+                  desc: 'Detalles de acoplamiento local y pautas de integración con herramientas corporativas de seguridad.',
                   pdfFile: '03_Manual_Integracion_API_L7_SIEM.pdf',
                 },
                 {
-                  code: 'DOCUMENTO 05',
-                  name: 'Anexo de Seguridad de la Información (ISO 27001)',
-                  desc: 'Certificación de los controles aplicados para la protección de activos de información y gestión de riesgos en entornos corporativos.',
-                  pdfFile: 'Anexo_ISO_27001_Security.pdf',
-                },
-                {
-                  code: 'DOCUMENTO 06',
-                  name: 'Anexo Regulatorio de Gestión de IA (ISO 42001)',
-                  desc: 'Validación de los mecanismos de gobernanza algorítmica y control continuo establecidos en la infraestructura.',
-                  pdfFile: 'Anexo_ISO_42001_Compliance.pdf',
+                  code: 'EVIDENCIA 06',
+                  name: 'Plan Maestro de Ventas y Estrategia OEM',
+                  desc: 'Documento ejecutivo de alineamiento estratégico, modelos de licenciamiento y hoja de ruta tecnológica.',
+                  pdfFile: 'S.A.A.R.E. v7.0 & Motor MS3V - Plan Maestro de Ventas.pdf',
                 },
               ].map((tmpl) => (
                 <div key={tmpl.code} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between hover:border-cyan-500/40 transition-all">
@@ -289,7 +330,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                   </div>
 
                   <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-slate-500">Archivo: {tmpl.pdfFile}</span>
+                    <span className="text-[11px] font-mono text-slate-500">Archivo oficial: {tmpl.pdfFile}</span>
                   </div>
                 </div>
               ))}
@@ -298,36 +339,36 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
         </section>
 
         {/* GARANTÍA Y MARCO DE SEGURIDAD */}
-        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-slate-950">
+        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Seguridad y Confianza</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Garantías para la Empresa</h2>
-              <p className="text-slate-400 mt-3 text-sm">Compromisos diseñados para aportar tranquilidad jurídica y técnica a los órganos de dirección.</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Tranquilidad para Dirección</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Garantías Técnicas y Jurídicas</h2>
+              <p className="text-slate-400 mt-3 text-sm">Diseñado bajo los estándares más estrictos exigidos por auditores internacionales y comités de cumplimiento.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">PROTECCIÓN JURÍDICA</div>
-                <h3 className="text-base font-bold text-white mb-3">Acuerdos de Confidencialidad (NDA)</h3>
+                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">CUMPLIMIENTO NORMATIVO</div>
+                <h3 className="text-base font-bold text-white mb-3">EU AI Act & ISO 42001</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Disponemos de marcos estándar de confidencialidad de doble vía para proteger la información técnica y comercial compartida durante las fases de evaluación.
+                  Generación automatizada de evidencias probatorias listas para auditorías de sistemas de inteligencia artificial de alto riesgo.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">RESPALDO CONTRACTUAL</div>
-                <h3 className="text-base font-bold text-white mb-3">Licenciamiento Transparente</h3>
+                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">SOBERANÍA ABSOLUTA</div>
+                <h3 className="text-base font-bold text-white mb-3">Infraestructura Air-Gapped</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Condiciones claras de uso y despliegue local que garantizan la continuidad de su operativa y el control absoluto de los activos tecnológicos incorporados.
+                  Operación completamente autónoma sin dependencias de servicios externos ni fugas de telemetría fuera del perímetro corporativo.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">PRIVACIDAD ABSOLUTA</div>
-                <h3 className="text-base font-bold text-white mb-3">Arquitectura Sin Fugas de Datos</h3>
+                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">RESPALDO Criptográfico</div>
+                <h3 className="text-base font-bold text-white mb-3">Atestación Ed25519</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  El procesamiento perimetral evita la exposición de información sensible hacia pasarelas externas, cumpliendo rigurosamente con el Reglamento General de Protección de Datos (RGPD).
+                  Cada evento y registro de auditoría cuenta con firma criptográfica inmutable que garantiza la integridad absoluta de los datos.
                 </p>
               </div>
             </div>
@@ -338,22 +379,22 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
         <section id="pricing" className="border-b border-slate-800/80 py-20 bg-[#030712]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Planes y Licenciamiento</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Opciones adaptadas a su organización</h2>
-              <p className="text-slate-400 mt-3 text-sm">Escoja el nivel de despliegue que mejor se adapte a las necesidades de su infraestructura.</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Licenciamiento Comercial</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Planes adaptados a su organización</h2>
+              <p className="text-slate-400 mt-3 text-sm">Elija el modelo de despliegue perimetral que mejor se adapte a sus volúmenes operativos.</p>
             </div>
             <PricingSection onSelectPlan={() => onNavigateToLogin && onNavigateToLogin('DISCOVER_FREE')} />
           </div>
         </section>
 
-        {/* FORMULARIO DE EVALUACIÓN */}
+        {/* FORMULARIO DE EVALUACIÓN / PILOT PROGRAM */}
         <section id="evaluation" className="py-20 bg-slate-950">
           <div className="mx-auto max-w-4xl px-6">
             <div className="rounded-3xl border border-slate-800 bg-[#0A101E] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
               <div className="text-center max-w-2xl mx-auto mb-10">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Contacto Directo</span>
-                <h2 className="text-3xl font-black text-white mt-2">Solicite una evaluación personalizada</h2>
-                <p className="text-sm text-slate-400 mt-3">Compruebe cómo podemos ayudarle a automatizar el cumplimiento normativo en sus sistemas de inteligencia artificial.</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Acceso Prioritario</span>
+                <h2 className="text-3xl font-black text-white mt-2">Solicite una Auditoría Ex-Ante</h2>
+                <p className="text-sm text-slate-400 mt-3">Compruebe el rendimiento del motor C++20 y la intercepción L7 directamente en su entorno corporativo.</p>
               </div>
 
               {formStatus === 'SUCCESS' ? (
@@ -371,7 +412,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                         required
                         value={evaluationForm.workEmail}
                         onChange={(e) => updateEvaluationField('workEmail', e.target.value)}
-                        placeholder="tu@empresa.es"
+                        placeholder="ciso@empresa.es"
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       />
                     </div>
@@ -382,7 +423,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                         required
                         value={evaluationForm.company}
                         onChange={(e) => updateEvaluationField('company', e.target.value)}
-                        placeholder="Nombre de la empresa"
+                        placeholder="Nombre de la entidad"
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       />
                     </div>
@@ -396,11 +437,10 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                         onChange={(e) => updateEvaluationField('role', e.target.value)}
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       >
-                        <option value="CTO">CTO / Dirección Técnica</option>
                         <option value="CISO">CISO / Seguridad</option>
+                        <option value="CTO">CTO / Dirección Técnica</option>
                         <option value="Compliance">Compliance / GRC</option>
                         <option value="DPO">DPO / Privacidad</option>
-                        <option value="Product">Responsable de Producto</option>
                         <option value="Consultant">Consultor / Auditor</option>
                       </select>
                     </div>
@@ -419,12 +459,12 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Caso de Uso o Necesidad Principal</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Requisito Técnico o Caso de Uso</label>
                     <textarea
                       rows={3}
                       value={evaluationForm.requirement}
                       onChange={(e) => updateEvaluationField('requirement', e.target.value)}
-                      placeholder="Describa brevemente sus necesidades de cumplimiento o integración..."
+                      placeholder="Indique si requiere validación de Tool-Calling AST o despliegue On-Premise..."
                       className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 resize-none"
                     />
                   </div>
@@ -453,7 +493,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                     disabled={formStatus === 'SUBMITTING' || !evaluationForm.privacyAccepted}
                     className="w-full rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50"
                   >
-                    {formStatus === 'SUBMITTING' ? 'Enviando...' : 'Enviar Solicitud de Demostración'}
+                    {formStatus === 'SUBMITTING' ? 'Procesando Solicitud...' : 'Solicitar Auditoría Ex-Ante'}
                   </button>
                 </form>
               )}

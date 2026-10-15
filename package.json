@@ -7,10 +7,15 @@
     "dev:local": "pnpm --filter control-plane-local dev",
     "dev:cloud": "pnpm --filter control-plane dev",
     "build": "turbo run build",
-    "clean": "node -e \"console.log('Limpieza lista')\"",
+    "clean": "turbo run clean && node -e \"console.log('Limpieza del monorepo completada')\"",
     "lint": "turbo run lint",
-    "resilience": "node resilienceGate_2.js",
-    "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
+    "resilience": "node scripts/resilienceGate_2.js",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/despliegue_maestro.ps1",
+    "evidence:generate": "python scripts/generar_evidencia.py",
+    "report:corporate": "python scripts/generar_informe_corporativo.py",
+    "manual:iso42001": "python scripts/generar_manual_iso42001.py",
+    "manual:policy-l7": "python scripts/generar_manual_policy_engine_l7.py",
+    "secretaria:license": "pnpm --filter @saare/license-factory generate"
   },
   "devDependencies": {
     "turbo": "^2.11.7"
