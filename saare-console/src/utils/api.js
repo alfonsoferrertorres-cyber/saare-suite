@@ -1,4 +1,4 @@
-// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.2 SRP)
+// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.4 SRP)
 
 const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 
@@ -14,11 +14,6 @@ const isLocal = typeof window !== "undefined" && (
 
 /**
  * Resuelve dinámicamente la URL base de la Bóveda / Control Plane.
- * Prioridad: 
- * 1. Anulación manual por el usuario (Botón Enrutador de Bóveda)
- * 2. Entorno local (127.0.0.1:3001)
- * 3. Variable de entorno VITE_API_BASE_URL
- * 4. Dominio corporativo oficial (api.saare.es)
  */
 export function getApiHost() {
   if (typeof window !== 'undefined') {
@@ -37,7 +32,7 @@ export const API_HOST = getApiHost();
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 /**
- * Valida si la URL destino pertenece al ecosistema S.A.A.R.E. para inyectar credenciales de forma segura
+ * Valida si la URL destino pertenece al ecosistema S.A.A.R.E.
  */
 function isOwnApi(url) {
   if (typeof url !== 'string') return false;
@@ -54,9 +49,6 @@ function isOwnApi(url) {
 
 /**
  * Cliente HTTP unificado para la Consola GRC de S.A.A.R.E.
- * @param {string} endpoint - Ruta relativa o URL absoluta
- * @param {RequestInit} options - Opciones de fetch
- * @returns {Promise<Response>}
  */
 export async function saareFetch(endpoint, options = {}) {
   const activeHost = getApiHost();
@@ -72,15 +64,15 @@ export async function saareFetch(endpoint, options = {}) {
     finalUrl = `${activeBaseUrl}/${relativePath}`;
   }
 
-  // 2. Extracción segura de credenciales y contexto RBAC desde localStorage
+  // 2. Extracción segura de credenciales e identidad RBAC desde localStorage
   let token = null;
   let currentUser = null;
   let currentTenant = null;
-  let currentRole = 'CISO_ADMIN';
+  let currentRole = 'DPO_GRC_LEVEL_2';
 
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token');
-    currentRole = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
+    currentRole = localStorage.getItem('saare_user_role') || 'DPO_GRC_LEVEL_2';
     
     try {
       const storedUser = localStorage.getItem('saare_session_user');
@@ -99,15 +91,13 @@ export async function saareFetch(endpoint, options = {}) {
     }
   }
 
-  // Sanitización estricta del tenant
   if (!currentTenant || currentTenant.includes('@')) {
     currentTenant = 'ENTERPRISE';
   }
 
-  // Generación de prueba de atestación de credencial para el testigo L7
   const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'UNSIGNED_ANON';
 
-  // 3. Ensamblado de cabeceras de seguridad e identidad multi-tenant con atestación
+  // 3. Ensamblado de cabeceras de seguridad
   const defaultHeaders = {
     'Accept': 'application/json',
     'x-saare-spec': 'SGP-1.0',
@@ -126,7 +116,6 @@ export async function saareFetch(endpoint, options = {}) {
       headers: defaultHeaders
     });
 
-    // 4. Limpieza automática de sesión si el token ha expirado
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('saare_auth_token');
       localStorage.removeItem('saare_session_user');
@@ -144,7 +133,7 @@ export async function saareFetch(endpoint, options = {}) {
 }
 
 /**
- * Helpers API con parseo automático de JSON y manejo seguro de errores
+ * Helpers API estructurados para lectura de Evidencias, KPIs y Plantillas
  */
 export const api = {
   get: async (endpoint, options = {}) => {
@@ -191,6 +180,59 @@ export const api = {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
     const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' }).catch(() => null);
     return res && res.ok ? res.json() : {};
+  },
+
+  /**
+   * Obtiene la lista completa o filtrada de evidencias / trazas auditables L7
+   */
+  getEvidences: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    const endpoint = `/evidences${query ? `?${query}` : ''}`;
+    try {
+      const res = await saareFetch(endpoint, { method: 'GET' });
+      if (!res.ok) return { evidences: [], total: 0 };
+      const data = await res.json();
+      return {
+        evidences: data.evidences || data.data || (Array.isArray(data) ? data : []),
+        total: data.total || (data.evidences ? data.evidences.length : 0)
+      };
+    } catch (e) {
+      console.warn('[SAARE_API] Error al cargar evidencias desde /evidences, probando fallback /runs:', e);
+      return api.getRuns(params);
+    }
+  },
+
+  /**
+   * Endpoint secundario/legacy para consultar ejecuciones de trazas
+   */
+  getRuns: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    const endpoint = `/runs${query ? `?${query}` : ''}`;
+    try {
+      const res = await saareFetch(endpoint, { method: 'GET' });
+      if (!res.ok) return { evidences: [], total: 0 };
+      const data = await res.json();
+      return {
+        evidences: data.evidences || data.runs || data.data || (Array.isArray(data) ? data : []),
+        total: data.total || 0
+      };
+    } catch (e) {
+      console.error('[SAARE_API] Error fatal al obtener trazas:', e);
+      return { evidences: [], total: 0 };
+    }
+  },
+
+  /**
+   * Consulta una traza específica por su UUID / Trace ID
+   */
+  getTraceById: async (traceId) => {
+    try {
+      const res = await saareFetch(`/evidences/${traceId}`, { method: 'GET' });
+      if (!res.ok) return null;
+      return res.json();
+    } catch (e) {
+      return null;
+    }
   }
 };
 

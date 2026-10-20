@@ -553,55 +553,34 @@ export default function App() {
     }
   };
 
-  const handleDownloadExtension = async () => {
+  const handleDownloadAgentKit = async () => {
     try {
       const currentToken = localStorage.getItem('saare_token') || `sk_saare_live_${crypto.randomUUID().slice(0, 16)}`;
       const currentUserEmail = userEmail || localStorage.getItem('saare_user_email');
       const currentTenant = tenantId || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG.DEFAULT_TENANT;
 
       if (!currentUserEmail) {
-        triggerGovernance("Error: Inicie sesión para tokenizar el sensor.");
+        triggerGovernance("Error: Inicie sesión para tokenizar el Kit del Agente.");
         return;
       }
 
-      const response = await fetch('/extension-base.zip');
-      if (!response.ok) throw new Error("Paquete base extension-base.zip no encontrado en public/.");
-
-      const zipBlob = await response.blob();
-      const zip = await JSZip.loadAsync(zipBlob);
-
-      const configTokenized = {
-        user: currentUserEmail.toLowerCase().trim(),
-        tenant: currentTenant.trim(),
-        token: currentToken
-      };
-      zip.file("config.json", JSON.stringify(configTokenized, null, 2));
-
-      const storageManagedSchema = {
-        "type": "object",
-        "properties": {
-          "saare_user_email": {
-            "type": "string",
-            "title": "Email de operador",
-            "default": currentUserEmail.toLowerCase().trim()
-          },
-          "saare_tenant_domain": {
-            "type": "string",
-            "title": "Tenant Domain",
-            "default": currentTenant.trim()
-          },
-          "saare_token": {
-            "type": "string",
-            "title": "Token Bearer",
-            "default": currentToken
-          }
-        }
+      const agentConfig = {
+        TENANT_ID: currentTenant.trim(),
+        OPERATOR_EMAIL: currentUserEmail.toLowerCase().trim(),
+        SAARE_TOKEN: currentToken,
+        LISTEN_PORT: 3001,
+        VAULT_MODE: "SANDBOX_0EUR",
+        PRIMARY_NODE: SAARE_CONFIG.TRUST_ANCHOR
       };
 
-      zip.file("storage_managed.json", JSON.stringify(storageManagedSchema, null, 2));
+      const envContent = `TENANT_ID=${agentConfig.TENANT_ID}\nOPERATOR_EMAIL=${agentConfig.OPERATOR_EMAIL}\nSAARE_TOKEN=${agentConfig.SAARE_TOKEN}\nLISTEN_PORT=${agentConfig.LISTEN_PORT}\nVAULT_MODE=${agentConfig.VAULT_MODE}\n`;
+
+      const zip = new JSZip();
+      zip.file("config.env", envContent);
+      zip.file("agent_config.json", JSON.stringify(agentConfig, null, 2));
 
       const content = await zip.generateAsync({ type: "blob" });
-      const fileName = `saare-sensor-${currentUserEmail.split('@')[0]}.zip`;
+      const fileName = `saare-agent-kit-${currentTenant.replace(/[^a-zA-Z0-9]/g, '_')}.zip`;
 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
@@ -611,9 +590,9 @@ export default function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      triggerGovernance(`Sensor tokenizado generado correctamente para ${currentUserEmail}`);
+      triggerGovernance(`Kit de Agente Perimetral / SDK tokenizado correctamente para ${currentUserEmail}`);
     } catch (err) {
-      triggerGovernance("Error al tokenizar sensor: " + err.message);
+      triggerGovernance("Error al generar Kit de Agente: " + err.message);
     }
   };
 
@@ -786,7 +765,7 @@ export default function App() {
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}>
-              🟥 CYBER & RESILIENCE (SOC)
+              libre CYBER & RESILIENCE (SOC)
             </button>
 
             <button
@@ -909,9 +888,9 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={handleDownloadExtension}
-                  style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                  🧩 Descargar Sensor L7 Sovereign Tokenizado
+                  onClick={handleDownloadAgentKit}
+                  style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
+                  ⚡ Descargar Kit Agente Perimetral / SDK
                 </button>
               </div>
 
@@ -1397,8 +1376,8 @@ export default function App() {
               <button
                 onClick={() => setAuditTokenModal(false)}
                 style={{ flex: 1, padding: '10px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-                  Cerrar
-                </button>
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

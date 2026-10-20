@@ -1,1 +1,0 @@
-python saare_framework.py --audit "sentencia .pdf" --export-soa 27001
