@@ -553,47 +553,12 @@ export default function App() {
     }
   };
 
-  const handleDownloadAgentKit = async () => {
-    try {
-      const currentToken = localStorage.getItem('saare_token') || `sk_saare_live_${crypto.randomUUID().slice(0, 16)}`;
-      const currentUserEmail = userEmail || localStorage.getItem('saare_user_email');
-      const currentTenant = tenantId || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG.DEFAULT_TENANT;
-
-      if (!currentUserEmail) {
-        triggerGovernance("Error: Inicie sesión para tokenizar el Kit del Agente.");
-        return;
-      }
-
-      const agentConfig = {
-        TENANT_ID: currentTenant.trim(),
-        OPERATOR_EMAIL: currentUserEmail.toLowerCase().trim(),
-        SAARE_TOKEN: currentToken,
-        LISTEN_PORT: 3001,
-        VAULT_MODE: "SANDBOX_0EUR",
-        PRIMARY_NODE: SAARE_CONFIG.TRUST_ANCHOR
-      };
-
-      const envContent = `TENANT_ID=${agentConfig.TENANT_ID}\nOPERATOR_EMAIL=${agentConfig.OPERATOR_EMAIL}\nSAARE_TOKEN=${agentConfig.SAARE_TOKEN}\nLISTEN_PORT=${agentConfig.LISTEN_PORT}\nVAULT_MODE=${agentConfig.VAULT_MODE}\n`;
-
-      const zip = new JSZip();
-      zip.file("config.env", envContent);
-      zip.file("agent_config.json", JSON.stringify(agentConfig, null, 2));
-
-      const content = await zip.generateAsync({ type: "blob" });
-      const fileName = `saare-agent-kit-${currentTenant.replace(/[^a-zA-Z0-9]/g, '_')}.zip`;
-
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(content);
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-
-      triggerGovernance(`Kit de Agente Perimetral / SDK tokenizado correctamente para ${currentUserEmail}`);
-    } catch (err) {
-      triggerGovernance("Error al generar Kit de Agente: " + err.message);
-    }
+  const handleDeployAgnosticNode = () => {
+    triggerGovernance("🚀 Iniciando Despliegue Agnóstico (Fricción Cero) con pasarela L7...");
+    setTimeout(() => {
+      window.open("https://console.saare.es/deploy-agnostico", "_blank");
+      triggerGovernance("Nodo Agnóstico de Capa 7 conectado correctamente.");
+    }, 1000);
   };
 
   const handleExportGrantDossier = () => {
@@ -888,9 +853,9 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={handleDownloadAgentKit}
+                  onClick={handleDeployAgnosticNode}
                   style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
-                  ⚡ Descargar Kit Agente Perimetral / SDK
+                  🚀 Despliegue Agnóstico (Fricción Cero)
                 </button>
               </div>
 
@@ -1298,7 +1263,7 @@ export default function App() {
       )}
 
       {/* MODAL DE DECLARACIÓN DE APLICABILIDAD (SoA ISO 27001 / ISO 42001) */}
-      <SoAModal 
+      <SoA_Modal 
         isOpen={showSoaModal}
         onClose={() => setShowSoaModal(false)}
         tenantId={tenantId}

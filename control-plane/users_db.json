@@ -1,0 +1,22 @@
+{
+  "admin@saare.es": {
+    "user": "CISO-ADMIN",
+    "email": "admin@saare.es",
+    "company": "S.A.A.R.E. Governance Core",
+    "plan": "ENTERPRISE PRO",
+    "role": "CISO_ADMIN",
+    "is_verified": 1,
+    "password": "demo",
+    "token": "sk_saare_live_admin_2026"
+  },
+  "demo@saare.ai": {
+    "user": "OPERADOR-ENTERPRISE",
+    "email": "demo@saare.ai",
+    "company": "Banco Santander",
+    "plan": "ENTERPRISE REGULATED",
+    "role": "CISO_ADMIN",
+    "is_verified": 1,
+    "password": "demo",
+    "token": "sk_saare_live_demo_882910"
+  }
+}

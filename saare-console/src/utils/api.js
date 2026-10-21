@@ -3,8 +3,9 @@
 const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
 
 // Normalización estricta de la URL base configurada en entorno
-const cleanEnvUrl = rawEnvUrl 
-  ? rawEnvUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
+const rawEnvUrlString = typeof rawEnvUrl === 'string' ? rawEnvUrl : null;
+const cleanEnvUrl = rawEnvUrlString 
+  ? rawEnvUrlString.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
   : null;
 
 const isLocal = typeof window !== "undefined" && (

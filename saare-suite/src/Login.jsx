@@ -80,7 +80,7 @@ export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, o
     }
 
     try {
-      const baseUrl = API_HOST || '';
+      const baseUrl = API_HOST || 'https://api.saare.es';
       const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 
@@ -136,7 +136,7 @@ export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, o
     }
 
     try {
-      const baseUrl = API_HOST || '';
+      const baseUrl = API_HOST || 'https://api.saare.es';
       const res = await fetch(`${baseUrl}/api/v1/trial`, {
         method: 'POST',
         headers: { 
@@ -179,7 +179,7 @@ export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, o
     clearMessages();
 
     try {
-      const baseUrl = API_HOST || '';
+      const baseUrl = API_HOST || 'https://api.saare.es';
       const res = await fetch(`${baseUrl}/api/v1/auth/reset-password-request`, {
         method: 'POST',
         headers: { 
