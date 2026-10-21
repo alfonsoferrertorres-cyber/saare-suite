@@ -1,3 +1,4 @@
+// saare-suite/src/Login.jsx
 import React, { useState } from 'react';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_HOST } from './api/api';
@@ -382,7 +383,7 @@ export default function Login({ initialPlan = 'DISCOVER_FREE', onLoginSuccess, o
                 value={planType} 
                 onChange={(e) => setPlanType(e.target.value)} 
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors">
-                <option value="DISCOVER_FREE">Discover (0 € / 1 Sistema IA - Gratuito)</option>
+                <option value="DISCOVER_FREE">Prueba nuestra consola compliance (1 Sistema IA)</option>
                 <option value="COMPLIANCE_249">Compliance (249 €/mes - 3 Sistemas IA)</option>
                 <option value="PROFESSIONAL_649">Professional (649 €/mes - 10 Sistemas IA)</option>
                 <option value="ENTERPRISE_1500">Enterprise (1.500 €/mes - 50 Sistemas IA)</option>

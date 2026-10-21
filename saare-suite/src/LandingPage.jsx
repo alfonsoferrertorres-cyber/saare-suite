@@ -212,7 +212,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToLegal }) {
                 {
                   step: '03',
                   title: 'Verificación Desintermediada',
-                  text: 'Cualquier auditor, cliente o tribunal puede validar la integridad del expediente en milisegundos mediante un script libre de ejecución local (Node.js, Python, PowerShell).',
+                  text: 'Cualquier auditor, tribunal o cliente puede validar la integridad del expediente en milisegundos mediante un script libre de ejecución local (Node.js, Python, PowerShell).',
                 },
               ].map((card) => (
                 <div key={card.step} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
