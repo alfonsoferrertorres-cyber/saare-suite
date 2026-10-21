@@ -11,7 +11,8 @@ export default function GovernanceToolbar({
   onOpenFriaModal,
   onExecuteEnforcementCheck,
   onOpenReportModal,
-  onExportGovernancePackage
+  onExportGovernancePackage,
+  onDownloadGpoPolicy
 }) {
   const [status, setStatus] = useState('');
 
@@ -41,6 +42,19 @@ export default function GovernanceToolbar({
     );
   };
 
+  const handleDownloadGpo = () => {
+    const baseUrl = API_HOST || 'https://api.saare.es';
+    window.location.href = `${baseUrl}/v1/deploy/gpo-policy`;
+    triggerAction(
+      'Descargando archivo de política de registro Windows GPO (.reg) para Despliegue Agnóstico...',
+      () => {
+        if (typeof onDownloadGpoPolicy === 'function') {
+          onDownloadGpoPolicy();
+        }
+      }
+    );
+  };
+
   return (
     <section style={{ padding: '16px', background: '#020617', borderRadius: '8px', border: '1px solid #1e293b', marginBottom: '20px' }}>
       <h3 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -48,6 +62,13 @@ export default function GovernanceToolbar({
       </h3>
 
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          onClick={handleDownloadGpo}
+          style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)' }}
+        >
+          🔒 Despliegue Agnóstico (Fricción Cero - GPO)
+        </button>
+
         <button
           onClick={() => handleVerify()}
           style={{ padding: '8px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}

@@ -1055,6 +1055,30 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // 15.1. DESPLIEGUE AGNÓSTICO GPO POLICY (.REG)
+      if ((path === '/v1/deploy/gpo-policy' || path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/policy.reg') && (method === 'GET' || method === 'POST')) {
+        const extensionId = env.SAARE_EXTENSION_ID || "EXTENSION_ID_DE_GOOGLE_WEBSTORE";
+        const updateUrl = "https://clients2.google.com/service/update2/crx";
+
+        const regContent = `Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
+"1"="${extensionId};${updateUrl}"
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
+"1"="${extensionId};${updateUrl}"
+`;
+
+        return new Response(regContent, {
+          status: 200,
+          headers: {
+            ...cors.corsHeaders,
+            "Content-Type": "application/x-msdownload; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="SAARE_L7_Enterprise_GPO.reg"'
+          }
+        });
+      }
+
       // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO D1 CON PROMPT, SANITIZED_PAYLOAD Y VERDICT)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
