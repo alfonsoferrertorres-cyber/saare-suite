@@ -765,7 +765,7 @@ export default function App() {
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}>
-              libre CYBER & RESILIENCE (SOC)
+              ⚡ CYBER & RESILIENCE (SOC)
             </button>
 
             <button
