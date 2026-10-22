@@ -1263,11 +1263,7 @@ export default function App() {
       )}
 
       {/* MODAL DE DECLARACIÓN DE APLICABILIDAD (SoA ISO 27001 / ISO 42001) */}
-      <SoA_Modal 
-        isOpen={showSoaModal}
-        onClose={() => setShowSoaModal(false)}
-        tenantId={tenantId}
-      />
+      <SoAModal isOpen={showSoaModal} onClose={() => setShowSoaModal(false)} tenantId={tenantId} />
 
       {/* MODAL DE FRIA (EU AI ACT ART. 27) */}
       <FriaWizardModal 
