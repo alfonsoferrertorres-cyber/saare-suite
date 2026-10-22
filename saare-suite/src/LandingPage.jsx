@@ -5,9 +5,9 @@ import PricingSection from './components/PricingSection';
 import { API_HOST } from './api/api';
 
 const NAV_ITEMS = [
-  { label: 'Arquitectura L7', href: '#motor' },
+  { label: 'Arquitectura', href: '#motor' },
+  { label: 'Diferenciación', href: '#diferenciacion' },
   { label: 'Biblioteca de Evidencias', href: '#templates' },
-  { label: 'Garantías Normativas', href: '#legal-guarantee' },
   { label: 'Licenciamiento', href: '#pricing' },
 ];
 
@@ -77,7 +77,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       if (!response.ok) throw new Error('No se pudo enviar la solicitud de evaluación.');
 
       setFormStatus('SUCCESS');
-      setFormMessage('Solicitud recibida correctamente. Nuestro equipo de GRC se pondrá en contacto para programar la evaluación perimetral ex-ante.');
+      setFormMessage('Solicitud recibida correctamente. Nuestro equipo técnico se pondrá en contacto para programar la evaluación ex ante.');
     } catch (error) {
       setFormStatus('ERROR');
       setFormMessage(error?.message || 'No se pudo conectar con el servidor.');
@@ -99,7 +99,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#030712]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#top" className="flex items-center gap-3 group">
-            {/* LOGO DE LA EMPRESA (Referencia segura al recurso público) */}
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 border border-slate-800 p-1.5 shadow-md transition-transform group-hover:scale-105">
               <img 
                 src="/favicon.ico" 
@@ -109,7 +108,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             </div>
             <div className="leading-none">
               <div className="text-sm font-extrabold tracking-[0.16em] text-white">S.A.A.R.E.</div>
-              <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-cyan-400">Gobernanza Ex-Ante & Soberanía LLM</div>
+              <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-cyan-400">Infraestructura de Gobernanza Ex Ante</div>
             </div>
           </a>
 
@@ -133,25 +132,28 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               href="#evaluation"
               className="inline-flex items-center rounded-lg bg-[#38BDDB] px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition-all hover:bg-cyan-400"
             >
-              Solicitar Evaluación GRC
+              Solicitar Auditoría Ex Ante
             </a>
           </div>
         </div>
       </header>
 
       <main id="top">
-        {/* HERO ESTRATÉGICO */}
+        {/* HERO — PRIMERA PANTALLA */}
         <section className="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#0B132B] via-[#050B18] to-[#030712] py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-                🛡️ Expediente Técnico MS3V-RECON-VALID-2026-ALF-0521
+                GOBERNANZA EX ANTE · SOBERANÍA TECNOLÓGICA · EVIDENCIA VERIFICABLE
               </div>
               <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
-                Gobernanza Ex-Ante y Cadena de Custodia Criptográfica para <span className="text-[#38BDDB]">IA Enterprise</span>
+                Controla la IA antes de que tus <span className="text-[#38BDDB]">datos salgan</span>
               </h1>
               <p className="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
-                Supere la auditoría reactiva tradicional. S.A.A.R.E. intercepta, sanea información confidencial en memoria volátil epímera y certifica cada interacción algorítmica con plena validez probatoria (eIDAS / RFC 3161) antes de la salida perimetral.
+                S.A.A.R.E. es una infraestructura de gobernanza y control preventivo para sistemas de inteligencia artificial. Intercepta y evalúa las solicitudes antes de su envío a los modelos, aplica políticas de seguridad y genera evidencias técnicas verificables de las operaciones.
+              </p>
+              <p className="mt-3 text-xs text-slate-400">
+                Un único plano de control para tus sistemas de IA. Independiente del modelo. Bajo tus políticas.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
@@ -159,255 +161,315 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                   href="#evaluation"
                   className="rounded-xl bg-[#38BDDB] px-7 py-3.5 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-500/20 transition-all hover:bg-cyan-400 inline-block text-center"
                 >
-                  Solicitar Evaluación GRC
+                  Solicitar auditoría ex ante
                 </a>
-                <button
-                  type="button"
-                  onClick={() => handleDownloadPdf('04_ET_MS3V_Prueba_Reina_2026.pdf')}
+                <a
+                  href="#pricing"
                   className="rounded-xl border border-cyan-500/40 bg-slate-900/80 px-7 py-3.5 text-sm font-semibold text-cyan-300 transition-all hover:bg-slate-800 inline-block text-center"
                 >
-                  📄 Dossier Técnico de Arquitectura L7
-                </button>
+                  Explorar licencias
+                </a>
               </div>
-            </div>
-
-            {/* MONITOR DE INTERCEPTACIÓN EN TIEMPO REAL */}
-            <div className="relative flex justify-center">
-              <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl font-mono">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-                  <span className="text-xs uppercase tracking-widest text-slate-400">Ecosistema Perimetral Capa 7</span>
-                  <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-[10px] font-bold text-emerald-400">PERÍMETRO BLINDADO</span>
-                </div>
-                <div className="space-y-3 text-xs">
-                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">Interceptación Ex-Ante (RAM):</span>
-                    <span className="font-bold text-cyan-400">Latencia P99 ≤ 1.12 ms</span>
-                  </div>
-                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">Saneamiento 7D de PII y Secreción:</span>
-                    <span className="font-bold text-emerald-400">Sanitize (0x00) Ephemeral</span>
-                  </div>
-                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">Firma Criptográfica:</span>
-                    <span className="font-bold text-purple-400">Ed25519 / Merkle Tree</span>
-                  </div>
-                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">Trazabilidad en Bóveda D1:</span>
-                    <span className="font-bold text-emerald-400">Inmutable RFC 8785</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3 PILARES DE EXCELENCIA OPERATIVA */}
-        <section id="motor" className="border-b border-slate-800/80 py-20 bg-slate-950">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Solidez Técnica y Seguridad Jurídica</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Pilares de Gobernanza Algorítmica</h2>
-              <p className="text-slate-400 mt-3 text-sm">Garantías diseñadas para resistir auditorías forenses exigentes y cumplir con la legislación europea.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                {
-                  step: '01',
-                  title: 'Inviolabilidad y Cadena de Custodia',
-                  text: 'Cada solicitud, payload o respuesta algorítmica recibe un sello matemático inalterable en origen. Cualquier intento de alteración posterior invalida de forma inmediata la firma de integridad.',
-                },
-                {
-                  step: '02',
-                  title: 'Saneamiento Preventivo Ex-Ante',
-                  text: 'Eliminación y enmascaramiento automático de datos personales (PII), credenciales y secretos comerciales en memoria volátil epímera antes de enviar la petición a proveedores LLM.',
-                },
-                {
-                  step: '03',
-                  title: 'Verificación Autónoma e Independiente',
-                  text: 'Auditores, tribunales y reguladores pueden certificar la autenticidad del expediente probatorio en milisegundos ejecutando verificadores de código abierto (Art. 326 LEC).',
-                },
-              ].map((card) => (
-                <div key={card.step} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative hover:border-cyan-500/30 transition-all">
-                  <div className="absolute top-6 right-6 font-mono text-2xl font-black text-slate-800">{card.step}</div>
-                  <h3 className="text-lg font-bold text-white mb-3">{card.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{card.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* VALOR ESTRATÉGICO C-LEVEL */}
-        <section className="border-b border-slate-800/80 py-20 bg-[#060A17]">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Propuesta de Valor Corporativa</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">¿Por qué los Comités de Dirección eligen S.A.A.R.E.?</h2>
-              <p className="text-slate-400 mt-3 text-sm">Protección integral y ventaja competitiva para CISOs, DPOs y Departamentos Jurídicos.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[
-                {
-                  title: 'Mitigación de Riesgos en Tiempo Real',
-                  desc: 'A diferencia de los controles a posteriori, S.A.A.R.E. evalúa y blinda cada interacción algorítmica en tiempo real, bloqueando desviaciones y accesos no autorizados antes de que tengan impacto.',
-                },
-                {
-                  title: 'Escudo Normativo (EU AI Act & DORA)',
-                  desc: 'Alineamiento nativo con las directrices de Inteligencia Artificial de la UE y DORA. Generación automática de diligencia debida con expedientes probatorios inalterables.',
-                },
-                {
-                  title: 'Despliegue Zero-Touch mediante GPO Enterprise',
-                  desc: 'Inyección transparente en el perímetro corporativo sin necesidad de modificar el código de sus aplicaciones ni instalar agentes pesados en los dispositivos.',
-                },
-                {
-                  title: 'Gobernanza LLM Agnóstica y Multi-Cloud',
-                  desc: 'Compatibilidad nativa con los principales proveedores de modelos (Google Gemini, OpenAI, Anthropic, DeepSeek) e infraestructura privada On-Premise.',
-                },
-              ].map((item, idx) => (
-                <div key={idx} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 hover:border-slate-700 transition-all">
-                  <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* BIBLIOTECA DOCUMENTAL Y DE EVIDENCIAS */}
-        <section id="templates" className="border-b border-slate-800/80 py-20 bg-slate-950">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Verificabilidad y Transparencia</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Biblioteca Documental y Expedientes Periciales</h2>
-              <p className="text-slate-400 mt-3 text-sm">
-                Acceda a la documentación técnica, dictámenes periciales y manuales de integración para su validación por parte del CISO y el área legal.
+              <p className="mt-4 text-[11px] text-slate-500 font-mono">
+                Compatible con arquitecturas basadas en LLM externos y modelos desplegados en entornos propios, según la configuración de integración.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* MONITOR / DIAGRAMA DE FLUJO TÉCNICO */}
+            <div className="relative flex justify-center">
+              <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl font-mono">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+                  <span className="text-xs uppercase tracking-widest text-slate-400">Flujo Preventivo Perimetral L7</span>
+                  <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400">CONTROL ACTIVO</span>
+                </div>
+                <div className="space-y-3 text-xs">
+                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">01. Solicitud Entrante:</span>
+                    <span className="font-bold text-slate-200">Captura en Origen</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">02. PEP L7 (Saneamiento):</span>
+                    <span className="font-bold text-cyan-400">Filtro Ex Ante (RAM 0x00)</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">03. Proveedor LLM / Modelo:</span>
+                    <span className="font-bold text-purple-400">Inferencia Segura</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-slate-300">04. Bóveda Dual / Trazas:</span>
+                    <span className="font-bold text-emerald-400">Evidencia Criptográfica</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 1. EL PROBLEMA */}
+        <section className="border-b border-slate-800/80 py-20 bg-slate-950">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="max-w-3xl mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">01. EL PROBLEMA</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">La gobernanza no debería empezar después del incidente</h2>
+              <p className="text-slate-400 mt-3 text-sm leading-relaxed">
+                Cuando una organización utiliza modelos de IA, necesita controlar qué información se comparte, qué políticas se aplican y cómo se demuestra lo ocurrido. La revisión documental por sí sola no impide que una solicitud contenga información sensible. Y un registro de actividad no equivale necesariamente a una evidencia íntegra y verificable. S.A.A.R.E. sitúa el control en el punto crítico: antes de que la información salga hacia el proveedor de IA.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
-                  code: 'EVIDENCIA 01',
-                  name: 'Dossier Técnico de Arquitectura L7 y Validación Latencia',
-                  desc: 'Documentación de arquitectura sobre interceptación perimetral Capa 7 y rendimiento sub-milisegundo.',
-                  pdfFile: '04_ET_MS3V_Prueba_Reina_2026.pdf',
+                  title: 'Exposición de información',
+                  desc: 'Detección y tratamiento de datos sensibles antes del envío al modelo.',
                 },
                 {
-                  code: 'EVIDENCIA 02',
-                  name: 'Certificado de Ingesta Cero y Soberanía Perimetral',
-                  desc: 'Atestación de procesamiento en memoria volátil y protección contra la exfiltración no autorizada de datos.',
-                  pdfFile: '02_Certificado_de_Ingesta_Cero_e_Integridad_Perimetral - S.A.A.R.E__signed.pdf',
+                  title: 'Pérdida de control',
+                  desc: 'Aplicación centralizada de políticas sobre los flujos de interacción con la IA.',
                 },
                 {
-                  code: 'EVIDENCIA 03',
-                  name: 'Dictamen Pericial de Cadena de Custodia',
-                  desc: 'Especificación probatoria sobre trazabilidad y custodia de evidencias conforme a estándares judiciales.',
-                  pdfFile: '01_Manual_Dictamen_Pericial_Cadena_Custodia_MS3V.pdf',
+                  title: 'Trazabilidad insuficiente',
+                  desc: 'Generación de registros y evidencias estructuradas para facilitar la revisión técnica.',
                 },
                 {
-                  code: 'EVIDENCIA 04',
-                  name: 'Guía Metodológica de Evaluación de Impacto (EU AI Act)',
-                  desc: 'Marco operativo para el cumplimiento del artículo 27 de la Ley de IA de la Unión Europea.',
-                  pdfFile: '04_Guia_Metodologica_FRIA_EU_AI_Act.pdf',
+                  title: 'Dependencia tecnológica',
+                  desc: 'Separación entre las políticas de gobernanza y el modelo de IA utilizado.',
                 },
-                {
-                  code: 'EVIDENCIA 05',
-                  name: 'Manual de Integración API L7 y SOC/SIEM Corporate',
-                  desc: 'Guía de interconexión con sistemas SIEM corporativos y centralización de eventos de seguridad.',
-                  pdfFile: '03_Manual_Integracion_API_L7_SIEM.pdf',
-                },
-                {
-                  code: 'EVIDENCIA 06',
-                  name: 'Memoria de Alineamiento Normativo y Especificación GRC',
-                  desc: 'Resumen ejecutivo para comités de cumplimiento y marcos de licencias gubernamentales.',
-                  pdfFile: 'S.A.A.R.E. v7.0 & Motor MS3V - Plan Maestro de Ventas.pdf',
-                },
-              ].map((tmpl) => (
-                <div key={tmpl.code} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between hover:border-cyan-500/40 transition-all">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-mono text-xs font-bold text-[#38BDDB]">{tmpl.code}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadPdf(tmpl.pdfFile)}
-                        className="rounded-md bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1.5"
-                      >
-                        <span>📥</span> Descargar Documento
-                      </button>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-white mb-2">{tmpl.name}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed mb-4">{tmpl.desc}</p>
-                  </div>
-
-                  <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-slate-500">Documento Oficial: {tmpl.pdfFile}</span>
-                  </div>
+              ].map((item, idx) => (
+                <div key={idx} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6 flex flex-col justify-between">
+                  <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* GARANTÍAS Y MARCO NORMATIVO */}
-        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+        {/* 02. LA ARQUITECTURA */}
+        <section id="motor" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Respaldo Institucional</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Garantías Técnicas y Regulatorias</h2>
-              <p className="text-slate-400 mt-3 text-sm">Arquitectura alineada con las exigencias del marco legal europeo y auditorías corporativas.</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">02. LA ARQUITECTURA</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Tres capas. Un mismo principio: control antes de ejecución.</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">MARCO NORMATIVO</div>
-                <h3 className="text-base font-bold text-white mb-3">EU AI Act & ISO 42001</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Generación automatizada de evidencias probatorias y registros de cumplimiento para entornos de alto riesgo.
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
+                <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">01</div>
+                <h3 className="text-lg font-bold text-white mb-3">PEP L7 · Control preventivo</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Evalúa las solicitudes en el perímetro antes de su envío al modelo de IA. Incluye capacidades de análisis orientadas a la prevención de fugas de datos, detección de información personal y secretos, protección frente a instrucciones maliciosas y aplicación de políticas de control.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">SOBERANÍA ABSOLUTA</div>
-                <h3 className="text-base font-bold text-white mb-3">Infraestructura Air-Gapped</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Operación sin dependencias externas ni transferencia indebida de telemetría fuera del límite corporativo.
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
+                <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">02</div>
+                <h3 className="text-lg font-bold text-white mb-3">Desacople semántico · Soberanía de políticas</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Las reglas de negocio y las políticas de validación se gestionan independientemente del proveedor de LLM, dentro de los límites de la arquitectura desplegada. Esto permite diseñar una estrategia de gobernanza que no dependa exclusivamente de un único modelo.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <div className="text-cyan-400 font-mono text-xs font-bold mb-2">RESPALDO CRIPTOGRÁFICO</div>
-                <h3 className="text-base font-bold text-white mb-3">Atestación Ed25519</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Firma digital inmutable que certifica la autenticidad e integridad de cada transacción auditada.
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
+                <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">03</div>
+                <h3 className="text-lg font-bold text-white mb-3">Bóveda Dual · Evidencia verificable</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Genera trazas consolidadas y mecanismos de verificación de integridad mediante técnicas criptográficas, incluyendo firmas digitales y estructuras de tipo Merkle. Facilita la auditoría técnica y la investigación de incidentes sin conservación indiscriminada de prompts.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* LICENCIAMIENTO */}
+        {/* 03. DIFERENCIACIÓN */}
+        <section id="diferenciacion" className="border-b border-slate-800/80 py-20 bg-slate-950">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">03. DIFERENCIACIÓN</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es solo documentación de cumplimiento. Es control técnico de los flujos de IA.</h2>
+              <p className="text-slate-400 mt-3 text-sm">La diferencia está en dónde se aplica el control y cómo se demuestra.</p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-300 font-mono">
+                    <th className="py-4 px-6 uppercase tracking-wider">Capacidad</th>
+                    <th className="py-4 px-6 uppercase tracking-wider">Qué aporta</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-400">
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Filtrado ex ante</td>
+                    <td className="py-4 px-6">Evalúa la información antes de su envío al LLM.</td>
+                  </tr>
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Protección de datos</td>
+                    <td className="py-4 px-6">Aplica controles para detectar y tratar información sensible.</td>
+                  </tr>
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Políticas independientes del modelo</td>
+                    <td className="py-4 px-6">Separa la gobernanza de la elección del proveedor de IA.</td>
+                  </tr>
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Evidencias criptográficas</td>
+                    <td className="py-4 px-6">Permite verificar la integridad de los registros generados.</td>
+                  </tr>
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Arquitectura de auditoría</td>
+                    <td className="py-4 px-6">Facilita la revisión de eventos y la investigación técnica.</td>
+                  </tr>
+                  <tr className="hover:bg-slate-900/40">
+                    <td className="py-4 px-6 font-bold text-white">Licenciamiento escalable</td>
+                    <td className="py-4 px-6">Adapta la capacidad a pymes, integradores y organizaciones corporativas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* 04. GOBERNANZA Y CUMPLIMIENTO */}
+        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="max-w-3xl mb-12">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">04. GOBERNANZA Y CUMPLIMIENTO</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Prepara tus procesos de IA para una supervisión demostrable</h2>
+              <p className="text-slate-400 mt-3 text-sm leading-relaxed">
+                S.A.A.R.E. está diseñado para apoyar la implantación de controles técnicos y procesos de gobernanza relacionados con:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
+                <h3 className="text-sm font-bold text-white mb-2">Reglamento Europeo de IA (AI Act)</h3>
+                <p className="text-xs text-slate-400">Apoyo técnico para sistemas de IA de alto riesgo y transparencia.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
+                <h3 className="text-sm font-bold text-white mb-2">RGPD & Privacidad</h3>
+                <p className="text-xs text-slate-400">Mitigación de riesgos en el tratamiento de datos personales en flujos LLM.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
+                <h3 className="text-sm font-bold text-white mb-2">ISO/IEC 42001</h3>
+                <p className="text-xs text-slate-400">Sistemas de gestión de inteligencia artificial y control operativo.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
+                <h3 className="text-sm font-bold text-white mb-2">DORA & PCI DSS</h3>
+                <p className="text-xs text-slate-400">Controles de seguridad relevantes para entornos financieros y críticos.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6 md:col-span-2">
+                <h3 className="text-sm font-bold text-white mb-2">Gestión de Evidencias Digitales</h3>
+                <p className="text-xs text-slate-400">Identificación, preservación y verificación de registros orientados a auditoría.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-xs text-amber-200/80 leading-relaxed font-mono">
+              <p className="font-bold mb-1">Nota de responsabilidad legal y regulatoria:</p>
+              La aplicabilidad de cada requisito depende del uso de la IA, la actividad de la organización, el contexto normativo y la configuración implantada. S.A.A.R.E. proporciona capacidades técnicas de apoyo a la gobernanza. La contratación de la plataforma no constituye por sí misma una certificación ni garantiza automáticamente el cumplimiento normativo.
+            </div>
+
+            <div className="mt-8 text-center">
+              <a
+                href="#evaluation"
+                className="inline-flex items-center rounded-xl bg-slate-900 border border-cyan-500/40 px-6 py-3 text-xs font-bold text-cyan-300 hover:bg-slate-800 transition-all"
+              >
+                Solicitar una evaluación técnica
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* 05. LICENCIAMIENTO */}
         <section id="pricing" className="border-b border-slate-800/80 py-20 bg-[#030712]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Modelos de Adopción</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Planes de Licenciamiento Corporativo</h2>
-              <p className="text-slate-400 mt-3 text-sm">Seleccione la modalidad de despliegue que responda al volumen y nivel de exigencia de su organización.</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">05. LICENCIAMIENTO</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Empieza con el alcance que necesitas. Escala cuando tu operación lo requiera.</h2>
+              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Ahorra un 20% en modalidad anual (Sandbox permanente gratuito).</p>
             </div>
+            
             <PricingSection onSelectPlan={handleAction} />
           </div>
         </section>
 
-        {/* SOLICITUD DE EVALUACIÓN GRC */}
+        {/* 06. PARA QUIÉN ES S.A.A.R.E. */}
+        <section className="border-b border-slate-800/80 py-20 bg-slate-950">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. PARA QUIÉN ES S.A.A.R.E.</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Una infraestructura para organizaciones que necesitan gobernar la IA de forma operativa.</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
+                <h3 className="text-base font-bold text-white mb-3">Empresas B2B y SaaS</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">Controla los flujos de información y establece políticas para las interacciones con modelos de IA.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
+                <h3 className="text-base font-bold text-white mb-3">Integradores y Consultoras</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">Incorpora una capa de gobernanza a las soluciones de IA que implantas para tus clientes.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
+                <h3 className="text-base font-bold text-white mb-3">Equipos de Seguridad y GRC</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">Añade controles preventivos y mecanismos de trazabilidad a tu arquitectura de seguridad.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
+                <h3 className="text-base font-bold text-white mb-3">Organizaciones Corporativas</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">Evalúa despliegues dedicados, integración con sistemas existentes y necesidades específicas de auditoría.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 07. VALIDACIÓN TÉCNICA */}
+        <section className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="max-w-3xl mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">07. VALIDACIÓN TÉCNICA</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Las capacidades deben poder demostrarse</h2>
+              <p className="text-slate-400 mt-3 text-sm leading-relaxed">
+                La confianza en una infraestructura de gobernanza no debería depender únicamente de declaraciones comerciales. Por eso, la evaluación técnica de S.A.A.R.E. puede centrarse en aspectos empíricos y verificables.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {[
+                'Pruebas de filtrado antes del envío al proveedor',
+                'Verificación de las políticas efectivamente aplicadas',
+                'Ensayos de tratamiento de información sensible',
+                'Verificación criptográfica de registros y firmas',
+                'Evaluación de los mecanismos de sellado temporal',
+                'Pruebas de persistencia, retención y eliminación de datos',
+                'Medición de latencia bajo una carga de trabajo definida',
+              ].map((testItem, idx) => (
+                <div key={idx} className="rounded-xl border border-slate-800 bg-[#0A101E] p-5 flex items-start gap-3">
+                  <span className="text-cyan-400 font-mono text-sm">✓</span>
+                  <span className="text-xs text-slate-300 leading-relaxed">{testItem}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => handleDownloadPdf('04_ET_MS3V_Prueba_Reina_2026.pdf')}
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 border border-cyan-500/40 px-7 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-slate-800 transition-all"
+              >
+                <span>📥</span> Descargar Dossier Técnico de Pruebas Periciales
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* 08. LLAMADA FINAL A LA ACCIÓN */}
         <section id="evaluation" className="py-20 bg-slate-950">
           <div className="mx-auto max-w-4xl px-6">
             <div className="rounded-3xl border border-slate-800 bg-[#0A101E] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
               <div className="text-center max-w-2xl mx-auto mb-10">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">Programa de Evaluación GRC</span>
-                <h2 className="text-3xl font-black text-white mt-2">Solicite una Evaluación Ex-Ante</h2>
-                <p className="text-sm text-slate-400 mt-3">Verifique el rendimiento de la interceptación perimetral y el saneamiento en tiempo real dentro de su organización.</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. EVALUACIÓN EX ANTE</span>
+                <h2 className="text-3xl font-black text-white mt-2">Antes de confiar en un modelo, establece cómo se gobierna</h2>
+                <p className="text-sm text-slate-400 mt-3">
+                  Evalúa cómo S.A.A.R.E. puede incorporarse a tu arquitectura de IA, qué controles necesita tu organización y qué evidencias requiere tu proceso de auditoría.
+                </p>
               </div>
 
               {formStatus === 'SUCCESS' ? (
@@ -477,7 +539,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                       rows={3}
                       value={evaluationForm.requirement}
                       onChange={(e) => updateEvaluationField('requirement', e.target.value)}
-                      placeholder="Describa brevemente si requiere integración con SIEM, política GPO o despliegue On-Premise..."
+                      placeholder="Describa brevemente su arquitectura o necesidades de gobernanza ex ante..."
                       className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 resize-none"
                     />
                   </div>
@@ -493,7 +555,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     />
                     <label htmlFor="privacyAccepted" className="text-xs text-slate-400 leading-relaxed">
                       He leído y acepto la <span onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="text-cyan-400 underline cursor-pointer">Política de Privacidad</span>. 
-                      Responsable del tratamiento: Alfonso Ferrer Torres (NIF: 48553065L). Finalidad: Atención de solicitudes de evaluación de gobernanza ex-ante.
+                      Responsable: Alfonso Ferrer Torres (NIF: 48553065L). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
                     </label>
                   </div>
 
@@ -501,13 +563,22 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300">{formMessage}</div>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={formStatus === 'SUBMITTING' || !evaluationForm.privacyAccepted}
-                    className="w-full rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50"
-                  >
-                    {formStatus === 'SUBMITTING' ? 'Procesando Solicitud...' : 'Enviar Solicitud de Evaluación'}
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                    <button
+                      type="submit"
+                      disabled={formStatus === 'SUBMITTING' || !evaluationForm.privacyAccepted}
+                      className="flex-1 rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50"
+                    >
+                      {formStatus === 'SUBMITTING' ? 'Procesando Solicitud...' : 'Solicitar auditoría ex ante'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAction('DISCOVER_FREE')}
+                      className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-6 py-4 text-xs font-bold text-white hover:bg-slate-800 transition-all text-center"
+                    >
+                      O comenzar con Sandbox gratuito
+                    </button>
+                  </div>
                 </form>
               )}
             </div>
@@ -515,12 +586,13 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         </section>
       </main>
 
-      {/* PIE DE PÁGINA REGULATORIO */}
+      {/* PIE DE PÁGINA */}
       <footer id="support" className="border-t border-slate-800/80 bg-slate-950 px-6 py-14">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 font-mono gap-6">
           <div className="space-y-1 text-center md:text-left">
             <p className="font-bold text-slate-200">S.A.A.R.E. SL — Expediente MS3V-RECON-VALID-2026-ALF-0521</p>
             <p className="text-[11px] text-slate-500">Titular: Alfonso Ferrer Torres (NIF: 48553065L) | RPI: RPI-2026-SAARE-0914X</p>
+            <p className="text-[11px] text-slate-500 mt-2">Gobernanza ex ante. Soberanía tecnológica. Evidencia verificable.</p>
           </div>
           
           <div className="flex flex-wrap justify-center gap-6 text-slate-400 text-xs">
@@ -531,12 +603,12 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         </div>
       </footer>
 
-      {/* BANNER DE COOKIES TÉCNICAS */}
+      {/* BANNER DE COOKIES */}
       {!cookiesAccepted && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-[#0A101E]/95 backdrop-blur-md p-4 sm:p-6 shadow-2xl">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-300 leading-relaxed text-center sm:text-left">
-              <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este portal utiliza exclusivamente cookies técnicas esenciales para posibilitar la navegación y la gestión de la sesión. 
+              <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este sitio utiliza exclusivamente cookies técnicas esenciales para garantizar la navegación y la gestión de sesión. 
               <button onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1">Más información</button>
             </div>
             <div className="flex items-center gap-3 shrink-0">
