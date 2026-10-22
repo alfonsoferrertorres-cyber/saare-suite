@@ -1,0 +1,45 @@
+name: Build and Publish ISV Suite Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build Native Binaries & Package SDK
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build Rust Workspace (Release Profile)
+        run: cargo build --release
+
+      - name: Assemble Distribution Zip
+        run: |
+          mkdir dist_pack
+          copy target\release\saare-runtime.exe dist_pack\
+          copy target\release\saare_runtime.dll dist_pack\
+          if (Test-Path sdk_python) { copy sdk_python\* dist_pack\ }
+          if (Test-Path include) { copy include\* dist_pack\ }
+          Compress-Archive -Path dist_pack\* -DestinationPath "saare-suite-$env:GITHUB_REF_NAME-dist.zip"
+
+      - name: Create GitHub Release and Upload Artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: saare-suite-${{ github.ref_name }}-dist.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

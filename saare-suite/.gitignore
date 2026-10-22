@@ -1,0 +1,27 @@
+# Dependencias y cache
+node_modules/
+.pnpm-store/
+.vite/
+
+# Salidas de compilación
+dist/
+build/
+
+# Variables de entorno y credenciales (Aislamiento de seguridad)
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# Registros temporales y volcados
+*.log
+leads_log.json
+.DS_Store
+
+# Certified credentials & local registration
+saare-recognition.json
+
+# Performance & benchmark test outputs
+benchmark_*_summary.json
+*.summary.json
+
