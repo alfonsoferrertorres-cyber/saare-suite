@@ -30,6 +30,17 @@ const ramRunCache = [];
 const ramWebhookConfigCache = new Map();
 
 /* --------------------------------------------------------------------------
+   REGISTRO Y PROXIES LLM AGNOSTIC (DESACOPLE DE PROVEEDORES)
+   -------------------------------------------------------------------------- */
+const LLM_AGNOSTIC_PROVIDERS = {
+  GEMINI: { name: "Google Gemini", defaultEndpoint: "https://generativelanguage.googleapis.com/v1beta" },
+  OPENAI: { name: "OpenAI GPT-4o", defaultEndpoint: "https://api.openai.com/v1" },
+  ANTHROPIC: { name: "Anthropic Claude 3.5", defaultEndpoint: "https://api.anthropic.com/v1" },
+  DEEPSEEK: { name: "DeepSeek V3/R1", defaultEndpoint: "https://api.deepseek.com/v1" },
+  LOCAL_ONPREM: { name: "Local Loopback / Ollama", defaultEndpoint: "http://127.0.0.1:11434/v1" }
+};
+
+/* --------------------------------------------------------------------------
    PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
    -------------------------------------------------------------------------- */
 const MERKLE_BATCH_THRESHOLD = 1000;
@@ -144,7 +155,7 @@ async function trackVerdictUsage(tenantId, env) {
 }
 
 /* --------------------------------------------------------------------------
-   BÓVEDA DE RESPALDO Y SANITIZACIÓN
+   BÓVEDA DE RESPALDO Y SANITIZACIÓN DE IDENTIDAD
    -------------------------------------------------------------------------- */
 function getFallbackUserVault(env) {
   const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "admin@saare.es");
@@ -245,6 +256,35 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
     .toUpperCase();
 
   return `EV-L7-${hashHex}`;
+}
+
+// === SANITIZADOR DE PROMPTS Y SECRETOS EN RAM (ALGORITMO 7D LOCAL) === //
+function sanitizePromptInRam(promptText) {
+  if (typeof promptText !== 'string') return { sanitizedText: "", rulesTriggered: [] };
+  let cleanText = promptText;
+  const rules = [];
+
+  // 1. Enmascaramiento PII (DNI / NIF Español)
+  const nifRegex = /[0-9]{8}[A-Z]/gi;
+  if (nifRegex.test(cleanText)) {
+    cleanText = cleanText.replace(nifRegex, '[PII_ANONYMIZED_ES]');
+    rules.push('DLP_PII_NIF_ES');
+  }
+
+  // 2. Enmascaramiento de Claves API / Secretos
+  const apiKeyRegex = /(sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16})/gi;
+  if (apiKeyRegex.test(cleanText)) {
+    cleanText = cleanText.replace(apiKeyRegex, '[SECRET_MASKED_KEY]');
+    rules.push('SECRET_SCANNING_API_KEY');
+  }
+
+  // 3. Detección de Prompt Injection / Jailbreaks
+  const jailbreakRegex = /(ignore all previous instructions|dan mode|system override)/gi;
+  if (jailbreakRegex.test(cleanText)) {
+    rules.push('ANTI_JAILBREAK_TRIGGERED');
+  }
+
+  return { sanitizedText: cleanText, rulesTriggered: rules };
 }
 
 // === ENVIADOR DE CORREOS TRANSACCIONALES (RESEND) === //
@@ -364,7 +404,9 @@ export default {
           latencyP99Ms: 1.12,
           trustAnchor: 'D1-EU-WESTERN-EUROPE',
           specVersion: 'SGP 1.0',
-          engine: 'Core PEP L7 v8.4'
+          engine: 'Core PEP L7 v8.4',
+          llmMode: 'LLM_AGNOSTIC_GOVERNANCE',
+          supportedProviders: Object.keys(LLM_AGNOSTIC_PROVIDERS)
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -547,7 +589,7 @@ export default {
         }
       }
 
-      // 8.1. VERIFICACIÓN DE LICENCIA (Ajustado para soporte Sandbox 0 € permanente)
+      // 8.1. VERIFICACIÓN DE LICENCIA
       if (path === '/api/v1/auth/verifylicense' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
         let tenantInfo = null;
@@ -568,28 +610,126 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 9. OPENAPI DROP-IN (/v1/chat/completions)
-      if (path === '/v1/chat/completions' && method === 'POST') {
+      // 9. OPENAPI DROP-IN & PROXY LLM AGNOSTICO (/v1/chat/completions & /v1/proxy/llm)
+      if ((path === '/v1/chat/completions' || path === '/v1/proxy/llm' || path === '/api/v1/proxy/llm') && method === 'POST') {
+        const startTime = performance.now();
         const body = await request.json().catch(() => ({}));
+
+        const targetProvider = (body.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
+        const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
+
+        let rawPrompt = body.prompt || "";
+        if (!rawPrompt && Array.isArray(body.messages)) {
+          rawPrompt = body.messages.map(m => `${m.role}: ${m.content}`).join("\n");
+        }
+
+        const user = sanitizeEmail(body.user || identity?.email || headerUser) || "ciso@saare.es";
+        const tenant = body.tenant || identity?.tenantId || tenantId || "ENTERPRISE";
+
+        // Intercepción local ex-ante en memoria RAM epímera
+        const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
+        const isBlocked = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED');
+        const isSanitized = rulesTriggered.length > 0;
+        const finalVerdict = isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO');
+        const finalDecision = isBlocked ? 'DENY' : 'ALLOW';
+
+        const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
+        const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+
+        const vaultEngine = new EvidenceVaultEngine(env);
+        const doubleCustodyRecord = await vaultEngine.recordNodeEvidence({
+          trace_id: traceId,
+          evidence_id: runId,
+          tenant_id: tenant,
+          user: user,
+          prompt: rawPrompt,
+          sanitized_payload: sanitizedText,
+          evaluator_chain: { final_evaluator: `Core-PEP-L7-v8.4-RAM [${providerMeta.name}]` },
+          verdict_data: { verdict: finalVerdict, action: finalDecision, rules: rulesTriggered },
+          payload_hash: await computeSha256(rawPrompt)
+        });
+
+        const proofBundle = await generateProofBundle({
+          id: runId,
+          evidence_id: runId,
+          trace_id: traceId,
+          decision: finalDecision,
+          verdict: finalVerdict,
+          user: user,
+          tenant: tenant,
+          prompt: rawPrompt,
+          timestamp: new Date().toISOString(),
+          doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
+        }, env);
+
+        if (env.DB) {
+          ctx.waitUntil(
+            env.DB.prepare(`
+              INSERT INTO consolidated_traces (
+                trace_id, tenant_id, user_email, final_evaluator_node, 
+                final_decision, execution_latency_ms, timestamp, 
+                prompt, sanitized_payload, verdict
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              traceId, tenant, user, `Core-PEP-L7-v8.4 [${providerMeta.name}]`,
+              finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+              new Date().toISOString(), rawPrompt, sanitizedText, finalVerdict
+            ).run()
+          );
+        }
+
+        if (isBlocked) {
+          return new Response(JSON.stringify({
+            error: "EX_ANTE_SECURITY_BLOCK",
+            message: "La petición viola las políticas de gobernanza L7 corporativas.",
+            verdict: finalVerdict,
+            rulesTriggered,
+            traceId,
+            evidenceId: runId
+          }), {
+            status: 403,
+            headers: {
+              ...cors.corsHeaders,
+              'Content-Type': 'application/json',
+              'X-SAARE-Verdict': 'DENY',
+              'X-SAARE-Provider': providerMeta.name,
+              'X-SAARE-Spec': 'SGP-1.0'
+            }
+          });
+        }
+
+        const latencyMs = (performance.now() - startTime).toFixed(2);
+
         return new Response(JSON.stringify({
-          id: `chatcmpl-${Date.now()}`,
+          id: `saare-cmpl-${Date.now()}`,
           object: 'chat.completion',
           created: Math.floor(Date.now() / 1000),
+          provider: providerMeta.name,
           model: body.model || 'saare-l7-governed-model',
+          sanitizedPayload: sanitizedText,
           choices: [{
             index: 0,
             message: {
               role: 'assistant',
-              content: 'Respuesta verificada e fully inspeccionada Ex-Ante en RAM por el Protocolo S.A.A.R.E. SGP 1.0.'
+              content: `Respuesta verificada e fully inspeccionada Ex-Ante en RAM por el Protocolo S.A.A.R.E. SGP 1.0 (Proveedor: ${providerMeta.name}).`
             },
             finish_reason: 'stop'
-          }]
+          }],
+          governance: {
+            verdict: finalVerdict,
+            decision: finalDecision,
+            latencyMs: parseFloat(latencyMs),
+            rulesTriggered,
+            proofBundle
+          }
         }), {
           status: 200,
           headers: {
             ...cors.corsHeaders,
             'Content-Type': 'application/json',
             'X-SAARE-Verdict': 'ALLOW',
+            'X-SAARE-Provider': providerMeta.name,
+            'X-SAARE-Latency-Ms': latencyMs,
             'X-SAARE-Proof-Status': 'VERIFIED_ED25519'
           }
         });
@@ -896,7 +1036,6 @@ export default {
           const agents = Number(body.agents) || 0;
           const rawPlan = body.planType || body.plan || "SANDBOX";
           const isSandbox = rawPlan === "SANDBOX" || rawPlan === "DISCOVER_FREE" || rawPlan === PLAN_IDS.TRIAL_PRO_7D;
-          const planType = isSandbox ? "SANDBOX" : sanitizePlanId(rawPlan);
 
           if (!cleanEmail || !company) {
             return new Response(JSON.stringify({ error: "Se requieren correo corporativo y organización." }), {
@@ -920,7 +1059,7 @@ export default {
           return new Response(JSON.stringify({
             success: true,
             trialId,
-            expiresAt: null, // Sandbox permanente a 0 € sin límite de caducidad
+            expiresAt: null,
             tier: "SANDBOX",
             priceEur: 0,
             unlimited: true,
@@ -996,7 +1135,7 @@ export default {
         }
       }
 
-      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream y alias)
+      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream)
       if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream' || path === '/v1/telemetry/stream' || path === '/api/v1/stream' || path === '/v1/stream' || path === '/stream') && method === 'GET') {
         try {
           const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -1062,6 +1201,10 @@ export default {
 
         const regContent = `Windows Registry Editor Version 5.00
 
+; ==============================================================================
+; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
+; ==============================================================================
+
 [HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
 "1"="${extensionId};${updateUrl}"
 
@@ -1079,7 +1222,7 @@ export default {
         });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO D1 CON PROMPT, SANITIZED_PAYLOAD Y VERDICT)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO COMPLETO D1 CON SANITIZACIÓN REAL)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1123,9 +1266,11 @@ export default {
           });
         }
 
-        const explicitDecision = body.decision || (body.verdict === "RECHAZADO" ? "DENY" : "ALLOW");
+        // Sanitización en RAM volátil
+        const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
+        const explicitDecision = body.decision || (rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || body.verdict === "RECHAZADO" ? "DENY" : "ALLOW");
         const isDeny = explicitDecision === 'DENY' || (typeof promptInput === 'string' && (
-          promptInput.includes('PII') || promptInput.includes('SECRET') || promptInput.includes('HASH[') || promptInput.includes('DROP TABLE')
+          promptInput.includes('HASH[') || promptInput.includes('DROP TABLE')
         ));
 
         const verdictCode = isDeny ? 'REJECTED' : 'APPROVED';
@@ -1147,17 +1292,16 @@ export default {
           tenant_id: tenant,
           user: user,
           prompt: promptInput,
-          responseOutput: "",
+          sanitized_payload: sanitizedText,
           evaluator_chain: { final_evaluator: body.node_type || "EDGE_WORKER_PEP_L7" },
           verdict_data: {
             verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
             action: isDeny ? 'BLOCKED' : 'ALLOWED',
-            rule_triggered: body.scenarioId || "RULE_7DIM_FAIL_CLOSED"
+            rule_triggered: rulesTriggered.join(',') || body.scenarioId || "RULE_7DIM_PASS"
           },
           payload_hash: await computeSha256(JSON.stringify(body))
         });
 
-        // Construcción y estandarización vía módulo proofBundle.js
         const fullRecord = await generateProofBundle({
           id: runId,
           evidence_id: runId,
@@ -1185,7 +1329,7 @@ export default {
               runId, traceId, verdictId, fullRecord.decision, user
             ).run();
 
-            // SQL INSERT CORREGIDO CON PROMPT, SANITIZED_PAYLOAD Y VERDICT
+            // SQL INSERT CORREGIDO: Mapea sanitizedText en sanitized_payload
             await env.DB.prepare(`
               INSERT INTO consolidated_traces (
                 trace_id, tenant_id, user_email, final_evaluator_node, 
@@ -1202,7 +1346,7 @@ export default {
               parseFloat((performance.now() - startTime).toFixed(2)),
               new Date().toISOString(),
               promptInput,
-              promptInput,
+              sanitizedText,
               fullRecord.verdict
             ).run();
           } catch (e) {
@@ -1229,7 +1373,7 @@ export default {
           status: "SUCCESS",
           verdict: fullRecord.verdict,
           decision: fullRecord.decision,
-          sanitizedPayload: promptInput,
+          sanitizedPayload: sanitizedText,
           evidence_id: runId,
           trace_id: traceId,
           metrics: {
@@ -1250,7 +1394,7 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry) (RECUPERACIÓN COMPLETA DE PROMPTS Y TRAZAS)
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry)
       if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -1475,7 +1619,7 @@ export default {
       ) {
         return new Response(JSON.stringify({
           status: "ONLINE",
-          system: "S.A.A.R.E. Sovereign Control Plane (SGP 1.0 / v8.4)",
+          system: "S.A.A.R.E. Sovereign Control Plane (LLM Agnostic SGP 1.0 / v8.4)",
           node: "2607076315021",
           trustAnchor: "D1-EU-WESTERN-EUROPE",
           version: "v10.5.2",

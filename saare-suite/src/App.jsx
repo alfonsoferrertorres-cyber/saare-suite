@@ -1,94 +1,56 @@
-// saare-suite/src/App.jsx — Orquestador Principal de la Landing & Access Gate S.A.A.R.E. (SGP 1.0 / v8.2)
-import React, { useState, useEffect } from 'react';
-import LandingPage from './LandingPage';
-import Login from './Login';
+import React, { useState } from 'react';
+import Navbar from './components/Navbar';
+import Hero from './components/Hero';
+import ConsolePreview from './components/ConsolePreview';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('landing');
-  const [selectedPlan, setSelectedPlan] = useState('DISCOVER_FREE');
-
-  // Detectar si la URL incluye parámetros directos para abrir el Login/Register
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const planParam = params.get('plan');
-    const viewParam = params.get('view');
-
-    if (planParam) {
-      setSelectedPlan(planParam);
-    }
-
-    if (viewParam === 'login' || viewParam === 'register' || planParam) {
-      setCurrentView('login');
-    }
-  }, []);
-
-  const handleNavigateToLogin = (plan = 'DISCOVER_FREE') => {
-    setSelectedPlan(plan);
-    setCurrentView('login');
-  };
-
-  const handleLoginSuccess = (authData) => {
-    // URL por defecto de la Consola GRC en desarrollo local o producción
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const defaultConsoleUrl = isLocal ? 'http://localhost:5173' : 'https://console.saare.es';
-    const consoleUrl = import.meta.env.VITE_CONSOLE_URL || defaultConsoleUrl;
-
-    const activeToken = authData?.apiKey || authData?.token || localStorage.getItem('saare_token') || '';
-    const userEmail = authData?.email || localStorage.getItem('saare_user_email') || '';
-    
-    // Sanitización estricta: Si el tenant viene vacío o es un email, tomar 'ENTERPRISE'
-    let tenantName = authData?.tenantName || authData?.company || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
-    if (!tenantName || tenantName.includes('@')) {
-      tenantName = 'ENTERPRISE';
-    }
-
-    const userRole = authData?.role || localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
-    const finalPlan = authData?.plan || selectedPlan || 'DISCOVER_FREE';
-
-    // Generar atestación de credencial para la Bóveda
-    const credentialProof = activeToken ? `Ed25519-Proof:${activeToken.slice(-12)}` : 'UNSIGNED_ANON';
-
-    // Persistir estado local antes de redirigir
-    if (activeToken) {
-      localStorage.setItem('saare_token', activeToken);
-      localStorage.setItem('saare_auth_token', activeToken);
-    }
-    if (userEmail) localStorage.setItem('saare_user_email', userEmail);
-    if (tenantName) localStorage.setItem('saare_tenant_domain', tenantName);
-    if (userRole) localStorage.setItem('saare_user_role', userRole);
-
-    // Construir la URL de transferencia de sesión segura con atestación
-    const queryParams = new URLSearchParams({
-      token: activeToken,
-      user: userEmail,
-      tenant: tenantName,
-      role: userRole,
-      plan: finalPlan,
-      proof: credentialProof,
-      status: 'ACTIVE'
-    });
-
-    window.location.href = `${consoleUrl.replace(/\/$/, '')}/?${queryParams.toString()}`;
-  };
-
-  if (currentView === 'login') {
-    return (
-      <Login 
-        initialPlan={selectedPlan} 
-        onBack={() => {
-          setCurrentView('landing');
-          // Limpiar parámetros de búsqueda al volver
-          if (window.location.search) {
-            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-          }
-        }}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    );
-  }
+  const [showConsoleModal, setShowConsoleModal] = useState(false);
 
   return (
-    <LandingPage onNavigateToLogin={handleNavigateToLogin} />
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+      <Navbar onOpenConsole={() => setShowConsoleModal(true)} />
+      
+      <main>
+        <Hero onOpenConsole={() => setShowConsoleModal(true)} />
+        <ConsolePreview />
+      </main>
+
+      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-4 text-center text-xs text-slate-500">
+        <p>S.A.A.R.E. v10.0 / Core PEP L7 v8.4 | Gabinete Técnico Comercial MS3V (NIF: 48553065L)</p>
+        <p className="mt-1 text-[11px] text-slate-600">Expediente: MS3V-RECON-VALID-2026-ALF-0521 | Safe Creative: SC-REG-2026-1791667481 | RPI: RPI-2607076315021</p>
+      </footer>
+
+      {showConsoleModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white flex items-center justify-between">
+              <span>Consola de Gobernanza S.A.A.R.E. (Acceso Directo Sin Login)</span>
+              <button 
+                onClick={() => setShowConsoleModal(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Al ser un despliegue agnóstico en Capa 7 (L7), la validación ocurre sobre la petición HTTP en tránsito. La consola se accede de forma directa sin requerir contraseñas de usuario final.
+            </p>
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
+              <p className="text-emerald-400 font-bold">[OK] Estado del Plano de Control: OPERATIVO</p>
+              <p className="mt-1">Punto de Intercepción: https://api.saare.es/v1/inspect</p>
+              <p>Directiva GPO: /v1/deploy/gpo-policy</p>
+            </div>
+            <div className="flex justify-end space-x-2 pt-2">
+              <button 
+                onClick={() => setShowConsoleModal(false)}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
+              >
+                Continuar a la Consola
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,9 +1,0 @@
-export const SAARE_CONFIG = {
-  SPEC_VERSION: "SGP 1.0",
-  TRUST_ANCHOR: "SAARE-MD-IPRES-2026",
-  DEFAULT_TENANT: "ENTERPRISE",
-  DEFAULT_ROLE: "CISO_ADMIN",
-  API_BASE_URL: "https://api.saare.es"
-};
-
-export default SAARE_CONFIG;
