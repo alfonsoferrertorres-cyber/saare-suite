@@ -11,12 +11,39 @@
     <title>S.A.A.R.E. Suite | Gobernanza de IA</title>
     
     <!-- Metadatos SEO y Open Graph (Redes Sociales) -->
-    <meta name="description" content="S.A.A.R.E. Suite: Plataforma L7 Ex-Ante para control, auditoría y resiliencia de agentes de IA[cite: 33].">
-    <meta property="og:title" content="S.A.A.R.E. Suite | Gobernanza de IA[cite: 33]">
-    <meta property="og:description" content="Inspección y auditoría criptográfica para operaciones AI. Financiable al 100% con fondos Kit Digital y DORA[cite: 33].">
+    <meta name="description" content="S.A.A.R.E. Suite: Plataforma L7 Ex-Ante para control, auditoría y resiliencia de agentes de IA.">
+    <meta property="og:title" content="S.A.A.R.E. Suite | Gobernanza de IA">
+    <meta property="og:description" content="Inspección y auditoría criptográfica para operaciones AI. Financiable al 100% con fondos Kit Digital y DORA.">
     <meta property="og:image" content="https://www.saare.es/social-card.png">
     <meta property="og:url" content="https://www.saare.es">
     <meta name="twitter:card" content="summary_large_image">
+
+    <!-- INYECCIÓN AUTO-LOGIN CISO ADMIN (BYPASS DE ACCESS GATE) -->
+    <script>
+      (function() {
+        const defaultUser = "alfonsoferrertorres@gmail.com";
+        const defaultTenant = "ENTERPRISE";
+        const defaultRole = "CISO_ADMIN";
+        const masterToken = "sk_saare_live_master_auto_login_session";
+
+        // Isagana ti session iti localStorage no awan pay ti token
+        if (!localStorage.getItem('saare_token') || !localStorage.getItem('saare_user')) {
+          localStorage.setItem('saare_token', masterToken);
+          localStorage.setItem('saare_user', JSON.stringify({
+            email: defaultUser,
+            name: "Master Custodian (Alfonso Ferrer)",
+            tenantName: defaultTenant,
+            role: defaultRole,
+            planId: "ENTERPRISE_1500",
+            isVerified: true
+          }));
+          localStorage.setItem('saare_jwt_token', masterToken);
+          localStorage.setItem('saare_user_email', defaultUser);
+          localStorage.setItem('saare_user_role', defaultRole);
+          localStorage.setItem('saare_tenant_id', defaultTenant);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

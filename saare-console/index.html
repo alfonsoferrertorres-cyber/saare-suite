@@ -34,6 +34,33 @@
         flex-direction: column;
       }
     </style>
+
+    <!-- INYECCIÓN AUTO-LOGIN CISO ADMIN (BYPASS DE PANTALLA ACCESS GATE) -->
+    <script>
+      (function() {
+        const defaultUser = "alfonsoferrertorres@gmail.com";
+        const defaultTenant = "ENTERPRISE";
+        const defaultRole = "CISO_ADMIN";
+        const masterToken = "sk_saare_live_master_auto_login_session";
+
+        // Fijar sesión automática en localStorage si no existe o si se solicita acceso directo
+        if (!localStorage.getItem('saare_token') || !localStorage.getItem('saare_user')) {
+          localStorage.setItem('saare_token', masterToken);
+          localStorage.setItem('saare_user', JSON.stringify({
+            email: defaultUser,
+            name: "Master Custodian (Alfonso Ferrer)",
+            tenantName: defaultTenant,
+            role: defaultRole,
+            planId: "ENTERPRISE_1500",
+            isVerified: true
+          }));
+          localStorage.setItem('saare_jwt_token', masterToken);
+          localStorage.setItem('saare_user_email', defaultUser);
+          localStorage.setItem('saare_user_role', defaultRole);
+          localStorage.setItem('saare_tenant_id', defaultTenant);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
