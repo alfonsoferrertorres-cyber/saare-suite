@@ -1,0 +1,11 @@
+﻿
+FullName                                                                                                      
+--------                                                                                                      
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\apiService.js                   
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\cryptoService.js                
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\estructura_completa_monorepo.txt
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\governanceTemplatesEngine.js    
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\pdfGeneratorService.js          
+C:\Users\alfon\Desktop\CLOUD_ISV_DESARROLLO_AGOSTO\saare-console\src\services\proofEngine.js                  
+
+

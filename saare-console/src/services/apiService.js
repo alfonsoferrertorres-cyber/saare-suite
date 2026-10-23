@@ -1,4 +1,4 @@
-// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v8.4)
+// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v8.4 - Corregido y Blindado)
 import { saareFetch } from '../utils/api';
 
 export const apiService = {
@@ -23,7 +23,7 @@ export const apiService = {
         };
       }
     } catch (e) {
-      console.warn('[SAARE API] Dogoggora KPIs:', e);
+      console.warn('[SAARE API] Error en KPIs:', e);
     }
 
     return null;
@@ -37,13 +37,13 @@ export const apiService = {
         return Array.isArray(data) ? data : (data.evidences || data.runs || data.data || []);
       }
       if (res && res.status === 429) {
-        console.warn('⚠️ API irralti daangaan teessumaa (Rate Limit 429) qaqqabeera. Deetaa dhugaa skreenii irraa oofaa jira.');
-        return null;
+        console.warn('⚠️ Límite de tasa alcanzado (Rate Limit 429). Activando protección anti-saturación en UI.');
+        return []; // Retorna array vacío en lugar de null para prevenir fallos en la consola GRC
       }
     } catch (e) {
-      console.warn('[SAARE API] Dogoggora faana telemeterii deebisuu irra gahu:', e);
+      console.warn('[SAARE API] Error al recuperar trazas de telemetría:', e);
     }
-    return null;
+    return [];
   },
 
   async getNodeStatus() {
@@ -94,10 +94,16 @@ export const apiService = {
       if (res && res.ok) {
         return await res.json();
       }
+
+      // Política Fail-Closed estricta ante errores HTTP o saturación (429)
       const errData = await res?.json().catch(() => ({}));
-      return { decision: 'DENY', verdict: 'RECHAZADO', error: errData.message || `HTTP ${res?.status}` };
+      return { 
+        decision: 'DENY', 
+        verdict: 'FAIL_CLOSED_BLOCKED', 
+        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado preventivamente por la Bóveda L7.` 
+      };
     } catch (e) {
-      return { decision: 'DENY', verdict: 'RECHAZADO', error: e.message };
+      return { decision: 'DENY', verdict: 'FAIL_CLOSED', error: e.message };
     }
   },
 
@@ -114,7 +120,7 @@ export const apiService = {
       const res = await saareFetch(`/verify/${encodeURIComponent(hash)}`, { method: 'GET' });
       if (res && res.ok) return await res.json();
     } catch (e) {}
-    return { verified: false, error: "Endpoint mirkaneessaa wajjin walqunnamsiisuun hin danda'amne" };
+    return { verified: false, error: "No se pudo establecer conexión con el endpoint de verificación criptográfica." };
   },
 
   async runResilienceCheck(payload) {
@@ -138,7 +144,7 @@ export const apiService = {
     } catch (e) {
       return { success: false, error: e.message };
     }
-    return { success: false, error: 'Ergaa SIEM erguu irratti dogoggorri uumameera' };
+    return { success: false, error: 'Error al exportar los eventos hacia el SIEM corporativo.' };
   },
 
   async getCustomRules() {
@@ -162,7 +168,7 @@ export const apiService = {
     } catch (e) {
       return { ok: false, error: e.message };
     }
-    return { ok: false, error: 'Seerota olkaa\'uu irratti dogoggorri uumameera' };
+    return { ok: false, error: 'Error al persistir las reglas personalizadas en la Bóveda.' };
   },
 
   async verifyLicense(payload) {
@@ -194,7 +200,7 @@ export const apiService = {
     } catch (e) {
       return { success: false, error: e.message };
     }
-    return { success: false, error: 'Barcuma raawwachiisaa ramaduu irratti dogoggorri uumameera' };
+    return { success: false, error: 'Error al asignar el asiento ejecutivo RBAC.' };
   }
 };
 

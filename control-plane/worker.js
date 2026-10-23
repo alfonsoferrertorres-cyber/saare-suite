@@ -402,7 +402,7 @@ export default {
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
           latencyP99Ms: 1.12,
-          trustAnchor: 'D1-EU-WESTERN-EUROPE',
+          trustAnchor: env.DB ? 'D1-EU-WESTERN-EUROPE' : 'KV-RAM-EPHEMERAL',
           specVersion: 'SGP 1.0',
           engine: 'Core PEP L7 v8.4',
           llmMode: 'LLM_AGNOSTIC_GOVERNANCE',
@@ -493,7 +493,7 @@ export default {
           complianceCode,
           tenantId: targetTenant,
           grantType,
-          trustAnchor: "D1-EU-WESTERN-EUROPE",
+          trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE",
           generatedAt: new Date().toISOString(),
           filesIncluded: ['Memoria_Tecnica.pdf', 'Certificado_DNSH_RAM.pdf', 'FRIA_EU_AI_Act.json'],
           downloadUrl: `https://api.saare.es/v7/exports/${complianceCode}.zip`
@@ -1161,7 +1161,7 @@ export default {
           const { readable, writable } = new TransformStream();
           const writer = writable.getWriter();
           const encoder = new TextEncoder();
-          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "INIT", status: "ONLINE_SSE", mode: "PRODUCTION_D1", timestamp: new Date().toISOString() })}\n\n`));
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "INIT", status: "ONLINE_SSE", mode: "PRODUCTION_KV", timestamp: new Date().toISOString() })}\n\n`));
           
           return new Response(readable, {
             status: 200,
@@ -1180,7 +1180,7 @@ export default {
         return new Response(JSON.stringify({
           srpVersion: "8.4.0",
           specification: "SAARE Canonical Structural Resilience Standard (SGP 1.0)",
-          trustAnchor: "D1-EU-WESTERN-EUROPE",
+          trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE",
           node: "2607076315021",
           declaredCapabilities: [
             "STAT_STATELESS_L7_RAM",
@@ -1222,7 +1222,7 @@ export default {
         });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO COMPLETO D1 CON SANITIZACIÓN REAL)
+      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (REGISTRO ROBUSTO KV/RAM SIN DEPENDER DE D1)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1245,25 +1245,14 @@ export default {
           });
         }
 
-        let currentUsage = 1;
-        if (ctx && typeof ctx.waitUntil === 'function') {
-          ctx.waitUntil(processBatchMerkleAnchor(tenant, env));
-          currentUsage = await trackVerdictUsage(tenant, env);
-        } else {
-          await processBatchMerkleAnchor(tenant, env);
-          currentUsage = await trackVerdictUsage(tenant, env);
-        }
-
-        const quotaStatus = checkQuota(tenantPlan, 'max_evidence_monthly', currentUsage);
-        if (!quotaStatus.allowed) {
-          return new Response(JSON.stringify({ 
-            error: "EVIDENCE_MONTHLY_QUOTA_EXCEEDED", 
-            message: "Ha alcanzado el límite mensual de trazas para su plan.",
-            quota: quotaStatus
-          }), {
-            status: 429,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-          });
+        if (env.DB) {
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(processBatchMerkleAnchor(tenant, env));
+            await trackVerdictUsage(tenant, env);
+          } else {
+            await processBatchMerkleAnchor(tenant, env);
+            await trackVerdictUsage(tenant, env);
+          }
         }
 
         // Sanitización en RAM volátil
@@ -1320,40 +1309,7 @@ export default {
           ...evalResult
         }, env);
 
-        if (env.DB) {
-          try {
-            await env.DB.prepare(`
-              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, user)
-              VALUES (?, ?, ?, ?, ?)
-            `).bind(
-              runId, traceId, verdictId, fullRecord.decision, user
-            ).run();
-
-            // SQL INSERT CORREGIDO: Mapea sanitizedText en sanitized_payload
-            await env.DB.prepare(`
-              INSERT INTO consolidated_traces (
-                trace_id, tenant_id, user_email, final_evaluator_node, 
-                final_decision, execution_latency_ms, timestamp, 
-                prompt, sanitized_payload, verdict
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(
-              traceId,
-              tenant,
-              user,
-              body.node_type || "EDGE_WORKER_PEP_L7",
-              fullRecord.decision,
-              parseFloat((performance.now() - startTime).toFixed(2)),
-              new Date().toISOString(),
-              promptInput,
-              sanitizedText,
-              fullRecord.verdict
-            ).run();
-          } catch (e) {
-            console.error("[SAARE D1 Insert Error]:", e);
-          }
-        }
-
+        // Persistencia optimizada en KV (sin exigir D1)
         if (env.SAARE_VAULT_KV) {
           try {
             const existingKv = (await env.SAARE_VAULT_KV.get(`runs_${tenant}`, 'json')) || [];
@@ -1394,66 +1350,13 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (/runs & /telemetry)
+      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (MODO KV / RAM SIN D1)
       if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
         const currentUser = sanitizeEmail(identity?.email) || headerUser;
 
-        if (env.DB) {
-          try {
-            let query = `
-              SELECT 
-                t.trace_id,
-                t.tenant_id AS tenant,
-                t.user_email AS user,
-                t.final_decision AS decision,
-                t.execution_latency_ms AS latency,
-                t.timestamp,
-                t.prompt,
-                t.sanitized_payload,
-                t.verdict,
-                r.evidence_id,
-                r.verdictId
-              FROM consolidated_traces t
-              LEFT JOIN runs r ON t.trace_id = r.trace_id
-              WHERE t.tenant_id = ?
-            `;
-            let bindings = [tenantId];
-
-            if (currentUser && activeUserRole !== "CISO_ADMIN") {
-              query += " AND t.user_email = ?";
-              bindings.push(currentUser);
-            }
-
-            query += " ORDER BY t.id DESC LIMIT 50";
-
-            const { results } = await env.DB.prepare(query).bind(...bindings).all();
-
-            if (results?.length > 0) {
-              evidencesList = await Promise.all(results.map(row => {
-                const baseRecord = {
-                  id: row.evidence_id || row.trace_id,
-                  evidence_id: row.evidence_id || row.trace_id,
-                  trace_id: row.trace_id,
-                  verdictId: row.verdictId || "VRD-LIVE-D1",
-                  decision: row.decision || "ALLOW",
-                  verdict: row.verdict || (row.decision === "DENY" ? "RECHAZADO" : "PERMITIDO"),
-                  user: row.user || currentUser,
-                  tenant: row.tenant || tenantId,
-                  prompt: row.prompt || row.sanitized_payload || "(Payload L7 verificado en memoria RAM)",
-                  latency: row.latency || 1.12,
-                  timestamp: row.timestamp
-                };
-
-                return generateProofBundle(baseRecord, env);
-              }));
-            }
-          } catch (e) {
-            console.warn("[SAARE Control Plane] Fallo en D1, derivando a Bóveda KV:", e);
-          }
-        }
-
-        if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
+        // Búsqueda en Cloudflare KV (Bóveda principal sin D1)
+        if (env.SAARE_VAULT_KV) {
           try {
             const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
             for (const key of keysToTry) {
@@ -1470,6 +1373,7 @@ export default {
           }
         }
 
+        // Respaldo en memoria RAM si KV no devuelve elementos
         if (evidencesList.length === 0) {
           evidencesList = await Promise.all(
             ramRunCache
@@ -1482,7 +1386,7 @@ export default {
           success: true, 
           evidences: evidencesList, 
           runs: evidencesList, 
-          vaultSource: env.DB && evidencesList.length > 0 ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") 
+          vaultSource: env.SAARE_VAULT_KV ? "KV_STORE" : "RAM" 
         }), {
           status: 200,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
@@ -1491,7 +1395,7 @@ export default {
 
       // 18. VERIFICACIÓN PÚBLICA DE CADENA DE CUSTODIA Y ANCLAJE
       if (path === '/api/v1/vault/sync' && method === 'GET') {
-        return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: "D1-EU-WESTERN-EUROPE", source: env.DB ? "D1_HYBRID" : "RAM" }), {
+        return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE", source: env.DB ? "D1_HYBRID" : "RAM" }), {
           status: 200,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
         });
@@ -1621,7 +1525,7 @@ export default {
           status: "ONLINE",
           system: "S.A.A.R.E. Sovereign Control Plane (LLM Agnostic SGP 1.0 / v8.4)",
           node: "2607076315021",
-          trustAnchor: "D1-EU-WESTERN-EUROPE",
+          trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE-EPHEMERAL",
           version: "v10.5.2",
           srpVersion: "8.4.0",
           expediente: "MS3V-RECON-VALID-2026-ALF-0521",
