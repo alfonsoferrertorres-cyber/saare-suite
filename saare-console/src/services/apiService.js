@@ -114,7 +114,7 @@ export const apiService = {
       const res = await saareFetch(`/verify/${encodeURIComponent(hash)}`, { method: 'GET' });
       if (res && res.ok) return await res.json();
     } catch (e) {}
-    return { verified: false, error: 'Endpoint mirkaneessaa wajjin walqunnamsiisuun hin danda'amne' };
+    return { verified: false, error: "Endpoint mirkaneessaa wajjin walqunnamsiisuun hin danda'amne" };
   },
 
   async runResilienceCheck(payload) {
@@ -162,7 +162,7 @@ export const apiService = {
     } catch (e) {
       return { ok: false, error: e.message };
     }
-    return { ok: false, error: 'Seerota olkaa'uu irratti dogoggorri uumameera' };
+    return { ok: false, error: 'Seerota olkaa\'uu irratti dogoggorri uumameera' };
   },
 
   async verifyLicense(payload) {
