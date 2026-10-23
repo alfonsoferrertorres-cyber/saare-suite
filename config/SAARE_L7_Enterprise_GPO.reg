@@ -1,15 +1,11 @@
 ﻿Windows Registry Editor Version 5.00
 
 ; ==============================================================================
-; S.A.A.R.E. L7 Network Proxy & Policy Gate (Zero-Touch Agnóstico)
+; S.A.A.R.E. Enterprise GPO Policy - Inyección Quirúrgica Extensión L7
 ; ==============================================================================
 
-[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
-"ProxyMode"="fixed_servers"
-"ProxyServer"="api.saare.es:443"
-"ProxyBypassList"="<-loopback>"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist]
+"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
 
-[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge]
-"ProxyMode"="fixed_servers"
-"ProxyServer"="api.saare.es:443"
-"ProxyBypassList"="<-loopback>"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist]
+"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
