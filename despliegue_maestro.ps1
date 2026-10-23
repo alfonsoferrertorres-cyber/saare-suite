@@ -44,7 +44,8 @@ pnpm install --no-frozen-lockfile
 # FASE 2: COMPILACIÓN CON TURBOREPO
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [2/6] Compilando aplicaciones web (saare-console + saare-suite)..." -ForegroundColor Cyan
-pnpm run build
+$env:TURBO_TELEMETRY_DISABLED="1"
+npx turbo run build --ui=stream --no-daemon --continue
 
 # ------------------------------------------------------------------------------
 # FASE 3: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES

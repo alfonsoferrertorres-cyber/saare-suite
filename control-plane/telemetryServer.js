@@ -45,19 +45,23 @@ export class TelemetryServer {
             const { results } = await this.env.DB.prepare(query).bind(...bindings).all();
 
             if (results?.length > 0) {
-              initialEvidences = results.map(row => ({
-                id: row.evidence_id || row.trace_id,
-                evidence_id: row.evidence_id || row.trace_id,
-                trace_id: row.trace_id,
-                verdictId: row.verdictId || "VRD-LIVE-D1",
-                decision: row.decision || "ALLOW",
-                verdict: row.verdict || (row.decision === "DENY" ? "RECHAZADO" : "PERMITIDO"),
-                user: row.user || currentUser,
-                tenant: row.tenant || tenantId,
-                prompt: row.prompt || row.sanitized_payload || "(Payload L7 verificado en RAM)",
-                latency: row.latency || 1.12,
-                timestamp: row.timestamp || new Date().toISOString()
-              }));
+              initialEvidences = results.map(row => {
+                const isDeny = row.decision === "DENY" || row.verdict === "RECHAZADO";
+                return {
+                  id: row.evidence_id || row.trace_id,
+                  evidence_id: row.evidence_id || row.trace_id,
+                  trace_id: row.trace_id,
+                  verdictId: row.verdictId || `VRD-LIVE-${row.trace_id.substring(0, 8)}`,
+                  decision: isDeny ? "DENY" : "ALLOW",
+                  verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
+                  user: row.user || currentUser,
+                  tenant: row.tenant || tenantId,
+                  prompt: row.prompt || row.sanitized_payload || "(Payload L7 verificado en RAM)",
+                  sanitizedPayload: row.sanitized_payload || row.prompt || "",
+                  latency: row.latency || 1.12,
+                  timestamp: row.timestamp || new Date().toISOString()
+                };
+              });
             }
           }
         } catch (dbErr) {
@@ -69,11 +73,20 @@ export class TelemetryServer {
           try {
             const kvData = await this.env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
             if (Array.isArray(kvData) && kvData.length > 0) {
-              initialEvidences = kvData.filter(item => 
-                item && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser)
-              );
+              initialEvidences = kvData
+                .filter(item => item && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
+                .map(item => {
+                  const isDeny = item.decision === "DENY" || item.verdict === "RECHAZADO";
+                  return {
+                    ...item,
+                    decision: isDeny ? "DENY" : "ALLOW",
+                    verdict: isDeny ? "RECHAZADO" : "PERMITIDO"
+                  };
+                });
             }
-          } catch (kvErr) {}
+          } catch (kvErr) {
+            console.warn("[TelemetryStream KV Warning]:", kvErr.message);
+          }
         }
 
         // 3. EVENTO DE CONFIGURACIÓN Y CARGA INICIAL SSE
@@ -88,7 +101,7 @@ export class TelemetryServer {
 
           keepAliveCounter++;
 
-          // Heartbeat Ping cada 14 segundos (7 iteraciones) para mantener viva la conexión
+          // Heartbeat Ping cada 14 segundos (7 iteraciones) para mantener viva la conexión HTTP/2
           if (keepAliveCounter >= 7) {
             await writer.write(encoder.encode(`: ping\n\n`));
             keepAliveCounter = 0;
@@ -106,7 +119,7 @@ export class TelemetryServer {
           await writer.write(encoder.encode(`data: ${JSON.stringify(telemetryEvent)}\n\n`));
         }
       } catch (e) {
-        // Manejo silencioso cuando el navegador o el cliente cierran la conexión SSE
+        // Manejo silencioso cuando el navegador o la consola cierran la transmisión SSE
         console.log("[TelemetryStream Connection Closed by Client]");
       } finally {
         try { 
@@ -133,3 +146,5 @@ export class TelemetryServer {
     };
   }
 }
+
+export default TelemetryServer;

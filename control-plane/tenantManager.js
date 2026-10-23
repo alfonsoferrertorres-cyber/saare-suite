@@ -5,19 +5,36 @@ export class TenantManager {
     this.cache = new Map(); 
   }
 
-  async registerTenant(tenantId, name, config = {}) {
-    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
-    const tenantData = {
+  /**
+   * Normaliza y mapea los datos del plan para mantener compatibilidad con verifyLicense y Entitlements
+   */
+  _buildTenantObject(cleanId, name, config = {}) {
+    const planId = config.planId || config.plan_id || config.plan || "PROFESSIONAL_649";
+    const isSandbox = cleanId === "SANDBOX" || planId === "SANDBOX";
+
+    return {
       tenantId: cleanId,
       tenant_id: cleanId,
-      name: name || cleanId,
-      plan_id: config.planId || config.plan || "PROFESSIONAL_649",
-      status: "ACTIVE",
-      createdAt: new Date().toISOString(),
+      name: name || (cleanId === "ENTERPRISE" ? "Organización Enterprise" : `Organización (${cleanId})`),
+      plan_id: planId,
+      planId: planId,
+      tier: isSandbox ? "SANDBOX" : (config.tier || "ENTERPRISE"),
+      priceEur: isSandbox ? 0 : (config.priceEur || 649),
+      expiresAt: config.expiresAt || null,
+      status: config.status || "ACTIVE",
+      createdAt: config.createdAt || new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
       quota: config.quota || 10000,
-      activeScenarios: config.scenarios || ["banca_dora_pci_dss"]
+      activeScenarios: config.activeScenarios || config.scenarios || ["banca_dora_pci_dss", "*"]
     };
+  }
+
+  /**
+   * Registra o actualiza la configuración de un Tenant en KV y RAM
+   */
+  async registerTenant(tenantId, name, config = {}) {
+    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
+    const tenantData = this._buildTenantObject(cleanId, name, config);
 
     this.cache.set(cleanId, tenantData);
 
@@ -32,46 +49,67 @@ export class TenantManager {
     return tenantData;
   }
 
+  /**
+   * Obtiene la metainformación del Tenant con fallback de resistencia
+   */
   async getTenant(tenantId) {
     const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
 
+    // 1. Nivel 1: RAM efímera
     if (this.cache.has(cleanId)) {
       return this.cache.get(cleanId);
     }
 
+    // 2. Nivel 2: Bóveda Cloudflare KV
     if (this.env && this.env.SAARE_VAULT_KV) {
       try {
         const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${cleanId}`, "json");
         if (storedTenant) {
-          this.cache.set(cleanId, storedTenant);
-          return storedTenant;
+          const normalized = this._buildTenantObject(cleanId, storedTenant.name, storedTenant);
+          this.cache.set(cleanId, normalized);
+          return normalized;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("[TenantManager] Fallo de lectura KV:", e);
+      }
     }
 
-    const dynamicTenant = {
-      tenantId: cleanId,
-      tenant_id: cleanId,
-      name: cleanId === "ENTERPRISE" ? "Organización Enterprise" : `Organización (${cleanId})`,
-      plan_id: "PROFESSIONAL_649",
-      status: "ACTIVE",
-      activeScenarios: ["banca_dora_pci_dss"]
-    };
+    // 3. Nivel 3: Generación dinámica en caliente (Resiliencia Fail-Safe)
+    const dynamicTenant = this._buildTenantObject(cleanId, null, {
+      planId: "PROFESSIONAL_649",
+      tier: "ENTERPRISE",
+      priceEur: 649
+    });
 
     this.cache.set(cleanId, dynamicTenant);
     return dynamicTenant;
   }
 
+  /**
+   * Valida el acceso ex-ante de un Tenant a un escenario normativo
+   */
   async validateAccess(tenantId, scenarioId) {
     try {
       const tenant = await this.getTenant(tenantId);
       
-      if (!tenant.activeScenarios || !tenant.activeScenarios.includes(scenarioId)) {
+      if (tenant.status !== "ACTIVE") {
+        return {
+          allowed: false,
+          reason: `El Tenant ${tenantId} no se encuentra activo o su suscripción ha sido suspendida.`
+        };
+      }
+
+      const scenarios = tenant.activeScenarios || [];
+      const hasDirectAccess = scenarios.includes(scenarioId);
+      const hasGlobalAccess = scenarios.includes("*") || tenant.tenantId === "ENTERPRISE";
+
+      if (!hasDirectAccess && !hasGlobalAccess) {
         return { 
           allowed: false, 
           reason: `Escenario ${scenarioId} no habilitado por contrato para el Tenant ${tenantId}` 
         };
       }
+
       return { allowed: true };
       
     } catch (error) {
@@ -79,3 +117,5 @@ export class TenantManager {
     }
   }
 }
+
+export default TenantManager;

@@ -1,6 +1,7 @@
 // control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / v8.4 SRP)
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
+import { ZeroTrustMiddleware } from "./zeroTrustMiddleware.js";
 import { ComplianceEngine } from "./complianceEngine.js";
 import { DistributedRateLimiter } from "./rateLimiter.js";
 import { runResilienceTests } from "./resilienceGate.js";
@@ -384,6 +385,23 @@ export default {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
       }
 
+      // INTEGRACIÓN DE CLOUDFLARE ZERO TRUST ACCESS
+      const zeroTrust = new ZeroTrustMiddleware(
+        env.CF_ZERO_TRUST_TEAM_DOMAIN || "saare.cloudflareaccess.com",
+        env.CF_ZERO_TRUST_AUD_TAG || ""
+      );
+
+      const ztVerification = await zeroTrust.verifyCloudflareAccessHeader(request);
+      if (ztVerification.isZeroTrustVerified && ztVerification.userEmail) {
+        identity = {
+          email: ztVerification.userEmail,
+          tenantId: request.headers.get("x-saare-tenant") || identity?.tenantId || "ENTERPRISE",
+          role: identity?.role || "CISO_ADMIN",
+          planId: identity?.planId || PLAN_IDS.PROFESSIONAL_649,
+          zeroTrustVerified: true
+        };
+      }
+
       const tenantId = identity?.tenantId || request.headers.get("x-saare-tenant") || url.searchParams.get("tenant") || "ENTERPRISE";
       let tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
 
@@ -406,7 +424,8 @@ export default {
           specVersion: 'SGP 1.0',
           engine: 'Core PEP L7 v8.4',
           llmMode: 'LLM_AGNOSTIC_GOVERNANCE',
-          supportedProviders: Object.keys(LLM_AGNOSTIC_PROVIDERS)
+          supportedProviders: Object.keys(LLM_AGNOSTIC_PROVIDERS),
+          zeroTrustEnabled: ztVerification.isZeroTrustVerified
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -1313,10 +1332,11 @@ export default {
         // Sanitización en RAM volátil
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
         
-        // CORRECCIÓN COHERENCIA: Verificación estricta de denegación
+        // CORRECCIÓN COHERENCIA: Verificación estricta y alineada de denegación
         const isDeny = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
                        body.verdict === "RECHAZADO" || 
                        body.decision === "DENY" ||
+                       rulesTriggered.length > 0 ||
                        (typeof promptInput === 'string' && (
                          promptInput.toUpperCase().includes('HASH[') || 
                          promptInput.toUpperCase().includes('DROP TABLE') ||
@@ -1348,7 +1368,7 @@ export default {
           evaluator_chain: { final_evaluator: body.node_type || "EDGE_WORKER_PEP_L7" },
           verdict_data: {
             verdict: finalVerdict,
-            action: finalDecision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
+            action: finalDecision,
             rule_triggered: rulesTriggered.join(',') || body.scenarioId || "RULE_7DIM_PASS"
           },
           payload_hash: await computeSha256(JSON.stringify(body))
@@ -1364,6 +1384,7 @@ export default {
           user: user,
           tenant: tenant,
           prompt: promptInput,
+          sanitized_payload: sanitizedText,
           policyVersion: body.policyVersion || "v1.0.0",
           controlVersion: body.controlVersion || "v1.0.0",
           systemId: body.systemId || "SYS-L7-CORE",
