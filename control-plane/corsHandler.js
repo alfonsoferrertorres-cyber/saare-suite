@@ -13,7 +13,7 @@ export const DEFAULT_CORS_HEADERS = {
     "x-saare-role",
     "x-saare-plan",
     "x-saare-signature",
-    "x-saare-credential-proof", // <-- Cabecera que provocaba el bloqueo CORS
+    "x-saare-credential-proof",
     "x-saare-node-id",
     "X-Saare-Tenant",
     "X-Saare-User",

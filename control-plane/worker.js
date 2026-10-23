@@ -626,7 +626,7 @@ export default {
         const user = sanitizeEmail(body.user || identity?.email || headerUser) || "ciso@saare.es";
         const tenant = body.tenant || identity?.tenantId || tenantId || "ENTERPRISE";
 
-        // Intercepción local ex-ante en memoria RAM epímera
+        // Intercepción local ex-ante en memoria RAM efímera
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
         const isBlocked = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED');
         const isSanitized = rulesTriggered.length > 0;

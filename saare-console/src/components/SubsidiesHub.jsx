@@ -1,5 +1,5 @@
-// saare-console/src/components/SubsidiesHub.jsx
-import React, { useState } from 'react';
+// saare-console/src/components/SubsidiesHub.jsx — Justificación Forense & Subvenciones Públicas
+import React, { useState, useCallback } from 'react';
 import { CryptoService } from '../services/cryptoService';
 import { saareFetch } from '../utils/api';
 
@@ -9,7 +9,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
   const [loadingExport, setLoadingExport] = useState(false);
   const [selectedGrant, setSelectedGrant] = useState('KIT_CONSULTING');
 
-  const handleVerifyForense = async () => {
+  const handleVerifyForense = useCallback(async () => {
     setVerifying(true);
     setVerificationResult(null);
 
@@ -33,9 +33,9 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
     } finally {
       setVerifying(false);
     }
-  };
+  }, [currentEvidences]);
 
-  const handleExportPackage = async (docType = 'ALL') => {
+  const handleExportPackage = useCallback(async (docType = 'ALL') => {
     setLoadingExport(true);
     try {
       const res = await saareFetch('/subsidies/export-package', {
@@ -59,7 +59,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
     } finally {
       setLoadingExport(false);
     }
-  };
+  }, [tenantId, selectedGrant]);
 
   return (
     <div style={{ background: '#0b0f19', border: '1px solid #1e293b', padding: '24px', borderRadius: '12px', color: '#fff', marginTop: '20px' }}>

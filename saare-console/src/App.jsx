@@ -1,5 +1,5 @@
 // saare-console/src/App.jsx — Panel Principal GRC & Ciberresiliencia S.A.A.R.E. (SGP 1.0)
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
@@ -9,7 +9,14 @@ import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
+
+// IMPORTACIÓN ROBUSTA CON ALIAS PARA EVITAR REFERENCEERROR (SoA_Modal vs SoAModal)
 import SoAModal from './components/SoAModal';
+const SoA_Modal = SoAModal; 
+if (typeof window !== 'undefined') {
+  window.SoA_Modal = SoAModal;
+}
+
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL } from './utils/api';
 import { apiService } from './services/apiService';
@@ -134,7 +141,7 @@ export default function App() {
 
     if (!Array.isArray(list)) return [];
 
-    return list.map((item, idx) => {
+    return list.map((item) => {
       if (!item) return null;
 
       const evidenceId = item.evidence_id || item.id;
@@ -193,8 +200,12 @@ export default function App() {
   const fetchTelemetryOnce = useCallback(async () => {
     try {
       const remoteEvidences = await apiService.getTelemetryTraces(100);
-      const mapped = mapEvidences(remoteEvidences);
-      setEvidences(mapped);
+      if (remoteEvidences !== null && Array.isArray(remoteEvidences)) {
+        const mapped = mapEvidences(remoteEvidences);
+        if (mapped.length > 0) {
+          setEvidences(mapped);
+        }
+      }
       
       const statusData = await apiService.getNodeStatus();
       if (statusData && statusData.vaultSource) {
@@ -224,12 +235,11 @@ export default function App() {
     };
 
     fetchCustomRules();
+
+    // 1. HIDRATACIÓN INICIAL VÍA REST (Sin loops ni intervals de polling)
     fetchTelemetryOnce();
 
-    const pollingInterval = setInterval(() => {
-      fetchTelemetryOnce();
-    }, 4000);
-
+    // 2. CONEXIÓN SSE - ÚNICA FUENTE DE VERDAD EN TIEMPO REAL
     const streamUrl = `${API_BASE_URL.replace(/\/$/, '')}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
     try {
@@ -239,12 +249,20 @@ export default function App() {
       es.onmessage = (event) => {
         try {
           const streamData = JSON.parse(event.data);
-          if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
-            setEvidences(mapEvidences(streamData));
-          } else if (streamData.status === 'RUNTIME_ACTIVE') {
-            fetchTelemetryOnce();
+          
+          if (Array.isArray(streamData) || streamData.evidences || streamData.runs) {
+            const mapped = mapEvidences(streamData);
+            if (mapped.length > 0) setEvidences(mapped);
+          } else if (streamData.id || streamData.evidence_id) {
+            // Inserción en tiempo real sin golpear endpoints REST
+            const singleMapped = mapEvidences([streamData]);
+            if (singleMapped.length > 0) {
+              setEvidences(prev => [singleMapped[0], ...prev.filter(e => e.id !== singleMapped[0].id)]);
+            }
           }
-        } catch (err) {}
+        } catch (err) {
+          console.error("Error procesando evento SSE:", err);
+        }
       };
 
       es.onerror = () => {
@@ -254,45 +272,63 @@ export default function App() {
       };
     } catch (e) {}
 
+    // 3. RE-SINCRONIZACIÓN INTELIGENTE AL VOLVER A LA PESTAÑA
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTelemetryOnce();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       clearInterval(intervalClock);
-      clearInterval(pollingInterval);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated, userEmail, tenantId, userRole, fetchTelemetryOnce, mapEvidences]);
 
-  const filteredEvidences = evidences.filter(item => {
-    if (!item) return false;
-    
-    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
-    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
+  const filteredEvidences = useMemo(() => {
+    return evidences.filter(item => {
+      if (!item) return false;
+      
+      if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
+      if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
-    if (startDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const startDate = new Date(startDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
-    }
-
-    if (endDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const endDate = new Date(endDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
-        endDate.setHours(23, 59, 59, 999);
-        if (itemDate > endDate) return false;
+      if (startDateFilter) {
+        const itemDate = new Date(item.rawTimestamp);
+        const startDate = new Date(startDateFilter);
+        if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
       }
-    }
 
-    return true;
-  });
+      if (endDateFilter) {
+        const itemDate = new Date(item.rawTimestamp);
+        const endDate = new Date(endDateFilter);
+        if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+          endDate.setHours(23, 59, 59, 999);
+          if (itemDate > endDate) return false;
+        }
+      }
 
-  const totalInspecciones = evidences.length;
-  const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
-  const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
-  const avgLatencyMs = totalInspecciones > 0 
-    ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0), 0) / totalInspecciones).toFixed(1)
-    : '0.0';
+      return true;
+    });
+  }, [evidences, filter, startDateFilter, endDateFilter]);
+
+  const { totalInspecciones, totalDeny, tasaBloqueo, avgLatencyMs } = useMemo(() => {
+    const total = evidences.length;
+    const deny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
+    const rate = total > 0 ? ((deny / total) * 100).toFixed(1) : '0.0';
+    const sumLatency = total > 0 ? evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0), 0) : 0;
+    const avgLatency = total > 0 ? (sumLatency / total).toFixed(1) : '0.0';
+
+    return {
+      totalInspecciones: total,
+      totalDeny: deny,
+      tasaBloqueo: rate,
+      avgLatencyMs: avgLatency
+    };
+  }, [evidences]);
 
   const handleDownloadSingleEvidencePdf = async (ev) => {
     setSelectedEvidenceForPdf(ev);

@@ -1,14 +1,21 @@
-// saare-console/src/components/ExecutiveView.jsx
-import React from 'react';
+// saare-console/src/components/ExecutiveView.jsx — Panel de Dirección
+import React, { useMemo } from 'react';
 
 export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
-  const safeEvidences = Array.isArray(evidences) ? evidences : [];
-  const totalAudited = safeEvidences.length;
-  const totalBlocked = safeEvidences.filter(
-    e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')
-  ).length;
+  const { totalAudited, totalBlocked, blockRate } = useMemo(() => {
+    const safeEvidences = Array.isArray(evidences) ? evidences : [];
+    const audited = safeEvidences.length;
+    const blocked = safeEvidences.filter(
+      e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')
+    ).length;
+    const rate = audited > 0 ? ((blocked / audited) * 100).toFixed(1) : '0.0';
 
-  const blockRate = totalAudited > 0 ? ((totalBlocked / totalAudited) * 100).toFixed(1) : '0.0';
+    return {
+      totalAudited: audited,
+      totalBlocked: blocked,
+      blockRate: rate
+    };
+  }, [evidences]);
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
