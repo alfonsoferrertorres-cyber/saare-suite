@@ -64,6 +64,45 @@ function hasRequiredRank(userRole, minRank) {
 }
 
 /* --------------------------------------------------------------------------
+   SISTEMA DE CORTE DE EMERGENCIA L7 (KILLSWITCH INTERCEPTOR)
+   -------------------------------------------------------------------------- */
+async function checkEmergencyKillswitch(env) {
+  if (!env) return null;
+  try {
+    let isEmergencyLock = false;
+
+    // 1. Verificación en la Bóveda KV (bandera dinámica en producción)
+    if (env.SAARE_VAULT_KV) {
+      const lockVal = await env.SAARE_VAULT_KV.get("EMERGENCY_KILLSWITCH_ACTIVE");
+      if (lockVal === "true") isEmergencyLock = true;
+    }
+
+    // 2. Verificación por variable de entorno
+    if (isEmergencyLock || String(env.ALLOW_FALLBACK_VAULT).toUpperCase() === "LOCKDOWN") {
+      return new Response(
+        JSON.stringify({
+          status: "BLOCKED",
+          error: "EMERGENCY_KILLSWITCH_TRIGGERED",
+          message: "Acceso denegado por el protocolo de contención y aislamiento L7.",
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+            "X-SAARE-Killswitch": "ACTIVE",
+            "X-SAARE-Spec": "SGP-1.0"
+          }
+        }
+      );
+    }
+  } catch (err) {
+    console.error("[SAARE Killswitch Error]:", err);
+  }
+  return null;
+}
+
+/* --------------------------------------------------------------------------
    MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE
    -------------------------------------------------------------------------- */
 async function processBatchMerkleAnchor(tenantId, env) {
@@ -368,12 +407,27 @@ export default {
     const path = normalizedPath;
     const method = request.method;
 
+    const cors = handleCors(request);
+    if (method === "OPTIONS") return cors.preflightResponse();
+
+    // -------------------------------------------------------------------------
+    // BARRERA PREVIA L7: CORTE DE EMERGENCIA (KILLSWITCH)
+    // -------------------------------------------------------------------------
+    const killswitchResponse = await checkEmergencyKillswitch(env);
+    if (killswitchResponse) {
+      const responseHeaders = new Headers(killswitchResponse.headers);
+      for (const [k, v] of Object.entries(cors.corsHeaders)) {
+        responseHeaders.set(k, v);
+      }
+      return new Response(killswitchResponse.body, {
+        status: killswitchResponse.status,
+        headers: responseHeaders
+      });
+    }
+
     const tenantManager = new TenantManager(env);
     const keyManager = new EnterpriseKeyManager(env);
     const telemetryServer = new TelemetryServer(env);
-
-    const cors = handleCors(request);
-    if (method === "OPTIONS") return cors.preflightResponse();
 
     try {
       const authHeader = request.headers.get("Authorization") || "";
@@ -695,14 +749,12 @@ export default {
         // Intercepción local ex-ante en memoria RAM efímera
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
         
-        // CORRECCIÓN COHERENCIA: Detección estricta de rechazo/bloqueo
         const isBlocked = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
                           rawPrompt.toUpperCase().includes('DROP TABLE') || 
                           rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS');
                           
         const isSanitized = rulesTriggered.length > 0;
         
-        // Sincronización estricta entre verdict y decision
         const finalVerdict = isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO');
         const finalDecision = isBlocked ? 'DENY' : 'ALLOW';
 
@@ -1332,7 +1384,6 @@ export default {
         // Sanitización en RAM volátil
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
         
-        // CORRECCIÓN COHERENCIA: Verificación estricta y alineada de denegación
         const isDeny = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
                        body.verdict === "RECHAZADO" || 
                        body.decision === "DENY" ||
