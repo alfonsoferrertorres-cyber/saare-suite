@@ -278,9 +278,9 @@ function sanitizePromptInRam(promptText) {
     rules.push('SECRET_SCANNING_API_KEY');
   }
 
-  // 3. Detección de Prompt Injection / Jailbreaks
-  const jailbreakRegex = /(ignore all previous instructions|dan mode|system override)/gi;
-  if (jailbreakRegex.test(cleanText)) {
+  // 3. Detección de Prompt Injection / Jailbreaks / SQL Injection
+  const attackRegex = /(ignore all previous instructions|dan mode|system override|drop table)/gi;
+  if (attackRegex.test(cleanText)) {
     rules.push('ANTI_JAILBREAK_TRIGGERED');
   }
 
@@ -675,8 +675,15 @@ export default {
 
         // Intercepción local ex-ante en memoria RAM efímera
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
-        const isBlocked = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED');
+        
+        // CORRECCIÓN COHERENCIA: Detección estricta de rechazo/bloqueo
+        const isBlocked = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
+                          rawPrompt.toUpperCase().includes('DROP TABLE') || 
+                          rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS');
+                          
         const isSanitized = rulesTriggered.length > 0;
+        
+        // Sincronización estricta entre verdict y decision
         const finalVerdict = isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO');
         const finalDecision = isBlocked ? 'DENY' : 'ALLOW';
 
@@ -730,6 +737,7 @@ export default {
             error: "EX_ANTE_SECURITY_BLOCK",
             message: "La petición viola las políticas de gobernanza L7 corporativas.",
             verdict: finalVerdict,
+            decision: finalDecision,
             rulesTriggered,
             traceId,
             evidenceId: runId
@@ -1304,11 +1312,19 @@ export default {
 
         // Sanitización en RAM volátil
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
-        const explicitDecision = body.decision || (rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || body.verdict === "RECHAZADO" ? "DENY" : "ALLOW");
-        const isDeny = explicitDecision === 'DENY' || (typeof promptInput === 'string' && (
-          promptInput.includes('HASH[') || promptInput.includes('DROP TABLE')
-        ));
+        
+        // CORRECCIÓN COHERENCIA: Verificación estricta de denegación
+        const isDeny = rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
+                       body.verdict === "RECHAZADO" || 
+                       body.decision === "DENY" ||
+                       (typeof promptInput === 'string' && (
+                         promptInput.toUpperCase().includes('HASH[') || 
+                         promptInput.toUpperCase().includes('DROP TABLE') ||
+                         promptInput.toUpperCase().includes('IGNORE ALL PREVIOUS')
+                       ));
 
+        const finalDecision = isDeny ? 'DENY' : 'ALLOW';
+        const finalVerdict = isDeny ? 'RECHAZADO' : 'PERMITIDO';
         const verdictCode = isDeny ? 'REJECTED' : 'APPROVED';
 
         const evalResult = ComplianceEngine.mapExecutionToCompliance(
@@ -1331,8 +1347,8 @@ export default {
           sanitized_payload: sanitizedText,
           evaluator_chain: { final_evaluator: body.node_type || "EDGE_WORKER_PEP_L7" },
           verdict_data: {
-            verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
-            action: isDeny ? 'BLOCKED' : 'ALLOWED',
+            verdict: finalVerdict,
+            action: finalDecision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
             rule_triggered: rulesTriggered.join(',') || body.scenarioId || "RULE_7DIM_PASS"
           },
           payload_hash: await computeSha256(JSON.stringify(body))
@@ -1343,8 +1359,8 @@ export default {
           evidence_id: runId,
           trace_id: traceId,
           verdictId: verdictId,
-          decision: isDeny ? 'DENY' : 'ALLOW',
-          verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
+          decision: finalDecision,
+          verdict: finalVerdict,
           user: user,
           tenant: tenant,
           prompt: promptInput,
@@ -1356,7 +1372,24 @@ export default {
           ...evalResult
         }, env);
 
-        // Persistencia optimizada en KV (sin exigir D1)
+        // Persistencia en D1 si está configurada
+        if (env.DB) {
+          ctx.waitUntil(
+            env.DB.prepare(`
+              INSERT INTO consolidated_traces (
+                trace_id, tenant_id, user_email, final_evaluator_node, 
+                final_decision, execution_latency_ms, timestamp, 
+                prompt, sanitized_payload, verdict
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7",
+              finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+              new Date().toISOString(), promptInput, sanitizedText, finalVerdict
+            ).run()
+          );
+        }
+
+        // Persistencia en KV
         if (env.SAARE_VAULT_KV) {
           try {
             const existingKv = (await env.SAARE_VAULT_KV.get(`runs_${tenant}`, 'json')) || [];
