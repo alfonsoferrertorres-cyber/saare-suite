@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
+  "ui": "stream",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -15,11 +15,11 @@
       ],
       "outputs": [
         "dist/**",
+        ".next/**",
         ".wrangler/**"
       ]
     },
     "lint": {
-      "dependsOn": ["^build"],
       "inputs": ["src/**"]
     },
     "dev": {

@@ -1,4 +1,5 @@
--- schema.sql
+-- config/schema.sql — Esquema de referencia relacional S.A.A.R.E. Enterprise
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
@@ -18,7 +19,10 @@ CREATE TABLE IF NOT EXISTS consolidated_traces (
     final_evaluator_node TEXT,
     final_decision TEXT NOT NULL,
     execution_latency_ms REAL,
-    anchored INTEGER DEFAULT 0,
+    prompt TEXT,                     -- Mapeado ex-ante en RAM
+    sanitized_payload TEXT,          -- Payload inspeccionado y sanitizado
+    verdict TEXT,                    -- Estado del veredicto (PERMITIDO / RECHAZADO)
+    anchored INTEGER DEFAULT 0,      -- Sello / Anclaje de Merkle
     timestamp TEXT NOT NULL
 );
 
@@ -30,4 +34,19 @@ CREATE TABLE IF NOT EXISTS runs (
     decision TEXT NOT NULL,
     user TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS merkle_anchors (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    merkle_root TEXT NOT NULL,
+    batch_size INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tenant_usage (
+    tenant_id TEXT NOT NULL,
+    billing_period TEXT NOT NULL,
+    verdict_count INTEGER DEFAULT 0,
+    PRIMARY KEY (tenant_id, billing_period)
 );

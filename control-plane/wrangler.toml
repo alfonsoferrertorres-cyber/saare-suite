@@ -10,12 +10,7 @@ routes = [
   { pattern = "saare.es/v1/*", zone_name = "saare.es" }
 ]
 
-# Bindings Globales (Valores por defecto)
-[[d1_databases]]
-binding = "DB"
-database_name = "saare-vault-d1"
-database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
-
+# Bóveda KV Global
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
@@ -31,11 +26,6 @@ SGP_SPEC_VERSION = "SGP 1.0"
 EXPEDIENTE_MASTER = "MS3V-RECON-VALID-2026-ALF-0521"
 TITULAR_NIF = "Alfonso Ferrer Torres (48553065L)"
 ALLOW_FALLBACK_VAULT = "false"
-
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "saare-vault-d1"
-database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
 
 [[env.production.kv_namespaces]]
 binding = "SAARE_VAULT_KV"

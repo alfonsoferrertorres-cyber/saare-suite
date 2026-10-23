@@ -1,16 +1,18 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'services/*'
   - 'control-plane'
-  - 'control-plane-local'
   - 'saare-console'
   - 'saare-suite'
-  - 'extension-base'
   - 'controls'
-  - 'policies'
+
+# Permisos de ejecución de scripts de construcción para dependencias nativas
 allowBuilds:
   core-js: true
   esbuild: true
   workerd: true
+
+# Exclusiones de la política de antigüedad de liberaciones
 minimumReleaseAgeExclude:
-  - lucide-react@1.56.0
+  - 'lucide-react@1.56.0'
