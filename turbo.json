@@ -4,23 +4,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "public/**",
-        "index.html",
-        "vite.config.*",
-        "wrangler.toml",
-        "tsconfig*.json",
-        "package.json"
-      ],
       "outputs": [
         "dist/**",
         ".next/**",
-        ".wrangler/**"
+        ".wrangler/**",
+        "build/**"
       ]
     },
     "lint": {
-      "inputs": ["src/**"]
+      "dependsOn": []
     },
     "dev": {
       "cache": false,
