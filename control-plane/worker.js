@@ -410,6 +410,53 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // 1.1. HISTORIAL CRONOLÓGICO DE TRAZAS EN TIEMPO REAL (/v1/traces, /v1/logs, /api/traces)
+      if ((path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
+        let tracesList = [];
+
+        // Estrategia A: Consulta a base de datos D1 con ordenación descendente (más reciente primero)
+        if (env.DB) {
+          try {
+            const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT 100";
+            const { results } = await env.DB.prepare(query).bind(tenantId).all();
+            if (results && results.length > 0) {
+              tracesList = results;
+            }
+          } catch (d1Err) {
+            console.warn("[SAARE Traces Engine] Consulta D1 fallida. Usando fallback KV/RAM...", d1Err.message);
+          }
+        }
+
+        // Estrategia B: Fallback a KV Store si D1 no devolvió datos
+        if (tracesList.length === 0 && env.SAARE_VAULT_KV) {
+          try {
+            const kvTracesRaw = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
+            if (Array.isArray(kvTracesRaw) && kvTracesRaw.length > 0) {
+              tracesList = kvTracesRaw;
+            }
+          } catch (kvErr) {
+            console.warn("[SAARE Traces Engine] Lectura KV fallida...", kvErr.message);
+          }
+        }
+
+        // Estrategia C: Fallback a memoria RAM efímera
+        if (tracesList.length === 0 && ramRunCache.length > 0) {
+          tracesList = ramRunCache.filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE");
+        }
+
+        // Ordenación estricta por fecha descendente
+        tracesList.sort((a, b) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime());
+
+        return new Response(JSON.stringify({
+          status: "SUCCESS",
+          count: tracesList.length,
+          traces: tracesList
+        }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
       if ((path === '/api/v1/compliance/public-summary' || path === '/compliance/public-summary') && method === 'GET') {
         return new Response(JSON.stringify({
           frameworks: ['EU AI Act', 'DORA (UE) 2022/2554', 'NIS 2', 'ISO/IEC 42001', 'RGPD'],
