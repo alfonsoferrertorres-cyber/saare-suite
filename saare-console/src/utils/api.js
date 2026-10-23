@@ -1,9 +1,11 @@
 // saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.4 SRP)
 
-const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : null;
+const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
+  ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL) 
+  : null;
 
 // Normalización estricta de la URL base configurada en entorno
-const rawEnvUrlString = typeof rawEnvUrl === 'string' ? rawEnvUrl : null;
+const rawEnvUrlString = typeof envBaseUrl === 'string' ? envBaseUrl : null;
 const cleanEnvUrl = rawEnvUrlString 
   ? rawEnvUrlString.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
   : null;
@@ -23,10 +25,18 @@ export function getApiHost() {
       return override.replace(/\/$/, '');
     }
   }
-  if (isLocal) {
-    return 'http://127.0.0.1:3001';
+
+  // 1. Ipangruna ti URL a nakasurat iti .env (VITE_API_BASE_URL / VITE_API_URL)
+  if (cleanEnvUrl) {
+    return cleanEnvUrl;
   }
-  return cleanEnvUrl || 'https://api.saare.es';
+
+  // 2. Default local fallback no awan ti naikabil iti .env
+  if (isLocal) {
+    return 'http://127.0.0.1:8080';
+  }
+
+  return 'https://api.saare.es';
 }
 
 export const API_HOST = getApiHost();

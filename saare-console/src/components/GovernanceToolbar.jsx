@@ -16,6 +16,11 @@ export default function GovernanceToolbar({
 }) {
   const [status, setStatus] = useState('');
 
+  // Resolución dinámica de la URL base priorizando la variable de Vite (.env) y el nodo local
+  const getBaseUrl = () => {
+    return import.meta.env?.VITE_API_URL || API_HOST || 'http://127.0.0.1:8080';
+  };
+
   const triggerAction = (msg, callback) => {
     setStatus(msg);
     if (typeof callback === 'function') {
@@ -29,7 +34,7 @@ export default function GovernanceToolbar({
       ? customHash 
       : "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842";
     
-    const baseUrl = API_HOST || 'https://api.saare.es';
+    const baseUrl = getBaseUrl();
     window.open(`${baseUrl}/verify/${targetHash}`, '_blank');
     
     triggerAction(
@@ -43,8 +48,9 @@ export default function GovernanceToolbar({
   };
 
   const handleDownloadGpo = () => {
-    const baseUrl = API_HOST || 'https://api.saare.es';
-    window.location.href = `${baseUrl}/v1/deploy/gpo-policy`;
+    const baseUrl = getBaseUrl();
+    window.open(`${baseUrl}/v1/deploy/gpo-policy`, '_blank');
+    
     triggerAction(
       'Descargando archivo de política de registro Windows GPO (.reg) para Despliegue Agnóstico...',
       () => {
