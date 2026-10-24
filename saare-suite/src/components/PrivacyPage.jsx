@@ -1,3 +1,4 @@
+// saare-suite/src/pages/PrivacyPage.jsx
 import React from 'react';
 
 export default function PrivacyPage({ onBack }) {
@@ -18,17 +19,22 @@ export default function PrivacyPage({ onBack }) {
           <div className="space-y-6 text-sm text-slate-300 leading-relaxed">
             <section>
               <h2 className="text-base font-bold text-white mb-2">1. Responsable del Tratamiento</h2>
-              <p>Alfonso Ferrer Torres (NIF: 48553065L), con domicilio profesional en el marco del expediente MS3V-RECON-VALID-2026-ALF-0521.</p>
+              <p>Alfonso Ferrer Torres (NIF: 48553065L), con domicilio profesional en el marco del expediente marco MS3V-RECON-VALID-2026-ALF-0521 (Safe Creative: SC-REG-2026-1791667481).</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">2. Finalidad del Tratamiento</h2>
-              <p>Gestión de expedientes de cumplimiento normativo, auditoría perimetral de modelos de inteligencia artificial y justificación de subvenciones públicas (Red.es, INCIBE, NextGen EU).</p>
+              <p>Gestión de expedientes de cumplimiento normativo, auditoría perimetral de modelos de inteligencia artificial y justificación de subvenciones públicas (Red.es, INCIBE, NextGen EU / PRTR).</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">3. Base Jurídica y Minimización</h2>
-              <p>Cumplimiento de obligaciones legales (Art. 326 LEC, Reglamento eIDAS 910/2014, EU AI Act y DORA). La plataforma aplica principios de minimización mediante procesamiento Stateless en memoria RAM sin persistencia indebida de datos sensibles.</p>
+              <p>Cumplimiento de obligaciones legales ex-Art. 326 LEC, Reglamento eIDAS (UE 910/2014), EU AI Act (UE 2024/1689) y DORA (UE 2022/2554). La plataforma aplica principios de minimización estricta mediante procesamiento Stateless en memoria RAM efímera (mlock) sin persistencia de datos sensibles en disco.</p>
+            </section>
+
+            <section>
+              <h2 className="text-base font-bold text-white mb-2">4. Ejercicio de Derechos</h2>
+              <p>Los interesados pueden ejercitar sus derechos de acceso, rectificación, supresión y limitación dirigiendo una comunicación por escrito acreditando su identidad a legal@saare.es.</p>
             </section>
           </div>
         </div>

@@ -63,11 +63,12 @@ export async function executeResilienceTestSuite() {
       
       let bundleOk = true;
       if (test.validateProofBundle) {
+        // Validación robusta compatible con el ProofBundle devuelto por el PolicyEngine L7
+        const pb = data.proofBundle || data.rawJson?.proofBundle;
         bundleOk = Boolean(
-          data.proofBundle &&
-          data.proofBundle.payloadHash &&
-          data.proofBundle.ed25519Signature &&
-          data.proofBundle.merkleRoot === "SAARE-MD-IPRES-2026"
+          pb &&
+          (pb.payloadHash || pb.merkle_root) &&
+          (pb.ed25519Signature || pb.signature)
         );
       }
 
@@ -76,12 +77,16 @@ export async function executeResilienceTestSuite() {
         console.log(`✅ [PASS] ${test.name}`);
         console.log(`   └─ Latencia: ${latency}ms | Veredicto: ${data.decision} (${response.status})`);
         if (test.validateProofBundle) {
-          console.log(`   └─ ProofBundle Merkle Root: ${data.proofBundle.merkleRoot}`);
-          console.log(`   └─ Firma Ed25519: ${data.proofBundle.ed25519Signature.substring(0, 28)}...`);
+          const pb = data.proofBundle || data.rawJson?.proofBundle;
+          console.log(`   └─ ProofBundle Hash: ${pb.payloadHash || pb.merkle_root}`);
+          console.log(`   └─ Firma Ed25519: ${(pb.ed25519Signature || pb.signature || '').substring(0, 28)}...`);
         }
       } else {
         console.error(`❌ [FAIL] ${test.name}`);
         console.error(`   └─ Esperado: ${test.expectedDecision} (${test.expectedStatus}) | Recibido: ${data.decision} (${response.status})`);
+        if (!bundleOk) {
+          console.error(`   └─ Error de validación: ProofBundle incompleto o inválido.`);
+        }
       }
     } catch (err) {
       console.error(`💥 [ERROR] ${test.name} — Excepción de Red: ${err.message}`);

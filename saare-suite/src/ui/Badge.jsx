@@ -1,3 +1,4 @@
+// saare-suite/src/components/Badge.jsx
 import React from 'react';
 
 export function Badge({ children, variant = 'default', className = '' }) {
@@ -11,7 +12,6 @@ export function Badge({ children, variant = 'default', className = '' }) {
     amber: 'bg-amber-950/80 text-amber-400 border-amber-800/80',
     info: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/80',
     cyan: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/80',
-    blue: 'bg-blue-950/80 text-blue-400 border-blue-800/80',
     purple: 'bg-purple-950/80 text-purple-400 border-purple-800/80',
   };
 

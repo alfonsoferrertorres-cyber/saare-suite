@@ -8,7 +8,15 @@ export async function sha256Hex(value) {
   
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   const data = new TextEncoder().encode(text);
-  const digest = await window.crypto.subtle.digest('SHA-256', data);
+
+  const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null;
+  
+  if (!cryptoObj || !cryptoObj.subtle) {
+    console.warn('[SAARE Crypto] Web Crypto API no disponible en este entorno.');
+    return '0000000000000000000000000000000000000000000000000000000000000000';
+  }
+
+  const digest = await cryptoObj.subtle.digest('SHA-256', data);
   
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))

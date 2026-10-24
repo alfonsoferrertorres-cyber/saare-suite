@@ -1,6 +1,5 @@
 // saare-console/src/App.jsx — Panel Principal GRC & Ciberresiliencia S.A.A.R.E. (SGP 1.0 - ISV Agnostic)
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import JSZip from 'jszip';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import Login from './Login';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -9,13 +8,7 @@ import { ReportExportModal } from './components/ReportExportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
-
-// IMPORTACIÓN ROBUSTA CON ALIAS PARA EVITAR REFERENCEERROR (SoA_Modal vs SoAModal)
 import SoAModal from './components/SoAModal';
-const SoA_Modal = SoAModal; 
-if (typeof window !== 'undefined') {
-  window.SoA_Modal = SoAModal;
-}
 
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL } from './utils/api';
@@ -24,15 +17,6 @@ import { generatePdfFromElement } from './services/pdfGeneratorService';
 import { generateVirginizedGovernancePackage } from './services/governanceTemplatesEngine';
 
 import cabeceraImg from './assets/cabecera.png';
-
-// TAXONOMÍA CANÓNICA DE CLAIMS Y ROLES RBAC (SAARE v8.1 / SGP 1.0)
-const SAARE_CLAIM_LEVELS = {
-  DECLARED: { level: 1, label: 'DECLARED', desc: 'Afirmación de existencia del control' },
-  IMPLEMENTED: { level: 2, label: 'IMPLEMENTED', desc: 'Control desplegado en código/runtime' },
-  TESTED: { level: 3, label: 'TESTED', desc: 'Superadas pruebas automatizadas en Resilience Lab' },
-  VERIFIED: { level: 4, label: 'VERIFIED', desc: 'Verificación matemática independiente PASS/FAIL' },
-  CERTIFIED: { level: 5, label: 'CERTIFIED', desc: 'Acreditación jurídica/normativa formal' }
-};
 
 const ROLE_RANKS = {
   "OPERATIONAL_AGENT_USER": 0,
@@ -48,10 +32,7 @@ function hasRequiredRank(role, minRank) {
 }
 
 export default function App() {
-  // SESIÓN AGNÓSTICA AUTÓNOMA DE FRICCIÓN CERO PARA LA ISV
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return true; // Habilitado por defecto para permitir verificación agnóstica sin bloqueo
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   const [userEmail, setUserEmail] = useState(() => {
     return localStorage.getItem('saare_user_email') || 'isv.agnostic.auditor@saare.es';
@@ -65,7 +46,6 @@ export default function App() {
     return localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG.DEFAULT_TENANT || 'ISV_NODE_ENTERPRISE';
   });
 
-  // VISTAS COMERCIALES: 'EXECUTIVE' | 'GRC_AUDIT' | 'CYBER_RESILIENCE'
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
@@ -90,7 +70,6 @@ export default function App() {
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
 
-  // INTERCEPCIÓN EN TIEMPO REAL
   const [livePrompt, setLivePrompt] = useState("");
   const [liveResult, setLiveResult] = useState(null);
   const [isIntercepting, setIsIntercepting] = useState(false);
@@ -134,11 +113,10 @@ export default function App() {
     triggerGovernance("Sesión reiniciada al modo auditoría agnóstica ISV.");
   }, [triggerGovernance]);
 
-  // VERIFICACIÓN AGNÓSTICA DIRECTA DEL NODO Y SOFTWARE DE LA ISV
   const handleAgnosticVerification = useCallback(async () => {
     triggerGovernance("🔄 Ejecutando Verificación Criptográfica Agnóstica del Nodo ISV...");
     try {
-      const licenseData = await apiService.verifyLicense({ tenant: tenantId, user: userEmail, scope: 'isv_agnostic' });
+      await apiService.verifyLicense({ tenant: tenantId, user: userEmail, scope: 'isv_agnostic' });
       const statusData = await apiService.getNodeStatus();
       if (statusData && statusData.vaultSource) {
         setVaultSource(statusData.vaultSource);

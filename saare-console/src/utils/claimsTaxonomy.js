@@ -1,7 +1,4 @@
-/**
- * Taxonomía Unificada de Riesgos y Marcos Normativos (SGP 1.0)
- * Mapeo de controles perimetrales L7 contra EU AI Act, OWASP LLM Top 10, DORA y NIST CSF 2.0
- */
+// saare-console/src/utils/claimsTaxonomy.js — Taxonomía Unificada de Riesgos y Marcos Normativos (SGP 1.0)
 
 export const CLAIMS_TAXONOMY = {
   'EU_AI_ACT_ART15': {

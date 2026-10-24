@@ -19,13 +19,13 @@ export default function L7DescoupleProofWidget() {
 
       <div className="flex items-center gap-3 mb-4">
         <div className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider font-sans">
           Comprobante Criptográfico de Desacople y Soberanía Ex-Ante
         </h3>
       </div>
 
-      <p className="text-slate-400 text-xs mb-6 leading-relaxed">
-        De conformidad con el Reglamento (UE) 2024/1689 (EU AI Act) y los estándares de gestión de seguridad de la información, este nodo opera bajo una arquitectura de aislamiento absoluto que previene cualquier exfiltración de datos o deriva estocástica.
+      <p className="text-slate-400 text-xs mb-6 leading-relaxed font-sans">
+        De conformidad con el Reglamento (UE) 2024/1689 (EU AI Act) y los estándares ISO/IEC 42001 de gestión de IA, este nodo opera bajo una arquitectura de aislamiento absoluto que previene cualquier exfiltración de datos o deriva estocástica.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
@@ -36,7 +36,7 @@ export default function L7DescoupleProofWidget() {
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
           <span className="text-slate-500 block text-[10px] uppercase tracking-wider mb-1">Margen de Error Lógico (M_E):</span>
-          <span className="text-emerald-400 font-bold">{cryptoProof.logicalErrorRate} (Determinista Puro)</span>
+          <span className="text-emerald-400 font-bold">{cryptoProof.logicalErrorRate}</span>
         </div>
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
@@ -46,13 +46,13 @@ export default function L7DescoupleProofWidget() {
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
           <span className="text-slate-500 block text-[10px] uppercase tracking-wider mb-1">Retención en Disco:</span>
-          <span className="text-emerald-400 font-bold">0 BYTES (Zero-Disk RAM)</span>[cite: 3]
+          <span className="text-emerald-400 font-bold">0 BYTES (Zero-Disk RAM)</span>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800/80 pt-4 text-[10px] text-slate-500 gap-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800/80 pt-4 text-[10px] text-slate-500 gap-2 font-mono">
         <span>Expediente Marco: {cryptoProof.expediente}</span>
-        <span className="text-cyan-400 font-semibold">Validado por Motor Lógico S.A.A.R.E. v7.0 PRO</span>
+        <span className="text-cyan-400 font-semibold">Validado por Motor Lógico S.A.A.R.E. v10.0 PRO</span>
       </div>
     </div>
   );

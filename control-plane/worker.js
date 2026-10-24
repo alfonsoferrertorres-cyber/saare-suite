@@ -793,8 +793,8 @@ export default {
               INSERT INTO consolidated_traces (
                 trace_id, tenant_id, user_email, final_evaluator_node, 
                 final_decision, execution_latency_ms, timestamp, 
-                prompt, sanitized_payload, verdict
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                prompt, sanitized_payload, verdict, anchored
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             `).bind(
               traceId, tenant, user, `Core-PEP-L7-v8.4 [${providerMeta.name}]`,
               finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
@@ -1444,15 +1444,15 @@ export default {
           ...evalResult
         }, env);
 
-        // Persistencia en D1 si está configurada
+        // Persistencia en D1 si está configurada (Disparo directo a la tabla de trazas consolidadas)
         if (env.DB) {
           ctx.waitUntil(
             env.DB.prepare(`
               INSERT INTO consolidated_traces (
                 trace_id, tenant_id, user_email, final_evaluator_node, 
                 final_decision, execution_latency_ms, timestamp, 
-                prompt, sanitized_payload, verdict
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                prompt, sanitized_payload, verdict, anchored
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             `).bind(
               traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7",
               finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
@@ -1461,7 +1461,7 @@ export default {
           );
         }
 
-        // Persistencia en KV
+        // Persistencia en KV para sincronización inmediata de la consola
         if (env.SAARE_VAULT_KV) {
           try {
             const existingKv = (await env.SAARE_VAULT_KV.get(`runs_${tenant}`, 'json')) || [];
@@ -1497,7 +1497,8 @@ export default {
             ...cors.corsHeaders, 
             "Content-Type": "application/json",
             "X-SAARE-Latency-Ms": latencyMs,
-            "X-SAARE-Spec": "SGP-1.0"
+            "X-SAARE-Spec": "SGP-1.0",
+            "X-Cloudflare-Zero-Trust": ztVerification.isZeroTrustVerified ? "VERIFIED" : "BYPASS"
           }
         });
       }
@@ -1682,6 +1683,7 @@ export default {
           srpVersion: "8.4.0",
           expediente: "MS3V-RECON-VALID-2026-ALF-0521",
           titular: "Alfonso Ferrer Torres (48553065L)",
+          zeroTrustActive: ztVerification.isZeroTrustVerified,
           timestamp: new Date().toISOString()
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }

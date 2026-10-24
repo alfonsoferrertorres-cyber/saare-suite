@@ -1,3 +1,4 @@
+// saare-suite/src/pages/CookiesPage.jsx
 import React from 'react';
 
 export default function CookiesPage({ onBack }) {
@@ -18,12 +19,12 @@ export default function CookiesPage({ onBack }) {
           <div className="space-y-6 text-sm text-slate-300 leading-relaxed">
             <section>
               <h2 className="text-base font-bold text-white mb-2">1. Uso de Cookies Técnicas</h2>
-              <p>La plataforma S.A.A.R.E. utiliza exclusivamente cookies técnicas estrictamente necesarias para el mantenimiento de la sesión segura del usuario en la consola GRC.</p>
+              <p>La plataforma S.A.A.R.E. utiliza exclusivamente cookies técnicas y de almacenamiento local estrictamente necesarias para la autenticación y mantenimiento de la sesión segura del usuario en la consola GRC.</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">2. Ausencia de Rastreo Publicitario</h2>
-              <p>Cumpliendo con los estándares de soberanía y privacidad, la Suite no incorpora cookies publicitarias, trackers de redes sociales ni sistemas de perfiles comerciales de terceros.</p>
+              <p>Cumpliendo con los estándares de soberanía y privacidad europea, la Suite no incorpora cookies publicitarias, trackers de redes sociales ni sistemas de perfiles comerciales de terceros.</p>
             </section>
           </div>
         </div>

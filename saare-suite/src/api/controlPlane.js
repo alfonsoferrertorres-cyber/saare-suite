@@ -1,6 +1,9 @@
+// saare-suite/src/api/controlPlane.js — Conector L7 Control Plane (SGP 1.0)
 import { API_HOST } from './api';
 
-const API_BASE = (import.meta.env.VITE_CONTROL_PLANE_URL || API_HOST || '').replace(/\/$/, '');
+// Sanear la URL base para evitar /api/v1 duplicados en la llamada
+const rawBase = import.meta.env.VITE_CONTROL_PLANE_URL || API_HOST || '';
+const API_BASE = rawBase.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -38,7 +41,7 @@ function demoResponse(path, payload = {}) {
       policy: payload.policy || 'FIN-PAYMENT-042:v17',
       traceId: `VRD-2026-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
       reasons: verdict === 'DENY' 
-        ? [piiFound ? 'PII_DETECTED_AND_SANANITIZED' : 'HIGH_IMPACT_ACTION', 'FAIL_CLOSED_POLICY'] 
+        ? [piiFound ? 'PII_DETECTED_AND_SANITIZED' : 'HIGH_IMPACT_ACTION', 'FAIL_CLOSED_POLICY'] 
         : verdict === 'REVIEW' 
         ? ['HUMAN_REVIEW_REQUIRED'] 
         : ['POLICY_MATCH_CLEAN'],
@@ -67,8 +70,13 @@ function demoResponse(path, payload = {}) {
 }
 
 export async function callControlPlane(path, payload = {}, options = {}) {
-  if (!API_BASE || API_BASE.includes('localhost:8787')) {
-    await sleep(200);
+  const isLocalHost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  );
+
+  // Si no hay API base configurada o es puerto local 8787 sin backend, responder con simulación
+  if (!API_BASE || (isLocalHost && API_BASE.includes('8787'))) {
+    await sleep(150);
     return demoResponse(path, payload);
   }
 
@@ -76,10 +84,11 @@ export async function callControlPlane(path, payload = {}, options = {}) {
   const timeout = setTimeout(() => controller.abort(), options.timeout ?? 3500);
   
   try {
-    const method = options.method || 'POST';
+    const method = (options.method || 'POST').toUpperCase();
     const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token');
+    const formattedPath = path.startsWith('/') ? path : `/${path}`;
     
-    const response = await fetch(`${API_BASE}${path}`, {
+    const fetchOptions = {
       method,
       headers: { 
         'Content-Type': 'application/json; charset=utf-8', 
@@ -88,9 +97,11 @@ export async function callControlPlane(path, payload = {}, options = {}) {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(options.headers || {}) 
       },
-      body: method === 'GET' ? undefined : JSON.stringify(payload),
+      body: (method === 'GET' || method === 'HEAD') ? undefined : JSON.stringify(payload),
       signal: controller.signal
-    });
+    };
+
+    const response = await fetch(`${API_BASE}${formattedPath}`, fetchOptions);
 
     if (!response.ok) throw new Error(`Control Plane HTTP ${response.status}`);
     return await response.json();

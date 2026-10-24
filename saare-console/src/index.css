@@ -27,7 +27,6 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Personalización de Scrollbars para paneles de telemetría y modales */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -46,13 +45,11 @@ html, body {
   background: #334155;
 }
 
-/* Selección de texto */
 ::selection {
   background-color: #0284c7;
   color: #ffffff;
 }
 
-/* Reglas de Impresión y Generación de PDF (OfficialReportModal / Recibos) */
 @media print {
   .no-print {
     display: none !important;
@@ -75,7 +72,6 @@ html, body {
   }
 }
 
-/* Animaciones personalizadas */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

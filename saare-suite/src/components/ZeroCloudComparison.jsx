@@ -4,23 +4,23 @@ export default function ZeroCloudComparison() {
   const trustBadges = [
     {
       code: "EU AI Act",
-      articles: "Art. 12 & 14",
-      desc: "Automated logging mechanisms and ex-ante human oversight capabilities."
+      articles: "Art. 12 & 27",
+      desc: "Automated logging mechanisms, FRIA impact assessments, and ex-ante human oversight."
     },
     {
       code: "GDPR",
-      articles: "Art. 5.1.c",
-      desc: "Strict data minimization and in-memory pseudonymization execution."
+      articles: "Art. 5 & 25",
+      desc: "Strict data minimization, privacy by design, and in-memory pseudonymization."
     },
     {
       code: "Trade Secrets",
       articles: "Directive (EU) 2016/943",
-      desc: "Technical lineage logging and documented evidence of asset integrity."
+      desc: "Technical lineage logging, source code isolation, and documented asset protection."
     },
     {
       code: "Evidence Integrity",
       articles: "RFC 3161 & eIDAS",
-      desc: "Qualified electronic time-stamping binding and non-repudiation."
+      desc: "Qualified electronic time-stamping, Ed25519 binding, and non-repudiation ex-Art. 326 LEC."
     }
   ];
 
@@ -35,10 +35,10 @@ export default function ZeroCloudComparison() {
         </p>
       </div>
 
-      <div className="overflow-x-auto border border-slate-800 rounded-2xl mb-12 bg-slate-950">
+      <div className="overflow-x-auto border border-slate-800 rounded-2xl mb-12 bg-slate-950 shadow-2xl">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400">
+            <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400 font-mono text-xs">
               <th className="p-4 font-semibold">Criterion</th>
               <th className="p-4 font-semibold text-rose-400">Traditional SaaS Audit</th>
               <th className="p-4 font-semibold text-emerald-400">S.A.A.R.E. Native Audit (SGP 1.0)</th>
@@ -58,7 +58,7 @@ export default function ZeroCloudComparison() {
             <tr>
               <td className="p-4 font-semibold text-white">Infrastructure Model</td>
               <td className="p-4 text-slate-400">Per-Volume API Subscription</td>
-              <td className="p-4 text-emerald-300 font-semibold">Local Control Plane Execution</td>
+              <td className="p-4 text-emerald-300 font-semibold">Local Control Plane Edge Execution</td>
             </tr>
             <tr>
               <td className="p-4 font-semibold text-white">Evaluation Logic</td>

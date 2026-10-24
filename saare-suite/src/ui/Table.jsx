@@ -1,3 +1,4 @@
+// saare-suite/src/components/Table.jsx
 import React from 'react';
 
 export function Table({ children, className = '' }) {

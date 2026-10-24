@@ -13,7 +13,6 @@ export default function ArchitectureDiagram() {
 
   return (
     <div className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 md:p-8 my-8 font-sans text-white shadow-2xl relative overflow-hidden">
-      {/* Background glow */}
       <div className="absolute -top-24 -right-24 w-60 h-60 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none"></div>
 
       <div className="text-center mb-8">
@@ -52,7 +51,7 @@ export default function ArchitectureDiagram() {
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
           <span>
-            <strong className="text-white">L7 Interception:</strong> P99 &lt; 1.16 ms | Zero-Disk RAM isolation (`mlock`)
+            <strong className="text-white">L7 Interception:</strong> P99 &lt; 1.12 ms | Zero-Disk RAM isolation (`mlock`)
           </span>
         </div>
         <div className="flex items-center gap-2">

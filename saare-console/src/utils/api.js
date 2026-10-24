@@ -4,7 +4,6 @@ const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env
   ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL) 
   : null;
 
-// Normalización estricta de la URL base configurada en entorno
 const rawEnvUrlString = typeof envBaseUrl === 'string' ? envBaseUrl : null;
 const cleanEnvUrl = rawEnvUrlString 
   ? rawEnvUrlString.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
@@ -15,9 +14,6 @@ const isLocal = typeof window !== "undefined" && (
   window.location.hostname === '127.0.0.1'
 );
 
-/**
- * Resuelve dinámicamente la URL base de la Bóveda / Control Plane.
- */
 export function getApiHost() {
   if (typeof window !== 'undefined') {
     const override = localStorage.getItem('saare_override_vault_host');
@@ -26,12 +22,10 @@ export function getApiHost() {
     }
   }
 
-  // 1. Ipangruna ti URL a nakasurat iti .env (VITE_API_BASE_URL / VITE_API_URL)
   if (cleanEnvUrl) {
     return cleanEnvUrl;
   }
 
-  // 2. Default local fallback no awan ti naikabil iti .env
   if (isLocal) {
     return 'http://127.0.0.1:8080';
   }
@@ -42,9 +36,6 @@ export function getApiHost() {
 export const API_HOST = getApiHost();
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
-/**
- * Valida si la URL destino pertenece al ecosistema S.A.A.R.E.
- */
 function isOwnApi(url) {
   if (typeof url !== 'string') return false;
   const currentHost = getApiHost();
@@ -58,9 +49,6 @@ function isOwnApi(url) {
   );
 }
 
-/**
- * Cliente HTTP unificado para la Consola GRC de S.A.A.R.E.
- */
 export async function saareFetch(endpoint, options = {}) {
   const activeHost = getApiHost();
   const activeBaseUrl = `${activeHost}/api/v1`;
@@ -68,14 +56,12 @@ export async function saareFetch(endpoint, options = {}) {
   
   let finalUrl = endpoint;
 
-  // 1. Normalización anti-duplicación de prefijos (/api/v1)
   if (!isAbsolute) {
     let relativePath = String(endpoint || '').replace(/^\/+/, '');
     relativePath = relativePath.replace(/^api\/(v1\/)?/, '');
     finalUrl = `${activeBaseUrl}/${relativePath}`;
   }
 
-  // 2. Extracción segura de credenciales e identidad RBAC desde localStorage
   let token = null;
   let currentUser = null;
   let currentTenant = null;
@@ -108,7 +94,6 @@ export async function saareFetch(endpoint, options = {}) {
 
   const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'UNSIGNED_ANON';
 
-  // 3. Ensamblado de cabeceras de seguridad
   const defaultHeaders = {
     'Accept': 'application/json',
     'x-saare-spec': 'SGP-1.0',
@@ -143,9 +128,6 @@ export async function saareFetch(endpoint, options = {}) {
   }
 }
 
-/**
- * Helpers API estructurados para lectura de Evidencias, KPIs y Plantillas
- */
 export const api = {
   get: async (endpoint, options = {}) => {
     const res = await saareFetch(endpoint, { ...options, method: 'GET' });
@@ -193,9 +175,6 @@ export const api = {
     return res && res.ok ? res.json() : {};
   },
 
-  /**
-   * Obtiene la lista completa o filtrada de evidencias / trazas auditables L7
-   */
   getEvidences: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const endpoint = `/evidences${query ? `?${query}` : ''}`;
@@ -213,9 +192,6 @@ export const api = {
     }
   },
 
-  /**
-   * Endpoint secundario/legacy para consultar ejecuciones de trazas
-   */
   getRuns: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const endpoint = `/runs${query ? `?${query}` : ''}`;
@@ -233,9 +209,6 @@ export const api = {
     }
   },
 
-  /**
-   * Consulta una traza específica por su UUID / Trace ID
-   */
   getTraceById: async (traceId) => {
     try {
       const res = await saareFetch(`/evidences/${traceId}`, { method: 'GET' });

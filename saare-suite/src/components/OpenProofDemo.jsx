@@ -16,14 +16,14 @@ export default function OpenProofDemo() {
   const [tampered, setTampered] = useState(false);
 
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs text-slate-200">
-      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-6 font-mono text-xs text-slate-200 shadow-2xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-slate-800 gap-3">
         <div>
           <h4 className="font-bold text-sm text-white font-sans">
             Open Proof: Demostración "Don't Trust, Verify"
           </h4>
           <p className="text-slate-400 font-sans text-xs mt-0.5">
-            Comprueba la resiliencia criptográfica alterando un byte de la evidencia.
+            Comprueba la resiliencia criptográfica alterando un byte del paquete de evidencia.
           </p>
         </div>
         <button
@@ -41,7 +41,7 @@ export default function OpenProofDemo() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-slate-950 p-4 rounded border border-slate-800">
           <span className="text-slate-500 text-[10px] block mb-2">// ESTADO DEL PAQUETE .saare-proof</span>
-          <pre className="text-emerald-400 overflow-x-auto">
+          <pre className="text-emerald-400 overflow-x-auto text-[11px] leading-relaxed">
             {JSON.stringify(
               {
                 ...SAMPLE_PROOF,
@@ -61,36 +61,36 @@ export default function OpenProofDemo() {
         <div className="bg-slate-950 p-4 rounded border border-slate-800 flex flex-col justify-between">
           <div>
             <span className="text-slate-500 text-[10px] block mb-2">// RESULTADO DEL VERIFICADOR INDEPENDIENTE</span>
-            <div className="space-y-2 font-sans mt-3">
-              <div className="flex justify-between">
-                <span>SHA-256 Digest:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400"}>
+            <div className="space-y-2.5 font-sans mt-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">SHA-256 Digest:</span>
+                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
                   {tampered ? "FAIL (Mismatch)" : "PASSED ✓"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Merkle Inclusion:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400"}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Merkle Inclusion:</span>
+                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
                   {tampered ? "FAIL (Invalid Root)" : "PASSED ✓"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Ed25519 Signature:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400"}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Ed25519 Signature:</span>
+                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
                   {tampered ? "INVALID" : "VERIFIED ✓"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>RFC 3161 Timestamp:</span>
-                <span className="text-emerald-400">VALID ✓</span>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">RFC 3161 Timestamp:</span>
+                <span className="text-emerald-400 font-semibold">VALID ✓</span>
               </div>
             </div>
           </div>
 
-          <div className={`p-3 rounded text-center font-bold font-sans mt-4 border ${
+          <div className={`p-3 rounded text-center font-bold font-sans mt-4 border text-xs tracking-wide transition-all ${
             tampered
-              ? 'bg-rose-950/60 text-rose-200 border-rose-800'
-              : 'bg-emerald-950/60 text-emerald-200 border-emerald-800'
+              ? 'bg-rose-950/60 text-rose-200 border-rose-800/80'
+              : 'bg-emerald-950/60 text-emerald-200 border-emerald-800/80'
           }`}>
             VEREDICTO: {tampered ? 'INVALID / EVIDENCIA MANIPULADA' : 'VERIFIED / INTEGRIDAD ÍNTEGRA'}
           </div>

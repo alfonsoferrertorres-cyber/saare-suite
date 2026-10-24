@@ -57,7 +57,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
       } else {
         const errorData = await response.json().catch(() => ({}));
         
-        // Si falla en modo Demo, activar fallback de demo local de fricción cero
         if (activeTab === 'demo') {
           const fallbackToken = `sk_saare_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
           localStorage.setItem('saare_token', fallbackToken);
@@ -80,7 +79,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
     } catch (err) {
       console.warn("[SAARE ACCESS GATE] Sin conexión con backend REST, ejecutando sesión local de demo:", err);
       
-      // Fallback para entornos offline o de prueba
       if (activeTab === 'demo' || !password) {
         const offlineToken = `sk_saare_offline_${Date.now()}`;
         localStorage.setItem('saare_token', offlineToken);

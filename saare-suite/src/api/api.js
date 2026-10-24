@@ -17,7 +17,7 @@ const isLocal = typeof window !== 'undefined' && (
 
 export const API_HOST = isLocal
   ? 'http://127.0.0.1:3001'
-  : (cleanEnvUrl || 'https://control-plane.alfonsoferrertorres.workers.dev');
+  : (cleanEnvUrl || 'https://api.saare.es');
 
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
@@ -37,16 +37,24 @@ async function apiFetch(endpoint, options = {}) {
   }
 
   const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
+
+  const fetchOptions = {
+    ...options,
+    method,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+  };
+
+  // Prevenir envío de 'body' en peticiones GET o HEAD
+  if (method === 'GET' || method === 'HEAD') {
+    delete fetchOptions.body;
+  }
 
   try {
-    const response = await fetch(`${API_HOST}${formattedEndpoint}`, {
-      ...options,
-      headers: {
-        ...defaultHeaders,
-        ...options.headers,
-      },
-    });
-
+    const response = await fetch(`${API_HOST}${formattedEndpoint}`, fetchOptions);
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -90,7 +98,7 @@ export const landingApi = {
       body: JSON.stringify(formData),
     }),
 
-  // Intercepción Ex-Ante L7 (Alineado con /api/v1/intercept de server.js)
+  // Intercepción Ex-Ante L7
   checkEnforcement: (payload) =>
     apiFetch('/api/v1/intercept', {
       method: 'POST',
@@ -99,7 +107,7 @@ export const landingApi = {
 
   // Verificación de Evidencia eIDAS / RFC 3161 / ISO 27037
   verifyEvidence: (hashOrProof) =>
-    apiFetch(`/api/v1/verify/${encodeURIComponent(hashOrProof)}`, {
+    apiFetch(`/api/v1/evidence/verify/${encodeURIComponent(hashOrProof)}`, {
       method: 'GET',
     }),
 

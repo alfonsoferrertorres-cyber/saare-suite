@@ -1,3 +1,4 @@
+// saare-suite/src/pages/TermsPage.jsx
 import React from 'react';
 
 export default function TermsPage({ onBack }) {
@@ -28,12 +29,12 @@ export default function TermsPage({ onBack }) {
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">3. Arquitectura Stateless (Cero Retención en Disco)</h2>
-              <p>De conformidad con el Reglamento RGPD (UE 2016/679) y el EU AI Act, la Suite opera exclusivamente en memoria volátil RAM mediante aislamiento mlock, garantizando la destrucción instantánea de cualquier dato de carácter personal o token PII tras la emisión de la respuesta.</p>
+              <p>De conformidad con el Reglamento RGPD (UE 2016/679) y el EU AI Act, la Suite opera exclusivamente en memoria volátil RAM mediante aislamiento mlock_ephemeral, garantizando la destrucción instantánea (0x00) de cualquier dato de carácter personal o token PII tras la emisión de la respuesta.</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">4. Propiedad Intelectual</h2>
-              <p>Todos los derechos de propiedad intelectual, algoritmos de canalización L7 y esquemas de prueba verificable se encuentran inscritos bajo el registro RPI-2026-SAARE-0914X y el estándar B2B MS3V-SGP1.0-SOFTWARE-2026.</p>
+              <p>Todos los derechos de propiedad intelectual, algoritmos de canalización L7 y esquemas de prueba verificable se encuentran inscritos bajo el registro RPI-2026-SAARE-0914X, Safe Creative SC-REG-2026-1791667481 y el estándar B2B MS3V-SGP1.0-SOFTWARE-2026.</p>
             </section>
           </div>
         </div>
