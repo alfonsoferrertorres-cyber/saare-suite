@@ -228,4 +228,56 @@ export default function PricingSection({ onSelectPlan }) {
                     <td className="p-4 font-sans font-semibold text-white">Sistemas IA Gestionados</td>
                     <td className="p-4 text-emerald-400 font-bold">1</td>
                     <td className="p-4">3</td>
-                    <td className="p-4 text-cyan-400 font
+                    <td className="p-4 text-cyan-400 font-bold">10</td>
+                    <td className="p-4">50</td>
+                    <td className="p-4 text-indigo-400">Ilimitado</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-sans font-semibold text-white">Usuarios Activos</td>
+                    <td className="p-4 text-emerald-400 font-bold">2</td>
+                    <td className="p-4">5</td>
+                    <td className="p-4 text-cyan-400 font-bold">15</td>
+                    <td className="p-4">50+</td>
+                    <td className="p-4 text-indigo-400">Ilimitado</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-sans font-semibold text-white">Bóveda Criptográfica (SHA-256)</td>
+                    <td className="p-4 text-emerald-400 font-bold">✓ Local</td>
+                    <td className="p-4">✓ Cloud D1</td>
+                    <td className="p-4 text-cyan-400 font-bold">✓ Cloud D1 + KV</td>
+                    <td className="p-4">✓ Dedicada</td>
+                    <td className="p-4 text-indigo-400">✓ On-Prem / HSM</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-sans font-semibold text-white">Intercepción Ex-Ante L7</td>
+                    <td className="p-4 text-slate-500">Pruebas</td>
+                    <td className="p-4">Básica</td>
+                    <td className="p-4 text-cyan-400 font-bold">Avanzada</td>
+                    <td className="p-4">Personalizada</td>
+                    <td className="p-4 text-indigo-400">Motor Air-Gapped</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-sans font-semibold text-white">Evaluación ISO 42001 / EU AI Act</td>
+                    <td className="p-4 text-emerald-400 font-bold">✓ Manual</td>
+                    <td className="p-4">✓ Automatizada</td>
+                    <td className="p-4 text-cyan-400 font-bold">✓ Automatizada</td>
+                    <td className="p-4">✓ Continua</td>
+                    <td className="p-4 text-indigo-400">✓ Custom Compliance</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-sans font-semibold text-white">SLA y Soporte Técnico</td>
+                    <td className="p-4 text-slate-500">Comunidad</td>
+                    <td className="p-4">Email 48h</td>
+                    <td className="p-4 text-cyan-400 font-bold">Prioritario 24h</td>
+                    <td className="p-4">SLA 99.9% + CSM</td>
+                    <td className="p-4 text-indigo-400">SLA 99.99% Dedicado</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -1,13 +1,19 @@
-# Dependencias y cache
+# Dependencias y caché
 node_modules/
 .pnpm-store/
 .vite/
+.turbo/
+.wrangler/
 
 # Salidas de compilación
 dist/
 build/
 
-# Variables de entorno y credenciales (Aislamiento de seguridad)
+# Archivos temporales de Vite / Bundlers
+vite.config.js.timestamp-*
+*.timestamp-*.mjs
+
+# Variables de entorno y credenciales
 .env
 .env.local
 .env.*.local
@@ -18,10 +24,9 @@ build/
 leads_log.json
 .DS_Store
 
-# Certified credentials & local registration
+# Credenciales certificadas y registros locales
 saare-recognition.json
 
-# Performance & benchmark test outputs
+# Resultados de rendimiento y pruebas de benchmark
 benchmark_*_summary.json
 *.summary.json
-

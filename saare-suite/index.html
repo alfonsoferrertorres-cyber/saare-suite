@@ -11,12 +11,12 @@
     <title>S.A.A.R.E. Suite | Gobernanza de IA</title>
     
     <!-- Metadatos SEO y Open Graph (Redes Sociales) -->
-    <meta name="description" content="S.A.A.R.E. Suite: Plataforma L7 Ex-Ante para control, auditoría y resiliencia de agentes de IA.">
-    <meta property="og:title" content="S.A.A.R.E. Suite | Gobernanza de IA">
-    <meta property="og:description" content="Inspección y auditoría criptográfica para operaciones AI. Financiable al 100% con fondos Kit Digital y DORA.">
-    <meta property="og:image" content="https://www.saare.es/social-card.png">
-    <meta property="og:url" content="https://www.saare.es">
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="description" content="S.A.A.R.E. Suite: Plataforma L7 Ex-Ante para control, auditoría y resiliencia de agentes de IA." />
+    <meta property="og:title" content="S.A.A.R.E. Suite | Gobernanza de IA" />
+    <meta property="og:description" content="Inspección y auditoría criptográfica para operaciones AI. Financiable al 100% con fondos Kit Digital y DORA." />
+    <meta property="og:image" content="https://www.saare.es/social-card.png" />
+    <meta property="og:url" content="https://www.saare.es" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <!-- INYECCIÓN AUTO-LOGIN CISO ADMIN (BYPASS DE ACCESS GATE) -->
     <script>
@@ -26,7 +26,7 @@
         const defaultRole = "CISO_ADMIN";
         const masterToken = "sk_saare_live_master_auto_login_session";
 
-        // Isagana ti session iti localStorage no awan pay ti token
+        // Prepara la sesión en localStorage si aún no existe el token
         if (!localStorage.getItem('saare_token') || !localStorage.getItem('saare_user')) {
           localStorage.setItem('saare_token', masterToken);
           localStorage.setItem('saare_user', JSON.stringify({

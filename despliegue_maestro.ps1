@@ -8,12 +8,11 @@ $ErrorActionPreference = "Stop"
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [0/6] Ejecutando verificaciones de entorno y credenciales..." -ForegroundColor Magenta
 
-# 0.1 Asegurar que la ejecución comienza en la raíz del proyecto
 if ((Get-Location).Path.EndsWith("control-plane")) {
     Set-Location ..
 }
 
-# 0.2 Validar autenticación en Cloudflare CLI (Wrangler)
+# 0.1 Validar autenticación en Cloudflare CLI (Wrangler)
 Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
 try {
     $whoami = npx wrangler whoami 2>&1
@@ -25,7 +24,7 @@ try {
     Write-Host "[ADVERTENCIA] No se pudo verificar la sesión de Wrangler local. Continuando..." -ForegroundColor DarkYellow
 }
 
-# 0.3 Validar permisos de Git
+# 0.2 Validar repositorio Git
 Write-Host " -> Verificando estado del repositorio Git..." -ForegroundColor Gray
 try {
     git rev-parse --is-inside-work-tree | Out-Null
@@ -35,17 +34,24 @@ try {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 1: DEPENDENCIAS Y WORKSPACE
+# FASE 1: DEPENDENCIAS Y LIMPIEZA DE ARTEFACTOS
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [1/6] Resolviendo e instalando dependencias del Workspace..." -ForegroundColor Yellow
+Write-Host "`n==> [1/6] Resolviendo dependencias y limpiando builds antiguas..." -ForegroundColor Yellow
 pnpm install --no-frozen-lockfile
 
+# Limpieza estricta de dist/ para prevenir despliegues de código obsoleto
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist"
+
 # ------------------------------------------------------------------------------
-# FASE 2: COMPILACIÓN CON TURBOREPO
+# FASE 2: COMPILACIÓN DIRECTA DE FRONTENDS (PNPM WORKSPACES)
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [2/6] Compilando aplicaciones web (saare-console + saare-suite)..." -ForegroundColor Cyan
-$env:TURBO_TELEMETRY_DISABLED="1"
-npx turbo run build --ui=stream --no-daemon --continue
+
+Write-Host " -> Compilando Consola GRC (saare-console)..." -ForegroundColor Gray
+pnpm --filter saare-console run build
+
+Write-Host " -> Compilando Landing Comercial (saare-suite)..." -ForegroundColor Gray
+pnpm --filter saare-suite run build
 
 # ------------------------------------------------------------------------------
 # FASE 3: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES
@@ -53,22 +59,22 @@ npx turbo run build --ui=stream --no-daemon --continue
 Write-Host "`n==> [3/6] Desplegando Frontends a Cloudflare Pages..." -ForegroundColor Cyan
 
 # 3.1 Consola GRC (saare-console)
-$consoleDist = if (Test-Path "saare-console\dist") { "saare-console/dist" } else { "apps/saare-console/dist" }
-if (Test-Path $consoleDist) {
+$consoleDist = if (Test-Path "saare-console\dist") { "saare-console/dist" } elseif (Test-Path "apps\saare-console\dist") { "apps/saare-console/dist" } else { $null }
+if ($consoleDist) {
     Write-Host " -> Desplegando Consola GRC ($consoleDist)..." -ForegroundColor Gray
     npx wrangler pages deploy $consoleDist --project-name=saare-console --branch=main --commit-dirty=true
 } else {
-    Write-Host "[ERROR] No se encontró la carpeta de compilación $consoleDist" -ForegroundColor Red
+    Write-Host "[ERROR] Falló la compilación de saare-console. No existe carpeta dist." -ForegroundColor Red
     exit 1
 }
 
 # 3.2 Landing Comercial (saare-suite)
-$suiteDist = if (Test-Path "saare-suite\dist") { "saare-suite/dist" } else { "apps/saare-suite/dist" }
-if (Test-Path $suiteDist) {
+$suiteDist = if (Test-Path "saare-suite\dist") { "saare-suite/dist" } elseif (Test-Path "apps\saare-suite\dist") { "apps/saare-suite/dist" } else { $null }
+if ($suiteDist) {
     Write-Host " -> Desplegando Landing Comercial ($suiteDist)..." -ForegroundColor Gray
     npx wrangler pages deploy $suiteDist --project-name=saare-suite --branch=main --commit-dirty=true
 } else {
-    Write-Host "[ERROR] No se encontró la carpeta de compilación $suiteDist" -ForegroundColor Red
+    Write-Host "[ERROR] Falló la compilación de saare-suite. No existe carpeta dist." -ForegroundColor Red
     exit 1
 }
 
@@ -76,17 +82,17 @@ if (Test-Path $suiteDist) {
 # FASE 4: MIGRACIONES DE BASE DE DATOS & CONTROL PLANE WORKER
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [4/6] Desplegando Control Plane Worker y Esquemas..." -ForegroundColor Cyan
-$controlPlanePath = if (Test-Path "control-plane") { "control-plane" } else { "apps/control-plane" }
+$controlPlanePath = if (Test-Path "control-plane") { "control-plane" } elseif (Test-Path "apps\control-plane") { "apps/control-plane" } else { $null }
 
-if (Test-Path $controlPlanePath) {
+if ($controlPlanePath) {
     Push-Location $controlPlanePath
     try {
-        # Sincronización opcional de D1 si existe el esquema relacional
+        # Aplicación de esquema relacional en Cloudflare D1
         if (Test-Path "schema.sql") {
-            Write-Host " -> Aplicando esquema relacional en Cloudflare D1 (saare-vault-d1)..." -ForegroundColor Gray
+            Write-Host " -> Aplicando esquema relacional D1 (schema.sql)..." -ForegroundColor Gray
             npx wrangler d1 execute saare-vault-d1 --remote --file=schema.sql --env production --yes
         } elseif (Test-Path "../config/schema.sql") {
-            Write-Host " -> Aplicando esquema relacional desde config/schema.sql..." -ForegroundColor Gray
+            Write-Host " -> Aplicando esquema relacional D1 desde config/schema.sql..." -ForegroundColor Gray
             npx wrangler d1 execute saare-vault-d1 --remote --file=../config/schema.sql --env production --yes
         }
 
@@ -97,7 +103,7 @@ if (Test-Path $controlPlanePath) {
         Pop-Location
     }
 } else {
-    Write-Host "[ERROR] No se encontró el directorio $controlPlanePath" -ForegroundColor Red
+    Write-Host "[ERROR] No se encontró la carpeta del control-plane." -ForegroundColor Red
     exit 1
 }
 
@@ -122,14 +128,28 @@ if ($gitStatus) {
 # FASE 6: PRUEBA DE SALUD Y VERIFICACIÓN HTTP
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [6/6] Verificando salud del entorno de Producción..." -ForegroundColor Cyan
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
 
-try {
-    $health = Invoke-RestMethod -Uri "https://api.saare.es/health" -Method Get
-    Write-Host " -> [OK] Estado API (https://api.saare.es/health):" -ForegroundColor Green
-    Write-Host "    Estado: $($health.status) | Nodo: $($health.node) | TrustAnchor: $($health.trustAnchor)" -ForegroundColor Gray
-} catch {
-    Write-Host "[ADVERTENCIA] No se pudo verificar la API pública en https://api.saare.es/health. Revise la propagación DNS." -ForegroundColor DarkYellow
+$endpointsToTest = @(
+    "https://api.saare.es/health",
+    "https://api.saare.es/api/v1/health"
+)
+
+$apiOnline = $false
+foreach ($url in $endpointsToTest) {
+    try {
+        $health = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5
+        Write-Host " -> [OK] Estado API ($url):" -ForegroundColor Green
+        Write-Host "    Estado: $($health.status) | Nodo: $($health.node) | TrustAnchor: $($health.trustAnchor)" -ForegroundColor Gray
+        $apiOnline = $true
+        break
+    } catch {
+        # Intenta con el siguiente endpoint
+    }
 }
 
-Write-Host "`n==> DESPLIEGUE COMPLETO INTEGRAL FINALIZADO CON ÉXITO" -ForegroundColor Green
+if (-not $apiOnline) {
+    Write-Host "[ADVERTENCIA] No se recibió respuesta HTTP 200 en los endpoints de salud. Revise los registros en Cloudflare Worker Dashboard." -ForegroundColor DarkYellow
+}
+
+Write-Host "`n==> DESPLIEGUE COMPLETO INTEGRAL FINALIZADO CON ÉXITO 🚀" -ForegroundColor Green

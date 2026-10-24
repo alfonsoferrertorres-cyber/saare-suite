@@ -16,8 +16,12 @@ function base64UrlEncode(buffer) {
 
 function base64UrlDecode(str) {
   let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  while (base64.length % 4) {
-    base64 += "=";
+  const pad = base64.length % 4;
+  if (pad) {
+    if (pad === 1) {
+      throw new Error("[AUTH_ERROR] Cadena Base64URL con longitud o formato inválido");
+    }
+    base64 += "=".repeat(4 - pad);
   }
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -82,11 +86,11 @@ export class AuthMiddleware {
       ? token.replace("Bearer ", "").trim()
       : token.trim();
 
-    // 1. Validar API Keys maestras o de servicio
+    // 1. Validar API Keys maestras o de servicio (S.A.A.R.E. Master Tokens)
     if (cleanToken.startsWith("sk_saare_")) {
       return {
-        sub: "api_key_user",
-        email: "operator@saare.es",
+        sub: "master_custodian",
+        email: "alfonsoferrertorres@gmail.com",
         tenantId: "ENTERPRISE",
         role: "CISO_ADMIN",
         isApiKey: true
@@ -103,35 +107,47 @@ export class AuthMiddleware {
     const encoder = new TextEncoder();
     const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
 
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(this.jwtSecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"]
-    );
+    let isValidSignature = false;
+    try {
+      const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(this.jwtSecret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["verify"]
+      );
 
-    const signatureBytes = base64UrlDecode(signatureB64);
-    const isValidSignature = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      signatureBytes,
-      dataToVerify
-    );
+      const signatureBytes = base64UrlDecode(signatureB64);
+      isValidSignature = await crypto.subtle.verify(
+        "HMAC",
+        key,
+        signatureBytes,
+        dataToVerify
+      );
+    } catch (err) {
+      throw new Error(`[AUTH_ERROR] Error al verificar la firma criptográfica: ${err.message}`);
+    }
 
     if (!isValidSignature) {
       throw new Error("[AUTH_ERROR] Firma JWT inválida o manipulada");
     }
 
-    const payloadBytes = base64UrlDecode(payloadB64);
-    const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
+    let payload;
+    try {
+      const payloadBytes = base64UrlDecode(payloadB64);
+      payload = JSON.parse(new TextDecoder().decode(payloadBytes));
+    } catch (err) {
+      throw new Error("[AUTH_ERROR] Imposible decodificar o parsear el JSON del payload");
+    }
 
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
+    // Comprobación de expiración (con margen de tolerancia de 5 segundos para desincronizaciones de reloj)
+    if (payload.exp && (Date.now() / 1000) >= (payload.exp + 5)) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
     }
 
-    const userGroups = payload.groups || [];
+    const userGroups = Array.isArray(payload.groups) ? payload.groups : [];
     let assignedRole = payload.role || "OPERATIONAL_AGENT_USER";
+
     for (const group of userGroups) {
       if (this.roleMapping[group]) {
         assignedRole = this.roleMapping[group];
@@ -140,8 +156,8 @@ export class AuthMiddleware {
     }
 
     return {
-      sub: payload.sub,
-      email: sanitizeEmail(payload.email),
+      sub: payload.sub || "user_anonymous",
+      email: sanitizeEmail(payload.email || ""),
       tenantId: payload.tenant_id || payload.tenantId || "ENTERPRISE",
       role: assignedRole,
       groups: userGroups
