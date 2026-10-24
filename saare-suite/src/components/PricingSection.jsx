@@ -7,6 +7,16 @@ export default function PricingSection({ onSelectPlan }) {
 
   const isAnnual = billingCycle === 'annual';
 
+  // Manejo unificado de selección de planes con redirección segura a producción
+  const handlePlanSelect = (planId) => {
+    if (onSelectPlan) {
+      onSelectPlan(planId);
+    } else {
+      const consoleUrl = import.meta.env.VITE_CONSOLE_URL || 'https://saare-console.pages.dev';
+      window.location.href = `${consoleUrl}?plan=${planId}&tenant=DEMO_ENTERPRISE&role=AUDITOR_GUEST&status=ACTIVE&source=saare_suite`;
+    }
+  };
+
   const plans = [
     {
       id: 'DISCOVER_FREE',
@@ -166,8 +176,8 @@ export default function PricingSection({ onSelectPlan }) {
                 </div>
 
                 <button
-                  onClick={() => onSelectPlan && onSelectPlan(plan.id)}
-                  className={`w-full py-3 text-xs font-bold rounded-xl transition-all text-center ${plan.ctaStyle}`}>
+                  onClick={() => handlePlanSelect(plan.id)}
+                  className={`w-full py-3 text-xs font-bold rounded-xl transition-all text-center cursor-pointer ${plan.ctaStyle}`}>
                   {plan.cta}
                 </button>
               </div>
@@ -187,8 +197,8 @@ export default function PricingSection({ onSelectPlan }) {
             </p>
           </div>
           <button
-            onClick={() => onSelectPlan && onSelectPlan('PRIVATE_CUSTOM')}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl border border-slate-700 shrink-0 transition-colors">
+            onClick={() => handlePlanSelect('PRIVATE_CUSTOM')}
+            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl border border-slate-700 shrink-0 transition-colors cursor-pointer">
             Diseñar Despliegue Privado
           </button>
         </div>
@@ -196,7 +206,7 @@ export default function PricingSection({ onSelectPlan }) {
         <div className="text-center">
           <button
             onClick={() => setShowFullComparison(!showFullComparison)}
-            className="px-6 py-2.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-900 border border-slate-800 rounded-xl transition-all">
+            className="px-6 py-2.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer">
             {showFullComparison ? 'Ocultar Matriz de Especificaciones ▲' : 'Mostrar Matriz Completa de Especificaciones ▼'}
           </button>
 
@@ -218,48 +228,4 @@ export default function PricingSection({ onSelectPlan }) {
                     <td className="p-4 font-sans font-semibold text-white">Sistemas IA Gestionados</td>
                     <td className="p-4 text-emerald-400 font-bold">1</td>
                     <td className="p-4">3</td>
-                    <td className="p-4 text-cyan-400 font-bold">10</td>
-                    <td className="p-4">50</td>
-                    <td className="p-4">Custom</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Usuarios de Consola</td>
-                    <td className="p-4 text-emerald-400 font-bold">2</td>
-                    <td className="p-4">5</td>
-                    <td className="p-4 text-cyan-400 font-bold">15</td>
-                    <td className="p-4">50+</td>
-                    <td className="p-4">Custom</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Límite de Expiración</td>
-                    <td className="p-4 text-emerald-400 font-bold">Sin límite (Permanente)</td>
-                    <td className="p-4">Mensual</td>
-                    <td className="p-4">Mensual</td>
-                    <td className="p-4">Anual / Custom</td>
-                    <td className="p-4">Custom</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Bóveda de Evidencias (SHA-256)</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓ (Sandbox RAM)</td>
-                    <td className="p-4 text-emerald-400">✓</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓ (Avanzada)</td>
-                    <td className="p-4 text-emerald-400">✓</td>
-                    <td className="p-4 text-emerald-400">✓</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-sans font-semibold text-white">Capa de Control S.A.A.R.E. (L7 Ex-Ante)</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓</td>
-                    <td className="p-4 text-slate-600">—</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓</td>
-                    <td className="p-4 text-emerald-400 font-bold">✓</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
+                    <td className="p-4 text-cyan-400 font

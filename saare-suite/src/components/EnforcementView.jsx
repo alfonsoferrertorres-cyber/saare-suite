@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function GrcAuditView({ invariants = [], policies = [] }) {
+export default function EnforcementView({ invariants = [], policies = [] }) {
   const safeInvariants = Array.isArray(invariants) && invariants.length > 0 
     ? invariants 
     : [
@@ -27,15 +27,15 @@ export default function GrcAuditView({ invariants = [], policies = [] }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans text-slate-100">
-      {/* Columna 1: Invariantes GRC */}
+      {/* Columna 1: Invariantes de Ejecución L7 */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
             <div>
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
-                GRC / CONTROL COVERAGE
+                ENFORCEMENT / CONTROL COVERAGE
               </span>
-              <h3 className="text-lg font-bold text-white">Invariantes de Gobernanza</h3>
+              <h3 className="text-lg font-bold text-white">Invariantes de Intercepción</h3>
             </div>
             <div className="text-right">
               <span className="text-2xl font-extrabold text-emerald-400 font-mono">
@@ -71,15 +71,15 @@ export default function GrcAuditView({ invariants = [], policies = [] }) {
         </div>
       </div>
 
-      {/* Columna 2: Políticas Activas & Normativa */}
+      {/* Columna 2: Políticas de Enforcement Activas */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
             <div>
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
-                ACTIVE POLICIES
+                ACTIVE ENFORCEMENT RULES
               </span>
-              <h3 className="text-lg font-bold text-white">Reglas y Normativas Mapeadas</h3>
+              <h3 className="text-lg font-bold text-white">Reglas e Interceptores L7</h3>
             </div>
             <span className="text-xs font-mono bg-cyan-950 text-cyan-400 border border-cyan-500/30 px-2.5 py-1 rounded-full">
               SGP 1.0 Ruleset
@@ -109,7 +109,7 @@ export default function GrcAuditView({ invariants = [], policies = [] }) {
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-400 leading-relaxed">
-          <strong>Nota Regulatoria:</strong> Los expedientes técnicos FRIA y la documentación legal del EU AI Act se vinculan directamente al hash inmutable del paquete de evidencia.
+          <strong>Nota Regulatoria:</strong> Los expedientes técnicos y la documentación legal del EU AI Act se vinculan directamente al hash inmutable del paquete de evidencia.
         </div>
       </div>
     </div>

@@ -14,8 +14,15 @@ export default function ForensicView({ events = [] }) {
 
   const audit = async () => {
     setIsAuditing(true);
+    // Mapeo exhaustivo para incluir id, verdict, action o cat/prompt según el origen
     const base = JSON.stringify(
-      safeEvents.map((e) => ({ id: e?.id, verdict: e?.verdict, action: e?.action }))
+      safeEvents.map((e) => ({
+        id: e?.id,
+        time: e?.time,
+        action: e?.action || e?.cat || 'INSPECTION',
+        verdict: e?.verdict || e?.decision || 'ALLOW',
+        payload: e?.prompt || e?.payload || null
+      }))
     );
 
     const encoder = new TextEncoder();
@@ -57,7 +64,7 @@ export default function ForensicView({ events = [] }) {
         <button
           onClick={audit}
           disabled={isAuditing}
-          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-cyan-500/20"
+          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
         >
           {isAuditing ? 'Calculando Hash acumulativo...' : 'Generar Recibo Forense Ex-Ante ↗'}
         </button>
@@ -79,31 +86,35 @@ export default function ForensicView({ events = [] }) {
           </div>
 
           <div className="space-y-2">
-            {safeEvents.map((e, idx) => (
-              <div
-                key={e?.id || idx}
-                className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-500 text-[10px]">{e?.time || '--:--'}</span>
-                  <strong className="text-white">{e?.action}</strong>
+            {safeEvents.map((e, idx) => {
+              const currentVerdict = e?.verdict || e?.decision || 'ALLOW';
+              const currentAction = e?.action || e?.cat || 'INSPECTION';
+              return (
+                <div
+                  key={e?.id || idx}
+                  className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500 text-[10px]">{e?.time || '--:--'}</span>
+                    <strong className="text-white">{currentAction}</strong>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        currentVerdict === 'ALLOW'
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
+                          : currentVerdict === 'DENY' || currentVerdict === 'RECHAZADO'
+                          ? 'bg-rose-950 text-rose-400 border border-rose-500/30'
+                          : 'bg-amber-950 text-amber-400 border border-amber-500/30'
+                      }`}
+                    >
+                      {currentVerdict}
+                    </span>
+                    <small className="text-slate-500 text-[10px]">{e?.id}</small>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      e?.verdict === 'ALLOW'
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                        : e?.verdict === 'DENY'
-                        ? 'bg-rose-950 text-rose-400 border border-rose-500/30'
-                        : 'bg-amber-950 text-amber-400 border border-amber-500/30'
-                    }`}
-                  >
-                    {e?.verdict}
-                  </span>
-                  <small className="text-slate-500 text-[10px]">{e?.id}</small>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -111,7 +122,7 @@ export default function ForensicView({ events = [] }) {
           <span className="text-[11px] font-mono text-slate-500">Sellado eIDAS / RFC 3161</span>
           <button
             onClick={() => window.print()}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition-colors"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition-colors cursor-pointer"
           >
             🖨️ Imprimir / Guardar PDF
           </button>

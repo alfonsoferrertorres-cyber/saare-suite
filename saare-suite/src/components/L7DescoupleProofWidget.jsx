@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 export default function L7DescoupleProofWidget() {
-  const [verified, setVerified] = useState(true);
-
   const cryptoProof = {
     expediente: "MS3V-RECON-VALID-2026-ALF-0521",
     nodeSignature: "SAARE-ISO-COMPLIANCE-NODE-BCC0A9AO-HASH99X77B",
@@ -10,7 +8,7 @@ export default function L7DescoupleProofWidget() {
     routingTopology: "Strictly Unidireccional (Optoacoplador Galvánico L7)",
     logicalErrorRate: "0.00% (Cero Lógico Absoluto)",
     frameworkCompliance: "ISO/IEC 27001:2022 / ISO/IEC 42001 / EU AI Act",
-    timestamp: "2026-10-14T10:54:00Z"
+    timestamp: new Date().toISOString()
   };
 
   return (
@@ -27,7 +25,7 @@ export default function L7DescoupleProofWidget() {
       </div>
 
       <p className="text-slate-400 text-xs mb-6 leading-relaxed">
-        De conformidad con el Reglamento (UE) 2024/1689 (EU AI Act) y los estándares de gestión de seguridad de la información, este nodo opera bajo una arquitectura de aislamiento absoluto que previene cualquier exfiltración de datos o deriva estocástica[cite: 35, 36, 40].
+        De conformidad con el Reglamento (UE) 2024/1689 (EU AI Act) y los estándares de gestión de seguridad de la información, este nodo opera bajo una arquitectura de aislamiento absoluto que previene cualquier exfiltración de datos o deriva estocástica.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
@@ -37,13 +35,13 @@ export default function L7DescoupleProofWidget() {
         </div>
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-          <span className="text-slate-500 block text-[10px] uppercase tracking-wider mb-1">Margen de Error Lógico ($M_E$):</span>
-          <span className="text-emerald-400 font-bold">{cryptoProof.logicalErrorRate} (Determinista Puro)</span>[cite: 36, 38, 40]
+          <span className="text-slate-500 block text-[10px] uppercase tracking-wider mb-1">Margen de Error Lógico (M_E):</span>
+          <span className="text-emerald-400 font-bold">{cryptoProof.logicalErrorRate} (Determinista Puro)</span>
         </div>
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
           <span className="text-slate-500 block text-[10px] uppercase tracking-wider mb-1">Topología de Red:</span>
-          <span className="text-white">{cryptoProof.routingTopology}</span>[cite: 35, 36, 40]
+          <span className="text-white">{cryptoProof.routingTopology}</span>
         </div>
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
@@ -54,7 +52,7 @@ export default function L7DescoupleProofWidget() {
 
       <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800/80 pt-4 text-[10px] text-slate-500 gap-2">
         <span>Expediente Marco: {cryptoProof.expediente}</span>
-        <span className="text-cyan-400 font-semibold">Validado por Motor Lógico S.A.A.R.E. v7.0 PRO</span>[cite: 31]
+        <span className="text-cyan-400 font-semibold">Validado por Motor Lógico S.A.A.R.E. v7.0 PRO</span>
       </div>
     </div>
   );

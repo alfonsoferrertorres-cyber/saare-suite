@@ -32,7 +32,6 @@ export default function ResilienceLab() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans text-slate-100">
-      {/* Controles de Simulación */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-6">
         <div>
           <div className="border-b border-slate-800 pb-3 mb-4">
@@ -43,8 +42,8 @@ export default function ResilienceLab() {
           </div>
 
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 flex justify-between items-center font-mono text-xs">
-            <span className="text-slate-400">UMBRAL MÁXIMO DE DESVIACIÓN ($\Delta$):</span>
-            <strong className="text-emerald-400 font-bold">$\Delta &lt; 0.010\%$</strong>
+            <span className="text-slate-400">UMBRAL MÁXIMO DE DESVIACIÓN (Δ):</span>
+            <strong className="text-emerald-400 font-bold">Δ &lt; 0.010%</strong>
           </div>
 
           <div className="space-y-3">
@@ -78,7 +77,6 @@ export default function ResilienceLab() {
         </button>
       </div>
 
-      {/* Estado del Sistema */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
         <div>
           <div className="border-b border-slate-800 pb-3 mb-4 flex justify-between items-center">

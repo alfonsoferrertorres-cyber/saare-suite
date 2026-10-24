@@ -21,9 +21,16 @@ export default function DossierExporter({ events = [], onClose }) {
   }
 
   function exportCsv() {
+    // Normalizar filas para admitir tanto 'action'/'verdict' como 'cat'/'decision'/'prompt'
     const rows = [
-      ['id', 'time', 'agent', 'action', 'verdict'],
-      ...safeEvents.map((e) => [e?.id, e?.time, e?.agent, e?.action, e?.verdict])
+      ['id', 'time', 'agent_category', 'action_prompt', 'verdict'],
+      ...safeEvents.map((e) => [
+        e?.id,
+        e?.time || new Date().toISOString(),
+        e?.agent || e?.cat || 'INSPECTOR_L7',
+        e?.action || e?.prompt || 'N/A',
+        e?.verdict || e?.decision || 'ALLOW'
+      ])
     ];
     const csv = rows
       .map((r) => r.map((v) => `"${String(v ?? '').replaceAll('"', '""')}"`).join(','))
@@ -70,19 +77,19 @@ export default function DossierExporter({ events = [], onClose }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           <button
             onClick={exportJson}
-            className="py-2.5 px-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all text-center shadow-lg shadow-cyan-500/20"
+            className="py-2.5 px-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all text-center shadow-lg shadow-cyan-500/20 cursor-pointer"
           >
             JSON Firmado
           </button>
           <button
             onClick={exportCsv}
-            className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all text-center"
+            className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all text-center cursor-pointer"
           >
             CSV Trace
           </button>
           <button
             onClick={() => window.print()}
-            className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all text-center"
+            className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all text-center cursor-pointer"
           >
             PDF / Imprimir
           </button>
@@ -91,7 +98,7 @@ export default function DossierExporter({ events = [], onClose }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="w-full text-center text-xs text-slate-500 hover:text-slate-300 pt-2 block font-mono"
+            className="w-full text-center text-xs text-slate-500 hover:text-slate-300 pt-2 block font-mono cursor-pointer"
           >
             [ CERRAR VENTANA ]
           </button>
