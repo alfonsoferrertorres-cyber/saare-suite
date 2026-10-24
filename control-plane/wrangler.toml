@@ -3,7 +3,7 @@ main = "worker.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
-# Configuración de Observabilidad Avanzada (Corregida para Wrangler v4)
+# Configuración de Observabilidad Avanzada
 [observability.logs]
 enabled = true
 head_sampling_rate = 1.0
@@ -28,7 +28,7 @@ routes = [
   { pattern = "saare.es/v1/*", zone_name = "saare.es" }
 ]
 
-# Variables de Entorno
+# Variables de Entorno Oficiales
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_NAME = "saare-core-l7-isv"
@@ -36,8 +36,10 @@ SGP_SPEC_VERSION = "SGP 1.0"
 EXPEDIENTE_MASTER = "MS3V-RECON-VALID-2026-ALF-0521"
 TITULAR_NIF = "Alfonso Ferrer Torres (48553065L)"
 ALLOW_FALLBACK_VAULT = "false"
+TRUST_ANCHOR = "https://vault.saare.es"
+SAFE_CREATIVE_ID = "RPI-2607076315021"
 
-# Bóveda KV Global (Cache / Sesiones / Proof Bundles)
+# Bóveda KV Global
 [[env.production.kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
