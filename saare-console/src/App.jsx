@@ -35,7 +35,11 @@ function hasRequiredRank(role, minRank) {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('saare_consent_accepted') === 'true';
+  });
+
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
 
   const [userEmail, setUserEmail] = useState(() => {
     return localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
@@ -91,17 +95,43 @@ export default function App() {
   const [evidences, setEvidences] = useState([]);
   const eventSourceRef = useRef(null);
 
-  useEffect(() => {
-    if (window.location.search) {
-      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-    }
-  }, []);
-
   const triggerGovernance = useCallback((msg) => {
     setGovernanceStatus(msg);
     setTimeout(() => setGovernanceStatus(''), 4500);
   }, []);
+
+  // DESPLIEGUE AUTOMÁTICO DE POLÍTICA GPO L7
+  const handleDeployNativeNodeGPO = useCallback(() => {
+    try {
+      const EXTENSION_ID = "pmojknckgbfmbfggfjaahfecjhfdbfip";
+
+      const gpoContent = `Windows Registry Editor Version 5.00
+
+; ==============================================================================
+; S.A.A.R.E. Enterprise GPO Policy - Inyección Quirúrgica L7 (Producción)
+; ==============================================================================
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
+"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
+"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
+`;
+      const blob = new Blob([gpoContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `saare_l7_enterprise_gpo.reg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      triggerGovernance(`Política GPO L7 generada y lista para aplicar.`);
+    } catch (err) {
+      triggerGovernance("Error al desplegar nodo GPO: " + err.message);
+    }
+  }, [triggerGovernance]);
 
   const handleLogout = useCallback(() => {
     if (eventSourceRef.current) {
@@ -109,7 +139,9 @@ export default function App() {
       eventSourceRef.current = null;
     }
     localStorage.removeItem('saare_token');
-    triggerGovernance("Sesión reiniciada a perfil por defecto (Acceso ISV).");
+    localStorage.removeItem('saare_consent_accepted');
+    setIsAuthenticated(false);
+    triggerGovernance("Sesión cerrada. Acepte los términos para volver a acceder.");
   }, [triggerGovernance]);
 
   const mapEvidences = useCallback((remoteEvidences) => {
@@ -206,6 +238,8 @@ export default function App() {
   }, [mergeEvidences]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const updateClock = () => {
       setTimeStr(new Date().toTimeString().split(' ')[0]);
     };
@@ -263,7 +297,7 @@ export default function App() {
         eventSourceRef.current = null;
       }
     };
-  }, [userEmail, tenantId, fetchTelemetryOnce, mergeEvidences]);
+  }, [isAuthenticated, userEmail, tenantId, fetchTelemetryOnce, mergeEvidences]);
 
   const filteredEvidences = evidences.filter(item => {
     if (!item) return false;
@@ -629,40 +663,6 @@ export default function App() {
     }
   };
 
-  // DESPLIEGUE UNIFICADO DE POLÍTICA GPO CON ID REAL DE PRODUCCIÓN
-  const handleDeployNativeNodeGPO = () => {
-    try {
-      // Reemplaza esta constante con el ID real de 32 letras asignado a tu extensión
-      const EXTENSION_ID = "pmojknckgbfmbfggfjaahfecjhfdbfip";
-
-      const gpoContent = `Windows Registry Editor Version 5.00
-
-; ==============================================================================
-; S.A.A.R.E. Enterprise GPO Policy - Inyección Quirúrgica L7 (Producción)
-; ==============================================================================
-
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
-"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
-
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
-"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
-`;
-      const blob = new Blob([gpoContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `saare_l7_enterprise_gpo.reg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      triggerGovernance(`Política GPO Inalterable L7 generada con éxito.`);
-    } catch (err) {
-      triggerGovernance("Error al generar política GPO: " + err.message);
-    }
-  };
-
   const handleExportGrantDossier = () => {
     if (!hasRequiredRank(userRole, 2)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
@@ -743,6 +743,138 @@ export default function App() {
     URL.revokeObjectURL(url);
     triggerGovernance('Matriz de Invariantes descargada.');
   };
+
+  // PANTALLA UNIFICADA: VALIDACIÓN + TÉRMINOS + PROVISIÓN AUTOMÁTICA NODO L7 GPO EN 1 CLIC
+  if (!isAuthenticated) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ maxWidth: '580px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', textAlign: 'center' }}>
+          <div style={{ marginBottom: '24px', overflow: 'hidden', borderRadius: '8px', border: '1px solid #1e293b', background: '#020617', display: 'flex', justifyContent: 'center' }}>
+            <img src={cabeceraImg} alt="S.A.A.R.E. Logo" style={{ width: '100%', maxHeight: '140px', objectFit: 'contain' }} />
+          </div>
+
+          <h2 style={{ fontSize: '1.35rem', fontWeight: '900', color: '#f8fafc', margin: '0 0 10px 0', letterSpacing: '0.02em' }}>
+            AVISO DE ACCESO Y ACTIVACIÓN NODO L7 EX-ANTE
+          </h2>
+          <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+            Al confirmar el acceso a la <strong>Consola GRC & Ciberresiliencia S.A.A.R.E. (SGP 1.0)</strong>, se validarán sus credenciales operativas y se desplegará automáticamente la directiva GPO del Nodo L7 para intercepción ex-ante.
+          </p>
+
+          <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', textAlign: 'left', marginBottom: '20px' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', marginBottom: '4px' }}>
+                Correo de Trabajo / Operador Responsable:
+              </label>
+              <input 
+                type="email" 
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="ejemplo@organizacion.es"
+                style={{ width: '100%', padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Organismo / Tenant:
+                </label>
+                <input 
+                  type="text" 
+                  value={tenantId}
+                  onChange={(e) => setTenantId(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Rol de Operador:
+                </label>
+                <select 
+                  value={userRole}
+                  onChange={(e) => setUserRole(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', background: '#0b0f19', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', boxSizing: 'border-box' }}>
+                  <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+                  <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+                  <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+                  <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+                  <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', textAlign: 'left', marginBottom: '24px' }}>
+            <input 
+              type="checkbox" 
+              id="termsCheck"
+              checked={hasAcceptedTerms}
+              onChange={(e) => setHasAcceptedTerms(e.target.checked)}
+              style={{ marginTop: '3px', cursor: 'pointer', width: '16px', height: '16px' }}
+            />
+            <label htmlFor="termsCheck" style={{ fontSize: '0.75rem', color: '#cbd5e1', cursor: 'pointer', lineHeight: '1.4' }}>
+              Acepto los términos de inspección ex-ante L7, sellado en Bóveda D1 y autorizo el despliegue de la directiva de seguridad en este entorno.
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => {
+                alert("Acceso cancelado. Puede cerrar esta pestaña.");
+              }}
+              style={{
+                flex: '1',
+                padding: '14px',
+                background: '#1e293b',
+                color: '#94a3b8',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
+                fontWeight: '800',
+                cursor: 'pointer'
+              }}>
+              CANCELAR
+            </button>
+
+            <button 
+              disabled={!hasAcceptedTerms || !userEmail.trim()}
+              onClick={() => {
+                // 1. Persistir credenciales y consentimiento
+                localStorage.setItem('saare_consent_accepted', 'true');
+                localStorage.setItem('saare_user_email', userEmail);
+                localStorage.setItem('saare_user_role', userRole);
+                localStorage.setItem('saare_tenant_domain', tenantId);
+
+                // 2. Despliegue transparente del Nodo Nativo L7 (GPO)
+                handleDeployNativeNodeGPO();
+
+                // 3. Acceso inmediato a la Consola
+                setIsAuthenticated(true);
+              }}
+              style={{
+                flex: '2',
+                padding: '14px',
+                background: (hasAcceptedTerms && userEmail.trim()) ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : '#334155',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: '900',
+                cursor: (hasAcceptedTerms && userEmail.trim()) ? 'pointer' : 'not-allowed',
+                boxShadow: (hasAcceptedTerms && userEmail.trim()) ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none',
+                transition: 'all 0.2s ease'
+              }}>
+              🛡️ ACEPTAR, ACTIVAR NODO L7 Y ENTRAR
+            </button>
+          </div>
+
+          <div style={{ marginTop: '16px', fontSize: '0.68rem', color: '#64748b' }}>
+            Trust Anchor: https://vault.saare.es | Safe Creative ID: RPI-2607076315021
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const activeDirectivesCount = directives.filter(d => d.active).length;
 
@@ -837,7 +969,6 @@ export default function App() {
               👥 ASIENTOS RBAC
             </button>
 
-            {/* SELECTOR DE ROLES CANÓNICOS RBAC */}
             <select 
               value={userRole}
               onChange={(e) => {
@@ -933,7 +1064,7 @@ export default function App() {
                 <button 
                   onClick={handleDeployNativeNodeGPO}
                   style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                  🛡️ Activar Nodo Nativo L7 (GPO / Agentless)
+                  🛡️ Re-descargar Nodo Nativo L7 (GPO)
                 </button>
               </div>
 
