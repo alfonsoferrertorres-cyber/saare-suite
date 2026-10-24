@@ -3,7 +3,7 @@ main = "worker.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
-# Configuración de Observabilidad Avanzada
+# Configuración de Observabilidad Avanzada (Corregida para Wrangler v4)
 [observability.logs]
 enabled = true
 head_sampling_rate = 1.0
@@ -14,9 +14,6 @@ persist = true
 enabled = false
 head_sampling_rate = 1.0
 persist = true
-
-[observability.issue_detection]
-enabled = false
 
 # ------------------------------------------------------------------------------
 # ENTORNO DE PRODUCCIÓN (npx wrangler deploy --env production)
