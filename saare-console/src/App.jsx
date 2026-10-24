@@ -629,27 +629,35 @@ export default function App() {
     }
   };
 
+  // DESPLIEGUE UNIFICADO DE POLÍTICA GPO CON ID REAL DE PRODUCCIÓN
   const handleDeployNativeNodeGPO = () => {
     try {
+      // Reemplaza esta constante con el ID real de 32 letras asignado a tu extensión
+      const EXTENSION_ID = "pmojknckgbfmbfggfjaahfecjhfdbfip";
+
       const gpoContent = `Windows Registry Editor Version 5.00
 
+; ==============================================================================
+; S.A.A.R.E. Enterprise GPO Policy - Inyección Quirúrgica L7 (Producción)
+; ==============================================================================
+
 [HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
+"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
 
 [HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
+"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"
 `;
       const blob = new Blob([gpoContent], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `saare_l7_gpo_policy_${tenantId}.reg`;
+      a.download = `saare_l7_enterprise_gpo.reg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      triggerGovernance(`Política GPO Inalterable de Intercepción L7 generada para ${tenantId}`);
+      triggerGovernance(`Política GPO Inalterable L7 generada con éxito.`);
     } catch (err) {
       triggerGovernance("Error al generar política GPO: " + err.message);
     }

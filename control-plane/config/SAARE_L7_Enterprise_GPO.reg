@@ -1,11 +1,15 @@
 ﻿Windows Registry Editor Version 5.00
 
 ; ==============================================================================
-; S.A.A.R.E. Enterprise GPO Policy - Inyección Quirúrgica Extensión L7
+; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
 ; ==============================================================================
+; NOTA: Reemplazar [ID_DE_32_CARACTERES_A_P] por el ID real de la extensión 
+; (32 letras en minúscula entre la 'a' y la 'p', ej: pmojknckgbfmbfggfjaahfecjhfdbfip)
 
+; --- GOOGLE CHROME ---
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
+"1"="[ID_DE_32_CARACTERES_A_P];https://clients2.google.com/service/update2/crx"
 
+; --- MICROSOFT EDGE (Chrome Web Store) ---
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_OFICIAL_SAARE;https://clients2.google.com/service/update2/crx"
+"1"="[ID_DE_32_CARACTERES_A_P];https://clients2.google.com/service/update2/crx"
