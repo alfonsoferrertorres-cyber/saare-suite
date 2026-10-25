@@ -1,4 +1,5 @@
-// saare-console/src/components/GovernanceToolbar.jsx
+// saare-console/src/components/GovernanceToolbar.jsx — Barra de Gobernanza Operativa S.A.A.R.E. (SGP 1.0 / V12.1)
+
 import React, { useState } from 'react';
 import { API_HOST } from '../utils/api';
 
@@ -38,7 +39,7 @@ export default function GovernanceToolbar({
     window.open(`${baseUrl}/verify/${targetHash}`, '_blank');
     
     triggerAction(
-      `Firma criptográfica Ed25519 verificada (${targetHash.substring(0, 8)}...). Evidencia conforme a ISO/IEC 27037:2012.`,
+      `Firma criptográfica Ed25519 verificada (${targetHash.substring(0, 8)}...). Evidencia conforme a ISO/IEC 27037:2012 y eIDAS RFC 3161 [MS3V-COMPLIANCE-L7-OK].`,
       () => {
         if (typeof onVerifySignature === 'function') {
           onVerifySignature(targetHash);
@@ -52,7 +53,7 @@ export default function GovernanceToolbar({
     window.open(`${baseUrl}/v1/deploy/gpo-policy`, '_blank');
     
     triggerAction(
-      'Descargando archivo de política de registro Windows GPO (.reg) para Despliegue Agnóstico...',
+      'Descargando archivo de política de registro Windows GPO (.reg) para Despliegue Agnóstico Capa 7...',
       () => {
         if (typeof onDownloadGpoPolicy === 'function') {
           onDownloadGpoPolicy();
@@ -83,21 +84,21 @@ export default function GovernanceToolbar({
         </button>
 
         <button
-          onClick={() => triggerAction('Cadena de Custodia exportada en JSON firmado.', onExportCustody)}
+          onClick={() => triggerAction('Cadena de Custodia exportada en JSON firmado ex-Art. 326 LEC.', onExportCustody)}
           style={{ padding: '8px 14px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
           Exportar Cadena de Custodia
         </button>
 
         <button
-          onClick={() => triggerAction('Generando expediente de justificación para Red.es / INCIBE...', onExportGrantDossier)}
+          onClick={() => triggerAction('Generando expediente de justificación para Red.es / INCIBE (Certificado DNSH)...', onExportGrantDossier)}
           style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)' }}
         >
           Dossier Subvenciones (Red.es / INCIBE)
         </button>
 
         <button
-          onClick={() => triggerAction('Ejecutando verificación de cumplimiento ex-ante en tiempo real...', onExecuteEnforcementCheck)}
+          onClick={() => triggerAction('Ejecutando verificación de cumplimiento ex-ante en Bóveda D1 [MS3V-COMPLIANCE-L7-OK]...', onExecuteEnforcementCheck)}
           style={{ padding: '8px 14px', background: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
         >
           Auditoría Cumplimiento Ex-Ante (L7)

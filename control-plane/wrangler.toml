@@ -1,3 +1,5 @@
+# wrangler.toml — Configuración Oficial de Despliegue S.A.A.R.E. Control Plane (SGP 1.0 / V12.1)
+
 name = "saare-control-plane-prod"
 main = "worker.js"
 compatibility_date = "2026-10-20"

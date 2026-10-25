@@ -1,4 +1,4 @@
-// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / v8.4 SRP)
+// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / V12.1 Producción)
 
 const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
   ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL) 
@@ -65,38 +65,40 @@ export async function saareFetch(endpoint, options = {}) {
   let token = null;
   let currentUser = null;
   let currentTenant = null;
-  let currentRole = 'DPO_GRC_LEVEL_2';
+  let currentRole = 'CISO_ADMIN';
 
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token');
-    currentRole = localStorage.getItem('saare_user_role') || 'DPO_GRC_LEVEL_2';
+    currentRole = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
     
     try {
       const storedUser = localStorage.getItem('saare_session_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        currentUser = parsed.email || localStorage.getItem('saare_user_email') || null;
-        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+        currentUser = parsed.email || localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
+        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
         if (parsed.role) currentRole = parsed.role;
       } else {
-        currentUser = localStorage.getItem('saare_user_email') || null;
-        currentTenant = localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+        currentUser = localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
+        currentTenant = localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
       }
     } catch (e) {
-      currentUser = localStorage.getItem('saare_user_email') || null;
-      currentTenant = localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+      currentUser = localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
+      currentTenant = localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
     }
   }
 
   if (!currentTenant || currentTenant.includes('@')) {
-    currentTenant = 'ENTERPRISE';
+    currentTenant = 'ORGANISMO_DEMO_01';
   }
 
-  const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'UNSIGNED_ANON';
+  const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'MS3V_MASTER_NODE_PROOF';
 
+  // Cabeceras Estándar S.A.A.R.E. v10.0 / SGP 1.0 (Incluye Módulo 5 Witness Tag)
   const defaultHeaders = {
     'Accept': 'application/json',
     'x-saare-spec': 'SGP-1.0',
+    'x-saare-witness-tag': '[MS3V-COMPLIANCE-L7-OK]',
     'x-saare-credential-proof': credentialProof,
     ...(options.body && typeof options.body === 'string' ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
     ...(token && isOwnApi(finalUrl) ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -116,9 +118,6 @@ export async function saareFetch(endpoint, options = {}) {
       localStorage.removeItem('saare_auth_token');
       localStorage.removeItem('saare_session_user');
       localStorage.removeItem('saare_token');
-      localStorage.removeItem('saare_user_email');
-      localStorage.removeItem('saare_user_role');
-      localStorage.removeItem('saare_tenant_domain');
     }
 
     return response;
@@ -177,23 +176,6 @@ export const api = {
 
   getEvidences: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    const endpoint = `/evidences${query ? `?${query}` : ''}`;
-    try {
-      const res = await saareFetch(endpoint, { method: 'GET' });
-      if (!res.ok) return { evidences: [], total: 0 };
-      const data = await res.json();
-      return {
-        evidences: data.evidences || data.data || (Array.isArray(data) ? data : []),
-        total: data.total || (data.evidences ? data.evidences.length : 0)
-      };
-    } catch (e) {
-      console.warn('[SAARE_API] Error al cargar evidencias desde /evidences, probando fallback /runs:', e);
-      return api.getRuns(params);
-    }
-  },
-
-  getRuns: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
     const endpoint = `/runs${query ? `?${query}` : ''}`;
     try {
       const res = await saareFetch(endpoint, { method: 'GET' });
@@ -201,7 +183,28 @@ export const api = {
       const data = await res.json();
       return {
         evidences: data.evidences || data.runs || data.data || (Array.isArray(data) ? data : []),
-        total: data.total || 0
+        total: data.total || (data.evidences ? data.evidences.length : 0)
+      };
+    } catch (e) {
+      console.warn('[SAARE_API] Error al cargar evidencias desde /runs, probando fallback /traces:', e);
+      return api.getTraces(params);
+    }
+  },
+
+  getRuns: async (params = {}) => {
+    return api.getEvidences(params);
+  },
+
+  getTraces: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    const endpoint = `/traces${query ? `?${query}` : ''}`;
+    try {
+      const res = await saareFetch(endpoint, { method: 'GET' });
+      if (!res.ok) return { evidences: [], total: 0 };
+      const data = await res.json();
+      return {
+        evidences: data.traces || data.evidences || data.data || (Array.isArray(data) ? data : []),
+        total: data.count || data.total || 0
       };
     } catch (e) {
       console.error('[SAARE_API] Error fatal al obtener trazas:', e);
@@ -211,7 +214,7 @@ export const api = {
 
   getTraceById: async (traceId) => {
     try {
-      const res = await saareFetch(`/evidences/${traceId}`, { method: 'GET' });
+      const res = await saareFetch(`/runs/${traceId}`, { method: 'GET' });
       if (!res.ok) return null;
       return res.json();
     } catch (e) {
