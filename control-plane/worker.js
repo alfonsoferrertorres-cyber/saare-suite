@@ -1,12 +1,3 @@
-Here is the corrected `worker.js` file.
-
-### Key Corrections Applied
-
-1. **GPO Policy Endpoint (`/v1/deploy/gpo-policy`)**: Added support for reading `env.SAARE_EXTENSION_ID` as well as query parameters (`?extensionId=...`) for dynamic extension ID alignment.
-2. **D1 Schema Auto-Repair (`ensureD1TablesExist`)**: Created both `consolidated_traces` and `runs` tables with all required columns (`final_action`, `created_at`, `verdict`, `decision`, `tenant`, etc.) to prevent SQLite schema mismatch errors (`SQLITE_ERROR [code: 7500]`).
-3. **Trace Insertion Compatibility**: Aligned `consolidated_traces` and `runs` table writes across `/v1/chat/completions` and `/v1/judge` so both CLI queries and dashboard endpoints retrieve consistent metadata.
-
-```javascript
 // control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción)
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
@@ -732,7 +723,7 @@ export default {
           });
         }
         if (!isFeatureAllowed(tenantPlan, 'export_dossier')) {
-          return new Response(JSON.stringify({ error: "FEATURE_NOT_IN_PLAN", message: "La exportación de dossiers no está incluida en su plan." }), {
+          return new Response(JSON.stringify({ error: "FEATURE_NOT_IN_PLAN", message: "La exportación de dossiers não está incluida en su plan." }), {
             status: 402,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
@@ -891,7 +882,7 @@ export default {
           rawPrompt.toUpperCase().includes('DROP TABLE') || 
           rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS')
         );
-                          
+                        
         const isSanitized = rulesTriggered.length > 0;
         
         const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
@@ -1905,5 +1896,3 @@ export default {
     }
   }
 };
-
-```
