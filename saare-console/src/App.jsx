@@ -93,6 +93,35 @@ export default function App() {
   const [simulationResult, setSimulationResult] = useState(null);
   const [activeSemanticHeaders, setActiveSemanticHeaders] = useState([]);
 
+  // AÑADIDO: Función para generar y descargar dinámicamente el archivo GPO de Windows (.reg) configurado con el Tenant actual
+  const handleDownloadEnterpriseGpoReg = () => {
+    triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
+    const regContent = `Windows Registry Editor Version 5.00
+
+; ================================================================
+; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
+; Tenant: ${tenantId}
+; ================================================================
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
+"1"="EXTENSION_ID_DE_GOOGLE_WEBSTORE;https://clients2.google.com/service/update2/crx"
+
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
+"1"="EXTENSION_ID_DE_GOOGLE_WEBSTORE;https://clients2.google.com/service/update2/crx"
+`;
+
+    const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SAARE_L7_Enterprise_GPO_${tenantId}.reg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
+  };
+
   const [directives, setDirectives] = useState([
     { id: 1, name: 'DORA - Resiliencia Operativa Digital', active: true, standard: 'EU Regulation 2022/2554', category: 'FINANCIERO' },
     { id: 2, name: 'EU AI Act - Prevención de Fugas PII', active: true, standard: 'Articles 10 & 15', category: 'PRIVACIDAD' },
@@ -124,7 +153,6 @@ export default function App() {
       .map((item, idx) => {
         const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
 
-        // Extraer texto del prompt comprobando múltiples campos por compatibilidad
         let rawPromptVal = item.cleanPrompt 
           || item.promptText 
           || item.userPrompt 
@@ -153,7 +181,6 @@ export default function App() {
           if (typeof cleanResponse === 'string' && cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
         } catch (e) {}
 
-        // Si el resultado es un Hash SHA-256 de 64 caracteres Hex, buscar alternativa en claro
         const isSha256Hash = /^[a-fA-F0-9]{64}$/.test(cleanPrompt.trim());
         if (isSha256Hash) {
           const alternateText = [
@@ -408,7 +435,7 @@ export default function App() {
 
   const filteredEvidences = evidences.filter(item => {
     if (!item) return false;
-    
+
     if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
     if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
@@ -1153,6 +1180,23 @@ export default function App() {
               👥 ASIENTOS RBAC
             </button>
 
+            {/* AÑADIDO: Botón directo para descargar la GPO de Windows (.reg) configurada para el Tenant */}
+            <button 
+              onClick={handleDownloadEnterpriseGpoReg}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #10b981',
+                background: '#064e3b',
+                color: '#34d399',
+                fontWeight: '800',
+                fontSize: '0.72rem',
+                cursor: 'pointer'
+              }}
+              title="Descargar GPO de Despliegue Agnóstico Capa 7 (.reg)">
+              📥 Descargar GPO GPE (.reg)
+            </button>
+
             <select 
               value={userRole}
               onChange={(e) => {
@@ -1392,13 +1436,13 @@ export default function App() {
                                 </td>
                                 <td style={{ padding: '12px 16px' }}>
                                   <span style={{
-                                      fontWeight: '900',
-                                      color: isRejected ? '#ef4444' : '#10b981',
-                                      background: isRejected ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                      padding: '4px 8px',
-                                      borderRadius: '4px',
-                                      border: `1px solid ${isRejected ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
-                                    }}>
+                                    fontWeight: '900',
+                                    color: isRejected ? '#ef4444' : '#10b981',
+                                    background: isRejected ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: `1px solid ${isRejected ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
+                                  }}>
                                     {isRejected ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
                                   </span>
                                 </td>
