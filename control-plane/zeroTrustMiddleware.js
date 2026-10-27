@@ -7,8 +7,8 @@ export class ZeroTrustMiddleware {
    */
   constructor(teamDomain, audienceTag) {
     this.teamDomain = teamDomain ? teamDomain.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
-    this.audienceTag = audienceTag;
-    this.certsUrl = `https://${this.teamDomain}/cdn-cgi/access/certs`;
+    this.audienceTag = audienceTag || "";
+    this.certsUrl = this.teamDomain ? `https://${this.teamDomain}/cdn-cgi/access/certs` : "";
     this.cachedKeys = null;
     this.keysExpiry = 0;
   }
@@ -17,6 +17,8 @@ export class ZeroTrustMiddleware {
    * Obtiene y almacena en caché las claves públicas (JWKS) de Cloudflare Access
    */
   async getPublicKeys() {
+    if (!this.certsUrl) return [];
+
     const now = Date.now();
     if (this.cachedKeys && now < this.keysExpiry) {
       return this.cachedKeys;
@@ -35,7 +37,7 @@ export class ZeroTrustMiddleware {
   }
 
   /**
-   * Decodifica una cadena Base64URL
+   * Decodifica una cadena Base64URL soportando caracteres UTF-8 de forma segura
    * @param {string} str 
    * @returns {string}
    */
@@ -44,11 +46,52 @@ export class ZeroTrustMiddleware {
     while (base64.length % 4 !== 0) {
       base64 += "=";
     }
-    return atob(base64);
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder().decode(bytes);
   }
 
   /**
-   * Extrae y valida el token emitido por Cloudflare Access
+   * Convierte una cadena Base64URL a un Uint8Array para operaciones criptográficas
+   * @param {string} str 
+   * @returns {Uint8Array}
+   */
+  base64UrlToUint8Array(str) {
+    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4 !== 0) {
+      base64 += "=";
+    }
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  /**
+   * Importa una clave JWKS RSA en un objeto CryptoKey listo para verificación RS256
+   * @param {object} jwkKey 
+   * @returns {Promise<CryptoKey>}
+   */
+  async importRsaKey(jwkKey) {
+    return await crypto.subtle.importKey(
+      "jwk",
+      jwkKey,
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: { name: "SHA-256" }
+      },
+      false,
+      ["verify"]
+    );
+  }
+
+  /**
+   * Extrae, valida las peticiones y verifica criptográficamente la firma del JWT emitido por Cloudflare Access
    * @param {Request} request 
    * @returns {Promise<{ userEmail: string | null, isZeroTrustVerified: boolean, identityData?: object, error?: string }>}
    */
@@ -65,8 +108,12 @@ export class ZeroTrustMiddleware {
         return { userEmail: null, isZeroTrustVerified: false, error: "Formato JWT inválido" };
       }
 
-      const header = JSON.parse(this.base64UrlDecode(parts[0]));
-      const payload = JSON.parse(this.base64UrlDecode(parts[1]));
+      const rawHeader = parts[0];
+      const rawPayload = parts[1];
+      const rawSignature = parts[2];
+
+      const header = JSON.parse(this.base64UrlDecode(rawHeader));
+      const payload = JSON.parse(this.base64UrlDecode(rawPayload));
 
       // 1. Verificación de Expiración (exp)
       const now = Math.floor(Date.now() / 1000);
@@ -90,6 +137,32 @@ export class ZeroTrustMiddleware {
       // 4. Verificación de Emisor (iss)
       if (this.teamDomain && payload.iss && !payload.iss.includes(this.teamDomain)) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
+      }
+
+      // 5. Verificación Criptográfica de la Firma RS256 mediante Web Crypto API
+      if (this.teamDomain) {
+        const publicKeys = await this.getPublicKeys();
+        const matchingJwk = publicKeys.find(key => key.kid === header.kid);
+
+        if (!matchingJwk) {
+          return { userEmail: null, isZeroTrustVerified: false, error: "Clave pública (kid) no encontrada en JWKS de Cloudflare" };
+        }
+
+        const cryptoKey = await this.importRsaKey(matchingJwk);
+        const encoder = new TextEncoder();
+        const dataToVerify = encoder.encode(`${rawHeader}.${rawPayload}`);
+        const signatureBytes = this.base64UrlToUint8Array(rawSignature);
+
+        const isValidSignature = await crypto.subtle.verify(
+          "RSASSA-PKCS1-v1_5",
+          cryptoKey,
+          signatureBytes,
+          dataToVerify
+        );
+
+        if (!isValidSignature) {
+          return { userEmail: null, isZeroTrustVerified: false, error: "Firma criptográfica RS256 inválida" };
+        }
       }
 
       const userEmail = payload.email || payload.common_name || payload.sub || "zero_trust_authenticated_user";

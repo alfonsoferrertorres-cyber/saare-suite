@@ -123,13 +123,50 @@ export default function App() {
       .filter(item => item && typeof item === 'object')
       .map((item, idx) => {
         const isDeny = item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
-        let cleanPrompt = item.prompt || item.promptInput || item.rawPrompt || item.cleanPrompt || '';
-        let cleanResponse = item.responseOutput || item.llmResponse || '';
+
+        // Extraer texto del prompt comprobando múltiples campos por compatibilidad
+        let rawPromptVal = item.cleanPrompt 
+          || item.promptText 
+          || item.userPrompt 
+          || item.inputText 
+          || item.input 
+          || item.text 
+          || item.query 
+          || item.rawPrompt 
+          || item.promptInput 
+          || item.message 
+          || item.sanitizedPrompt 
+          || item.prompt 
+          || item.data?.prompt 
+          || item.data?.input 
+          || '';
+
+        if (typeof rawPromptVal === 'object' && rawPromptVal !== null) {
+          rawPromptVal = rawPromptVal.text || rawPromptVal.content || rawPromptVal.prompt || JSON.stringify(rawPromptVal);
+        }
+
+        let cleanPrompt = String(rawPromptVal || '');
+        let cleanResponse = item.responseOutput || item.llmResponse || item.output || item.response || '';
 
         try {
           if (typeof cleanPrompt === 'string' && cleanPrompt.includes('%')) cleanPrompt = decodeURIComponent(cleanPrompt);
           if (typeof cleanResponse === 'string' && cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
         } catch (e) {}
+
+        // Si el resultado es un Hash SHA-256 de 64 caracteres Hex, buscar alternativa en claro
+        const isSha256Hash = /^[a-fA-F0-9]{64}$/.test(cleanPrompt.trim());
+        if (isSha256Hash) {
+          const alternateText = [
+            item.cleanPrompt, item.promptText, item.userPrompt, item.inputText, 
+            item.input, item.text, item.query, item.rawPrompt, item.sanitizedPrompt, item.message
+          ].find(v => typeof v === 'string' && v.trim() && !/^[a-fA-F0-9]{64}$/.test(v.trim()));
+
+          if (alternateText) {
+            cleanPrompt = alternateText;
+          } else {
+            cleanPrompt = `[PAYLOAD HASH RAM]: ${cleanPrompt.substring(0, 16)}... (Zero-Disk Storage)`;
+          }
+        }
 
         const evidenceId = item.evidence_id || item.id || `EV-L7-${1000 + idx}`;
         const payloadHash = item.merkle_root || item.merkleRoot || item.proofBundle?.payloadHash || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
@@ -193,7 +230,6 @@ export default function App() {
     return Array.from(map.values());
   }, [mapEvidences]);
 
-  // INYECCIÓN Y INDEXACIÓN DEL COMANDO MÓDULO 5 + MATRIZ PERSISTENTE (ACTIVAR Y ENTRAR)
   const handleExecuteSemanticBootstrap = useCallback(async () => {
     const bootstrapTimestamp = new Date().toISOString();
     const evidenceId = `EV-L7-BOOTSTRAP-${Date.now().toString(36).toUpperCase()}`;
@@ -221,7 +257,6 @@ export default function App() {
 
     setActiveSemanticHeaders(bootstrapPayload.headers);
 
-    // Registro inmediato de la evidencia inicial del Módulo 5 en memoria local y Bóveda D1
     const initialBootstrapEvidence = {
       id: evidenceId,
       time: new Date().toLocaleTimeString(),
@@ -267,7 +302,6 @@ export default function App() {
     triggerGovernance(`⚡ Módulo 5 Activado: ${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} Notario Digital D1 Enganchado.`);
   }, [userEmail, tenantId, userRole, mergeEvidences, triggerGovernance]);
 
-  // CERRAR SESIÓN: KILL-SWITCH GENERAL Y DESCONEXIÓN DE COMANDOS PERSISTENTES
   const handleLogout = useCallback(async () => {
     try {
       await saareFetch('/intercept', {
@@ -403,11 +437,10 @@ export default function App() {
     ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0.84), 0) / totalInspecciones).toFixed(1)
     : '0.84';
 
-  // COMANDO SEMÁNTICO INDEXADO: VALIDAR LICENCIA / CUMPLIMIENTO LLM
   const handleVerifyLicense = async () => {
     triggerGovernance(`Ejecutando ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}...`);
     try {
-      const res = await saareFetch('/intercept', {
+      await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
           prompt: `Ejecuta la validación de licencia con el comando semántico ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}`,
@@ -422,7 +455,6 @@ export default function App() {
     }
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: INVARIANT AUDIT / VEREDICTO INTEGRIDAD
   const handleRunResilienceCheck = async () => {
     if (!hasRequiredRank(userRole, 3)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
@@ -447,7 +479,6 @@ export default function App() {
     }
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: INFORMES OFICIALES / CERTIFICACIÓN CORPORATIVA
   const handleGenerateCorporateReport = async () => {
     triggerGovernance(`Invocando Certificación Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE})...`);
     try {
@@ -466,7 +497,6 @@ export default function App() {
     }
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: CADENA DE CUSTODIA FORENSE (ART. 326 LEC)
   const handleExportChainOfCustody = async () => {
     triggerGovernance(`Invocando Auditoría de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY})...`);
     try {
@@ -507,7 +537,6 @@ export default function App() {
     triggerGovernance('Cadena de Custodia certificada y descargada.');
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: EXPORTACIÓN DE DOSSIER Y AUDITORÍA JURÍDICA
   const handleExportGrantDossier = async () => {
     if (!hasRequiredRank(userRole, 2)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
@@ -563,7 +592,6 @@ export default function App() {
     triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: TOKEN DE AUDITORÍA Y AUDITORÍA IP / SECRETO INDUSTRIAL
   const handleOpenAuditTokenModal = async () => {
     triggerGovernance(`Invocando Auditoría IP (${SAARE_SEMANTIC_COMMANDS.MODE_IP})...`);
     try {
@@ -580,7 +608,6 @@ export default function App() {
     setAuditTokenModal(true);
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: EXPEDIENTE FRIA
   const handleGenerateFriaDocument = async (friaConfig) => {
     if (!hasRequiredRank(userRole, 2)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
@@ -759,7 +786,6 @@ export default function App() {
     }
   };
 
-  // COMANDO SEMÁNTICO INDEXADO: DETECCIÓN DE DEEPFAKES Y PRUEBAS RESILIENCIA
   const executeResilienceSimulation = async (scenario) => {
     if (!hasRequiredRank(userRole, 3)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
@@ -907,7 +933,6 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
-  // PANTALLA DE ENTRADA: INYECCIÓN DEL COMANDO SEMÁNTICO DEL MÓDULO 5 (SIN INSTALACIONES / FRICCIÓN CERO)
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -1007,7 +1032,6 @@ export default function App() {
                 localStorage.setItem('saare_user_role', userRole);
                 localStorage.setItem('saare_tenant_domain', tenantId);
 
-                // Inyección del Comando Semántico Módulo 5 Ex-Ante + Comandos Persistentes
                 handleExecuteSemanticBootstrap();
                 setIsAuthenticated(true);
               }}
@@ -1180,7 +1204,7 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* MATRIZ DE BOTONES Mapeados a Comandos Semánticos */}
+                {/* MATRIZ DE BOTONES */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: '10px', flex: '0 0 auto' }}>
                   <button 
                     onClick={handleVerifyLicense}
@@ -1212,7 +1236,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* BARRA DE ESTADO DE CABECERAS Y COMANDOS PERSISTENTES ACTIVOS */}
+              {/* BARRA DE ESTADO */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>

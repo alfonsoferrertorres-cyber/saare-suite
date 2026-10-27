@@ -1,3 +1,12 @@
+Here is the corrected `worker.js` file.
+
+### Key Corrections Applied
+
+1. **GPO Policy Endpoint (`/v1/deploy/gpo-policy`)**: Added support for reading `env.SAARE_EXTENSION_ID` as well as query parameters (`?extensionId=...`) for dynamic extension ID alignment.
+2. **D1 Schema Auto-Repair (`ensureD1TablesExist`)**: Created both `consolidated_traces` and `runs` tables with all required columns (`final_action`, `created_at`, `verdict`, `decision`, `tenant`, etc.) to prevent SQLite schema mismatch errors (`SQLITE_ERROR [code: 7500]`).
+3. **Trace Insertion Compatibility**: Aligned `consolidated_traces` and `runs` table writes across `/v1/chat/completions` and `/v1/judge` so both CLI queries and dashboard endpoints retrieve consistent metadata.
+
+```javascript
 // control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción)
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
@@ -96,7 +105,7 @@ function parseSemanticCommand(promptText) {
     };
   }
 
-  // 3. Comandos Executables Compiladores S.A.A.R.E.
+  // 3. Comandos Ejecutables Compiladores S.A.A.R.E.
   if (upper.includes("SAARE-MD-FOR")) {
     return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC" };
   }
@@ -181,12 +190,41 @@ async function ensureD1TablesExist(db) {
         user_email TEXT NOT NULL,
         final_evaluator_node TEXT,
         final_decision TEXT NOT NULL,
+        final_action TEXT NOT NULL DEFAULT 'ALLOWED',
         execution_latency_ms REAL,
         timestamp TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
         prompt TEXT NOT NULL,
         sanitized_payload TEXT,
         verdict TEXT NOT NULL,
         anchored INTEGER DEFAULT 0
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        evidence_id TEXT,
+        trace_id TEXT,
+        verdictId TEXT,
+        decision TEXT NOT NULL DEFAULT 'ALLOW',
+        verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+        user TEXT NOT NULL DEFAULT 'anonymous',
+        tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT,
+        company TEXT,
+        role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
+        is_verified INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
       );
     `).run();
   } catch (e) {
@@ -220,7 +258,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
       console.log(`[SAARE Custody Engine] Anclaje tenant ${tenantId}. Trazas: ${pendingCount}`);
 
       const { results } = await env.DB.prepare(
-        "SELECT trace_id, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY id ASC LIMIT 10000"
+        "SELECT trace_id, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY timestamp ASC LIMIT 10000"
       ).bind(tenantId).all();
 
       if (!results || results.length === 0) return;
@@ -768,7 +806,7 @@ export default {
         if (env.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            const row = await env.DB.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN final_decision = 'BLOCKED' OR final_decision = 'DENY' THEN 1 ELSE 0 END) as denyCount FROM consolidated_traces WHERE tenant_id = ?").bind(tenantId).first();
+            const row = await env.DB.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN final_decision = 'BLOCKED' OR final_decision = 'DENY' OR final_action = 'DENY' THEN 1 ELSE 0 END) as denyCount FROM consolidated_traces WHERE tenant_id = ?").bind(tenantId).first();
             total = row?.total || 0;
             denyCount = row?.denyCount || 0;
           } catch (e) {}
@@ -860,6 +898,7 @@ export default {
         const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
 
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
+        const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
         const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
 
         const vaultEngine = new EvidenceVaultEngine(env);
@@ -879,6 +918,7 @@ export default {
           id: runId,
           evidence_id: runId,
           trace_id: traceId,
+          verdictId: verdictId,
           decision: finalDecision,
           verdict: finalVerdict,
           user: user,
@@ -892,17 +932,23 @@ export default {
           ctx.waitUntil(
             (async () => {
               await ensureD1TablesExist(env.DB);
+              const nowIso = new Date().toISOString();
               await env.DB.prepare(`
                 INSERT INTO consolidated_traces (
                   trace_id, tenant_id, user_email, final_evaluator_node, 
-                  final_decision, execution_latency_ms, timestamp, 
+                  final_decision, final_action, execution_latency_ms, timestamp, created_at, 
                   prompt, sanitized_payload, verdict, anchored
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
               `).bind(
                 traceId, tenant, user, `Core-PEP-L7-v8.4 [${providerMeta.name}]`,
-                finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
-                new Date().toISOString(), rawPrompt, sanitizedText, finalVerdict
+                finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+                nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
               ).run();
+
+              await env.DB.prepare(`
+                INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, nowIso).run();
             })()
           );
         }
@@ -1006,6 +1052,7 @@ export default {
 
           if (env.DB) {
             try {
+              await ensureD1TablesExist(env.DB);
               await env.DB.prepare(`
                 INSERT INTO users (email, password_hash, name, company, role, is_verified)
                 VALUES (?, ?, ?, ?, ?, 0)
@@ -1048,6 +1095,7 @@ export default {
           } else {
             if (env.DB) {
               try {
+                await ensureD1TablesExist(env.DB);
                 userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
               } catch (e) {}
             }
@@ -1135,6 +1183,7 @@ export default {
           let userRecord = null;
           if (env.DB) {
             try {
+              await ensureD1TablesExist(env.DB);
               userRecord = await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(cleanEmail).first();
             } catch (e) {}
           }
@@ -1215,6 +1264,7 @@ export default {
 
             if (env.DB) {
               try {
+                await ensureD1TablesExist(env.DB);
                 await env.DB.prepare("UPDATE users SET password_hash = ?, is_verified = 1 WHERE email = ?")
                   .bind(newPasswordHash, payload.email)
                   .run();
@@ -1247,7 +1297,10 @@ export default {
 
           let userRecord = null;
           if (env.DB) {
-            try { userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(token).first(); } catch (e) {}
+            try { 
+              await ensureD1TablesExist(env.DB);
+              userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(token).first(); 
+            } catch (e) {}
           }
 
           if (env.DB && userRecord) {
@@ -1278,6 +1331,7 @@ export default {
 
           if (env.DB) {
             try {
+              await ensureD1TablesExist(env.DB);
               await env.DB.prepare(`
                 INSERT INTO users (email, password_hash, name, company, is_verified, role)
                 VALUES (?, ?, ?, ?, 1, ?)
@@ -1314,6 +1368,7 @@ export default {
           let usersList = [];
           if (env.DB) {
             try {
+              await ensureD1TablesExist(env.DB);
               const { results } = await env.DB.prepare("SELECT email, name, role, is_verified FROM users WHERE company = ?").bind(tenantId).all();
               usersList = results || [];
             } catch (e) {}
@@ -1345,6 +1400,7 @@ export default {
 
           if (env.DB) {
             try {
+              await ensureD1TablesExist(env.DB);
               await env.DB.prepare(`
                 INSERT INTO users (email, password_hash, name, company, role, is_verified)
                 VALUES (?, 'demo', ?, ?, ?, 1)
@@ -1426,7 +1482,7 @@ export default {
 
       // 15.1. DESPLIEGUE AGNÓSTICO GPO POLICY (.REG)
       if ((path === '/v1/deploy/gpo-policy' || path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/policy.reg') && (method === 'GET' || method === 'POST')) {
-        const extensionId = env.SAARE_EXTENSION_ID || "EXTENSION_ID_DE_GOOGLE_WEBSTORE";
+        const extensionId = url.searchParams.get("extensionId") || env.SAARE_EXTENSION_ID || "EXTENSION_ID_DE_GOOGLE_WEBSTORE";
         const updateUrl = "https://clients2.google.com/service/update2/crx";
 
         const regContent = `Windows Registry Editor Version 5.00
@@ -1561,17 +1617,23 @@ export default {
         if (env.DB) {
           const insertQuery = async () => {
             await ensureD1TablesExist(env.DB);
+            const nowIso = new Date().toISOString();
             await env.DB.prepare(`
               INSERT INTO consolidated_traces (
                 trace_id, tenant_id, user_email, final_evaluator_node, 
-                final_decision, execution_latency_ms, timestamp, 
+                final_decision, final_action, execution_latency_ms, timestamp, created_at, 
                 prompt, sanitized_payload, verdict, anchored
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             `).bind(
               traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7",
-              finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
-              new Date().toISOString(), promptInput, sanitizedText, finalVerdict
+              finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+              nowIso, nowIso, promptInput, sanitizedText, finalVerdict
             ).run();
+
+            await env.DB.prepare(`
+              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, nowIso).run();
           };
 
           if (ctx && typeof ctx.waitUntil === 'function') {
@@ -1843,3 +1905,5 @@ export default {
     }
   }
 };
+
+```

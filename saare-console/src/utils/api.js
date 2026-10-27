@@ -1,7 +1,9 @@
-// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / V12.1 Producción)
+// saare-console/src/utils/api.js — Cliente HTTP Universal S.A.A.R.E. (SGP 1.0 / V12.1 Producción Virginizado)
+import { SAARE_CONFIG } from '../config/saareState';
 
+// 1. RESOLUCIÓN DINÁMICA Y AGNÓSTICA DE HOST DE API
 const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
-  ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL) 
+  ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_SAARE_API_BASE_URL) 
   : null;
 
 const rawEnvUrlString = typeof envBaseUrl === 'string' ? envBaseUrl : null;
@@ -9,28 +11,26 @@ const cleanEnvUrl = rawEnvUrlString
   ? rawEnvUrlString.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
   : null;
 
-const isLocal = typeof window !== "undefined" && (
-  window.location.hostname === 'localhost' || 
-  window.location.hostname === '127.0.0.1'
-);
-
 export function getApiHost() {
   if (typeof window !== 'undefined') {
+    // 1. Prioridad: Host personalizado guardado en localStorage
     const override = localStorage.getItem('saare_override_vault_host');
     if (override && override.trim() !== '') {
       return override.replace(/\/$/, '');
     }
   }
 
+  // 2. Prioridad: Variable de entorno explícita (si existe)
   if (cleanEnvUrl) {
     return cleanEnvUrl;
   }
 
-  if (isLocal) {
-    return 'http://127.0.0.1:8080';
+  // 3. Prioridad (Producción / Single-Origin): Si está en el navegador, usa la misma URL donde corre la web (window.location.origin)
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
 
-  return 'https://api.saare.es';
+  return SAARE_CONFIG?.TRUST_ANCHOR || 'http://127.0.0.1:8000';
 }
 
 export const API_HOST = getApiHost();
@@ -49,6 +49,7 @@ function isOwnApi(url) {
   );
 }
 
+// 2. CLIENTE DE INTERCEPCIÓN HTTP CON INYECCIÓN AUTOMÁTICA DE ENCABEZADOS Y PRUEBAS RBAC
 export async function saareFetch(endpoint, options = {}) {
   const activeHost = getApiHost();
   const activeBaseUrl = `${activeHost}/api/v1`;
@@ -63,33 +64,33 @@ export async function saareFetch(endpoint, options = {}) {
   }
 
   let token = null;
-  let currentUser = null;
-  let currentTenant = null;
-  let currentRole = 'CISO_ADMIN';
+  let currentUser = SAARE_CONFIG?.DEFAULT_USER || '';
+  let currentTenant = SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
+  let currentRole = SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN';
 
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token');
-    currentRole = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
+    currentRole = localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN';
     
     try {
       const storedUser = localStorage.getItem('saare_session_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        currentUser = parsed.email || localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
-        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
+        currentUser = parsed.email || localStorage.getItem('saare_user_email') || currentUser;
+        currentTenant = parsed.tenantName || parsed.company || localStorage.getItem('saare_tenant_domain') || currentTenant;
         if (parsed.role) currentRole = parsed.role;
       } else {
-        currentUser = localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
-        currentTenant = localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
+        currentUser = localStorage.getItem('saare_user_email') || currentUser;
+        currentTenant = localStorage.getItem('saare_tenant_domain') || currentTenant;
       }
     } catch (e) {
-      currentUser = localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com';
-      currentTenant = localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
+      currentUser = localStorage.getItem('saare_user_email') || currentUser;
+      currentTenant = localStorage.getItem('saare_tenant_domain') || currentTenant;
     }
   }
 
   if (!currentTenant || currentTenant.includes('@')) {
-    currentTenant = 'ORGANISMO_DEMO_01';
+    currentTenant = SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
   }
 
   const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'MS3V_MASTER_NODE_PROOF';
@@ -97,7 +98,7 @@ export async function saareFetch(endpoint, options = {}) {
   // Cabeceras Estándar S.A.A.R.E. v10.0 / SGP 1.0 (Incluye Módulo 5 Witness Tag)
   const defaultHeaders = {
     'Accept': 'application/json',
-    'x-saare-spec': 'SGP-1.0',
+    'x-saare-spec': SAARE_CONFIG?.SPEC_VERSION || 'SGP-1.0',
     'x-saare-witness-tag': '[MS3V-COMPLIANCE-L7-OK]',
     'x-saare-credential-proof': credentialProof,
     ...(options.body && typeof options.body === 'string' ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
@@ -127,6 +128,7 @@ export async function saareFetch(endpoint, options = {}) {
   }
 }
 
+// 3. MÉTODOS AUXILIARES Y ENDPOINTS DE AUDITORÍA
 export const api = {
   get: async (endpoint, options = {}) => {
     const res = await saareFetch(endpoint, { ...options, method: 'GET' });
