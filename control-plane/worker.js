@@ -536,7 +536,19 @@ export default {
     const method = request.method;
 
     const cors = handleCors(request);
-    if (method === "OPTIONS") return cors.preflightResponse();
+    
+    // === CORRECCIÓN CORS EXPLICITA PARA EVITAR BLOQUEO DEL NAVEGADOR (F5) === //
+    if (method === "OPTIONS") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, x-saare-spec, x-saare-tenant, x-saare-user, x-saare-role, x-saare-plan, x-saare-signature, x-saare-credential-proof, x-saare-node-id, X-Saare-Tenant, X-Saare-User, X-Saare-Role, X-Saare-Plan",
+          "Access-Control-Max-Age": "86400",
+        }
+      });
+    }
 
     // -------------------------------------------------------------------------
     // BARRERA PREVIA L7: CORTE DE EMERGENCIA (KILLSWITCH)
