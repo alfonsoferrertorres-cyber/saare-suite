@@ -1,0 +1,26 @@
+{
+  "$schema": "https://saare.es/schemas/verifiable-audit-proof-v1.json",
+  "claim": {
+    "certificate": "RPI-2026-SAARE-0914X",
+    "holder": "Alfonso Ferrer Torres (NIF: 48553065L)",
+    "issuer": "did:key:ms3v-saare-governance",
+    "legal_basis": [
+      "DORA (UE 2022/2554) Art. 28",
+      "EU AI Act (2024/1689) Art. 12/15",
+      "RGPD (UE 2016/679) Art. 5/25",
+      "UNE-EN ISO/IEC 17025 (Metrologia de Ensayo N=10000)"
+    ],
+    "root_digest_sha256": "195cd0b59b7fb67b5d17d27e588def368ded68c15f54f2c891b049c7e0fbb019",
+    "timestamp": "2026-08-24T09:35:00Z",
+    "variance_observed": "0.0024%",
+    "verdict": "CONFORME / ZERO-SUBMISSION VALIDATED"
+  },
+  "canonical_jcs_sha256": "e2a8cbb29ac823d34439c041eada9cb3f8955b9ae597a74626b9c1a63f294ea3",
+  "proof": {
+    "type": "Ed25519Signature2020",
+    "created": "2026-08-24T09:35:00Z",
+    "verificationMethod": "https://saare.es/.well-known/jwks.json#key-1",
+    "signatureAlgorithm": "EdDSA",
+    "signatureValue": "hnc3b1Iu5bxxZKd5dY2qKzId98L4h13ubvfmi7woNnlyykVAtOE9MWkNF12UXoNeQcpBXmr6JYuvtY91VwnqBA=="
+  }
+}

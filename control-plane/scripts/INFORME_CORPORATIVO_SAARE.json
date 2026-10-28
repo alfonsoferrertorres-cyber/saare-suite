@@ -1,0 +1,30 @@
+{
+  "reportHeader": {
+    "title": "INFORME CORPORATIVO DE GOBERNANZA IA Y RESILIENCIA OPERATIVA",
+    "specification": "S.A.A.R.E. SGP 1.0 / Core PEP L7 v8.4",
+    "generatedAt": "2026-10-28T06:35:30.255786Z",
+    "auditAuthority": "Gabinete Técnico Comercial MS3V"
+  },
+  "metricsSummary": {
+    "totalTracesInspected": 1,
+    "allowedRequests": 1,
+    "deniedRequests": 0,
+    "blockRatePercentage": "0.0%",
+    "ramZeroDiskStatus": "COMPLIANT_ACTIVE"
+  },
+  "auditedEvidenceSet": [
+    {
+      "safe_creative_timestamp_hash": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+      "titular": "Alfonso Ferrer Torres (48553065L)",
+      "normativa_aplicable": [
+        "Ley 1/2019 Secretos Empresariales",
+        "RFC 3161",
+        "eIDAS UE 910/2014"
+      ],
+      "timestamp_emision": "2026-10-28 07:24:59 UTC",
+      "validez_procesal": "Art_326_LEC",
+      "estado_custodia": "CUSTODIA_INMUTABLE_LEY_1_2019",
+      "expediente": "MS3V-RECON-VALID-2026-ALF-0521"
+    }
+  ]
+}
