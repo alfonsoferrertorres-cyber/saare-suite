@@ -1,29 +1,70 @@
 // src/components/OfficialReportModal.jsx
-import React from 'react';
-import { pdfGeneratorService } from '../services/pdfGeneratorService';
+import React, { useEffect } from 'react';
+import pdfGeneratorService, { generatePdfFromElement } from '../services/pdfGeneratorService';
 
 export default function OfficialReportModal({ onClose, reportData }) {
-  const sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
+  // Parsing seguro de localStorage con fallbacks
+  let sessionUser = {};
+  try {
+    sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
+  } catch (e) {
+    sessionUser = {};
+  }
+
   const userEmail = sessionUser.email || localStorage.getItem('saare_user_email') || 'legal@saare.es';
   const tenantDomain = sessionUser.tenantName || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
 
+  // Manejo de cierre mediante tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && typeof onClose === 'function') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleDownloadPdf = async () => {
+    const filename = `SAARE_INFORME_OFICIAL_${tenantDomain.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+
     try {
-      if (pdfGeneratorService?.generateFromElement) {
-        await pdfGeneratorService.generateFromElement('official-report-document', {
-          filename: `SAARE_INFORME_OFICIAL_${tenantDomain}_${Date.now()}.pdf`
-        });
+      if (pdfGeneratorService && typeof pdfGeneratorService.generateFromElement === 'function') {
+        await pdfGeneratorService.generateFromElement('official-report-document', { filename });
+      } else if (typeof generatePdfFromElement === 'function') {
+        await generatePdfFromElement('official-report-document', filename);
       } else {
         window.print();
       }
     } catch (err) {
-      console.error('[REPORT_MODAL] Error generando PDF:', err);
+      console.error('[REPORT_MODAL] Error generando PDF, invocando window.print():', err);
       window.print();
     }
   };
 
+  // Lista de evidencias pasadas vía props o lista por defecto
+  const auditEvidences = Array.isArray(reportData?.evidences) && reportData.evidences.length > 0
+    ? reportData.evidences
+    : [
+        {
+          id: 'EV-OWASP-101',
+          timestamp: 'En vivo (RAM)',
+          classification: 'LLM01:2025 - Prompt Injection',
+          verdict: 'RECHAZADO (DENY)'
+        },
+        {
+          id: 'EV-OWASP-102',
+          timestamp: 'En vivo (RAM)',
+          classification: 'LLM02:2025 - Sensitive Data Disclosure',
+          verdict: 'RECHAZADO (DENY)'
+        }
+      ];
+
   return (
-    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex justify-center items-center z-[9999] p-4 font-sans no-print-bg">
+    <div 
+      onClick={(e) => e.target === e.currentTarget && typeof onClose === 'function' && onClose()}
+      className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex justify-center items-center z-[9999] p-4 font-sans no-print-bg"
+    >
       {/* Contenedor tipo Hoja Oficial con Membrete */}
       <div 
         id="official-report-document"
@@ -76,18 +117,19 @@ export default function OfficialReportModal({ onClose, reportData }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  <tr>
-                    <td className="p-2.5 font-bold text-slate-900">EV-OWASP-101</td>
-                    <td className="p-2.5 text-slate-500">En vivo (RAM)</td>
-                    <td className="p-2.5 text-sky-800 font-semibold">LLM01:2025 - Prompt Injection</td>
-                    <td className="p-2.5 text-rose-700 font-black">RECHAZADO (DENY)</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-bold text-slate-900">EV-OWASP-102</td>
-                    <td className="p-2.5 text-slate-500">En vivo (RAM)</td>
-                    <td className="p-2.5 text-sky-800 font-semibold">LLM02:2025 - Sensitive Data Disclosure</td>
-                    <td className="p-2.5 text-rose-700 font-black">RECHAZADO (DENY)</td>
-                  </tr>
+                  {auditEvidences.map((ev, index) => {
+                    const isDeny = ev.verdict?.includes('DENY') || ev.verdict?.includes('RECHAZADO') || ev.decision === 'DENY';
+                    return (
+                      <tr key={ev.id || index}>
+                        <td className="p-2.5 font-bold text-slate-900">{ev.id || `EV-OWASP-10${index + 1}`}</td>
+                        <td className="p-2.5 text-slate-500">{ev.time || ev.timestamp || 'En vivo (RAM)'}</td>
+                        <td className="p-2.5 text-sky-800 font-semibold">{ev.cat || ev.classification || 'OWASP LLM Security'}</td>
+                        <td className={`p-2.5 font-black ${isDeny ? 'text-rose-700' : 'text-emerald-700'}`}>
+                          {ev.verdict || (isDeny ? 'RECHAZADO (DENY)' : 'PERMITIDO (ALLOW)')}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -110,14 +152,14 @@ export default function OfficialReportModal({ onClose, reportData }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors border border-slate-300"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors border border-slate-300 cursor-pointer"
           >
             Cerrar Vista Previa
           </button>
           <button
             type="button"
             onClick={handleDownloadPdf}
-            className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-sky-900/20"
+            className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-sky-900/20 cursor-pointer"
           >
             🖨️ Imprimir / Guardar PDF Oficial
           </button>

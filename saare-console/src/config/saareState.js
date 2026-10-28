@@ -11,7 +11,7 @@ export const SAARE_CONFIG = {
   EXPEDIENTE_MASTER: "MS3V-RECON-VALID-2026-MASTER",
   MERKLE_ROOT_VERSION: "MS3V-SGP-1.0",
   LEGAL_FRAMEWORK: "Art. 326 LEC / Ley 1/2019 / EU AI Act Art. 27",
-  
+
   // PARÁMETROS DEL MÓDULO 5 (NOTARIO DIGITAL EX-ANTE D1)
   MODULE_5: {
     BOOTSTRAP_COMMAND: "Iniciar_cumplimiento_exante_saare --route-vault=D1",

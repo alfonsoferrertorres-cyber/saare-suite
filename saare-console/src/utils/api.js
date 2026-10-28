@@ -2,15 +2,6 @@
 import { SAARE_CONFIG } from '../config/saareState';
 
 // 1. RESOLUCIÓN DINÁMICA Y AGNÓSTICA DE HOST DE API
-const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
-  ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_SAARE_API_BASE_URL) 
-  : null;
-
-const rawEnvUrlString = typeof envBaseUrl === 'string' ? envBaseUrl : null;
-const cleanEnvUrl = rawEnvUrlString 
-  ? rawEnvUrlString.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '') 
-  : null;
-
 export function getApiHost() {
   if (typeof window !== 'undefined') {
     // 1. Prioridad: Host personalizado guardado en localStorage
@@ -21,20 +12,26 @@ export function getApiHost() {
   }
 
   // 2. Prioridad: Variable de entorno explícita (si existe)
-  if (cleanEnvUrl) {
-    return cleanEnvUrl;
+  const envBaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
+    ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_SAARE_API_BASE_URL) 
+    : null;
+
+  if (typeof envBaseUrl === 'string' && envBaseUrl.trim() !== '') {
+    return envBaseUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '');
   }
 
-  // 3. Prioridad (Producción / Single-Origin): Si está en el navegador, usa la misma URL donde corre la web (window.location.origin)
-  if (typeof window !== 'undefined') {
+  // 3. Prioridad (Producción / Single-Origin): URL donde corre la web
+  if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
 
   return SAARE_CONFIG?.TRUST_ANCHOR || 'http://127.0.0.1:8000';
 }
 
+// Getters dinámicos para evitar valores estáticos obsoletos si cambia localStorage
+export const getApiBaseUrl = () => `${getApiHost()}/api/v1`;
 export const API_HOST = getApiHost();
-export const API_BASE_URL = `${API_HOST}/api/v1`;
+export const API_BASE_URL = getApiBaseUrl();
 
 function isOwnApi(url) {
   if (typeof url !== 'string') return false;
@@ -95,13 +92,20 @@ export async function saareFetch(endpoint, options = {}) {
 
   const credentialProof = token ? `Ed25519-Proof:${token.slice(-12)}` : 'MS3V_MASTER_NODE_PROOF';
 
+  // Inyección de JSON automatizada si se envía un objeto en body
+  let processedBody = options.body;
+  const isJsonBody = options.body && typeof options.body === 'object' && !(options.body instanceof FormData);
+  if (isJsonBody) {
+    processedBody = JSON.stringify(options.body);
+  }
+
   // Cabeceras Estándar S.A.A.R.E. v10.0 / SGP 1.0 (Incluye Módulo 5 Witness Tag)
   const defaultHeaders = {
     'Accept': 'application/json',
     'x-saare-spec': SAARE_CONFIG?.SPEC_VERSION || 'SGP-1.0',
     'x-saare-witness-tag': '[MS3V-COMPLIANCE-L7-OK]',
     'x-saare-credential-proof': credentialProof,
-    ...(options.body && typeof options.body === 'string' ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
+    ...(processedBody && (typeof processedBody === 'string' || isJsonBody) ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
     ...(token && isOwnApi(finalUrl) ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(currentUser && isOwnApi(finalUrl) ? { 'x-saare-user': currentUser } : {}),
     ...(currentTenant && isOwnApi(finalUrl) ? { 'x-saare-tenant': currentTenant } : {}),
@@ -112,6 +116,7 @@ export async function saareFetch(endpoint, options = {}) {
   try {
     const response = await fetch(finalUrl, {
       ...options,
+      body: processedBody,
       headers: defaultHeaders
     });
 

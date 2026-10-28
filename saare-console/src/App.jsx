@@ -93,7 +93,7 @@ export default function App() {
   const [simulationResult, setSimulationResult] = useState(null);
   const [activeSemanticHeaders, setActiveSemanticHeaders] = useState([]);
 
-  // AÑADIDO: Función para generar y descargar dinámicamente el archivo GPO de Windows (.reg) configurado con el Tenant actual
+  // Generación y descarga dinámica del archivo GPO de Windows (.reg)
   const handleDownloadEnterpriseGpoReg = () => {
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
     const regContent = `Windows Registry Editor Version 5.00
@@ -1180,7 +1180,6 @@ export default function App() {
               👥 ASIENTOS RBAC
             </button>
 
-            {/* AÑADIDO: Botón directo para descargar la GPO de Windows (.reg) configurada para el Tenant */}
             <button 
               onClick={handleDownloadEnterpriseGpoReg}
               style={{
@@ -1285,7 +1284,7 @@ export default function App() {
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-                    STREAM SSE ACTIVO (D1_HYBRID) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '19:09:23'}</span>
+                    STREAM SSE ACTIVO ({vaultSource}) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '19:09:23'}</span>
                   </span>
 
                   <span style={{ padding: '6px 14px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>

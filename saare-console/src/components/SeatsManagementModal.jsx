@@ -1,6 +1,6 @@
 // saare-console/src/components/SeatsManagementModal.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../services/apiService';
+import { saareFetch } from '../utils/api';
 
 export default function SeatsManagementModal({ onClose }) {
   const [seatsData, setSeatsData] = useState({ maxSeats: 10, usedSeats: 0, users: [] });
@@ -15,18 +15,18 @@ export default function SeatsManagementModal({ onClose }) {
   const loadSeats = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiService.getExecutiveSeats();
-      if (data && data.success) {
+      const res = await saareFetch('/executive/seats', { method: 'GET' });
+      if (res && res.ok) {
+        const data = await res.json();
         setSeatsData({
           maxSeats: data.maxSeats || 10,
           usedSeats: data.usedSeats || (Array.isArray(data.users) ? data.users.length : 0),
           users: Array.isArray(data.users) ? data.users : []
         });
       } else {
-        throw new Error("Respuesta no válida del servicio");
+        throw new Error("Sin respuesta del Control Plane");
       }
     } catch (err) {
-      console.warn("Control Plane no disponible. Modo simulado/local activo:", err);
       setSeatsData((prev) => {
         if (prev.users.length > 0) return prev;
         return {
@@ -76,19 +76,18 @@ export default function SeatsManagementModal({ onClose }) {
     };
 
     try {
-      const res = await apiService.assignExecutiveSeat({
-        email: cleanEmail,
-        role: newRole,
-        name: cleanName
+      const res = await saareFetch('/executive/seats/assign', {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail, role: newRole, name: cleanName })
       });
 
-      if (res && res.success) {
+      if (res && res.ok) {
         setMsg({ text: `Asiento asignado correctamente a ${cleanEmail}`, type: 'success' });
         setNewEmail('');
         setNewName('');
         await loadSeats();
       } else {
-        throw new Error(res?.error || 'No se pudo asignar el asiento.');
+        throw new Error('No se pudo asignar el asiento.');
       }
     } catch (err) {
       setSeatsData((prev) => {
@@ -128,7 +127,6 @@ export default function SeatsManagementModal({ onClose }) {
     >
       <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', width: '100%', maxWidth: '680px', color: '#f8fafc', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)', overflow: 'hidden' }}>
         
-        {/* Cabecera del Modal */}
         <div style={{ padding: '20px 24px', background: '#020617', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.5px' }}>
@@ -143,7 +141,6 @@ export default function SeatsManagementModal({ onClose }) {
 
         <div style={{ padding: '24px', maxHeight: '75vh', overflowY: 'auto' }}>
           
-          {/* Indicador de Uso de Cuota */}
           <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>Ocupación de la Licencia:</span>
@@ -156,7 +153,6 @@ export default function SeatsManagementModal({ onClose }) {
             </div>
           </div>
 
-          {/* Formulario para Asignar Asiento */}
           <form onSubmit={handleAssignSeat} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#f8fafc', fontWeight: '800' }}>➕ Asignar Nuevo Asiento a Operador</h3>
             
@@ -211,7 +207,6 @@ export default function SeatsManagementModal({ onClose }) {
             </button>
           </form>
 
-          {/* Tabla de Empleados / Asientos Activos */}
           <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#f8fafc', fontWeight: '800' }}>📋 Asientos Asignados ({seatsData.users.length})</h3>
             

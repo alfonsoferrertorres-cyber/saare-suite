@@ -2,7 +2,16 @@
 import { SAARE_CONFIG } from '../config/saareState';
 
 /**
- * Genera el paquete de los 4 informes de gobernanza virginizados y rellenados dinámicamente.
+ * Genera el paquete consolidado con los 4 informes oficiales de gobernanza GRC,
+ * rellenados dinámicamente con los datos de telemetría y configuración del Tenant.
+ *
+ * @param {Object} params - Parámetros de configuración del informe.
+ * @param {string} [params.tenantId='ENTERPRISE'] - Identificador del organismo/empresa.
+ * @param {string} [params.userEmail='ciso@empresa.com'] - Correo del operador o CISO.
+ * @param {string} [params.userRole='CISO_ADMIN'] - Rol o nivel RBAC del operador.
+ * @param {Array} [params.evidences=[]] - Lista de evidencias e inspecciones registradas.
+ * @param {Array} [params.customFilters=[]] - Reglas y filtros personalizados activos.
+ * @returns {Object} Paquete estructurado con los 4 informes de gobernanza.
  */
 export function generateVirginizedGovernancePackage({
   tenantId = 'ENTERPRISE',
@@ -10,16 +19,33 @@ export function generateVirginizedGovernancePackage({
   userRole = 'CISO_ADMIN',
   evidences = [],
   customFilters = []
-}) {
+} = {}) {
   const timestamp = new Date().toISOString();
-  const deniedEvidences = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO'));
-  const sampleMerkle = evidences[0]?.merkleRoot || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+
+  // Validación defensiva de arreglos
+  const safeEvidences = Array.isArray(evidences) ? evidences : [];
+  const safeCustomFilters = Array.isArray(customFilters) ? customFilters : [];
+
+  // Filtrado de evidencias denegadas o bloqueadas
+  const deniedEvidences = safeEvidences.filter(
+    e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO' || e.verdict === 'REJECTED')
+  );
+
+  // Muestra de hash de Merkle para prueba criptográfica
+  const sampleMerkle =
+    safeEvidences[0]?.merkleRoot ||
+    safeEvidences[0]?.proofBundle?.payloadHash ||
+    '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+
+  const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
+  const safeCreativeId = SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021';
+  const activeRulesCount = safeCustomFilters.length + 8; // 8 directivas base + reglas personalizadas
 
   return {
     metadata: {
       generator: 'S.A.A.R.E. SGP 1.0 Governance Engine',
-      trustAnchor: SAARE_CONFIG.TRUST_ANCHOR,
-      safeCreativeId: SAARE_CONFIG.SAFE_CREATIVE_ID,
+      trustAnchor,
+      safeCreativeId,
       tenantId,
       operatorEmail: userEmail,
       operatorRole: userRole,
@@ -31,7 +57,7 @@ export function generateVirginizedGovernancePackage({
       title: 'INFORME DE GESTIÓN DE RIESGOS TECNOLÓGICOS Y RESILIENCIA OPERATIVA',
       framework: 'EU Regulation 2022/2554 (DORA) / ISO/IEC 27001:2022',
       executiveSummary: {
-        totalAuditedPrompts: evidences.length,
+        totalAuditedPrompts: safeEvidences.length,
         threatsInterceptedExAnte: deniedEvidences.length,
         residualRiskLevel: deniedEvidences.length > 50 ? 'MEDIO-CONTENIDO' : 'BAJO-CONTROLADO'
       },
@@ -41,7 +67,7 @@ export function generateVirginizedGovernancePackage({
           description: 'Inyección de Prompts y Exfiltración de datos vía LLM / Agentes IA',
           inherentImpact: 5,
           probability: 4,
-          currentControls: `Intercepción Ex-Ante en Capa 7 con ${customFilters.length + 8} reglas activas en RAM`,
+          currentControls: `Intercepción Ex-Ante en Capa 7 con ${activeRulesCount} reglas activas en RAM`,
           residualRisk: 'BAJO (Interceptado en RAM)',
           actionPlan: 'Mantener filtrado Zero-Disk y sincronización en Bóveda D1'
         },
@@ -67,7 +93,8 @@ export function generateVirginizedGovernancePackage({
         transfers: 'Cifrado de extremo a extremo con sanitización previa de PII',
         destruction: 'Purga automática por ciclo de memoria y sellado criptográfico'
       },
-      proportionalityAnalysis: 'Tratamiento legítimo orientado a la prevención de fugas de datos de carácter personal (DNI, IBAN, datos de salud) mediante enmascaramiento determinista ex-ante.',
+      proportionalityAnalysis:
+        'Tratamiento legítimo orientado a la prevención de fugas de datos de carácter personal (DNI, IBAN, datos de salud) mediante enmascaramiento determinista ex-ante.',
       identifiedMitigations: {
         piiRedaction: 'Sanitización en memoria RAM antes del procesamiento por el LLM',
         evidenceAnchoring: `Sello notarial Ed25519 con hash de carga útil: ${sampleMerkle}`,
@@ -86,16 +113,18 @@ export function generateVirginizedGovernancePackage({
       framework: 'EU Artificial Intelligence Act (Regulation UE 2024/1689) - Artículos 10, 15 & 27',
       modelInventory: {
         nodeType: 'PEP L7 Sovereign Gateway',
-        activePolicyRules: customFilters.length + 8,
-        inspectedTraceCount: evidences.length
+        activePolicyRules: activeRulesCount,
+        inspectedTraceCount: safeEvidences.length
       },
       representativenessMetrics: {
         disparateImpactRatio: '1.02 (Dentro del rango óptimo 0.85 - 1.15)',
         stochasticDesviationDeltaE: '< 0.01%',
         biasAuditResult: 'SISTEMA CONFORME SIN DISPARIDAD SOCIOECONÓMICA'
       },
-      appliedMitigations: 'Filtro de contexto semántico continuo y eliminación de variables sustitutas (proxy variables) en la Capa 7.',
-      humanInTheLoopClause: 'Ningún dictamen de bloqueo o denegación emitido por el sistema tiene carácter irrestricto. El usuario puede solicitar la revisión manual del evento por la figura GRC/DPO.'
+      appliedMitigations:
+        'Filtro de contexto semántico continuo y eliminación de variables sustitutas (proxy variables) en la Capa 7.',
+      humanInTheLoopClause:
+        'Ningún dictamen de bloqueo o denegación emitido por el sistema tiene carácter irrestricto. El usuario puede solicitar la revisión manual del evento por la figura GRC/DPO.'
     },
 
     // 🌱 4. ESTADO DE INFORMACIÓN NO FINANCIERA (EINF / ESG / DNSH)
@@ -111,7 +140,8 @@ export function generateVirginizedGovernancePackage({
         dnshComplianceStatus: 'COMPLIANT_DNSH (Do No Significant Harm)',
         gpuEnergySavingsPercentage: '45%',
         ramComputeBytesWritten: 0,
-        environmentalImpact: 'Operación Zero-Disk en memoria volátil que reduce el consumo computacional redundante en servidores Cloud.'
+        environmentalImpact:
+          'Operación Zero-Disk en memoria volátil que reduce el consumo computacional redundante en servidores Cloud.'
       },
       socialDimension: {
         operatorAccessControl: 'Garantía de privacidad e igualdad en el análisis de prompts',
@@ -120,3 +150,5 @@ export function generateVirginizedGovernancePackage({
     }
   };
 }
+
+export default generateVirginizedGovernancePackage;
