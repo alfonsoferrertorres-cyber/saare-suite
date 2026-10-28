@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "dev:cloud": "pnpm --filter control-plane dev",
     "build": "turbo run build --ui=stream",
+    "build:all": "turbo run build --ui=stream",
     "clean": "turbo run clean && rm -Recurse -Force .turbo, node_modules/.cache -ErrorAction SilentlyContinue",
     "lint": "turbo run lint",
     "resilience": "node scripts/resilienceGate_2.js",
