@@ -17,7 +17,9 @@
     "secretaria:license": "pnpm --filter @saare/license-factory generate"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "turbo": "^2.11.7",
+    "typescript": "^7.0.2",
     "wrangler": "^4.152.0"
   },
   "packageManager": "pnpm@12.11.2"

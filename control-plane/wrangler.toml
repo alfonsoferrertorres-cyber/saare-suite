@@ -46,7 +46,7 @@ SAFE_CREATIVE_ID = "RPI-2607076315021"
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
 
-# Bóveda D1 SQL
+# Bóveda D1 SQL (Verificada y Operativa)
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1"

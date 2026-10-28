@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.4 - 360°)
+# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.5 - Corrected)
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
@@ -12,16 +12,20 @@ if ((Get-Location).Path.EndsWith("control-plane")) {
     Set-Location ..
 }
 
-# 0.1 Validar autenticación en Cloudflare CLI (Wrangler)
+# 0.1 Validar autenticación en Cloudflare CLI (Wrangler / API Token)
 Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
-try {
-    $whoami = npx wrangler whoami 2>&1
-    if ($whoami -like "*You are not logged in*") {
-        Write-Host "[ERROR] No has iniciado sesión en Cloudflare. Ejecuta 'npx wrangler login' primero." -ForegroundColor Red
-        exit 1
+if (-not $env:CLOUDFLARE_API_TOKEN) {
+    try {
+        $whoami = npx wrangler whoami 2>&1
+        if ($whoami -like "*You are not logged in*") {
+            Write-Host "[ERROR] No has iniciado sesión en Cloudflare. Ejecuta 'npx wrangler login' o define `$env:CLOUDFLARE_API_TOKEN." -ForegroundColor Red
+            exit 1
+        }
+    } catch {
+        Write-Host "[ADVERTENCIA] No se pudo verificar la sesión de Wrangler local. Continuando..." -ForegroundColor DarkYellow
     }
-} catch {
-    Write-Host "[ADVERTENCIA] No se pudo verificar la sesión de Wrangler local. Continuando..." -ForegroundColor DarkYellow
+} else {
+    Write-Host " -> Usando autenticación mediante CLOUDFLARE_API_TOKEN env var." -ForegroundColor Green
 }
 
 # 0.2 Validar repositorio Git
@@ -40,7 +44,7 @@ Write-Host "`n==> [1/6] Resolviendo dependencias y limpiando builds antiguas..."
 pnpm install --no-frozen-lockfile
 
 # Limpieza estricta de dist/ para prevenir despliegues de código obsoleto
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist"
 
 # ------------------------------------------------------------------------------
 # FASE 2: COMPILACIÓN DIRECTA DE FRONTENDS (PNPM WORKSPACES)
@@ -87,16 +91,28 @@ $controlPlanePath = if (Test-Path "control-plane") { "control-plane" } elseif (T
 if ($controlPlanePath) {
     Push-Location $controlPlanePath
     try {
-        # Aplicación de esquema relacional en Cloudflare D1
-        if (Test-Path "schema.sql") {
-            Write-Host " -> Aplicando esquema relacional D1 (schema.sql)..." -ForegroundColor Gray
-            npx wrangler d1 execute saare-vault-d1 --remote --file=schema.sql --env production --yes
+        # 4.1 Aplicación de esquema relacional en Cloudflare D1
+        $sqlPath = $null
+        if (Test-Path "config/schema.sql") {
+            $sqlPath = "config/schema.sql"
+        } elseif (Test-Path "schema.sql") {
+            $sqlPath = "schema.sql"
         } elseif (Test-Path "../config/schema.sql") {
-            Write-Host " -> Aplicando esquema relacional D1 desde config/schema.sql..." -ForegroundColor Gray
-            npx wrangler d1 execute saare-vault-d1 --remote --file=../config/schema.sql --env production --yes
+            $sqlPath = "../config/schema.sql"
         }
 
-        # Despliegue del Worker
+        if ($sqlPath) {
+            Write-Host " -> Aplicando esquema relacional D1 ($sqlPath)..." -ForegroundColor Gray
+            npx wrangler d1 execute saare-vault-d1 --remote --file=$sqlPath --env production --yes
+        } else {
+            Write-Host "[ADVERTENCIA] No se encontró el archivo schema.sql. Omitiendo migración D1." -ForegroundColor DarkYellow
+        }
+
+        # 4.2 Sincronización de Tipos TypeScript
+        Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
+        npx wrangler types --env production
+
+        # 4.3 Despliegue del Worker
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
         npx wrangler deploy --env production
     } finally {
@@ -117,7 +133,7 @@ if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
     if (-not $currentBranch) { $currentBranch = "main" }
 
-    git commit -m "chore(release): despliegue maestro verificado L7 v8.4 (Pages + Worker + D1/KV Sync)"
+    git commit -m "chore(release): despliegue maestro verificado L7 v8.5 (Pages + Worker + D1/KV Sync)"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {

@@ -70,6 +70,8 @@ function parseSemanticCommand(promptText) {
   if (typeof promptText !== 'string') return null;
   const upper = promptText.toUpperCase();
 
+  const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7" };
+
   // 1. Módulo 5: Cumplimiento Ex-Ante e Invocación Notarial Bóveda D1
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
     return {
@@ -79,7 +81,8 @@ function parseSemanticCommand(promptText) {
       category: "MODULE_5_EX_ANTE_COMPLIANCE",
       norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)",
       witness: "[MS3V-COMPLIANCE-L7-OK]",
-      vaultTarget: "D1_WORM"
+      vaultTarget: "D1_WORM",
+      ...baseIdentity
     };
   }
 
@@ -92,40 +95,41 @@ function parseSemanticCommand(promptText) {
       category: "EMERGENCY_DEACTIVATION",
       norma: "S.A.A.R.E. Core Security Protocol",
       witness: "[KILL-SWITCH-ENFORCED]",
-      vaultTarget: "RAM"
+      vaultTarget: "RAM",
+      ...baseIdentity
     };
   }
 
   // 3. Comandos Ejecutables Compiladores S.A.A.R.E.
   if (upper.includes("SAARE-MD-FOR")) {
-    return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC" };
+    return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-CORP")) {
-    return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA" };
+    return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-SECU")) {
-    return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001" };
+    return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-VERD")) {
-    return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%" };
+    return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-LEGAL")) {
-    return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act" };
+    return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-IPRES")) {
-    return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: "Ley 1/2019 / Safe Creative" };
+    return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: "Ley 1/2019 / Safe Creative", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-CUST")) {
-    return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161" };
+    return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-COMPLIANCE")) {
-    return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "MS3V-COMPLIANCE-L7-OK" };
+    return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "MS3V-COMPLIANCE-L7-OK", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-DEEP")) {
-    return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM" };
+    return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
   }
   if (upper.includes("SAARE-MD-FRIA")) {
-    return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27" };
+    return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
   }
 
   return null;
@@ -900,6 +904,9 @@ export default {
         const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
         const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
 
+        // Asignación de Nodo Nativo Semántico si se detecta un comando válido
+        const activeEvaluatorNode = semanticCmd ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]` : `Core-PEP-L7-v8.4-RAM [${providerMeta.name}]`;
+
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
         const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
         const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
@@ -912,7 +919,7 @@ export default {
           user: user,
           prompt: rawPrompt,
           sanitized_payload: sanitizedText,
-          evaluator_chain: { final_evaluator: `Core-PEP-L7-v8.4-RAM [${providerMeta.name}]` },
+          evaluator_chain: { final_evaluator: activeEvaluatorNode },
           verdict_data: { verdict: finalVerdict, action: finalDecision, rules: rulesTriggered },
           payload_hash: await computeSha256(rawPrompt)
         });
@@ -943,7 +950,7 @@ export default {
                   prompt, sanitized_payload, verdict, anchored
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
               `).bind(
-                traceId, tenant, user, `Core-PEP-L7-v8.4 [${providerMeta.name}]`,
+                traceId, tenant, user, activeEvaluatorNode,
                 finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
                 nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
               ).run();
@@ -1576,6 +1583,9 @@ export default {
           isDeny ? 'Detección ex-ante de vulnerabilidad en RAM' : 'Tráfico conforme verificado'
         );
 
+        // Asignación de Nodo Nativo Semántico si se detecta un comando válido
+        const activeEvaluatorNode = semanticCmd ? semanticCmd.nodeIdentity : (body.node_type || "EDGE_WORKER_PEP_L7");
+
         const runId = await generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
         const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
         const traceId = body.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
@@ -1588,7 +1598,7 @@ export default {
           user: user,
           prompt: promptInput,
           sanitized_payload: sanitizedText,
-          evaluator_chain: { final_evaluator: body.node_type || "EDGE_WORKER_PEP_L7" },
+          evaluator_chain: { final_evaluator: activeEvaluatorNode },
           verdict_data: {
             verdict: finalVerdict,
             action: finalDecision,
@@ -1628,7 +1638,7 @@ export default {
                 prompt, sanitized_payload, verdict, anchored
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             `).bind(
-              traceId, tenant, user, body.node_type || "EDGE_WORKER_PEP_L7",
+              traceId, tenant, user, activeEvaluatorNode,
               finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
               nowIso, nowIso, promptInput, sanitizedText, finalVerdict
             ).run();
