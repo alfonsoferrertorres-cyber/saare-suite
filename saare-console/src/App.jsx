@@ -1,5 +1,5 @@
 // saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1)
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
 import FriaWizardModal from './components/FriaWizardModal';
@@ -46,6 +46,7 @@ function hasRequiredRank(role, minRank) {
 }
 
 export default function App() {
+  // --- Autenticación y Estado Principal ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('saare_consent_accepted') === 'true';
   });
@@ -64,6 +65,7 @@ export default function App() {
     return localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
   });
 
+  // --- UI y Navegación ---
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
@@ -71,30 +73,53 @@ export default function App() {
   const [timeStr, setTimeStr] = useState('');
   const [filter, setFilter] = useState('TODOS');
   const [vaultSource, setVaultSource] = useState('D1_HYBRID');
+  const [sseStatus, setSseStatus] = useState('DESCONECTADO');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
+
+  // --- Modales ---
   const [auditTokenModal, setAuditTokenModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSeatsModal, setShowSeatsModal] = useState(false);
+  const [showAddFilterModal, setShowAddFilterModal] = useState(false);
+
+  // --- Reportes y Evaluaciones ---
   const [resilienceReport, setResilienceReport] = useState(null);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
   const [customFilters, setCustomFilters] = useState([]);
-  const [showAddFilterModal, setShowAddFilterModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
+  const [ruleValidationError, setRuleValidationError] = useState('');
+
+  // --- Sandbox L7 ---
   const [testPrompt, setTestPrompt] = useState("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
   const [testResult, setTestResult] = useState(null);
   const [auditedEvidenceId, setAuditedEvidenceId] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
+  // --- Simulación de Resiliencia y Telemetría ---
   const [simulationRunning, setSimulationRunning] = useState(false);
   const [simulationResult, setSimulationResult] = useState(null);
   const [activeSemanticHeaders, setActiveSemanticHeaders] = useState([]);
+  const [evidences, setEvidences] = useState([]);
 
-  // Generación y descarga dinámica del archivo GPO de Windows (.reg)
-  const handleDownloadEnterpriseGpoReg = () => {
+  // Refs para gestión de memoria y sockets
+  const eventSourceRef = useRef(null);
+  const governanceTimerRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const sseRetryCountRef = useRef(0);
+
+  // --- Notificación de Gobernanza Segura con Limpieza ---
+  const triggerGovernance = useCallback((msg) => {
+    setGovernanceStatus(msg);
+    if (governanceTimerRef.current) clearTimeout(governanceTimerRef.current);
+    governanceTimerRef.current = setTimeout(() => setGovernanceStatus(''), 4500);
+  }, []);
+
+  // --- Descarga Dinámica GPO ---
+  const handleDownloadEnterpriseGpoReg = useCallback(() => {
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
     const regContent = `Windows Registry Editor Version 5.00
 
@@ -114,13 +139,13 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SAARE_L7_Enterprise_GPO_${tenantId}.reg`;
+    a.download = `SAARE_L7_Enterprise_GPO_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.reg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
-  };
+  }, [tenantId, triggerGovernance]);
 
   const [directives, setDirectives] = useState([
     { id: 1, name: 'DORA - Resiliencia Operativa Digital', active: true, standard: 'EU Regulation 2022/2554', category: 'FINANCIERO' },
@@ -133,14 +158,7 @@ export default function App() {
     { id: 8, name: 'Análisis de Intención Ex-Ante (IA Sentinel)', active: true, standard: 'Deterministic Zero-Trust', category: 'FINOPS' },
   ]);
 
-  const [evidences, setEvidences] = useState([]);
-  const eventSourceRef = useRef(null);
-
-  const triggerGovernance = useCallback((msg) => {
-    setGovernanceStatus(msg);
-    setTimeout(() => setGovernanceStatus(''), 4500);
-  }, []);
-
+  // --- Mapeo Normalizado de Evidencias de Telemetría ---
   const mapEvidences = useCallback((remoteEvidences) => {
     const rawList = Array.isArray(remoteEvidences)
       ? remoteEvidences
@@ -246,6 +264,7 @@ export default function App() {
       .filter(Boolean);
   }, [userEmail, tenantId]);
 
+  // Fusión deduplicada de evidencias
   const mergeEvidences = useCallback((existing, incoming) => {
     const mappedIncoming = mapEvidences(incoming);
     const map = new Map();
@@ -254,9 +273,10 @@ export default function App() {
         map.set(item.id, item);
       }
     });
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp));
   }, [mapEvidences]);
 
+  // --- Bootstrap Semántico Módulo 5 Ex-Ante ---
   const handleExecuteSemanticBootstrap = useCallback(async () => {
     const bootstrapTimestamp = new Date().toISOString();
     const evidenceId = `EV-L7-BOOTSTRAP-${Date.now().toString(36).toUpperCase()}`;
@@ -324,7 +344,9 @@ export default function App() {
           evidence_id: evidenceId
         })
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[SAARE Bootstrap] Intercepción enviada localmente.');
+    }
 
     triggerGovernance(`⚡ Módulo 5 Activado: ${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} Notario Digital D1 Enganchado.`);
   }, [userEmail, tenantId, userRole, mergeEvidences, triggerGovernance]);
@@ -345,11 +367,13 @@ export default function App() {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
 
     localStorage.removeItem('saare_token');
     localStorage.removeItem('saare_consent_accepted');
     setIsAuthenticated(false);
     setActiveSemanticHeaders([]);
+    setSseStatus('DESCONECTADO');
     triggerGovernance("🛑 Kill-Switch Ejecutado: Comandos Persistentes Desactivados y Sesión Cerrada.");
   }, [userEmail, tenantId, triggerGovernance]);
 
@@ -365,6 +389,7 @@ export default function App() {
     } catch (e) {}
   }, [mergeEvidences]);
 
+  // --- Configuración y Conexión SSE con Reconexión por Backoff Exponencial ---
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -387,41 +412,61 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
-    const pollingInterval = setInterval(() => {
-      fetchTelemetryOnce();
-    }, 3000);
+    const pollingInterval = setInterval(fetchTelemetryOnce, 4000);
 
-    const cleanBaseUrl = API_BASE_URL.replace(/\/$/, '');
-    const streamEndpoint = cleanBaseUrl.endsWith('/api/v1') 
-      ? `${cleanBaseUrl}/telemetry/stream` 
-      : `${cleanBaseUrl}/api/v1/telemetry/stream`;
+    const connectSSE = () => {
+      if (eventSourceRef.current) eventSourceRef.current.close();
 
-    const streamUrl = `${streamEndpoint}?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
+      const cleanBaseUrl = API_BASE_URL.replace(/\/$/, '');
+      const streamEndpoint = cleanBaseUrl.endsWith('/api/v1') 
+        ? `${cleanBaseUrl}/telemetry/stream` 
+        : `${cleanBaseUrl}/api/v1/telemetry/stream`;
 
-    try {
-      const es = new EventSource(streamUrl);
-      eventSourceRef.current = es;
+      const streamUrl = `${streamEndpoint}?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
-      es.onmessage = (event) => {
-        try {
-          const streamData = JSON.parse(event.data);
-          if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
-            setEvidences(prev => mergeEvidences(prev, streamData));
-          } else if (streamData.status === 'RUNTIME_ACTIVE') {
-            fetchTelemetryOnce();
-          } else if (streamData.id || streamData.evidence_id) {
-            setEvidences(prev => mergeEvidences(prev, [streamData]));
+      try {
+        const es = new EventSource(streamUrl);
+        eventSourceRef.current = es;
+
+        es.onopen = () => {
+          setSseStatus('CONECTADO');
+          sseRetryCountRef.current = 0;
+        };
+
+        es.onmessage = (event) => {
+          try {
+            const streamData = JSON.parse(event.data);
+            if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
+              setEvidences(prev => mergeEvidences(prev, streamData));
+            } else if (streamData.status === 'RUNTIME_ACTIVE') {
+              fetchTelemetryOnce();
+            } else if (streamData.id || streamData.evidence_id) {
+              setEvidences(prev => mergeEvidences(prev, [streamData]));
+            }
+          } catch (err) {}
+        };
+
+        es.onerror = () => {
+          setSseStatus('RECONECTANDO');
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
           }
-        } catch (err) {}
-      };
 
-      es.onerror = () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
-      };
-    } catch (e) {}
+          // Backoff exponencial de reintento (máximo 30 seg)
+          const delay = Math.min(1000 * Math.pow(2, sseRetryCountRef.current), 30000);
+          sseRetryCountRef.current += 1;
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectSSE();
+          }, delay);
+        };
+      } catch (e) {
+        setSseStatus('ERROR');
+      }
+    };
+
+    connectSSE();
 
     return () => {
       clearInterval(intervalClock);
@@ -430,40 +475,51 @@ export default function App() {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
   }, [isAuthenticated, userEmail, tenantId, fetchTelemetryOnce, mergeEvidences]);
 
-  const filteredEvidences = evidences.filter(item => {
-    if (!item) return false;
+  // --- Filtrado Memorizado de Evidencias ---
+  const filteredEvidences = useMemo(() => {
+    return evidences.filter(item => {
+      if (!item) return false;
 
-    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
-    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
+      if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
+      if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
-    if (startDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const startDate = new Date(startDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
-    }
-
-    if (endDateFilter) {
-      const itemDate = new Date(item.rawTimestamp);
-      const endDate = new Date(endDateFilter);
-      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
-        endDate.setHours(23, 59, 59, 999);
-        if (itemDate > endDate) return false;
+      if (startDateFilter) {
+        const itemDate = new Date(item.rawTimestamp);
+        const startDate = new Date(startDateFilter);
+        if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
       }
-    }
 
-    return true;
-  });
+      if (endDateFilter) {
+        const itemDate = new Date(item.rawTimestamp);
+        const endDate = new Date(endDateFilter);
+        if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+          endDate.setHours(23, 59, 59, 999);
+          if (itemDate > endDate) return false;
+        }
+      }
 
+      return true;
+    });
+  }, [evidences, filter, startDateFilter, endDateFilter]);
+
+  // Métricas agregadas
   const totalInspecciones = evidences.length;
-  const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
-  const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
-  const avgLatencyMs = totalInspecciones > 0
-    ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0.84), 0) / totalInspecciones).toFixed(1)
-    : '0.84';
+  const totalDeny = useMemo(() => {
+    return evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
+  }, [evidences]);
 
+  const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
+  const avgLatencyMs = useMemo(() => {
+    return totalInspecciones > 0
+      ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0.84), 0) / totalInspecciones).toFixed(1)
+      : '0.84';
+  }, [evidences, totalInspecciones]);
+
+  // --- Handlers de Acciones Corporativas & Comandos Semánticos ---
   const handleVerifyLicense = async () => {
     triggerGovernance(`Ejecutando ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}...`);
     try {
@@ -737,6 +793,7 @@ export default function App() {
     triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
+  // --- Evaluación Ex-Ante con Garantía Fail-Closed ---
   const handleExecuteTestExAnte = async () => {
     if (!testPrompt.trim()) {
       triggerGovernance("Escriba o seleccione un prompt para evaluar.");
@@ -752,7 +809,8 @@ export default function App() {
           prompt: testPrompt,
           user: userEmail,
           tenant: tenantId,
-          evidence_id: auditedEvidenceId || undefined
+          evidence_id: auditedEvidenceId || undefined,
+          customRules: customFilters
         })
       });
 
@@ -807,7 +865,27 @@ export default function App() {
       fetchTelemetryOnce();
       triggerGovernance(`Dictamen Ex-Ante emitido (${evalResult.decision}) en ${latencyMs}.`);
     } catch (err) {
-      triggerGovernance(`Evaluación ex-ante ejecutada: ${err.message}`);
+      // Principio Fail-Closed: Ante error de red o backend, forzar veredicto de bloqueo
+      const failClosedResult = {
+        verdict: "RECHAZADO (FAIL-CLOSED PROTECCIÓN L7)",
+        decision: "DENY",
+        category: "NETWORK_OR_GATEWAY_FALLBACK",
+        norma: "Deterministic Zero-Trust Fail-Closed",
+        sanitizedPrompt: "[BLOQUEADO PREVENTIVAMENTE EN CLIENTE POR CONEXIÓN INTERRUMPIDA]",
+        latency: "0.00 ms",
+        seal: `FAIL_CLOSED_SEAL_${Date.now()}`,
+        evidence_id: `EV-FAIL-${Date.now()}`,
+        proofBundle: {
+          verdictId: `VRD-FAIL-${Date.now()}`,
+          payloadHash: "FAIL_CLOSED_GATE_ENGAGED",
+          ed25519Signature: "ED25519_FAIL_CLOSED",
+          merkleRoot: "0000000000000000000000000000000000000000000000000000000000000000",
+          rfc3161Timestamp: new Date().toISOString(),
+          claimLevel: 'FAIL_CLOSED'
+        }
+      };
+      setTestResult(failClosedResult);
+      triggerGovernance(`Excepción L7: Activado Fail-Closed de seguridad.`);
     } finally {
       setIsEvaluating(false);
     }
@@ -891,20 +969,31 @@ export default function App() {
     }
   };
 
+  // --- Validación Sintáctica Expresiones Regulares en Cliente ---
   const handleAddCustomFilter = async () => {
     if (!hasRequiredRank(userRole, 3)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
-    if (!newRuleName || !newRulePattern) {
-      triggerGovernance("Especifique un nombre y una regla sintáctica válida.");
+
+    setRuleValidationError('');
+    if (!newRuleName.trim() || !newRulePattern.trim()) {
+      setRuleValidationError("Especifique un nombre y un patrón sintáctico de expresión regular.");
+      return;
+    }
+
+    // Validación Regex Preventiva
+    try {
+      new RegExp(newRulePattern.trim(), "gi");
+    } catch (err) {
+      setRuleValidationError(`Patrón Regex inválido: ${err.message}`);
       return;
     }
 
     const newFilter = {
       id: `RULE-${Date.now()}`,
-      name: newRuleName,
-      pattern: newRulePattern,
+      name: newRuleName.trim(),
+      pattern: newRulePattern.trim(),
       created: new Date().toISOString()
     };
 
@@ -918,11 +1007,12 @@ export default function App() {
       });
       triggerGovernance(`Filtro "${newRuleName}" activado en el Policy Engine.`);
     } catch (e) {
-      triggerGovernance("Error al sincronizar regla personalizada.");
+      triggerGovernance("Error al sincronizar regla personalizada con el backend.");
     }
 
     setNewRuleName('');
     setNewRulePattern('');
+    setRuleValidationError('');
     setShowAddFilterModal(false);
   };
 
@@ -960,6 +1050,7 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
+  // --- Vista de Inicio de Sesión y Bootstrap ---
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -1034,9 +1125,7 @@ export default function App() {
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
-              onClick={() => {
-                alert("Acceso cancelado. Puede cerrar esta pestaña.");
-              }}
+              onClick={() => alert("Acceso cancelado. Puede cerrar esta pestaña.")}
               style={{
                 flex: '1',
                 padding: '14px',
@@ -1282,9 +1371,26 @@ export default function App() {
               {/* BARRA DE ESTADO */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-                    STREAM SSE ACTIVO ({vaultSource}) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '19:09:23'}</span>
+                  <span style={{
+                    padding: '6px 14px',
+                    background: sseStatus === 'CONECTADO' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    border: `1px solid ${sseStatus === 'CONECTADO' ? '#059669' : '#dc2626'}`,
+                    color: sseStatus === 'CONECTADO' ? '#34d399' : '#f87171',
+                    borderRadius: '20px',
+                    fontSize: '0.78rem',
+                    fontWeight: '800',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: sseStatus === 'CONECTADO' ? '#10b981' : '#ef4444',
+                      boxShadow: `0 0 8px ${sseStatus === 'CONECTADO' ? '#10b981' : '#ef4444'}`
+                    }}></span>
+                    STREAM SSE: {sseStatus} ({vaultSource}) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '00:00:00'}</span>
                   </span>
 
                   <span style={{ padding: '6px 14px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1626,7 +1732,7 @@ export default function App() {
                   )}
 
                   <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
-                    <div>[POLICY ENGINE - {timeStr}] Listening on SSE Telemetry Channel (https://api.saare.es/api/v1/telemetry/stream)...</div>
+                    <div>[POLICY ENGINE - {timeStr}] Listening on SSE Telemetry Channel ({API_BASE_URL.replace(/\/$/, '')}/telemetry/stream)...</div>
                     <div>[NATIVE L7 PROCESS] In-Line Edge Proxy activo. Latencia P99 ≤ 1.12 ms en RAM volátil (mlock_ephemeral).</div>
                     <div>[ENFORCEMENT] Directivas cargadas: {activeDirectivesCount}/8 base | {customFilters.length} filtros dinámicos. Zero-Noise Guard.</div>
                   </div>
@@ -1752,10 +1858,18 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL CREAR FILTRO PERSONALIZADO */}
       {showAddFilterModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#0b0f19', border: '1px solid #0284c7', borderRadius: '12px', width: '90%', maxWidth: '520px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#38bdf8', fontSize: '1.1rem', fontWeight: '900' }}>🛡️ Crear Regla de Bloqueo Ex-Ante</h3>
+            
+            {ruleValidationError && (
+              <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 12px', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '12px', fontWeight: 'bold' }}>
+                ⚠️ {ruleValidationError}
+              </div>
+            )}
+
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: '700' }}>Nombre de la Regla / Proyecto:</label>
               <input 
@@ -1777,13 +1891,14 @@ export default function App() {
               />
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowAddFilterModal(false)} style={{ padding: '10px 16px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>Cancelar</button>
+              <button onClick={() => { setShowAddFilterModal(false); setRuleValidationError(''); }} style={{ padding: '10px 16px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>Cancelar</button>
               <button onClick={handleAddCustomFilter} style={{ padding: '10px 18px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* MODALES EXTERNOS INTEGRADOS */}
       <FriaWizardModal 
         isOpen={showFriaModal}
         onClose={() => setShowFriaModal(false)}

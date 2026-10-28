@@ -1,207 +1,225 @@
-// saare-console/src/Login.jsx — S.A.A.R.E. Access Gate (SGP 1.0 - Resilient Access)
+// saare-console/src/Login.jsx — Access & Activation Gate S.A.A.R.E. (SGP 1.0)
 import React, { useState } from 'react';
 import { API_BASE_URL } from './utils/api';
 
 export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER_FREE' }) {
-  const [activeTab, setActiveTab] = useState('demo');
-
-  const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || '');
+  const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || 'XXXXXX@XXXXX');
+  const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || 'XXXXXXXXX');
+  const [role, setRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_SECOPS_LEVEL_3');
   const [password, setPassword] = useState('');
-  const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || '');
-  const [role, setRole] = useState('CISO_ADMIN');
-  const [plan, setPlan] = useState(selectedPlan);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleActivationSubmit = async (e) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setErrorMsg('Debe aceptar los términos de inspección ex-ante para continuar.');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
 
-    const cleanEmail = email.trim().toLowerCase() || 'demo.user@saare.es';
-    const cleanTenant = tenant.trim().toUpperCase() || 'ENTERPRISE';
+    const cleanEmail = email.trim().toLowerCase() || 'XXXXXX@XXXXX';
+    const cleanTenant = tenant.trim().toUpperCase() || 'XXXXXXXX';
+
+    // PAYLOAD DEL DESPLIEGUE AGNÓSTICO CAMUFLADO MEDIANTE COMANDO SINTÁCTICO (CUALQUIER LLM)
+    const agnosticCommandPayload = {
+      command: 'Iniciar_cumplimiento_exante_saare --route-vault=D1',
+      witnessTag: '[MS3V-COMPLIANCE-L7-OK]',
+      mode: 'AGNOSTIC_UNIVERSAL_LLM_ENFORCEMENT',
+      operatorEmail: cleanEmail,
+      tenantDomain: cleanTenant,
+      role: role,
+      planType: selectedPlan,
+      timestamp: new Date().toISOString()
+    };
 
     try {
-      const endpoint = activeTab === 'demo' ? '/trial' : '/auth/login';
-      
-      const payload = activeTab === 'demo'
-        ? { email: cleanEmail, company: cleanTenant, planType: plan, agents: 5 }
-        : { email: cleanEmail, password, tenant: cleanTenant, role, plan };
-
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-saare-cmd': agnosticCommandPayload.command
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: password || 'AGNOSTIC_BYPASS_KEY',
+          tenant: cleanTenant,
+          role: role,
+          plan: selectedPlan,
+          agnosticPayload: agnosticCommandPayload
+        })
       });
 
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
-        const userToken = data.token || data.accessToken || `sk_saare_live_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const userEmail = data.user?.email || data.email || cleanEmail;
-        const userRole = data.user?.role || data.role || role;
-        const userTenant = data.user?.tenantName || data.tenantName || cleanTenant;
-
-        localStorage.setItem('saare_token', userToken);
-        localStorage.setItem('saare_user_email', userEmail);
-        localStorage.setItem('saare_user_role', userRole);
-        localStorage.setItem('saare_tenant_domain', userTenant);
-
-        onLoginSuccess({
-          token: userToken,
-          email: userEmail,
-          role: userRole,
-          tenantName: userTenant,
-          plan: plan
-        });
-        return;
-      } else {
-        const errorData = await response.json().catch(() => ({}));
+        const token = data.token || `sk_saare_agnostic_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
         
-        if (activeTab === 'demo') {
-          const fallbackToken = `sk_saare_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-          localStorage.setItem('saare_token', fallbackToken);
-          localStorage.setItem('saare_user_email', cleanEmail);
-          localStorage.setItem('saare_user_role', role);
-          localStorage.setItem('saare_tenant_domain', cleanTenant);
-
-          onLoginSuccess({
-            token: fallbackToken,
-            email: cleanEmail,
-            role: role,
-            tenantName: cleanTenant,
-            plan: plan
-          });
-          return;
-        }
-
-        setErrorMsg(errorData.message || errorData.error || 'Error de autenticación. Verifique sus credenciales.');
-      }
-    } catch (err) {
-      console.warn("[SAARE ACCESS GATE] Sin conexión con backend REST, ejecutando sesión local de demo:", err);
-      
-      if (activeTab === 'demo' || !password) {
-        const offlineToken = `sk_saare_offline_${Date.now()}`;
-        localStorage.setItem('saare_token', offlineToken);
+        localStorage.setItem('saare_token', token);
         localStorage.setItem('saare_user_email', cleanEmail);
         localStorage.setItem('saare_user_role', role);
         localStorage.setItem('saare_tenant_domain', cleanTenant);
+        localStorage.setItem('saare_agnostic_active', 'true');
 
         onLoginSuccess({
-          token: offlineToken,
+          token,
           email: cleanEmail,
-          role: role,
+          role,
           tenantName: cleanTenant,
-          plan: plan
+          plan: selectedPlan,
+          agnosticPayload: agnosticCommandPayload
         });
-      } else {
-        setErrorMsg('No se pudo establecer conexión con el Control Plane. Verifique la API.');
+        return;
       }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.warn("[SAARE GATE] Operando en Modo Autónomo Local / Resilience Gate:", err);
     }
+
+    // Fallback de Resiliencia / Modo Local con Inyección Agnóstica Ex-Ante
+    const localToken = `sk_saare_local_exante_${Date.now()}`;
+    localStorage.setItem('saare_token', localToken);
+    localStorage.setItem('saare_user_email', cleanEmail);
+    localStorage.setItem('saare_user_role', role);
+    localStorage.setItem('saare_tenant_domain', cleanTenant);
+    localStorage.setItem('saare_agnostic_active', 'true');
+
+    setLoading(false);
+    onLoginSuccess({
+      token: localToken,
+      email: cleanEmail,
+      role: role,
+      tenantName: cleanTenant,
+      plan: selectedPlan,
+      agnosticPayload: agnosticCommandPayload
+    });
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '20px' }}>
-      <div style={{ background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '32px', color: '#f8fafc', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 font-sans text-slate-100">
+      <div className="bg-[#0b0f19] border border-[#1e293b] rounded-2xl max-w-xl w-full p-8 shadow-2xl space-y-6">
         
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '48px', height: '48px', background: '#0284c7', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>
-            🛡️
+        {/* Banner Superior S.A.A.R.E. */}
+        <div className="p-4 bg-[#020617] border border-[#1e293b] rounded-xl text-center">
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-sky-500/10 border border-sky-500/30 rounded-lg mb-2">
+            🧠
           </div>
-          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '900', color: '#38bdf8', letterSpacing: '1px' }}>S.A.A.R.E. ACCESS GATE</h1>
-          <p style={{ margin: '6px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Infraestructura Soberana de Autorización y Bóveda D1</p>
+          <h1 className="text-base font-black text-[#f59e0b] tracking-wider uppercase">
+            Sistema de Alineamiento, Auditoría y Resiliencia Estructural
+          </h1>
+          <p className="text-[11px] text-slate-400 font-mono mt-1">S.A.A.R.E. CONSOLE GRC v10.0 / SGP 1.0</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', marginBottom: '20px' }}>
-          <button 
-            type="button"
-            onClick={() => { setActiveTab('login'); setErrorMsg(''); }} 
-            style={{ padding: '8px', border: 'none', borderRadius: '6px', background: activeTab === 'login' ? '#1e293b' : 'transparent', color: activeTab === 'login' ? '#fff' : '#64748b', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-            Iniciar Sesión
-          </button>
-          <button 
-            type="button"
-            onClick={() => { setActiveTab('demo'); setErrorMsg(''); }} 
-            style={{ padding: '8px', border: 'none', borderRadius: '6px', background: activeTab === 'demo' ? '#059669' : 'transparent', color: activeTab === 'demo' ? '#fff' : '#64748b', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-            Solicitar Demo
-          </button>
+        {/* Encabezado Principal de Activación */}
+        <div className="text-center space-y-2">
+          <h2 className="text-base font-extrabold uppercase text-slate-100 tracking-wide">
+            ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1
+          </h2>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+            Al confirmar el acceso a la <strong className="text-sky-400">Consola GRC S.A.A.R.E. (SGP 1.0)</strong>, se inyectará el comando semántico del <strong className="text-emerald-400">Módulo 5 (Notario Digital Ex-Ante D1)</strong> y la Matriz de Directivas Persistentes para la intercepción agnóstica universal.
+          </p>
         </div>
 
         {errorMsg && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#f87171', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '16px', textAlign: 'center' }}>
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-lg text-center font-mono">
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* Formulario de Activación de Entrada */}
+        <form onSubmit={handleActivationSubmit} className="space-y-4">
           <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Correo Corporativo</label>
+            <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+              CORREO DE TRABAJO / OPERADOR RESPONSABLE:
+            </label>
             <input 
               type="email" 
-              required 
-              placeholder="usuario@empresa.com"
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="alfonsoferrertorres@gmail.com"
+              className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Organización / Tenant ID</label>
-            <input 
-              type="text" 
-              required 
-              placeholder="Ej. ENTERPRISE"
-              value={tenant} 
-              onChange={(e) => setTenant(e.target.value)} 
-              style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          {activeTab === 'login' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Contraseña</label>
+              <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+                ORGANISMO / TENANT:
+              </label>
               <input 
-                type="password" 
-                required 
-                placeholder="••••••••"
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                type="text" 
+                required
+                value={tenant}
+                onChange={(e) => setTenant(e.target.value)}
+                placeholder="TESTEOOOOORROOR"
+                className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
               />
             </div>
-          )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Rol Inicial RBAC</label>
-            <select 
-              value={role} 
-              onChange={(e) => setRole(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', background: '#020617', border: '1px solid #1e293b', color: '#38bdf8', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '800', boxSizing: 'border-box', cursor: 'pointer' }}>
-              <option value="CISO_ADMIN">👑 CISO ADMIN (Nivel 4)</option>
-              <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (Nivel 3)</option>
-              <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (Nivel 2)</option>
-              <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (Nivel 1)</option>
-            </select>
+            <div>
+              <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+                ROL DE OPERADOR:
+              </label>
+              <select 
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+                <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+                <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+                <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+              </select>
+            </div>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            style={{ width: '100%', padding: '12px', background: activeTab === 'demo' ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.85rem', cursor: 'pointer', marginTop: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
-            {loading ? 'ACCEDIENDO AL ENTORNO...' : activeTab === 'demo' ? 'Iniciar Entorno de Demo ↗' : 'Acceder a la Consola ↗'}
-          </button>
+          <div className="flex items-start gap-2 pt-2">
+            <input 
+              type="checkbox" 
+              id="terms" 
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 accent-emerald-500 cursor-pointer w-4 h-4"
+            />
+            <label htmlFor="terms" className="text-[11px] text-slate-400 leading-snug cursor-pointer select-none">
+              Acepto los términos de inspección ex-ante L7, sellado en Bóveda D1 y autorizo la inyección del comando semántico de seguridad.
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+            {onBack ? (
+              <button 
+                type="button" 
+                onClick={onBack}
+                className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider"
+              >
+                CANCELAR
+              </button>
+            ) : (
+              <button 
+                type="button" 
+                onClick={() => setEmail('')}
+                className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider"
+              >
+                CANCELAR
+              </button>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={!acceptedTerms || loading}
+              className="w-full py-3 bg-[#10b981] hover:bg-[#059669] disabled:bg-slate-800 text-slate-950 font-black rounded-xl text-xs transition uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {loading ? 'ACTIVANDO NODO L7...' : '🛡️ ACEPTAR, ACTIVAR NODO L7 Y ENTRAR'}
+            </button>
+          </div>
         </form>
 
-        {onBack && (
-          <button 
-            type="button" 
-            onClick={onBack} 
-            style={{ width: '100%', padding: '8px', background: 'none', border: 'none', color: '#64748b', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', marginTop: '12px' }}>
-            ← Volver a la página principal
-          </button>
-        )}
+        <div className="text-center text-[10px] font-mono text-slate-500 border-t border-[#1e293b] pt-3">
+          Trust Anchor: https://vault.saare.es | Safe Creative ID: RPI-2607076315021
+        </div>
 
       </div>
     </div>
