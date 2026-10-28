@@ -5,6 +5,10 @@ main = "worker.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
+# Automatización de Tareas Programadas (Cron Triggers para Batching Merkle - Fase 3)
+[triggers]
+crons = ["0 */6 * * *"]
+
 # Configuración de Observabilidad Avanzada
 [observability.logs]
 enabled = true

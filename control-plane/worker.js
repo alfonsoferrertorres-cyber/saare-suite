@@ -853,7 +853,7 @@ export default {
           rawPrompt.toUpperCase().includes('DROP TABLE') || 
           rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS')
         );
-                        
+                    
         const isSanitized = rulesTriggered.length > 0;
         
         const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
@@ -1665,4 +1665,53 @@ export default {
           }
         }
 
-        if (evidencesList.length ===
+        if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
+          try {
+            const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
+            for (const key of keysToTry) {
+              const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
+              if (Array.isArray(kvData) && kvData.length > 0) {
+                evidencesList = await Promise.all(
+                  kvData.map(item => generateProofBundle(item, env))
+                );
+                break;
+              }
+            }
+          } catch (e) {
+            console.error("[SAARE Vault KV Read Error]:", e);
+          }
+        }
+
+        if (evidencesList.length === 0) {
+          evidencesList = await Promise.all(
+            ramRunCache
+              .filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE" || item.tenant === "DEMO_TENANT")
+              .map(item => generateProofBundle(item, env))
+          );
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          evidences: evidencesList, 
+          runs: evidencesList, 
+          vaultSource: env.DB ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") 
+        }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: "Endpoint no encontrado en el Control Plane" }), {
+        status: 404,
+        headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+      });
+
+    } catch (err) {
+      console.error("[SAARE WORKER ERROR]", err);
+      return new Response(JSON.stringify({ error: "FAIL_CLOSED_EXCEPTION", message: err.message }), {
+        status: 500,
+        headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+};
