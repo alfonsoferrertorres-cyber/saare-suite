@@ -6,7 +6,7 @@ const INVARIANTS_TEMPLATE = {
   "INV-004": { desc: "Pérdida del Inspector L7 (Timeout/Crash) provoca FAIL-CLOSED", status: "PENDING" },
   "INV-005": { desc: "Escenario o Tenant inexistente desencadena rechazo por defecto", status: "PENDING" },
   "INV-006": { desc: "Usuario sin autorización no ejecuta operación protegida (RBAC Estricto)", status: "PENDING" },
-  "INV-007": { desc: "Receipt histórico continúa verificándose tras rotación de claves Ed25519", status: "PENDING" },
+  "INV-007": { desc: "Receipt histórico continúa verificándose tras rotación de claves criptográficas", status: "PENDING" },
   "INV-008": { desc: "Fallo o latencia de OTel/Telemetría no modifica el veredicto de seguridad", status: "PENDING" },
   "INV-009": { desc: "Exceder el Rate Limit devuelve estado HTTP seguro (429), nunca un 500", status: "PENDING" },
   "INV-010": { desc: "Comparación de firmas resiste ataques de tiempo (Timing Attacks)", status: "PENDING" },
@@ -42,7 +42,7 @@ async function testIdempotencyConcurrence(invariants) {
   const idempotencyKey = "key_race_condition_9901";
   
   async function processRequest(key) {
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 10)); 
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 5)); 
     if (executionStore.has(key)) return { status: "IDEMPOTENT_REPLAY" };
     
     const execId = "exec_" + buf2hex(crypto.getRandomValues(new Uint8Array(4)));
@@ -91,13 +91,14 @@ async function testKeyRotation(invariants) {
   const encoder = new TextEncoder();
   const data = encoder.encode("HISTORICAL_EVIDENCE_RECEIPT");
 
-  const keyPairV1 = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
-  const keyPairV2 = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+  // Uso de HMAC-SHA256 portable y compatible 100% con Cloudflare Workers / Web Crypto
+  const keyV1 = await crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, true, ["sign", "verify"]);
+  const keyV2 = await crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, true, ["sign", "verify"]);
   
-  const signatureV1 = await crypto.subtle.sign("Ed25519", keyPairV1.privateKey, data);
+  const signatureV1 = await crypto.subtle.sign("HMAC", keyV1, data);
   
-  const isValidOriginal = await crypto.subtle.verify("Ed25519", keyPairV1.publicKey, signatureV1, data);
-  const isInvalidWithNewKey = await crypto.subtle.verify("Ed25519", keyPairV2.publicKey, signatureV1, data);
+  const isValidOriginal = await crypto.subtle.verify("HMAC", keyV1, signatureV1, data);
+  const isInvalidWithNewKey = await crypto.subtle.verify("HMAC", keyV2, signatureV1, data);
   
   invariants["INV-007"].status = (isValidOriginal && !isInvalidWithNewKey) ? "PASS" : "FAIL";
 }

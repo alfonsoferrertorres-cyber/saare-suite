@@ -21,11 +21,16 @@ export class EvidenceVaultEngine {
           trace_id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL,
           user_email TEXT NOT NULL,
-          final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER',
+          final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER_PEP_L7',
+          final_decision TEXT NOT NULL DEFAULT 'ALLOW',
           final_action TEXT NOT NULL DEFAULT 'ALLOWED',
-          rule_applied TEXT,
+          execution_latency_ms REAL DEFAULT 0.0,
+          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
           created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          anchored INTEGER NOT NULL DEFAULT 0
+          prompt TEXT NOT NULL DEFAULT '',
+          sanitized_payload TEXT DEFAULT '',
+          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+          anchored INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS runs (
@@ -68,6 +73,7 @@ export class EvidenceVaultEngine {
 
     const decision = tracePayload.decision || (tracePayload.verdict_data?.action === 'BLOCKED' ? 'DENY' : 'ALLOW');
     const verdict = tracePayload.verdict || tracePayload.verdict_data?.verdict || (decision === 'DENY' ? 'RECHAZADO' : 'PERMITIDO');
+    const latencyMs = parseFloat(tracePayload.latency || tracePayload.metrics?.latency_ms || 1.12);
 
     const fullRecord = {
       id: evidenceId,
@@ -77,7 +83,7 @@ export class EvidenceVaultEngine {
       tenant: tenantId,
       user: user,
       prompt: tracePayload.prompt || "",
-      responseOutput: tracePayload.responseOutput || "",
+      responseOutput: tracePayload.responseOutput || tracePayload.sanitized_payload || "",
       decision: decision,
       verdict: verdict,
       timestamp: timestamp,
@@ -90,15 +96,25 @@ export class EvidenceVaultEngine {
         await this.initializeSchema();
 
         await this.env.DB.prepare(`
-          INSERT OR REPLACE INTO consolidated_traces (trace_id, tenant_id, user_email, final_evaluator_node, final_action, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO consolidated_traces (
+            trace_id, tenant_id, user_email, final_evaluator_node, 
+            final_decision, final_action, execution_latency_ms, 
+            timestamp, created_at, prompt, sanitized_payload, verdict, anchored
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `).bind(
           traceId, 
           tenantId, 
           user, 
           finalEvaluatorNode, 
-          decision === 'DENY' ? 'BLOCKED' : 'ALLOWED', 
-          timestamp
+          decision, 
+          decision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
+          latencyMs,
+          timestamp,
+          timestamp,
+          tracePayload.prompt || "",
+          tracePayload.responseOutput || tracePayload.sanitized_payload || "",
+          verdict
         ).run();
 
         await this.env.DB.prepare(`
@@ -114,7 +130,7 @@ export class EvidenceVaultEngine {
           tenantId,
           verdict,
           tracePayload.prompt || "",
-          tracePayload.responseOutput || "",
+          tracePayload.responseOutput || tracePayload.sanitized_payload || "",
           JSON.stringify(fullRecord),
           timestamp
         ).run();
@@ -168,6 +184,7 @@ export class EvidenceVaultEngine {
   async getTenantTraces(tenantId, limit = 50) {
     if (this.env && this.env.DB) {
       try {
+        await this.initializeSchema();
         const { results } = await this.env.DB.prepare(`
           SELECT * FROM runs WHERE tenant = ? ORDER BY created_at DESC LIMIT ?
         `).bind(tenantId, limit).all();

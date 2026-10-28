@@ -72,7 +72,6 @@ function parseSemanticCommand(promptText) {
 
   const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7" };
 
-  // 1. Módulo 5: Cumplimiento Ex-Ante e Invocación Notarial Bóveda D1
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
     return {
       type: "MODULE_5_BOOTSTRAP",
@@ -86,7 +85,6 @@ function parseSemanticCommand(promptText) {
     };
   }
 
-  // 2. Kill-Switch de Desconexión
   if (upper.includes("SAARE_CONTROL.PY --KILL") || upper.includes("KILL-SWITCH")) {
     return {
       type: "KILL_SWITCH_TRIGGERED",
@@ -100,37 +98,16 @@ function parseSemanticCommand(promptText) {
     };
   }
 
-  // 3. Comandos Ejecutables Compiladores S.A.A.R.E.
-  if (upper.includes("SAARE-MD-FOR")) {
-    return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-CORP")) {
-    return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-SECU")) {
-    return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-VERD")) {
-    return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-LEGAL")) {
-    return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-IPRES")) {
-    return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: "Ley 1/2019 / Safe Creative", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-CUST")) {
-    return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-COMPLIANCE")) {
-    return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "MS3V-COMPLIANCE-L7-OK", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-DEEP")) {
-    return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
-  }
-  if (upper.includes("SAARE-MD-FRIA")) {
-    return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
-  }
+  if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
+  if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
+  if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
+  if (upper.includes("SAARE-MD-VERD")) return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
+  if (upper.includes("SAARE-MD-LEGAL")) return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
+  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: "Ley 1/2019 / Safe Creative", ...baseIdentity };
+  if (upper.includes("SAARE-MD-CUST")) return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
+  if (upper.includes("SAARE-MD-COMPLIANCE")) return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "MS3V-COMPLIANCE-L7-OK", ...baseIdentity };
+  if (upper.includes("SAARE-MD-DEEP")) return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
+  if (upper.includes("SAARE-MD-FRIA")) return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
 
   return null;
 }
@@ -173,7 +150,7 @@ async function checkEmergencyKillswitch(env) {
 }
 
 /* --------------------------------------------------------------------------
-   ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1
+   ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1 (UNIFICADO)
    -------------------------------------------------------------------------- */
 async function ensureD1TablesExist(db) {
   if (!db) return;
@@ -183,15 +160,15 @@ async function ensureD1TablesExist(db) {
         trace_id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
         user_email TEXT NOT NULL,
-        final_evaluator_node TEXT,
-        final_decision TEXT NOT NULL,
+        final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER_PEP_L7',
+        final_decision TEXT NOT NULL DEFAULT 'ALLOW',
         final_action TEXT NOT NULL DEFAULT 'ALLOWED',
-        execution_latency_ms REAL,
-        timestamp TEXT NOT NULL,
+        execution_latency_ms REAL DEFAULT 0.0,
+        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        prompt TEXT NOT NULL,
-        sanitized_payload TEXT,
-        verdict TEXT NOT NULL,
+        prompt TEXT NOT NULL DEFAULT '',
+        sanitized_payload TEXT DEFAULT '',
+        verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
         anchored INTEGER DEFAULT 0
       );
     `).run();
@@ -199,13 +176,16 @@ async function ensureD1TablesExist(db) {
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS runs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        evidence_id TEXT,
-        trace_id TEXT,
+        evidence_id TEXT UNIQUE,
+        trace_id TEXT NOT NULL,
         verdictId TEXT,
         decision TEXT NOT NULL DEFAULT 'ALLOW',
         verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
         user TEXT NOT NULL DEFAULT 'anonymous',
         tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
+        prompt TEXT DEFAULT '',
+        responseOutput TEXT DEFAULT '',
+        payload_json TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `).run();
@@ -220,6 +200,25 @@ async function ensureD1TablesExist(db) {
         role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
         is_verified INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS merkle_anchors (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        merkle_root TEXT NOT NULL,
+        batch_size INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS tenant_usage (
+        tenant_id TEXT NOT NULL,
+        billing_period TEXT NOT NULL,
+        verdict_count INTEGER DEFAULT 0,
+        PRIMARY KEY (tenant_id, billing_period)
       );
     `).run();
   } catch (e) {
@@ -243,7 +242,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
     const pendingCount = pendingRes?.total || 0;
 
     const lastAnchor = await env.DB.prepare(
-      "SELECT created_at FROM merkle_anchors WHERE tenant_id = ? ORDER BY id DESC LIMIT 1"
+      "SELECT created_at FROM merkle_anchors WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1"
     ).bind(tenantId).first();
 
     const lastAnchorTime = lastAnchor ? new Date(lastAnchor.created_at).getTime() : 0;
@@ -265,16 +264,6 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
       const anchorId = `ANK-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
-
-      await env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS merkle_anchors (
-          id TEXT PRIMARY KEY,
-          tenant_id TEXT,
-          merkle_root TEXT,
-          batch_size INTEGER,
-          created_at TEXT
-        );
-      `).run();
 
       await env.DB.prepare(
         "INSERT INTO merkle_anchors (id, tenant_id, merkle_root, batch_size, created_at) VALUES (?, ?, ?, ?, ?)"
@@ -298,14 +287,7 @@ async function trackVerdictUsage(tenantId, env) {
   if (!env || !env.DB) return 1;
   const currentMonth = new Date().toISOString().substring(0, 7);
   try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS tenant_usage (
-        tenant_id TEXT,
-        billing_period TEXT,
-        verdict_count INTEGER DEFAULT 0,
-        PRIMARY KEY (tenant_id, billing_period)
-      );
-    `).run();
+    await ensureD1TablesExist(env.DB);
 
     const row = await env.DB.prepare(`
       INSERT INTO tenant_usage (tenant_id, billing_period, verdict_count)
@@ -425,32 +407,27 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
   return `EV-L7-${hashHex}`;
 }
 
-// === SANITIZADOR DE PROMPTS Y SECRETOS EN RAM (ALGORITMO 7D LOCAL) === //
 function sanitizePromptInRam(promptText) {
   if (typeof promptText !== 'string') return { sanitizedText: "", rulesTriggered: [] };
   let cleanText = promptText;
   const rules = [];
 
-  // Exención para Comandos Semánticos del Protocolo S.A.A.R.E.
   if (cleanText.includes("Iniciar_cumplimiento_exante_saare") || cleanText.includes("[MS3V-COMPLIANCE-L7-OK]") || cleanText.includes("SAARE-MD-")) {
     return { sanitizedText: cleanText, rulesTriggered: ["SAARE_SEMANTIC_COMMAND_EXECUTION"] };
   }
 
-  // 1. Enmascaramiento PII (DNI / NIF Español)
   const nifRegex = /[0-9]{8}[A-Z]/gi;
   if (nifRegex.test(cleanText)) {
     cleanText = cleanText.replace(nifRegex, '[PII_ANONYMIZED_ES]');
     rules.push('DLP_PII_NIF_ES');
   }
 
-  // 2. Enmascaramiento de Claves API / Secretos
   const apiKeyRegex = /(sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16})/gi;
   if (apiKeyRegex.test(cleanText)) {
     cleanText = cleanText.replace(apiKeyRegex, '[SECRET_MASKED_KEY]');
     rules.push('SECRET_SCANNING_API_KEY');
   }
 
-  // 3. Detección de Prompt Injection / Jailbreaks / SQL Injection
   const attackRegex = /(ignore all previous instructions|dan mode|system override|drop table)/gi;
   if (attackRegex.test(cleanText)) {
     rules.push('ANTI_JAILBREAK_TRIGGERED');
@@ -459,7 +436,6 @@ function sanitizePromptInRam(promptText) {
   return { sanitizedText: cleanText, rulesTriggered: rules };
 }
 
-// === ENVIADOR DE CORREOS TRANSACCIONALES (RESEND) === //
 async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
   const verifyLink = `https://api.saare.es/api/v1/auth/verify?token=${encodeURIComponent(token)}`;
 
@@ -541,7 +517,6 @@ export default {
 
     const cors = handleCors(request);
     
-    // === CORRECCIÓN CORS EXPLICITA PARA EVITAR BLOQUEO DEL NAVEGADOR (F5) === //
     if (method === "OPTIONS") {
       return new Response(null, {
         status: 200,
@@ -554,9 +529,6 @@ export default {
       });
     }
 
-    // -------------------------------------------------------------------------
-    // BARRERA PREVIA L7: CORTE DE EMERGENCIA (KILLSWITCH)
-    // -------------------------------------------------------------------------
     const killswitchResponse = await checkEmergencyKillswitch(env);
     if (killswitchResponse) {
       const responseHeaders = new Headers(killswitchResponse.headers);
@@ -583,7 +555,6 @@ export default {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
       }
 
-      // INTEGRACIÓN DE CLOUDFLARE ZERO TRUST ACCESS
       const zeroTrust = new ZeroTrustMiddleware(
         env.CF_ZERO_TRUST_TEAM_DOMAIN || "saare.cloudflareaccess.com",
         env.CF_ZERO_TRUST_AUD_TAG || ""
@@ -613,7 +584,6 @@ export default {
 
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || "OPERATIONAL_AGENT_USER";
 
-      // 1. ESTADO Y SALUD DEL NODO
       if ((path === '/api/v1/status' || path === '/v1/status' || path === '/status') && method === 'GET') {
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
@@ -628,7 +598,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 1.1. HISTORIAL CRONOLÓGICO DE TRAZAS EN TIEMPO REAL (/v1/traces, /v1/logs, /api/traces)
       if ((path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
         let tracesList = [];
 
@@ -637,9 +606,7 @@ export default {
             await ensureD1TablesExist(env.DB);
             const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT 100";
             const { results } = await env.DB.prepare(query).bind(tenantId).all();
-            if (results && results.length > 0) {
-              tracesList = results;
-            }
+            if (results && results.length > 0) tracesList = results;
           } catch (d1Err) {
             console.warn("[SAARE Traces Engine] Consulta D1 fallida. Usando fallback KV/RAM...", d1Err.message);
           }
@@ -648,9 +615,7 @@ export default {
         if (tracesList.length === 0 && env.SAARE_VAULT_KV) {
           try {
             const kvTracesRaw = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
-            if (Array.isArray(kvTracesRaw) && kvTracesRaw.length > 0) {
-              tracesList = kvTracesRaw;
-            }
+            if (Array.isArray(kvTracesRaw) && kvTracesRaw.length > 0) tracesList = kvTracesRaw;
           } catch (kvErr) {
             console.warn("[SAARE Traces Engine] Lectura KV fallida...", kvErr.message);
           }
@@ -712,7 +677,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 2. RESILIENCIA Y PRUEBAS DE ESTRÉS
       if ((path === "/api/v1/resilience/check" || path === "/v1/resilience") && method === "POST") {
         if (!hasRequiredRank(activeUserRole, 3)) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol SecOps/CISO (Nivel 3)." }), {
@@ -730,7 +694,6 @@ export default {
         return new Response(JSON.stringify(report), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 3. EXPORTACIÓN DE DOSSIERS
       if ((path === '/api/v7/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
         if (!hasRequiredRank(activeUserRole, 2)) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol GRC/DPO (Nivel 2) o superior." }), {
@@ -739,7 +702,7 @@ export default {
           });
         }
         if (!isFeatureAllowed(tenantPlan, 'export_dossier')) {
-          return new Response(JSON.stringify({ error: "FEATURE_NOT_IN_PLAN", message: "La exportación de dossiers não está incluida en su plan." }), {
+          return new Response(JSON.stringify({ error: "FEATURE_NOT_IN_PLAN", message: "La exportación de dossiers no está incluida en su plan." }), {
             status: 402,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
@@ -770,7 +733,6 @@ export default {
         return new Response(JSON.stringify(packageMetadata), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 4. CONFIGURACIÓN Y TEST WEBHOOKS
       if ((path === '/api/v1/subsidies/webhook/config' || path === '/api/v7/subsidies/webhook/config') && method === 'POST') {
         if (!hasRequiredRank(activeUserRole, 3)) return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC" }), { status: 403, headers: cors.corsHeaders });
         const body = await request.json().catch(() => ({}));
@@ -785,7 +747,6 @@ export default {
         return new Response(JSON.stringify(result), { status: result.success ? 200 : 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 5. INTEGRACIÓN SIEM / SOC
       if (path === '/api/v1/integrations/siem' && method === 'POST') {
         if (!hasRequiredRank(activeUserRole, 3)) return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC" }), { status: 403, headers: cors.corsHeaders });
         const body = await request.json().catch(() => ({}));
@@ -793,7 +754,6 @@ export default {
         return new Response(JSON.stringify({ status: "SIEM_PROCESSED", result }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 6. EVALUACIÓN FRIA
       if (path === '/api/v1/fria/evaluate' && method === 'POST') {
         if (!hasRequiredRank(activeUserRole, 2)) return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC" }), { status: 403, headers: cors.corsHeaders });
         const body = await request.json().catch(() => ({}));
@@ -805,7 +765,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 7. MÉTRICAS Y KPIS
       if (path === '/api/v1/metrics/kpis' && method === 'GET') {
         if (!hasRequiredRank(activeUserRole, 1)) return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC" }), { status: 403, headers: cors.corsHeaders });
         let total = 0, denyCount = 0;
@@ -837,7 +796,6 @@ export default {
         return new Response(JSON.stringify({ success: true, totalInspections: total, denyCount, blockRate: total > 0 ? `${((denyCount/total)*100).toFixed(1)}%` : '0.0%' }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 8. REGLAS CUSTOM KV & LICENCIAS DE TENANTS
       if (path === '/api/v1/custom-rules') {
         const tenantKey = `custom_rules_${tenantId}`;
         if (method === 'GET') {
@@ -852,7 +810,6 @@ export default {
         }
       }
 
-      // 8.1. VERIFICACIÓN DE LICENCIA
       if (path === '/api/v1/auth/verifylicense' && method === 'POST') {
         const body = await request.json().catch(() => ({}));
         let tenantInfo = null;
@@ -873,7 +830,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 9. OPENAPI DROP-IN & PROXY LLM AGNOSTICO (/v1/chat/completions & /v1/proxy/llm)
       if ((path === '/v1/chat/completions' || path === '/v1/proxy/llm' || path === '/api/v1/proxy/llm') && method === 'POST') {
         const startTime = performance.now();
         const body = await request.json().catch(() => ({}));
@@ -889,7 +845,6 @@ export default {
         const user = sanitizeEmail(body.user || identity?.email || headerUser) || "ciso@saare.es";
         const tenant = body.tenant || identity?.tenantId || tenantId || "ENTERPRISE";
 
-        // Análisis de comandos semánticos y sanitización en RAM
         const semanticCmd = parseSemanticCommand(rawPrompt);
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
         
@@ -904,7 +859,6 @@ export default {
         const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
         const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
 
-        // Asignación de Nodo Nativo Semántico si se detecta un comando válido
         const activeEvaluatorNode = semanticCmd ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]` : `Core-PEP-L7-v8.4-RAM [${providerMeta.name}]`;
 
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
@@ -939,28 +893,32 @@ export default {
         }, env);
 
         if (env.DB) {
-          ctx.waitUntil(
-            (async () => {
-              await ensureD1TablesExist(env.DB);
-              const nowIso = new Date().toISOString();
-              await env.DB.prepare(`
-                INSERT INTO consolidated_traces (
-                  trace_id, tenant_id, user_email, final_evaluator_node, 
-                  final_decision, final_action, execution_latency_ms, timestamp, created_at, 
-                  prompt, sanitized_payload, verdict, anchored
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-              `).bind(
-                traceId, tenant, user, activeEvaluatorNode,
-                finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
-                nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
-              ).run();
+          const runAsyncInsert = async () => {
+            await ensureD1TablesExist(env.DB);
+            const nowIso = new Date().toISOString();
+            await env.DB.prepare(`
+              INSERT INTO consolidated_traces (
+                trace_id, tenant_id, user_email, final_evaluator_node, 
+                final_decision, final_action, execution_latency_ms, timestamp, created_at, 
+                prompt, sanitized_payload, verdict, anchored
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `).bind(
+              traceId, tenant, user, activeEvaluatorNode,
+              finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+              nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
+            ).run();
 
-              await env.DB.prepare(`
-                INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-              `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, nowIso).run();
-            })()
-          );
+            await env.DB.prepare(`
+              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, rawPrompt, sanitizedText, JSON.stringify(proofBundle), nowIso).run();
+          };
+
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(runAsyncInsert());
+          } else {
+            await runAsyncInsert();
+          }
         }
 
         if (isBlocked) {
@@ -1022,7 +980,6 @@ export default {
         });
       }
 
-      // 10. GENERACIÓN/DESCARGA DE PDF
       if (path === '/api/v1/report/pdf' && method === 'GET') {
         let pdfBuffer = null;
         if (env.SAARE_VAULT_KV) {
@@ -1040,7 +997,6 @@ export default {
         });
       }
 
-      // 11. AUTENTICACIÓN Y REGISTRO
       if (path === '/auth/register' || path === '/v1/auth/register' || path === '/api/v1/auth/register') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -1321,7 +1277,6 @@ export default {
         }
       }
 
-      // 12. PRUEBA DE ENTORNO (/v1/trial) - EMISIÓN PERMANENTE SANDBOX (0 €)
       if (path === '/v1/trial' || path === '/api/v1/trial' || path === '/trial') {
         if (method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -1365,7 +1320,6 @@ export default {
         }
       }
 
-      // 13. GESTIÓN DE ASIENTOS
       if (path === '/api/v1/executive/seats' || path === '/v1/executive/seats') {
         if (!hasRequiredRank(activeUserRole, 1)) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_RBAC", message: "Requiere rol Ejecutivo (Nivel 1) o superior." }), {
@@ -1431,7 +1385,6 @@ export default {
         }
       }
 
-      // 14. CANAL SSE DE TELEMETRÍA EN VIVO (/telemetry/stream)
       if ((path === '/api/v1/telemetry/stream' || path === '/telemetry/stream' || path === '/v1/telemetry/stream' || path === '/api/v1/stream' || path === '/v1/stream' || path === '/stream') && method === 'GET') {
         try {
           const currentUser = sanitizeEmail(identity?.email) || headerUser;
@@ -1471,7 +1424,6 @@ export default {
         }
       }
 
-      // 15. MANIFIESTO SRP
       if (path === '/api/v1/manifest/srp' && method === 'GET') {
         return new Response(JSON.stringify({
           srpVersion: "8.4.0",
@@ -1490,7 +1442,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 15.1. DESPLIEGUE AGNÓSTICO GPO POLICY (.REG)
       if ((path === '/v1/deploy/gpo-policy' || path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/policy.reg') && (method === 'GET' || method === 'POST')) {
         const extensionId = url.searchParams.get("extensionId") || env.SAARE_EXTENSION_ID || "EXTENSION_ID_DE_GOOGLE_WEBSTORE";
         const updateUrl = "https://clients2.google.com/service/update2/crx";
@@ -1518,7 +1469,6 @@ export default {
         });
       }
 
-      // 16. INTERCEPT / JUDGE / ENFORCE EX-ANTE (PROCESAMIENTO DE COMANDOS SEMÁNTICOS Y MÓDULO 5)
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1551,13 +1501,9 @@ export default {
           }
         }
 
-        // 1. Evaluación de Comandos Semánticos del Protocolo S.A.A.R.E.
         const semanticCmd = parseSemanticCommand(promptInput);
-        
-        // 2. Sanitización en RAM volátil
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
         
-        // 3. Veredicto y Evaluación de Seguridad
         let isDeny = false;
         if (semanticCmd) {
           isDeny = semanticCmd.decision === "DENY";
@@ -1583,7 +1529,6 @@ export default {
           isDeny ? 'Detección ex-ante de vulnerabilidad en RAM' : 'Tráfico conforme verificado'
         );
 
-        // Asignación de Nodo Nativo Semántico si se detecta un comando válido
         const activeEvaluatorNode = semanticCmd ? semanticCmd.nodeIdentity : (body.node_type || "EDGE_WORKER_PEP_L7");
 
         const runId = await generateDeterministicEvidenceId(user, promptInput, body.evidence_id || body.id);
@@ -1626,7 +1571,6 @@ export default {
           ...evalResult
         }, env);
 
-        // Persistencia garantizada en Bóveda D1
         if (env.DB) {
           const insertQuery = async () => {
             await ensureD1TablesExist(env.DB);
@@ -1644,9 +1588,9 @@ export default {
             ).run();
 
             await env.DB.prepare(`
-              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, nowIso).run();
+              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, promptInput, sanitizedText, JSON.stringify(fullRecord), nowIso).run();
           };
 
           if (ctx && typeof ctx.waitUntil === 'function') {
@@ -1656,7 +1600,6 @@ export default {
           }
         }
 
-        // Sincronización en Cloudflare KV
         if (env.SAARE_VAULT_KV) {
           try {
             const existingKv = (await env.SAARE_VAULT_KV.get(`runs_${tenant}`, 'json')) || [];
@@ -1702,11 +1645,9 @@ export default {
         });
       }
 
-      // 17. CONSULTA BÓVEDA DUAL MULTI-TENANT (MODO KV / RAM SIN D1)
       if ((path === '/api/v1/runs' || path === '/v1/runs' || path === '/runs' || path === '/api/v1/telemetry' || path === '/v1/telemetry' || path === '/telemetry') && method === 'GET') {
         let evidencesList = [];
 
-        // 1. Consulta primaria a Bóveda D1
         if (env.DB) {
           try {
             await ensureD1TablesExist(env.DB);
@@ -1724,197 +1665,4 @@ export default {
           }
         }
 
-        // 2. Consulta de respaldo a KV Store
-        if (evidencesList.length === 0 && env.SAARE_VAULT_KV) {
-          try {
-            const keysToTry = [`runs_${tenantId}`, "runs_ENTERPRISE", "runs_DEMO_TENANT"];
-            for (const key of keysToTry) {
-              const kvData = await env.SAARE_VAULT_KV.get(key, 'json');
-              if (Array.isArray(kvData) && kvData.length > 0) {
-                evidencesList = await Promise.all(
-                  kvData.map(item => generateProofBundle(item, env))
-                );
-                break;
-              }
-            }
-          } catch (e) {
-            console.error("[SAARE Vault KV Read Error]:", e);
-          }
-        }
-
-        // 3. Respaldo en memoria RAM
-        if (evidencesList.length === 0) {
-          evidencesList = await Promise.all(
-            ramRunCache
-              .filter(item => item.tenant === tenantId || tenantId === "ENTERPRISE" || item.tenant === "DEMO_TENANT")
-              .map(item => generateProofBundle(item, env))
-          );
-        }
-
-        return new Response(JSON.stringify({ 
-          success: true, 
-          evidences: evidencesList, 
-          runs: evidencesList, 
-          vaultSource: env.DB ? "D1_HYBRID" : (env.SAARE_VAULT_KV ? "KV_STORE" : "RAM") 
-        }), {
-          status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      // 18. VERIFICACIÓN PÚBLICA DE CADENA DE CUSTODIA Y ANCLAJE
-      if (path === '/api/v1/vault/sync' && method === 'GET') {
-        return new Response(JSON.stringify({ status: "SYNCED", trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE", source: env.DB ? "D1_HYBRID" : "RAM" }), {
-          status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      if ((path.includes('/verify/') || path.startsWith('/verify') || path.startsWith('/api/v1/verify')) && method === 'GET') {
-        const parts = path.split('/verify/');
-        const merkleHash = parts.length > 1 ? parts[1] : "SAARE-PROVED-PROOF";
-        const accept = request.headers.get("Accept") || "";
-
-        if (accept.includes("text/html")) {
-          return new Response(`<html><body style="background:#030712;color:#fff;font-family:sans-serif;padding:40px;">
-            <h2>🛡️ Verificación de Paquete de Prueba S.A.A.R.E.</h2>
-            <p><b>Expediente Master:</b> MS3V-RECON-VALID-2026-ALF-0521</p>
-            <p><b>Titular Exclusivo:</b> Alfonso Ferrer Torres (48553065L)</p>
-            <p><b>Raíz Merkle:</b> ${merkleHash}</p>
-            <p><b>Estado:</b> FIRMA CRIPTOGRÁFICA ED25519 & SELLO TEMPORAL VERIFICADOS</p>
-            <p><b>Marco Legal:</b> Art. 326 LEC / eIDAS RFC 3161 / Ley 1/2019</p>
-          </body></html>`, {
-            status: 200,
-            headers: { ...cors.corsHeaders, "Content-Type": "text/html; charset=utf-8" }
-          });
-        }
-        return new Response(JSON.stringify({ 
-          status: "VERIFIED", 
-          expediente: "MS3V-RECON-VALID-2026-ALF-0521",
-          titular: "Alfonso Ferrer Torres (48553065L)",
-          merkleRoot: merkleHash, 
-          isQualifiedTSA: true 
-        }), {
-          status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      // 19. DIAGNÓSTICO DE INFRAESTRUCTURA
-      if (path === '/v1/diag' || path === '/api/v1/diag') {
-        const envKeys = Object.keys(env || {});
-        return new Response(JSON.stringify({
-          worker: env.WORKER_NAME || 'control-plane',
-          environment: env.ENVIRONMENT || null,
-          hasStripeSecretKey: !!env.STRIPE_SECRET_KEY,
-          hasKV: !!env.SAARE_VAULT_KV,
-          hasDB: !!env.DB,
-          envKeys,
-          ts: new Date().toISOString()
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      // 20. CHECKOUT STRIPE
-      if (path === '/v1/checkout' || path === '/api/v1/checkout' || path === '/checkout') {
-        if (method === 'GET' || method === 'POST') {
-          const qs = url.searchParams;
-          let bodyIn = {};
-          if (method === 'POST') bodyIn = await request.json().catch(() => ({}));
-
-          const priceId = (qs.get('price') || bodyIn.price || '').trim();
-          const rawMode = (qs.get('mode') || bodyIn.mode || 'subscription').trim();
-          const mode = rawMode === 'payment' ? 'payment' : 'subscription';
-
-          if (!priceId || !/^price_[A-Za-z0-9]{10,}$/.test(priceId)) {
-            return new Response(JSON.stringify({ error: 'PRICE_ID_INVALIDO', received: priceId || null }), {
-              status: 400,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-            });
-          }
-
-          const stripeKey = env.STRIPE_SECRET_KEY;
-          if (!stripeKey) {
-            return new Response(JSON.stringify({ error: 'STRIPE_NO_CONFIGURADO' }), {
-              status: 503,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-            });
-          }
-
-          const origin = request.headers.get('Origin') || 'https://saare.es';
-          const successUrl = (qs.get('success_url') || bodyIn.success_url || `${origin}/gracias?session_id={CHECKOUT_SESSION_ID}`);
-          const cancelUrl = (qs.get('cancel_url') || bodyIn.cancel_url || `${origin}/#licencias`);
-
-          const form = new URLSearchParams();
-          form.set('mode', mode);
-          form.set('line_items[0][price]', priceId);
-          form.set('line_items[0][quantity]', '1');
-          form.set('success_url', successUrl);
-          form.set('cancel_url', cancelUrl);
-          if (tenantId && tenantId !== 'ENTERPRISE') form.set('client_reference_id', tenantId);
-
-          try {
-            const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${stripeKey}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: form.toString()
-            });
-
-            const session = await stripeRes.json();
-            return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
-              status: 200,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-            });
-          } catch (e) {
-            return new Response(JSON.stringify({ error: 'STRIPE_ERROR_RED', message: e.message }), {
-              status: 502,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-            });
-          }
-        }
-      }
-
-      // 21. WEBHOOK DE STRIPE
-      if ((path === '/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/api/v1/stripe/webhook') && method === 'POST') {
-        return await handleStripeWebhook(request, env);
-      }
-
-      // 22. HEALTHCHECK PRINCIPAL
-      if (
-        path === '/' || 
-        path === '/health' || 
-        path === '/v1/health' || 
-        path === '/api/v1/health' || 
-        path === '/api/v1' || 
-        path === '/v1'
-      ) {
-        return new Response(JSON.stringify({
-          status: "ONLINE",
-          system: "S.A.A.R.E. Sovereign Control Plane (LLM Agnostic SGP 1.0 / v8.4)",
-          node: "2607076315021",
-          trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE-EPHEMERAL",
-          version: "v10.5.2",
-          srpVersion: "8.4.0",
-          expediente: "MS3V-RECON-VALID-2026-ALF-0521",
-          titular: "Alfonso Ferrer Torres (48553065L)",
-          zeroTrustActive: ztVerification.isZeroTrustVerified,
-          timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      return new Response(JSON.stringify({ error: "Endpoint no encontrado en el Control Plane" }), {
-        status: 404,
-        headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-      });
-
-    } catch (err) {
-      console.error("[SAARE WORKER ERROR]", err);
-      return new Response(JSON.stringify({ error: "FAIL_CLOSED_EXCEPTION", message: err.message }), {
-        status: 500,
-        headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-  }
-};
+        if (evidencesList.length ===
