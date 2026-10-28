@@ -23,9 +23,10 @@ persist = true
 [env.production]
 name = "saare-control-plane-prod"
 
-# Enrutamiento de Dominios Oficiales en Producción
+# Enrutamiento de Dominios Oficiales en Producción (Incluye Bóveda Vault)
 routes = [
   { pattern = "api.saare.es/*", zone_name = "saare.es" },
+  { pattern = "vault.saare.es/*", zone_name = "saare.es" },
   { pattern = "saare.es/api/*", zone_name = "saare.es" },
   { pattern = "saare.es/v1/*", zone_name = "saare.es" }
 ]
