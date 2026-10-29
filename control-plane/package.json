@@ -1,6 +1,7 @@
 {
   "name": "control-plane",
   "version": "1.5.0",
+  "private": true,
   "type": "module",
   "main": "worker.js",
   "scripts": {
@@ -12,15 +13,15 @@
   },
   "dependencies": {
     "@saare/entitlements": "workspace:*",
-    "dotenv": "^18.0.9",
-    "jszip": "^3.10.2",
-    "kysely": "^0.29.7",
-    "pg": "^8.23.1"
+    "dotenv": "^16.4.7",
+    "jszip": "^3.10.1",
+    "kysely": "^0.27.5",
+    "pg": "^8.13.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261010.1",
-    "@types/node": "^26.6.2",
-    "@types/pg": "^8.23.1",
-    "wrangler": "^4.152.0"
+    "@cloudflare/workers-types": "^4.20241112.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "wrangler": "^3.99.0"
   }
 }

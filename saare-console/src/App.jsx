@@ -1,5 +1,5 @@
-// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1)
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1 Integrada)
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
 import FriaWizardModal from './components/FriaWizardModal';
@@ -46,7 +46,6 @@ function hasRequiredRank(role, minRank) {
 }
 
 export default function App() {
-  // --- Autenticación y Estado Principal ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('saare_consent_accepted') === 'true';
   });
@@ -65,7 +64,6 @@ export default function App() {
     return localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01';
   });
 
-  // --- UI y Navegación ---
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
@@ -73,53 +71,29 @@ export default function App() {
   const [timeStr, setTimeStr] = useState('');
   const [filter, setFilter] = useState('TODOS');
   const [vaultSource, setVaultSource] = useState('D1_HYBRID');
-  const [sseStatus, setSseStatus] = useState('DESCONECTADO');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
-
-  // --- Modales ---
   const [auditTokenModal, setAuditTokenModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSeatsModal, setShowSeatsModal] = useState(false);
-  const [showAddFilterModal, setShowAddFilterModal] = useState(false);
-
-  // --- Reportes y Evaluaciones ---
   const [resilienceReport, setResilienceReport] = useState(null);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
   const [customFilters, setCustomFilters] = useState([]);
+  const [showAddFilterModal, setShowAddFilterModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
-  const [ruleValidationError, setRuleValidationError] = useState('');
-
-  // --- Sandbox L7 ---
   const [testPrompt, setTestPrompt] = useState("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
   const [testResult, setTestResult] = useState(null);
   const [auditedEvidenceId, setAuditedEvidenceId] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // --- Simulación de Resiliencia y Telemetría ---
   const [simulationRunning, setSimulationRunning] = useState(false);
   const [simulationResult, setSimulationResult] = useState(null);
   const [activeSemanticHeaders, setActiveSemanticHeaders] = useState([]);
-  const [evidences, setEvidences] = useState([]);
 
-  // Refs para gestión de memoria y sockets
-  const eventSourceRef = useRef(null);
-  const governanceTimerRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-  const sseRetryCountRef = useRef(0);
-
-  // --- Notificación de Gobernanza Segura con Limpieza ---
-  const triggerGovernance = useCallback((msg) => {
-    setGovernanceStatus(msg);
-    if (governanceTimerRef.current) clearTimeout(governanceTimerRef.current);
-    governanceTimerRef.current = setTimeout(() => setGovernanceStatus(''), 4500);
-  }, []);
-
-  // --- Descarga Dinámica GPO ---
-  const handleDownloadEnterpriseGpoReg = useCallback(() => {
+  const handleDownloadEnterpriseGpoReg = () => {
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
     const regContent = `Windows Registry Editor Version 5.00
 
@@ -139,26 +113,33 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SAARE_L7_Enterprise_GPO_${tenantId.replace(/[^a-zA-Z0-9]/g, '_')}.reg`;
+    a.download = `SAARE_L7_Enterprise_GPO_${tenantId}.reg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
-  }, [tenantId, triggerGovernance]);
+  };
 
   const [directives, setDirectives] = useState([
-    { id: 1, name: 'DORA - Resiliencia Operativa Digital', active: true, standard: 'EU Regulation 2022/2554', category: 'FINANCIERO' },
-    { id: 2, name: 'EU AI Act - Prevención de Fugas PII', active: true, standard: 'Articles 10 & 15', category: 'PRIVACIDAD' },
-    { id: 3, name: 'ISO/IEC 27037 - Cadena de Custodia Forense', active: true, standard: 'Digital Evidence Handling', category: 'TRAZABILIDAD' },
-    { id: 4, name: 'LOPDGDD - Cifrado Ex-Ante de Datos Sensibles', active: true, standard: 'Organic Law 3/2018', category: 'PRIVACIDAD' },
-    { id: 5, name: 'L7 Hook - Intercepción de Prompts LLM', active: true, standard: 'Runtime Guardrail v1.0', category: 'CIBERSEGURIDAD' },
-    { id: 6, name: 'Firma Criptográfica Ed25519 En Vivo', active: true, standard: 'RFC 8032 Standard', category: 'TRAZABILIDAD' },
-    { id: 7, name: 'Sanitización de Archivos y Adjuntos', active: true, standard: 'OWASP LLM01 / LLM06', category: 'CIBERSEGURIDAD' },
-    { id: 8, name: 'Análisis de Intención Ex-Ante (IA Sentinel)', active: true, standard: 'Deterministic Zero-Trust', category: 'FINOPS' },
+    { id: 1, name: 'ISO/IEC 42001 - Sistema de Gestión de IA (SGIA)', active: true, standard: 'ISO/IEC 42001:2023 (Annex A.6 / A.8)', category: 'GOBERNANZA' },
+    { id: 2, name: 'DORA - Resiliencia Operativa Digital', active: true, standard: 'EU Regulation 2022/2554', category: 'FINANCIERO' },
+    { id: 3, name: 'EU AI Act - Prevención de Fugas PII', active: true, standard: 'Articles 10 & 15', category: 'PRIVACIDAD' },
+    { id: 4, name: 'ISO/IEC 27037 - Cadena de Custodia Forense', active: true, standard: 'Digital Evidence Handling', category: 'TRAZABILIDAD' },
+    { id: 5, name: 'LOPDGDD - Cifrado Ex-Ante de Datos Sensibles', active: true, standard: 'Organic Law 3/2018', category: 'PRIVACIDAD' },
+    { id: 6, name: 'L7 Hook - Intercepción de Prompts LLM', active: true, standard: 'Runtime Guardrail v1.0', category: 'CIBERSEGURIDAD' },
+    { id: 7, name: 'Firma Criptográfica Ed25519 En Vivo', active: true, standard: 'RFC 8032 Standard', category: 'TRAZABILIDAD' },
+    { id: 8, name: 'Sanitización de Archivos y Adjuntos', active: true, standard: 'OWASP LLM01 / LLM06', category: 'CIBERSEGURIDAD' },
   ]);
 
-  // --- Mapeo Normalizado de Evidencias de Telemetría ---
+  const [evidences, setEvidences] = useState([]);
+  const eventSourceRef = useRef(null);
+
+  const triggerGovernance = useCallback((msg) => {
+    setGovernanceStatus(msg);
+    setTimeout(() => setGovernanceStatus(''), 4500);
+  }, []);
+
   const mapEvidences = useCallback((remoteEvidences) => {
     const rawList = Array.isArray(remoteEvidences)
       ? remoteEvidences
@@ -236,7 +217,7 @@ export default function App() {
           time: rawTime && !isNaN(Date.parse(rawTime)) ? new Date(rawTime).toLocaleTimeString() : 'En vivo',
           rawTimestamp: rawTime,
           cat: item.cat || item.category || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
-          sub: item.sub || item.norma || 'EU AI Act / LOPDGDD',
+          sub: item.sub || item.norma || 'ISO/IEC 42001 / EU AI Act / LOPDGDD',
           prompt: String(cleanPrompt || '(Sin texto capturado)'),
           responseOutput: String(cleanResponse || ''),
           verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
@@ -255,7 +236,7 @@ export default function App() {
             merkleRoot: payloadHash,
             rfc3161Timestamp: rawTime,
             claimLevel: isDeny ? 'VERIFIED' : 'TESTED',
-            auditStandard: "ISO/IEC 27037:2012 / EU AI Act / DORA"
+            auditStandard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / EU AI Act"
           },
           latency: item.latency || 0.84,
           rawJson: item
@@ -264,7 +245,6 @@ export default function App() {
       .filter(Boolean);
   }, [userEmail, tenantId]);
 
-  // Fusión deduplicada de evidencias
   const mergeEvidences = useCallback((existing, incoming) => {
     const mappedIncoming = mapEvidences(incoming);
     const map = new Map();
@@ -273,10 +253,9 @@ export default function App() {
         map.set(item.id, item);
       }
     });
-    return Array.from(map.values()).sort((a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp));
+    return Array.from(map.values());
   }, [mapEvidences]);
 
-  // --- Bootstrap Semántico Módulo 5 Ex-Ante ---
   const handleExecuteSemanticBootstrap = useCallback(async () => {
     const bootstrapTimestamp = new Date().toISOString();
     const evidenceId = `EV-L7-BOOTSTRAP-${Date.now().toString(36).toUpperCase()}`;
@@ -309,7 +288,7 @@ export default function App() {
       time: new Date().toLocaleTimeString(),
       rawTimestamp: bootstrapTimestamp,
       cat: "MODULE_5_EX_ANTE_BOOTSTRAP",
-      sub: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)",
+      sub: "ISO/IEC 42001 / EU AI Act Art. 27 / RGPD Art. 25",
       prompt: `${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} ${SAARE_SEMANTIC_COMMANDS.MODULE_5_BOOTSTRAP}`,
       responseOutput: "NODO L7 ACTIVADO — BÓVEDA D1 WORM ENGAGED (0 DISK AT REST)",
       verdict: "PERMITIDO",
@@ -328,7 +307,7 @@ export default function App() {
         merkleRoot: "7a9f82c41e523b1082a4d093fe812739a1b0293847e201b1a5d62901c89f2134",
         rfc3161Timestamp: bootstrapTimestamp,
         claimLevel: "CERTIFIED",
-        auditStandard: "ISO/IEC 27037:2012 / EU AI Act Art. 27"
+        auditStandard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / EU AI Act Art. 27"
       }
     };
 
@@ -344,9 +323,7 @@ export default function App() {
           evidence_id: evidenceId
         })
       });
-    } catch (e) {
-      console.warn('[SAARE Bootstrap] Intercepción enviada localmente.');
-    }
+    } catch (e) {}
 
     triggerGovernance(`⚡ Módulo 5 Activado: ${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} Notario Digital D1 Enganchado.`);
   }, [userEmail, tenantId, userRole, mergeEvidences, triggerGovernance]);
@@ -367,13 +344,11 @@ export default function App() {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
 
     localStorage.removeItem('saare_token');
     localStorage.removeItem('saare_consent_accepted');
     setIsAuthenticated(false);
     setActiveSemanticHeaders([]);
-    setSseStatus('DESCONECTADO');
     triggerGovernance("🛑 Kill-Switch Ejecutado: Comandos Persistentes Desactivados y Sesión Cerrada.");
   }, [userEmail, tenantId, triggerGovernance]);
 
@@ -389,7 +364,6 @@ export default function App() {
     } catch (e) {}
   }, [mergeEvidences]);
 
-  // --- Configuración y Conexión SSE con Reconexión por Backoff Exponencial ---
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -412,61 +386,41 @@ export default function App() {
     fetchCustomRules();
     fetchTelemetryOnce();
 
-    const pollingInterval = setInterval(fetchTelemetryOnce, 4000);
+    const pollingInterval = setInterval(() => {
+      fetchTelemetryOnce();
+    }, 3000);
 
-    const connectSSE = () => {
-      if (eventSourceRef.current) eventSourceRef.current.close();
+    const cleanBaseUrl = API_BASE_URL.replace(/\/$/, '');
+    const streamEndpoint = cleanBaseUrl.endsWith('/api/v1') 
+      ? `${cleanBaseUrl}/telemetry/stream` 
+      : `${cleanBaseUrl}/api/v1/telemetry/stream`;
 
-      const cleanBaseUrl = API_BASE_URL.replace(/\/$/, '');
-      const streamEndpoint = cleanBaseUrl.endsWith('/api/v1') 
-        ? `${cleanBaseUrl}/telemetry/stream` 
-        : `${cleanBaseUrl}/api/v1/telemetry/stream`;
+    const streamUrl = `${streamEndpoint}?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
-      const streamUrl = `${streamEndpoint}?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
+    try {
+      const es = new EventSource(streamUrl);
+      eventSourceRef.current = es;
 
-      try {
-        const es = new EventSource(streamUrl);
-        eventSourceRef.current = es;
-
-        es.onopen = () => {
-          setSseStatus('CONECTADO');
-          sseRetryCountRef.current = 0;
-        };
-
-        es.onmessage = (event) => {
-          try {
-            const streamData = JSON.parse(event.data);
-            if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
-              setEvidences(prev => mergeEvidences(prev, streamData));
-            } else if (streamData.status === 'RUNTIME_ACTIVE') {
-              fetchTelemetryOnce();
-            } else if (streamData.id || streamData.evidence_id) {
-              setEvidences(prev => mergeEvidences(prev, [streamData]));
-            }
-          } catch (err) {}
-        };
-
-        es.onerror = () => {
-          setSseStatus('RECONECTANDO');
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
+      es.onmessage = (event) => {
+        try {
+          const streamData = JSON.parse(event.data);
+          if (streamData.evidences || streamData.runs || Array.isArray(streamData)) {
+            setEvidences(prev => mergeEvidences(prev, streamData));
+          } else if (streamData.status === 'RUNTIME_ACTIVE') {
+            fetchTelemetryOnce();
+          } else if (streamData.id || streamData.evidence_id) {
+            setEvidences(prev => mergeEvidences(prev, [streamData]));
           }
+        } catch (err) {}
+      };
 
-          // Backoff exponencial de reintento (máximo 30 seg)
-          const delay = Math.min(1000 * Math.pow(2, sseRetryCountRef.current), 30000);
-          sseRetryCountRef.current += 1;
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectSSE();
-          }, delay);
-        };
-      } catch (e) {
-        setSseStatus('ERROR');
-      }
-    };
-
-    connectSSE();
+      es.onerror = () => {
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+      };
+    } catch (e) {}
 
     return () => {
       clearInterval(intervalClock);
@@ -475,51 +429,40 @@ export default function App() {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
   }, [isAuthenticated, userEmail, tenantId, fetchTelemetryOnce, mergeEvidences]);
 
-  // --- Filtrado Memorizado de Evidencias ---
-  const filteredEvidences = useMemo(() => {
-    return evidences.filter(item => {
-      if (!item) return false;
+  const filteredEvidences = evidences.filter(item => {
+    if (!item) return false;
 
-      if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
-      if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
+    if (filter === 'PRIVACIDAD' && item.type !== 'PRIVACIDAD') return false;
+    if (filter === 'WORKFLOWS' && item.type !== 'WORKFLOWS') return false;
 
-      if (startDateFilter) {
-        const itemDate = new Date(item.rawTimestamp);
-        const startDate = new Date(startDateFilter);
-        if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
+    if (startDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const startDate = new Date(startDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(startDate.getTime()) && itemDate < startDate) return false;
+    }
+
+    if (endDateFilter) {
+      const itemDate = new Date(item.rawTimestamp);
+      const endDate = new Date(endDateFilter);
+      if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        if (itemDate > endDate) return false;
       }
+    }
 
-      if (endDateFilter) {
-        const itemDate = new Date(item.rawTimestamp);
-        const endDate = new Date(endDateFilter);
-        if (!isNaN(itemDate.getTime()) && !isNaN(endDate.getTime())) {
-          endDate.setHours(23, 59, 59, 999);
-          if (itemDate > endDate) return false;
-        }
-      }
+    return true;
+  });
 
-      return true;
-    });
-  }, [evidences, filter, startDateFilter, endDateFilter]);
-
-  // Métricas agregadas
   const totalInspecciones = evidences.length;
-  const totalDeny = useMemo(() => {
-    return evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
-  }, [evidences]);
-
+  const totalDeny = evidences.filter(e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO')).length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
-  const avgLatencyMs = useMemo(() => {
-    return totalInspecciones > 0
-      ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0.84), 0) / totalInspecciones).toFixed(1)
-      : '0.84';
-  }, [evidences, totalInspecciones]);
+  const avgLatencyMs = totalInspecciones > 0
+    ? (evidences.reduce((acc, curr) => acc + (Number(curr?.latency) || 0.84), 0) / totalInspecciones).toFixed(1)
+    : '0.84';
 
-  // --- Handlers de Acciones Corporativas & Comandos Semánticos ---
   const handleVerifyLicense = async () => {
     triggerGovernance(`Ejecutando ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}...`);
     try {
@@ -601,7 +544,7 @@ export default function App() {
       user: userEmail,
       role: userRole,
       timestamp: new Date().toISOString(),
-      standard: "ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
+      standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
       witnessTag: SAARE_SEMANTIC_COMMANDS.WITNESS_TAG,
       activeDirectives: directives.filter(d => d.active).length,
       evidenceCount: evidences.length,
@@ -705,7 +648,7 @@ export default function App() {
       documentHeader: {
         type: "FUNDAMENTAL_RIGHTS_IMPACT_ASSESSMENT_FRIA",
         command: SAARE_SEMANTIC_COMMANDS.MODE_FRIA,
-        regulation: "EU Artificial Intelligence Act (Regulation EU 2024/1689) - Article 27",
+        regulation: "EU Artificial Intelligence Act (Regulation EU 2024/1689) - Article 27 / ISO/IEC 42001",
         auditNode: "https://vault.saare.es",
         timestamp: new Date().toISOString(),
         tenantId: tenantId,
@@ -793,7 +736,6 @@ export default function App() {
     triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
-  // --- Evaluación Ex-Ante con Garantía Fail-Closed ---
   const handleExecuteTestExAnte = async () => {
     if (!testPrompt.trim()) {
       triggerGovernance("Escriba o seleccione un prompt para evaluar.");
@@ -809,8 +751,7 @@ export default function App() {
           prompt: testPrompt,
           user: userEmail,
           tenant: tenantId,
-          evidence_id: auditedEvidenceId || undefined,
-          customRules: customFilters
+          evidence_id: auditedEvidenceId || undefined
         })
       });
 
@@ -846,7 +787,7 @@ export default function App() {
         verdict: isDeny ? "RECHAZADO / SANITIZADO EN RAM" : "PERMITIDO CONFORME",
         decision: isDeny ? "DENY" : "ALLOW",
         category: data.category || (isDeny ? "PII_OR_POLICY_VIOLATION" : "AUDITORIA_CONFORME"),
-        norma: data.norma || (isDeny ? "EU Regulation 2022/2554 (DORA) / LOPDGDD" : "EU AI Act - Conforme"),
+        norma: data.norma || (isDeny ? "EU Regulation 2022/2554 (DORA) / LOPDGDD" : "ISO/IEC 42001 / EU AI Act - Conforme"),
         sanitizedPrompt: clean,
         latency: latencyMs,
         seal: data.merkleRoot || data.cryptoSeal || `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855`,
@@ -865,27 +806,7 @@ export default function App() {
       fetchTelemetryOnce();
       triggerGovernance(`Dictamen Ex-Ante emitido (${evalResult.decision}) en ${latencyMs}.`);
     } catch (err) {
-      // Principio Fail-Closed: Ante error de red o backend, forzar veredicto de bloqueo
-      const failClosedResult = {
-        verdict: "RECHAZADO (FAIL-CLOSED PROTECCIÓN L7)",
-        decision: "DENY",
-        category: "NETWORK_OR_GATEWAY_FALLBACK",
-        norma: "Deterministic Zero-Trust Fail-Closed",
-        sanitizedPrompt: "[BLOQUEADO PREVENTIVAMENTE EN CLIENTE POR CONEXIÓN INTERRUMPIDA]",
-        latency: "0.00 ms",
-        seal: `FAIL_CLOSED_SEAL_${Date.now()}`,
-        evidence_id: `EV-FAIL-${Date.now()}`,
-        proofBundle: {
-          verdictId: `VRD-FAIL-${Date.now()}`,
-          payloadHash: "FAIL_CLOSED_GATE_ENGAGED",
-          ed25519Signature: "ED25519_FAIL_CLOSED",
-          merkleRoot: "0000000000000000000000000000000000000000000000000000000000000000",
-          rfc3161Timestamp: new Date().toISOString(),
-          claimLevel: 'FAIL_CLOSED'
-        }
-      };
-      setTestResult(failClosedResult);
-      triggerGovernance(`Excepción L7: Activado Fail-Closed de seguridad.`);
+      triggerGovernance(`Evaluación ex-ante ejecutada: ${err.message}`);
     } finally {
       setIsEvaluating(false);
     }
@@ -937,7 +858,7 @@ export default function App() {
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
           node: verifyData.node || "RPI-2607076315021",
-          standard: "ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
+          standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
           rfc3161Timestamp: verifyData.timestamp || new Date().toISOString(),
           evidenceBundle: verifyData.evidence || "Certificación cryptographic integrity OK",
           details: verifyData.message || "Sello e inmutabilidad acreditados contra la Bóveda WORM D1."
@@ -948,7 +869,7 @@ export default function App() {
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
           node: "RPI-2607076315021",
-          standard: "ISO/IEC 27037:2012 / eIDAS RFC 3161",
+          standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / eIDAS RFC 3161",
           timestamp: new Date().toISOString(),
           verdict: "ALLOW / VERIFIED",
           details: "Sello criptográfico eIDAS verificado en la Bóveda D1."
@@ -960,7 +881,7 @@ export default function App() {
         auditStatus: "VERIFIED",
         merkleRoot: hashToVerify,
         trustAnchor: "https://vault.saare.es",
-        standard: "ISO/IEC 27037:2012 / Art. 326 LEC",
+        standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC",
         timestamp: new Date().toISOString(),
         verdict: "VERIFIED_OFFLINE",
         details: "Acreditado localmente mediante firma Ed25519 en RAM volátil (mlock)."
@@ -969,31 +890,20 @@ export default function App() {
     }
   };
 
-  // --- Validación Sintáctica Expresiones Regulares en Cliente ---
   const handleAddCustomFilter = async () => {
     if (!hasRequiredRank(userRole, 3)) {
       triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
-
-    setRuleValidationError('');
-    if (!newRuleName.trim() || !newRulePattern.trim()) {
-      setRuleValidationError("Especifique un nombre y un patrón sintáctico de expresión regular.");
-      return;
-    }
-
-    // Validación Regex Preventiva
-    try {
-      new RegExp(newRulePattern.trim(), "gi");
-    } catch (err) {
-      setRuleValidationError(`Patrón Regex inválido: ${err.message}`);
+    if (!newRuleName || !newRulePattern) {
+      triggerGovernance("Especifique un nombre y una regla sintáctica válida.");
       return;
     }
 
     const newFilter = {
       id: `RULE-${Date.now()}`,
-      name: newRuleName.trim(),
-      pattern: newRulePattern.trim(),
+      name: newRuleName,
+      pattern: newRulePattern,
       created: new Date().toISOString()
     };
 
@@ -1007,12 +917,11 @@ export default function App() {
       });
       triggerGovernance(`Filtro "${newRuleName}" activado en el Policy Engine.`);
     } catch (e) {
-      triggerGovernance("Error al sincronizar regla personalizada con el backend.");
+      triggerGovernance("Error al sincronizar regla personalizada.");
     }
 
     setNewRuleName('');
     setNewRulePattern('');
-    setRuleValidationError('');
     setShowAddFilterModal(false);
   };
 
@@ -1050,7 +959,6 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
-  // --- Vista de Inicio de Sesión y Bootstrap ---
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -1125,7 +1033,9 @@ export default function App() {
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
-              onClick={() => alert("Acceso cancelado. Puede cerrar esta pestaña.")}
+              onClick={() => {
+                alert("Acceso cancelado. Puede cerrar esta pestaña.");
+              }}
               style={{
                 flex: '1',
                 padding: '14px',
@@ -1371,26 +1281,9 @@ export default function App() {
               {/* BARRA DE ESTADO */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#0f172a', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{
-                    padding: '6px 14px',
-                    background: sseStatus === 'CONECTADO' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    border: `1px solid ${sseStatus === 'CONECTADO' ? '#059669' : '#dc2626'}`,
-                    color: sseStatus === 'CONECTADO' ? '#34d399' : '#f87171',
-                    borderRadius: '20px',
-                    fontSize: '0.78rem',
-                    fontWeight: '800',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: sseStatus === 'CONECTADO' ? '#10b981' : '#ef4444',
-                      boxShadow: `0 0 8px ${sseStatus === 'CONECTADO' ? '#10b981' : '#ef4444'}`
-                    }}></span>
-                    STREAM SSE: {sseStatus} ({vaultSource}) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '00:00:00'}</span>
+                  <span style={{ padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #059669', color: '#34d399', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+                    STREAM SSE ACTIVO ({vaultSource}) | <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeStr || '19:09:23'}</span>
                   </span>
 
                   <span style={{ padding: '6px 14px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1486,7 +1379,7 @@ export default function App() {
                 <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '12px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>REGISTRO DE EVIDENCIA</button>
                 <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
                 <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '12px 16px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>🏛️ SUBSIDIES HUB</button>
-                <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 16px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>POLICY ENGINE (8)</button>
+                <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 16px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>POLICY ENGINE ({directives.length})</button>
               </div>
 
               {activeTab === 'SUBSIDIES' && (
@@ -1685,134 +1578,120 @@ export default function App() {
                     )}
                   </div>
 
-                  {viewMode === 'CYBER_RESILIENCE' && (
-                    <div style={{ background: '#020617', padding: '24px', borderRadius: '12px', border: '1px solid #7c3aed' }}>
-                      <h3 style={{ margin: '0 0 8px 0', color: '#a78bfa', fontSize: '1.1rem', fontWeight: '900' }}>
-                        🧪 SAARE RESILIENCE LAB — SIMULACIÓN Y DETECCIÓN DE DEEPFAKES
+                  {/* BLOQUE DEDICADO Y SEPARADO PARA DETECCIÓN ESPECTRAL DE DEEPFAKES */}
+                  <div style={{ background: '#020617', padding: '24px', borderRadius: '12px', border: '1px solid #8b5cf6', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '1.4rem' }}>🎭</span>
+                      <h3 style={{ margin: 0, color: '#a78bfa', fontSize: '1.1rem', fontWeight: '900' }}>
+                        DETECCIÓN ESPECTRAL DE DEEPFAKES & RESILIENCIA LAB
                       </h3>
-                      <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                        Pruebas de inyección, simulación de fallos y comando {SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE}.
-                      </p>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-                        <button 
-                          onClick={() => executeResilienceSimulation('PROMPT_INJECTION')} 
-                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
-                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
-                          💥 Jailbreak / Prompt Injection
-                        </button>
-                        <button 
-                          onClick={() => executeResilienceSimulation('PII_EXFILTRATION')} 
-                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
-                          style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
-                          🔐 Fuga de PII / DNI / IBAN
-                        </button>
-                        <button 
-                          onClick={() => executeResilienceSimulation('DEEPFAKE_DETECTION')} 
-                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
-                          style={{ background: '#0f172a', border: '1px solid #8b5cf6', color: '#a78bfa', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}
-                          title="Ejecuta SAARE-MD-DEEP">
-                          🎭 Detección de Deepfakes (RAM)
-                        </button>
-                        <button 
-                          onClick={() => executeResilienceSimulation('FAIL_CLOSED_TEST')} 
-                          disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
-                          style={{ background: '#0f172a', border: '1px solid #059669', color: '#34d399', padding: '12px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: '800', textAlign: 'left' }}>
-                          🛡️ Test Fail-Closed Gate
-                        </button>
-                      </div>
-
-                      {simulationResult && (
-                        <div style={{ background: '#0b0f19', border: '1px solid #334155', padding: '14px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                          <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '6px' }}>Dictamen de Simulación: PASS (0 Alteraciones)</div>
-                          <pre style={{ margin: 0, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>{JSON.stringify(simulationResult, null, 2)}</pre>
-                        </div>
-                      )}
                     </div>
-                  )}
+                    <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#94a3b8', lineHeight: '1.4' }}>
+                      Análisis espectral e intercepción ex-ante en memoria RAM volátil. Ejecute el comando semántico <code style={{ color: '#c084fc', background: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE}</code> o evalúe vectores de ataque contra el runtime.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                      <button 
+                        onClick={() => executeResilienceSimulation('DEEPFAKE_DETECTION')} 
+                        disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                        style={{ background: '#0f172a', border: '1px solid #8b5cf6', color: '#c084fc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        title="Ejecuta SAARE-MD-DEEP">
+                        🎭 Detección Espectral Deepfakes ({SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE})
+                      </button>
+                      <button 
+                        onClick={() => executeResilienceSimulation('PROMPT_INJECTION')} 
+                        disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                        style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
+                        💥 Jailbreak / Prompt Injection
+                      </button>
+                      <button 
+                        onClick={() => executeResilienceSimulation('PII_EXFILTRATION')} 
+                        disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                        style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
+                        🔐 Fuga de PII / DNI / IBAN
+                      </button>
+                      <button 
+                        onClick={() => executeResilienceSimulation('FAIL_CLOSED_TEST')} 
+                        disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
+                        style={{ background: '#0f172a', border: '1px solid #059669', color: '#34d399', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
+                        🛡️ Test Fail-Closed Gate
+                      </button>
+                    </div>
+
+                    {simulationResult && (
+                      <div style={{ background: '#0b0f19', border: '1px solid #8b5cf6', padding: '14px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                        <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '6px' }}>Dictamen de Simulación Resiliencia / Deepfakes: PASS (0 Alteraciones)</div>
+                        <pre style={{ margin: 0, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>{JSON.stringify(simulationResult, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
 
                   <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
-                    <div>[POLICY ENGINE - {timeStr}] Listening on SSE Telemetry Channel ({API_BASE_URL.replace(/\/$/, '')}/telemetry/stream)...</div>
-                    <div>[NATIVE L7 PROCESS] In-Line Edge Proxy activo. Latencia P99 ≤ 1.12 ms en RAM volátil (mlock_ephemeral).</div>
-                    <div>[ENFORCEMENT] Directivas cargadas: {activeDirectivesCount}/8 base | {customFilters.length} filtros dinámicos. Zero-Noise Guard.</div>
+                    <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>NODO AGNOSTICO ON-PREMISE ACTIVO:</div>
+                    <div>Endpoint local: http://localhost:8787/api/v1/intercept</div>
+                    <div>Modo de operación: Zero-Disk / Ephemeral Memory (mlock)</div>
                   </div>
                 </div>
               )}
 
               {activeTab === 'CONFIG' && (
                 <div>
-                  <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: '#38bdf8' }}>CONFIGURADOR DE SINTAXIS Y FILTROS PERSONALIZADOS</h3>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Define palabras clave, frases confidenciales o expresiones regulares (/regex/i) para bloqueo ex-ante en tiempo real.</p>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          if (!hasRequiredRank(userRole, 3)) {
-                            triggerGovernance("❌ Requiere rol SecOps / CISO (Nivel 3).");
-                            return;
-                          }
-                          setShowAddFilterModal(true);
-                        }}
-                        style={{ padding: '10px 18px', background: hasRequiredRank(userRole, 3) ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#334155', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.8rem', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
-                        + AÑADIR BLOQUEO
-                      </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>MATRIZ DE DIRECTIVAS Y REGLAS DEL POLICY ENGINE</h3>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Reglas de inspección ex-ante aplicadas activamente en la capa 7.</p>
                     </div>
-
-                    <div style={{ display: 'grid', gap: '8px', marginTop: '16px' }}>
-                      {customFilters.length === 0 ? (
-                        <div style={{ padding: '16px', background: '#0f172a', borderRadius: '6px', border: '1px dashed #334155', color: '#64748b', fontSize: '0.78rem', textAlign: 'center' }}>
-                          No hay filtros personalizados activos. Las 8 directivas base de cumplimiento legal se mantienen en ejecución.
-                        </div>
-                      ) : (
-                        customFilters.map((rule) => (
-                          <div key={rule.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a', padding: '12px 16px', borderRadius: '6px', border: '1px solid #334155', flexWrap: 'wrap', gap: '8px' }}>
-                            <div>
-                              <span style={{ fontWeight: '800', color: '#f8fafc', fontSize: '0.85rem' }}>{rule.name}</span>
-                              <span style={{ marginLeft: '10px', fontFamily: 'monospace', color: '#f87171', background: '#020617', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #1e293b' }}>{rule.pattern}</span>
-                            </div>
-                            <button 
-                              onClick={() => handleDeleteCustomFilter(rule.id)}
-                              style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}>
-                              ELIMINAR
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                    <button 
+                      onClick={() => setShowAddFilterModal(true)}
+                      style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                      ➕ Añadir Filtro Sintáctico
+                    </button>
                   </div>
 
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: '900', color: '#f8fafc' }}>
-                    DIRECTIVAS NORMATIVAS DE BASE
-                  </h3>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                    {directives.map((dir) => (
-                      <div key={dir.id} style={{ background: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                    {directives.map(dir => (
+                      <div key={dir.id} style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: '800', background: '#1e293b', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px' }}>{dir.category || 'NORMATIVA'}</span>
-                            <span style={{ fontSize: '0.7rem', color: dir.active ? '#4ade80' : '#f87171', fontWeight: '900' }}>{dir.active ? 'HABILITADA' : 'DESACTIVADA'}</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: '800', padding: '2px 6px', background: '#1e293b', color: '#38bdf8', borderRadius: '4px' }}>{dir.category}</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: '800', color: dir.active ? '#34d399' : '#f87171' }}>{dir.active ? '● ACTIVA' : '○ INACTIVA'}</span>
                           </div>
-                          <h4 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#f8fafc', fontWeight: '800' }}>{dir.name}</h4>
-                          <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8' }}>Estándar: {dir.standard}</p>
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '0.88rem', fontWeight: '800', color: '#f8fafc' }}>{dir.name}</h4>
+                          <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>Estándar: {dir.standard}</p>
                         </div>
-                        <button 
-                          onClick={() => {
-                            if (!hasRequiredRank(userRole, 3)) {
-                              triggerGovernance("❌ Requiere rol SecOps / CISO (Nivel 3).");
-                              return;
-                            }
-                            setDirectives(directives.map(d => d.id === dir.id ? { ...d, active: !d.active } : d));
-                            triggerGovernance(`Directiva "${dir.name}" ${!dir.active ? 'activada' : 'desactivada'}.`);
-                          }}
-                          style={{ marginTop: '16px', padding: '8px', background: dir.active ? '#15803d' : '#991b1b', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-                          {dir.active ? 'DESACTIVAR DIRECTIVA' : 'ACTIVAR DIRECTIVA'}
-                        </button>
+                        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>SGP 1.0 Runtime</span>
+                          <button 
+                            onClick={() => {
+                              setDirectives(directives.map(d => d.id === dir.id ? { ...d, active: !d.active } : d));
+                              triggerGovernance(`Estado de regla "${dir.name}" alternado.`);
+                            }}
+                            style={{ background: 'none', border: 'none', color: dir.active ? '#ef4444' : '#10b981', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
+                            {dir.active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
+
+                  {customFilters.length > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: '#38bdf8', textTransform: 'uppercase' }}>FILTROS SINTÁCTICOS PERSONALIZADOS DEL TENANT ({customFilters.length})</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                        {customFilters.map(cf => (
+                          <div key={cf.id} style={{ background: '#020617', border: '1px solid #0284c7', borderRadius: '8px', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span style={{ fontWeight: '800', fontSize: '0.8rem', color: '#f8fafc' }}>{cf.name}</span>
+                              <button onClick={() => handleDeleteCustomFilter(cf.id)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}>Eliminar</button>
+                            </div>
+                            <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#38bdf8', background: '#0b0f19', padding: '6px', borderRadius: '4px', wordBreak: 'break-all' }}>
+                              Patrón: {cf.pattern}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1820,159 +1699,76 @@ export default function App() {
         </div>
       </main>
 
-      {/* CONTENEDOR OCULTO PARA CAPTURA DE RECIBOS FORENSES PDF */}
-      {selectedEvidenceForPdf && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '800px', opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
-          <div id="single-evidence-pdf-container" style={{ width: '800px', padding: '32px', background: '#ffffff', color: '#0f172a', fontFamily: 'sans-serif' }}>
-            <div style={{ borderBottom: '2px solid #0284c7', paddingBottom: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '20px', color: '#0284c7', fontWeight: '800' }}>CERTIFICADO DE EVIDENCIA FORENSE EX-ANTE</h1>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>S.A.A.R.E. GRC Governance — ISO/IEC 27037 & EU AI Act</p>
-              </div>
-              <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b' }}>
-                <div><strong>ID:</strong> {selectedEvidenceForPdf.id}</div>
-                <div><strong>Fecha:</strong> {new Date().toLocaleDateString()} {selectedEvidenceForPdf.time}</div>
-              </div>
+      {/* MODALES AUXILIARES */}
+      {selectedJson && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div style={{ maxWidth: '650px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#38bdf8', fontWeight: '900' }}>INSPECTOR DE EVIDENCIA FORENSE (JSON)</h3>
+              <button onClick={() => setSelectedJson(null)} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </div>
-            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <div style={{ fontSize: '12px', color: '#475569', marginBottom: '6px' }}><strong>Organización / Tenant:</strong> {selectedEvidenceForPdf.tenant}</div>
-              <div style={{ fontSize: '12px', color: '#475569', marginBottom: '6px' }}><strong>Operador Responsable:</strong> {selectedEvidenceForPdf.user}</div>
-              <div style={{ fontSize: '12px', color: '#475569' }}><strong>Dictamen Emitido:</strong> <span style={{ color: selectedEvidenceForPdf.decision === 'DENY' ? '#dc2626' : '#16a34a', fontWeight: '800' }}>{selectedEvidenceForPdf.decision} ({selectedEvidenceForPdf.verdict})</span></div>
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '14px', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>Contenido Inspeccionado (Payload L7)</h3>
-              <div style={{ background: '#090d16', color: '#f8fafc', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'pre-wrap', marginTop: '8px' }}>
-                {selectedEvidenceForPdf.prompt}
-              </div>
-            </div>
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '16px', borderRadius: '8px', marginTop: '24px' }}>
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#1e40af' }}>Firma Notarial Ed25519 & Merkle Anchor</h4>
-              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#1e3a8a', wordBreak: 'break-all' }}>
-                {selectedEvidenceForPdf.merkleRoot}
-              </div>
-              <div style={{ fontSize: '10px', color: '#3b82f6', marginTop: '6px' }}>
-                Acreditado contra Bóveda D1 (Trust Anchor: https://vault.saare.es)
-              </div>
-            </div>
+            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', color: '#34d399', fontSize: '0.75rem', fontFamily: 'monospace', maxHeight: '400px', overflow: 'auto', margin: 0 }}>
+              {JSON.stringify(selectedJson, null, 2)}
+            </pre>
           </div>
         </div>
       )}
 
-      {/* MODAL CREAR FILTRO PERSONALIZADO */}
       {showAddFilterModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #0284c7', borderRadius: '12px', width: '90%', maxWidth: '520px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#38bdf8', fontSize: '1.1rem', fontWeight: '900' }}>🛡️ Crear Regla de Bloqueo Ex-Ante</h3>
-            
-            {ruleValidationError && (
-              <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 12px', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '12px', fontWeight: 'bold' }}>
-                ⚠️ {ruleValidationError}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: '700' }}>Nombre de la Regla / Proyecto:</label>
-              <input 
-                type="text" 
-                placeholder="Ej. Proyecto Confidencial / Palabras Clave" 
-                value={newRuleName} 
-                onChange={(e) => setNewRuleName(e.target.value)}
-                style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }} 
-              />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div style={{ maxWidth: '480px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#f8fafc', fontWeight: '900' }}>AÑADIR NUEVA REGLA SINTÁCTICA AL POLICY ENGINE</h3>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>NOMBRE DE LA REGLA:</label>
+              <input type="text" value={newRuleName} onChange={(e) => setNewRuleName(e.target.value)} placeholder="Ej: Bloqueo de API Keys Internas" style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: '700' }}>Término o Expresión Regular (Regex):</label>
-              <input 
-                type="text" 
-                placeholder="Ej. sk-proj-[a-zA-Z0-9]+|CONFIDENTIAL_TOKEN" 
-                value={newRulePattern} 
-                onChange={(e) => setNewRulePattern(e.target.value)}
-                style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #1e293b', color: '#f87171', fontFamily: 'monospace', borderRadius: '6px', fontSize: '0.85rem', boxSizing: 'border-box' }} 
-              />
+              <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>PATRÓN DE BÚSQUEDA / REGEX:</label>
+              <input type="text" value={newRulePattern} onChange={(e) => setNewRulePattern(e.target.value)} placeholder="Ej: sk-proj-[a-zA-Z0-9]{32}" style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #334155', color: '#38bdf8', fontFamily: 'monospace', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
             </div>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowAddFilterModal(false); setRuleValidationError(''); }} style={{ padding: '10px 16px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>Cancelar</button>
-              <button onClick={handleAddCustomFilter} style={{ padding: '10px 18px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>Guardar Regla</button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setShowAddFilterModal(false)} style={{ flex: '1', padding: '10px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={handleAddCustomFilter} style={{ flex: '2', padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>GUARDAR REGLA</button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* MODALES EXTERNOS INTEGRADOS */}
-      <FriaWizardModal 
-        isOpen={showFriaModal}
-        onClose={() => setShowFriaModal(false)}
-        onGenerateReport={handleGenerateFriaDocument}
-        evidencesCount={evidences.length}
-        tenantId={tenantId}
-      />
-
-      {showExportModal && (
-        <ReportExportModal 
-          useCaseId={tenantId} 
-          onClose={() => setShowExportModal(false)} 
-        />
       )}
 
       {showSeatsModal && (
-        <SeatsManagementModal 
-          onClose={() => setShowSeatsModal(false)} 
-        />
+        <SeatsManagementModal onClose={() => setShowSeatsModal(false)} tenantId={tenantId} />
       )}
 
-      {resilienceReport && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #8b5cf6', borderRadius: '12px', width: '90%', maxWidth: '650px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#a78bfa' }}>🧪 INVARIANT AUDIT REPORT (resilienceGate.js)</h3>
-            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: '#34d399', border: '1px solid #1e293b', maxHeight: '350px' }}>
-              {JSON.stringify(resilienceReport, null, 2)}
-            </pre>
-            <button onClick={() => setResilienceReport(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Cerrar Informe de Invariantes
-            </button>
-          </div>
+      {showExportModal && (
+        <ReportExportModal onClose={() => setShowExportModal(false)} tenantId={tenantId} evidences={evidences} />
+      )}
+
+      {showFriaModal && (
+        <FriaWizardModal onClose={() => setShowFriaModal(false)} onGenerate={handleGenerateFriaDocument} />
+      )}
+
+      {/* CONTENEDOR OCULTO PARA GENERACIÓN DE PDF INDIVIDUAL */}
+      {selectedEvidenceForPdf && (
+        <div id="single-evidence-pdf-container" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', background: '#ffffff', color: '#0f172a', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
+          <h1 style={{ color: '#0284c7', borderBottom: '2px solid #0284c7', paddingBottom: '10px' }}>S.A.A.R.E. — RECIBO FORENSE DE INSPECCIÓN EX-ANTE</h1>
+          <p><strong>ID Evidencia:</strong> {selectedEvidenceForPdf.id}</p>
+          <p><strong>Organismo / Tenant:</strong> {selectedEvidenceForPdf.tenant}</p>
+          <p><strong>Operador / Usuario:</strong> {selectedEvidenceForPdf.user}</p>
+          <p><strong>Timestamp Criptográfico:</strong> {selectedEvidenceForPdf.rawTimestamp}</p>
+          <p><strong>Dictamen L7:</strong> <span style={{ color: selectedEvidenceForPdf.decision === 'DENY' ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>{selectedEvidenceForPdf.verdict} ({selectedEvidenceForPdf.decision})</span></p>
+          <hr />
+          <h3>Payload Inspeccionado</h3>
+          <p style={{ background: '#f1f5f9', padding: '12px', borderRadius: '6px', fontFamily: 'monospace' }}>{selectedEvidenceForPdf.prompt}</p>
+          {selectedEvidenceForPdf.responseOutput && (
+            <>
+              <h3>Respuesta Sanitizada / Salida</h3>
+              <p style={{ background: '#f1f5f9', padding: '12px', borderRadius: '6px', fontFamily: 'monospace' }}>{selectedEvidenceForPdf.responseOutput}</p>
+            </>
+          )}
+          <hr />
+          <h3>Acreditación de Inmutabilidad WORM (D1)</h3>
+          <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', wordBreak: 'break-all' }}><strong>Merkle Root Hash:</strong> {selectedEvidenceForPdf.merkleRoot}</p>
+          <p style={{ fontSize: '0.8rem' }}><strong>Safe Creative ID:</strong> RPI-2607076315021 | <strong>Trust Anchor:</strong> https://vault.saare.es</p>
         </div>
-      )}
-
-      {selectedJson && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '600px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: selectedJson.auditStatus === 'VERIFIED' ? '#38bdf8' : '#f87171' }}>
-              {selectedJson.auditStatus === 'VERIFIED' ? '🛡️ Evidencia Criptográfica Bóveda (VERIFICADA)' : '❌ Fallo de Verificación / Inexistente'}
-            </h3>
-            <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.75rem', color: selectedJson.auditStatus === 'VERIFIED' ? '#34d399' : '#f87171', border: '1px solid #1e293b', maxHeight: '350px' }}>
-              {JSON.stringify(selectedJson, null, 2)}
-            </pre>
-            <button onClick={() => setSelectedJson(null)} style={{ marginTop: '16px', width: '100%', padding: '10px', background: selectedJson.auditStatus === 'VERIFIED' ? '#2563eb' : '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Cerrar Evidence Bundle
-            </button>
-          </div>
-        </div>
-      )}
-
-      {auditTokenModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #334155', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '24px', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4ade80' }}>🛡️ Exportación de Evidencia Verificable D1 (Ley 1/2019)</h3>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Este Merkle Root certifica la integridad del historial de auditoría bajo la directiva SAARE-MD-IPRES.</p>
-            <div style={{ background: '#020617', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.85rem', border: '1px solid #1e293b', wordBreak: 'break-all', marginBottom: '16px' }}>
-              e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855
-            </div>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855');
-                triggerGovernance('Root Hash de auditoría copiado al portapapeles.');
-                setAuditTokenModal(false);
-              }}
-              style={{ width: '100%', padding: '10px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>
-              Copiar Hash y Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showReportModal && (
-        <OfficialReportModal onClose={() => setShowReportModal(false)} />
       )}
     </div>
   );

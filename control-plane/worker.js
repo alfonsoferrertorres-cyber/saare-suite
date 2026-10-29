@@ -508,6 +508,26 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // --- Endpoint de verificación de salud (Healthcheck) ---
+    if (url.pathname === '/health' || url.pathname === '/v1/health' || url.pathname === '/api/health') {
+      return new Response(
+        JSON.stringify({
+          status: 'HEALTHY',
+          service: env.WORKER_NAME || 'saare-control-plane-prod',
+          version: env.SGP_SPEC_VERSION || 'SGP 1.0',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store'
+          }
+        }
+      );
+    }
+
     let normalizedPath = url.pathname.replace(/\/$/, '') || '/';
     while (normalizedPath.includes('/api/v1/api/v1')) normalizedPath = normalizedPath.replace('/api/v1/api/v1', '/api/v1');
     while (normalizedPath.includes('/v1/v1')) normalizedPath = normalizedPath.replace('/v1/v1', '/v1');
@@ -1713,40 +1733,5 @@ export default {
         headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
       });
     }
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    // Endpoint de verificación de salud (Healthcheck)
-    if (url.pathname === '/health' || url.pathname === '/v1/health' || url.pathname === '/api/health') {
-      return new Response(
-        JSON.stringify({
-          status: 'HEALTHY',
-          service: env.WORKER_NAME || 'saare-control-plane-prod',
-          version: env.SGP_SPEC_VERSION || 'SGP 1.0',
-          timestamp: new Date().toISOString()
-        }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-store'
-          }
-        }
-      );
-    }
-
-    // --- Resto de tus rutas y lógica del Control Plane ---
-
-    return new Response(
-      JSON.stringify({ error: 'Endpoint no encontrado en el Control Plane' }),
-      {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
-};
   }
 };
