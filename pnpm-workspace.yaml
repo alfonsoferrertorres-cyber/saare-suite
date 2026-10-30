@@ -17,3 +17,5 @@ allowBuilds:
 # Exclusiones de la política de antigüedad de liberaciones
 minimumReleaseAgeExclude:
   - 'lucide-react@1.56.0'
+  - miniflare@5.20261023.3-beta
+  - wrangler@4.156.0
