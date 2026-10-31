@@ -509,12 +509,14 @@ export default {
     const url = new URL(request.url);
 
     // --- Endpoint de verificación de salud (Healthcheck) ---
-    if (url.pathname === '/health' || url.pathname === '/v1/health' || url.pathname === '/api/health') {
+    if (url.pathname === '/health' || url.pathname === '/v1/health' || url.pathname === '/api/health' || url.pathname === '/api/v1/health') {
       return new Response(
         JSON.stringify({
           status: 'HEALTHY',
           service: env.WORKER_NAME || 'saare-control-plane-prod',
           version: env.SGP_SPEC_VERSION || 'SGP 1.0',
+          node: env.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+          trustAnchor: env.TRUST_ANCHOR || 'https://vault.saare.es',
           timestamp: new Date().toISOString()
         }),
         {
@@ -1449,7 +1451,7 @@ export default {
           srpVersion: "8.4.0",
           specification: "SAARE Canonical Structural Resilience Standard (SGP 1.0)",
           trustAnchor: env.DB ? "D1-EU-WESTERN-EUROPE" : "KV-STORE",
-          node: "2607076315021",
+          node: env.SAFE_CREATIVE_ID || "RPI-2607076315021",
           declaredCapabilities: [
             "STAT_STATELESS_L7_RAM",
             "ED25519_PROOF_BUNDLE",
