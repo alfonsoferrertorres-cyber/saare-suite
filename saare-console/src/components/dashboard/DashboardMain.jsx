@@ -74,10 +74,10 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
       return window.location.origin;
     }
 
-    return 'http://127.0.0.1:8000';
+    return 'https://api.saare.es';
   };
 
-  // Carga de evidencias / trazas
+  // Carga de evidencias / trazas ordenadas de MÁS RECIENTE a MÁS ANTIGUA
   const fetchTraces = useCallback(async () => {
     setLoading(true);
     const baseUrl = getBaseUrl();
@@ -100,10 +100,17 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
       else if (data.evidences && Array.isArray(data.evidences)) incomingTraces = data.evidences;
       else if (Array.isArray(data)) incomingTraces = data;
 
+      // ORDENACIÓN DESCENDENTE OBLIGATORIA (MÁS RECIENTE ARRIBA DEL TODO)
+      incomingTraces.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.created_at || a.created || 0).getTime();
+        const timeB = new Date(b.timestamp || b.created_at || b.created || 0).getTime();
+        return timeB - timeA;
+      });
+
       setTraces(incomingTraces);
     } catch (err) {
       setTraces([
-        { id: 'TR-2026-001', user: userSession.email || 'legal@saare.es', decision: 'ALLOW', latency: '0.8', timestamp: new Date().toISOString(), category: 'AUDITORIA_CONFORME' }
+        { id: 'TR-2026-001', user: userSession.email || 'legal@saare.es', decision: 'ALLOW', verdict: 'PERMITIDO', latency: '0.8', timestamp: new Date().toISOString(), category: 'AUDITORIA_CONFORME' }
       ]);
     } finally {
       setLoading(false);
@@ -112,7 +119,34 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
 
   useEffect(() => {
     fetchTraces();
-  }, [fetchTraces]);
+
+    // CONEXIÓN LIVE STREAM (SSE) CON INSERCIÓN AL INICIO DEL ARRAY
+    const baseUrl = getBaseUrl();
+    const sseUrl = `${baseUrl}/api/v1/telemetry/stream?tenant=${encodeURIComponent(userSession.tenantName || 'ORGANISMO_DEMO_01')}`;
+    
+    let eventSource = null;
+    try {
+      eventSource = new EventSource(sseUrl);
+      eventSource.onmessage = (event) => {
+        try {
+          const newTrace = JSON.parse(event.data);
+          if (newTrace && (newTrace.trace_id || newTrace.id || newTrace.evidence_id)) {
+            setTraces(prev => {
+              const traceKey = newTrace.trace_id || newTrace.id || newTrace.evidence_id;
+              const exists = prev.some(item => (item.trace_id || item.id || item.evidence_id) === traceKey);
+              if (exists) return prev;
+              // INSERTA LA NUEVA LECTURA ARRIBA DEL TODO
+              return [newTrace, ...prev];
+            });
+          }
+        } catch (e) {}
+      };
+    } catch (err) {}
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [fetchTraces, userSession.tenantName]);
 
   // Generación/Descarga de GPO Windows
   const downloadGpoScript = () => {
@@ -144,11 +178,18 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
     URL.revokeObjectURL(url);
   };
 
-  const filteredTraces = traces.filter(t => {
-    if (categoryFilter === 'PRIVACIDAD') return t.category === 'PII_DETECTED' || t.type === 'PRIVACIDAD';
-    if (categoryFilter === 'WORKFLOWS') return t.type === 'WORKFLOWS';
-    return true;
-  });
+  // ARRAY FILTRADO Y ORDENADO DESCENDENTE
+  const filteredTraces = traces
+    .filter(t => {
+      if (categoryFilter === 'PRIVACIDAD') return t.category === 'PII_DETECTED' || t.type === 'PRIVACIDAD' || (t.prompt && t.prompt.includes('PII'));
+      if (categoryFilter === 'WORKFLOWS') return t.type === 'WORKFLOWS';
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.created_at || a.created || 0).getTime();
+      const timeB = new Date(b.timestamp || b.created_at || b.created || 0).getTime();
+      return timeB - timeA;
+    });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 space-y-4">
@@ -240,7 +281,7 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
         {/* ETIQUETAS DE ESTADO L7 */}
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono">
           <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> DESPLIEGUE AGNÓSTICO ACTIVO (CUALQUIER LLM)
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> STREAM SSE ACTIVO (D1_HYBRID)
           </span>
           <span className="px-2 py-1 bg-slate-950 border border-slate-800 text-sky-400 rounded">[MS3V-COMPLIANCE-L7-OK]</span>
           <span className="px-2 py-1 bg-slate-950 border border-slate-800 text-slate-400 rounded">X-SAARE-L7-DASHBOARD-ACTIVE</span>
@@ -253,19 +294,23 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
           <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
             <p className="text-[11px] font-mono text-slate-400 uppercase">Total Inspecciones L7</p>
-            <p className="text-2xl font-black font-mono text-slate-100 mt-1">{metrics.totalInspections}</p>
+            <p className="text-2xl font-black font-mono text-slate-100 mt-1">{filteredTraces.length || metrics.totalInspections}</p>
             <p className="text-[10px] text-slate-500 mt-1">Bóveda D1 / SAARE Engine</p>
           </div>
 
           <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
             <p className="text-[11px] font-mono text-slate-400 uppercase">Amenazas y Bloqueos (Ex-Ante)</p>
-            <p className="text-2xl font-black font-mono text-rose-400 mt-1">{metrics.denyCount}</p>
-            <p className="text-[10px] text-slate-500 mt-1">Tasa de Intercepción: 0.0%</p>
+            <p className="text-2xl font-black font-mono text-rose-400 mt-1">
+              {filteredTraces.filter(t => t.final_decision === 'DENY' || t.decision === 'DENY' || t.verdict === 'RECHAZADO').length}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1">Tasa de Intercepción Activa</p>
           </div>
 
           <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
             <p className="text-[11px] font-mono text-slate-400 uppercase">Eventos PII / Jailbreak</p>
-            <p className="text-2xl font-black font-mono text-amber-400 mt-1">{metrics.piiEvents}</p>
+            <p className="text-2xl font-black font-mono text-amber-400 mt-1">
+              {filteredTraces.filter(t => t.verdict === 'SANCP_SANITIZED' || (t.prompt && t.prompt.includes('PII'))).length}
+            </p>
             <p className="text-[10px] text-slate-500 mt-1">Prevenidos en Memoria RAM</p>
           </div>
 
@@ -281,7 +326,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
           <p className="text-[11px] font-mono font-bold uppercase text-slate-400 tracking-wider">Acciones de Gobernanza & Auditoría Operativa (EU AI Act / DORA / ISO 27037 / RGPD)</p>
           
           <div className="flex flex-wrap gap-2">
-            {/* BOTÓN 1: Módulo de 4 Tipos de Despliegue */}
             <button 
               onClick={() => setShowDeploymentModal(true)}
               className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -289,7 +333,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <Cpu className="w-3.5 h-3.5" /> 4 Tipos de Despliegue (GPO / Proxy / Cloud / Agente)
             </button>
 
-            {/* BOTÓN 2: Registro Notarial Ex-Ante D1 */}
             <button 
               onClick={() => setShowExAnteModal(true)}
               className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -297,7 +340,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <ShieldCheck className="w-3.5 h-3.5" /> Registro Notarial Ex-Ante D1
             </button>
 
-            {/* BOTÓN 3: Detector de Deepfakes & Contenido Sintético */}
             <button 
               onClick={() => alert('Activando módulo de detección de Deepfakes, audio sintético e inyección multimedia...')}
               className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -305,7 +347,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <ShieldAlert className="w-3.5 h-3.5" /> Detector Deepfakes & Contenido Sintético
             </button>
 
-            {/* BOTÓN 4: Verificar Firma Criptográfica */}
             <button 
               onClick={() => setShowVerifyModal(true)}
               className="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -313,7 +354,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <FileCheck className="w-3.5 h-3.5" /> Verificar Firma Criptográfica (Ed25519)
             </button>
 
-            {/* BOTÓN 5: Cadena de Custodia */}
             <button 
               onClick={handleExportCustodyChain}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -321,7 +361,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <Database className="w-3.5 h-3.5" /> Exportar Cadena de Custodia
             </button>
 
-            {/* BOTÓN 6: Dossier Subvenciones */}
             <button 
               onClick={onOpenSubsidies}
               className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -329,7 +368,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <Award className="w-3.5 h-3.5" /> Dossier Subvenciones (Red.es / INCIBE / CDTI)
             </button>
 
-            {/* BOTÓN 7: Informes Oficiales PDF */}
             <button 
               onClick={onOpenOfficialReports}
               className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -337,7 +375,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <FileText className="w-3.5 h-3.5" /> Informes Oficiales & FRIA (PDF)
             </button>
 
-            {/* BOTÓN 8: Token Auditoría */}
             <button 
               onClick={() => setShowAuditTokenModal(true)}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -345,7 +382,6 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               <Key className="w-3.5 h-3.5" /> Generar Token de Auditoría
             </button>
 
-            {/* BOTÓN 9: Teaser Técnico */}
             <button 
               onClick={() => window.open('/docs/saare_teaser.pdf', '_blank')}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
@@ -363,7 +399,7 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
               onClick={() => setCategoryFilter('TODOS')}
               className={`px-3 py-1 rounded-lg font-bold text-xs transition ${categoryFilter === 'TODOS' ? 'bg-sky-600 text-white' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}
             >
-              TODOS ({traces.length})
+              TODOS ({filteredTraces.length})
             </button>
             <button 
               onClick={() => setCategoryFilter('PRIVACIDAD')}
@@ -448,12 +484,12 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
                 <table className="w-full text-left border-collapse font-mono text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 text-[11px] uppercase">
-                      <th className="p-3">ID Evidencia</th>
-                      <th className="p-3">Usuario / Operador</th>
-                      <th className="p-3">Categoría</th>
-                      <th className="p-3">Veredicto</th>
-                      <th className="p-3">Latencia</th>
                       <th className="p-3">Marca Temporal</th>
+                      <th className="p-3">ID Evidencia / Trace</th>
+                      <th className="p-3">Usuario / Operador</th>
+                      <th className="p-3">Prompt / Contestación</th>
+                      <th className="p-3">Dictamen</th>
+                      <th className="p-3 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -462,20 +498,44 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
                         <td colSpan="6" className="p-6 text-center text-slate-500">No hay registros de evidencia disponibles.</td>
                       </tr>
                     ) : (
-                      filteredTraces.map((t, idx) => (
-                        <tr key={t.id || idx} className="hover:bg-slate-800/30">
-                          <td className="p-3 text-sky-400 font-bold">{t.id || `EVID-${idx + 1}`}</td>
-                          <td className="p-3 text-slate-300">{t.user || 'legal@saare.es'}</td>
-                          <td className="p-3 text-slate-400">{t.category || 'AUDITORIA_CONFORME'}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${t.decision === 'DENY' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                              {t.decision === 'DENY' ? 'RECHAZADO' : 'PERMITIDO'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-slate-400">{t.latency || '0.8'} ms</td>
-                          <td className="p-3 text-slate-500">{new Date(t.timestamp || Date.now()).toLocaleString()}</td>
-                        </tr>
-                      ))
+                      filteredTraces.map((t, idx) => {
+                        const isDeny = t.final_decision === 'DENY' || t.decision === 'DENY' || t.verdict === 'RECHAZADO';
+                        const isSanitized = t.verdict === 'SANCP_SANITIZED';
+                        const timeString = t.timestamp || t.created_at ? new Date(t.timestamp || t.created_at).toLocaleTimeString() : new Date().toLocaleTimeString();
+                        
+                        return (
+                          <tr key={t.trace_id || t.id || idx} className="hover:bg-slate-800/30">
+                            <td className="p-3 text-slate-400 text-[11px]">{timeString}</td>
+                            <td className="p-3 text-sky-400 font-bold">{t.evidence_id || t.trace_id || t.id || `EV-L7-${idx + 1}`}</td>
+                            <td className="p-3 text-slate-300 text-[11px]">{t.user_email || t.user || userSession.email || 'legal@saare.es'}</td>
+                            <td className="p-3 max-w-xs truncate">
+                              {t.prompt ? (
+                                <div className="space-y-1">
+                                  <div className="text-slate-300 truncate"><span className="text-sky-400 font-bold">Prompt:</span> {t.prompt}</div>
+                                  {t.sanitized_payload && (
+                                    <div className="text-slate-500 truncate text-[10px]"><span className="text-emerald-400 font-bold">Respuesta:</span> {t.sanitized_payload}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-500">{t.category || 'AUDITORIA_CONFORME'}</span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isDeny ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 
+                                isSanitized ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              }`}>
+                                {isDeny ? 'DENY (RECHAZADO)' : isSanitized ? 'SANCP_SANITIZED' : 'ALLOW (PERMITIDO)'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right space-x-1">
+                              <button onClick={() => alert(JSON.stringify(t, null, 2))} className="px-2 py-1 bg-sky-950 text-sky-300 border border-sky-800 hover:bg-sky-900 rounded text-[10px] font-bold">⚡ Auditar</button>
+                              <button onClick={() => setShowVerifyModal(true)} className="px-2 py-1 bg-slate-800 text-emerald-400 border border-slate-700 hover:bg-slate-700 rounded text-[10px] font-bold">🛡️ Verificar</button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -644,41 +704,4 @@ export default function DashboardMain({ userSession = {}, onLogout, onOpenSeats,
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-sm font-bold text-sky-400">Validación de Licencia y Token Criptográfico</h3>
-            <input type="text" placeholder="SK-SAARE-XXXX-XXXX" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono text-slate-100" />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowLicenseModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded">Cancelar</button>
-              <button onClick={() => { alert('Licencia Verificada Correctamente.'); setShowLicenseModal(false); }} className="px-3 py-1.5 bg-sky-600 text-white text-xs font-bold rounded">Validar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: VERIFICADOR ED25519 */}
-      {showVerifyModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-sm font-bold text-sky-400">Verificador Criptográfico Ed25519 / ISO 27037</h3>
-            <p className="text-xs text-slate-400 font-mono">Estado: Firma válida en Bóveda D1. Merkle Root certificado conforme a estándar RFC 8032.</p>
-            <div className="flex justify-end">
-              <button onClick={() => setShowVerifyModal(false)} className="px-3 py-1.5 bg-sky-600 text-white text-xs font-bold rounded">Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 5: TOKEN AUDITORÍA */}
-      {showAuditTokenModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-sm font-bold text-emerald-400">Token de Acceso Temporal para Auditores</h3>
-            <input readOnly value={`SAARE-AUDIT-TOKEN-${Date.now()}`} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono text-emerald-400" />
-            <div className="flex justify-end">
-              <button onClick={() => setShowAuditTokenModal(false)} className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded">Copiar y Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+            <input type="text" placeholder="SK-SAARE-XXXX-XXXX" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-
