@@ -1,0 +1,43 @@
+﻿{
+    "auditSuite":  "SAARE L7 Hardened Negative Matrix v2.2",
+    "targetHost":  "https://api.saare.es",
+    "executedAt":  "2026-10-31T23:36:15Z",
+    "overallStatus":  "PASS",
+    "results":  [
+                    {
+                        "id":  "NEG-01",
+                        "name":  "Sin cabeceras L7",
+                        "category":  "Control Acceso",
+                        "status":  "PASS",
+                        "details":  "Bloqueo correcto verificado: HTTP 401 Unauthorized"
+                    },
+                    {
+                        "id":  "NEG-02",
+                        "name":  "Cabeceras RBAC Spoofed",
+                        "category":  "Anti-Spoofing",
+                        "status":  "PASS",
+                        "details":  "Firma adulterada rechazada con exito: HTTP 401 Unauthorized"
+                    },
+                    {
+                        "id":  "NEG-03",
+                        "name":  "Rol No Reconocido",
+                        "category":  "RBAC Matriz",
+                        "status":  "PASS",
+                        "details":  "Rol invalido bloqueado con exito: HTTP 403 Forbidden"
+                    },
+                    {
+                        "id":  "POS-01",
+                        "name":  "Acceso Legítimo L7",
+                        "category":  "Orquestacion",
+                        "status":  "PASS",
+                        "details":  "Petición procesada correctamente: Veredicto [ALLOW] | Status [SUCCESS]"
+                    },
+                    {
+                        "id":  "VER-ED25519",
+                        "name":  "Sello Criptografico Ed25519",
+                        "category":  "Criptografia",
+                        "status":  "PASS",
+                        "details":  "Sello localizado con exito: ED25519_SIG_768E278F4105921A"
+                    }
+                ]
+}
