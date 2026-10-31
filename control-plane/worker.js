@@ -506,6 +506,34 @@ async function sendOtpRecoveryEmail(recipientEmail, otp, env) {
    ========================================================================== */
 export default {
   async fetch(request, env, ctx) {
+    // =========================================================================
+    // GUARDA RBAC FAIL-CLOSED ABSOLUTA L7 (INCLUYE /v1/traces)
+    // =========================================================================
+    if (request.method === "OPTIONS") { return handleCors(request); }
+    try {
+      const _u = new URL(request.url);
+      const _p = _u.pathname.toLowerCase();
+      if (_p.includes("intercept") || _p.includes("judge") || _p.includes("enforce") || _p.includes("runs") || _p.includes("traces")) {
+        const _r = request.headers.get("x-saare-role");
+        const _usr = request.headers.get("x-saare-user");
+        const _t = request.headers.get("x-saare-tenant");
+        if (!_r || !_usr || !_t) {
+          return new Response(
+            JSON.stringify({
+              status: "DENIED",
+              verdict: "RECHAZADO",
+              decision: "DENY",
+              error: "UNAUTHORIZED_MISSING_RBAC_HEADERS",
+              message: "Acceso denegado: Se requieren cabeceras L7 de autenticacion."
+            }),
+            {
+              status: 401,
+              headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+            }
+          );
+        }
+      }
+    } catch (_e) {}
     const url = new URL(request.url);
 
     // --- Endpoint de verificación de salud (Healthcheck) ---

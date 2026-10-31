@@ -1,0 +1,41 @@
+﻿{
+    "results":  [
+                    {
+                        "ID":  "L1-01",
+                        "Prueba":  "RBAC Fail-Closed",
+                        "Categoria":  "Acceso",
+                        "Resultado":  "PASS",
+                        "Detalles":  "Bloqueo estricto verificado con codigo HTTP 401",
+                        "Timestamp":  "2026-10-31T23:23:42Z"
+                    },
+                    {
+                        "ID":  "L1-02",
+                        "Prueba":  "Trust Anchor Anchor",
+                        "Categoria":  "Criptografia",
+                        "Resultado":  "PASS",
+                        "Detalles":  "Nodo: RPI-2607076315021 | Anchor: https://vault.saare.es",
+                        "Timestamp":  "2026-10-31T23:23:42Z"
+                    },
+                    {
+                        "ID":  "L2-01",
+                        "Prueba":  "Intercepcion Ex-Ante \u0026 Sello Ed25519",
+                        "Categoria":  "Seguridad",
+                        "Resultado":  "PASS",
+                        "Detalles":  "Veredicto: DENY | Sello: ed25519:a39ea90d9a2fda4789b609b719836356 | Hash: a39ea90d9a2fda4789b609b71983635600a36f7ab626378a24ef82f6cfe928a7",
+                        "Timestamp":  "2026-10-31T23:23:43Z"
+                    },
+                    {
+                        "ID":  "L3-01",
+                        "Prueba":  "Integridad Relacional D1",
+                        "Categoria":  "Base de Datos",
+                        "Resultado":  "PASS",
+                        "Detalles":  "Total evidencias: 65 | Unicidad Trace ID: 100% (65/65) | Ultima: 2026-10-31T23:23:43.474Z",
+                        "Timestamp":  "2026-10-31T23:23:52Z"
+                    }
+                ],
+    "executedAt":  "2026-10-31T23:23:52Z",
+    "targetHost":  "https://api.saare.es",
+    "overallStatus":  "PASS",
+    "auditType":  "Independent L7 Assurance Audit (v2.1)",
+    "platform":  "S.A.A.R.E. Platform v8.5 / SGP 1.0"
+}
