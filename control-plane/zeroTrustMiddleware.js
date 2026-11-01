@@ -2,15 +2,31 @@
 
 export class ZeroTrustMiddleware {
   /**
-   * @param {string} teamDomain - ej. "tu-equipo.cloudflareaccess.com"
-   * @param {string} audienceTag - AUD tag de la aplicación en Cloudflare Zero Trust
+   * @param {string} teamDomain - ej. "tu-equipo" o "tu-equipo.cloudflareaccess.com"
+   * @param {string|string[]} audienceTag - AUD tag(s) de la(s) aplicación(es) en Cloudflare Zero Trust
    */
   constructor(teamDomain, audienceTag) {
-    this.teamDomain = teamDomain ? teamDomain.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
-    this.audienceTag = audienceTag || "";
+    this.teamDomain = this.normalizeTeamDomain(teamDomain);
+    this.audienceTags = Array.isArray(audienceTag)
+      ? audienceTag.filter(Boolean)
+      : audienceTag ? [audienceTag] : [];
     this.certsUrl = this.teamDomain ? `https://${this.teamDomain}/cdn-cgi/access/certs` : "";
     this.cachedKeys = null;
     this.keysExpiry = 0;
+  }
+
+  /**
+   * Normaliza cualquier entrada de dominio al formato estándar de Cloudflare Access
+   * @param {string} domain 
+   * @returns {string}
+   */
+  normalizeTeamDomain(domain) {
+    if (!domain || typeof domain !== "string") return "";
+    let clean = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (clean && !clean.includes(".")) {
+      clean = `${clean}.cloudflareaccess.com`;
+    }
+    return clean;
   }
 
   /**
@@ -78,9 +94,10 @@ export class ZeroTrustMiddleware {
    * @returns {Promise<CryptoKey>}
    */
   async importRsaKey(jwkKey) {
+    const keyData = { ...jwkKey, alg: jwkKey.alg || "RS256" };
     return await crypto.subtle.importKey(
       "jwk",
-      jwkKey,
+      keyData,
       {
         name: "RSASSA-PKCS1-v1_5",
         hash: { name: "SHA-256" }
@@ -126,10 +143,11 @@ export class ZeroTrustMiddleware {
         return { userEmail: null, isZeroTrustVerified: false, error: "Token aún no es válido" };
       }
 
-      // 3. Verificación del AUD (Audience Tag)
-      if (this.audienceTag) {
+      // 3. Verificación de AUD (Soporta múltiples audience tags)
+      if (this.audienceTags.length > 0) {
         const tokenAud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-        if (!tokenAud.includes(this.audienceTag)) {
+        const hasValidAud = this.audienceTags.some(tag => tokenAud.includes(tag));
+        if (!hasValidAud) {
           return { userEmail: null, isZeroTrustVerified: false, error: "Audience (AUD) no coincide" };
         }
       }
@@ -165,7 +183,12 @@ export class ZeroTrustMiddleware {
         }
       }
 
-      const userEmail = payload.email || payload.common_name || payload.sub || "zero_trust_authenticated_user";
+      // Identificación unívoca del usuario sin colisiones
+      const userEmail = payload.email || payload.common_name || payload.sub || null;
+
+      if (!userEmail) {
+        return { userEmail: null, isZeroTrustVerified: false, error: "Token válido pero carece de identificador de usuario (email/sub)" };
+      }
 
       return {
         userEmail,

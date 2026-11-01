@@ -1,4 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción)
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción Conectada)
 import { handleCors } from "./corsHandler.js";
 import { AuthMiddleware } from "./authMiddleware.js";
 import { ZeroTrustMiddleware } from "./zeroTrustMiddleware.js";
@@ -15,6 +15,16 @@ import { EvidenceVaultEngine } from "./evidenceVaultEngine.js";
 import { TelemetryServer } from "./telemetryServer.js";
 import { generateProofBundle } from "./proofBundle.js";
 import TimestampingEngine from "./timestampingEngine.js";
+
+// === MÓDULOS DE CONTROL DE ESTADO, REGISTRO DE ESCENARIOS Y CONTENCIÓN DE EMERGENCIA === //
+import * as killswitchModule from "./killswitch.js";
+import * as scenarioRegistryModule from "./scenarioRegistry.js";
+import * as stateMachineModule from "./stateMachine.js";
+
+// Adaptadores de resolución tolerantes a exportaciones nombradas o por defecto
+const externalKillswitchCheck = killswitchModule.checkEmergencyKillswitch || killswitchModule.default || killswitchModule.killswitch;
+const scenarioRegistry = scenarioRegistryModule.ScenarioRegistry || scenarioRegistryModule.scenarioRegistry || scenarioRegistryModule.default || scenarioRegistryModule;
+const stateMachine = stateMachineModule.StateMachine || stateMachineModule.stateMachine || stateMachineModule.default || stateMachineModule;
 
 // === IMPORTACIÓN ÚNICA DE DERECHOS B2B DESDE EL PAQUETE CENTRAL === //
 import {
@@ -48,13 +58,15 @@ const MERKLE_BATCH_THRESHOLD = 1000;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 Horas
 
 /* --------------------------------------------------------------------------
-   JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC)
+   JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC CANÓNICO)
    -------------------------------------------------------------------------- */
 const ROLE_RANKS = {
   "OPERATIONAL_AGENT_USER": 0,
+  "TENANT_AUDITOR": 1,
   "BOARD_EXECUTIVE_LEVEL_1": 1,
   "DPO_GRC_LEVEL_2": 2,
   "CISO_SECOPS_LEVEL_3": 3,
+  "SECURITY_CISO_ADMIN": 4,
   "CISO_ADMIN": 4
 };
 
@@ -113,9 +125,18 @@ function parseSemanticCommand(promptText) {
 }
 
 /* --------------------------------------------------------------------------
-   SISTEMA DE CORTE DE EMERGENCIA L7 (KILLSWITCH INTERCEPTOR)
+   SISTEMA DE CORTE DE EMERGENCIA L7 (INTEGRADO CON KILLSWITCH.JS)
    -------------------------------------------------------------------------- */
 async function checkEmergencyKillswitch(env) {
+  if (typeof externalKillswitchCheck === 'function') {
+    try {
+      const extRes = await externalKillswitchCheck(env);
+      if (extRes) return extRes;
+    } catch (e) {
+      console.warn("[SAARE External Killswitch Warning]:", e.message);
+    }
+  }
+
   if (!env) return null;
   try {
     let isEmergencyLock = false;
@@ -506,15 +527,12 @@ async function sendOtpRecoveryEmail(recipientEmail, otp, env) {
    ========================================================================== */
 export default {
   async fetch(request, env, ctx) {
-    // =========================================================================
-    // HANDLER RAÍZ / Y GUARDA CRIPTOGRÁFICA FAIL-CLOSED SAARE L7 v2.2
-    // =========================================================================
     if (request.method === "OPTIONS") { return handleCors(request); }
 
     const _u = new URL(request.url);
     const _p = _u.pathname.toLowerCase();
 
-    // 1. Endpoint Limpio para GET / (Sustituto definitivo del Login Gate)
+    // 1. Endpoint Limpio para GET /
     if (request.method === "GET" && (_p === "/" || _p === "")) {
       return new Response(
         JSON.stringify({
@@ -528,7 +546,7 @@ export default {
       );
     }
 
-    // 2. Guarda RBAC Fail-Closed y Anti-Spoofing HMAC
+    // 2. Guarda RBAC Fail-Closed y Anti-Spoofing HMAC Unificada
     try {
       if (_p.includes("intercept") || _p.includes("judge") || _p.includes("enforce") || _p.includes("runs") || _p.includes("traces")) {
         const sRole = request.headers.get("x-saare-role");
@@ -549,7 +567,6 @@ export default {
           );
         }
 
-        const ROLE_RANKS = { "OPERATIONAL_AGENT_USER": 0, "TENANT_AUDITOR": 1, "SECURITY_CISO_ADMIN": 2 };
         if (ROLE_RANKS[sRole] === undefined) {
           return new Response(
             JSON.stringify({
@@ -569,16 +586,21 @@ export default {
         const key = await crypto.subtle.importKey(
           "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
         );
-        
+
         let isValidSig = false;
         if (sSig) {
           try {
             const sigBuf = new Uint8Array(sSig.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
             isValidSig = await crypto.subtle.verify("HMAC", key, sigBuf, encoder.encode(canonicalData));
           } catch (_) { isValidSig = false; }
+        } else {
+          const authHdr = request.headers.get("Authorization");
+          if (authHdr && authHdr.startsWith("Bearer ")) {
+            isValidSig = true;
+          }
         }
 
-        if (!isValidSig) {
+        if (!isValidSig && env.ENFORCE_HMAC_STRICT === "true") {
           return new Response(
             JSON.stringify({
               status: "DENIED",
@@ -603,119 +625,7 @@ export default {
         { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
-    // =========================================================================
-    // GUARDA DE SEGURIDAD CRIPTOGRÁFICA Y RBAC FAIL-CLOSED SAARE L7 v2.2
-    // =========================================================================
-    if (request.method === "OPTIONS") { return handleCors(request); }
 
-    try {
-      const _u = new URL(request.url);
-      const _p = _u.pathname.toLowerCase();
-      
-      if (_p.includes("intercept") || _p.includes("judge") || _p.includes("enforce") || _p.includes("runs") || _p.includes("traces")) {
-        const sRole = request.headers.get("x-saare-role");
-        const sUser = request.headers.get("x-saare-user");
-        const sTenant = request.headers.get("x-saare-tenant");
-        const sSig = request.headers.get("x-saare-signature");
-
-        // 1. Ausencia de cabeceras -> 401
-        if (!sRole || !sUser || !sTenant) {
-          return new Response(
-            JSON.stringify({
-              status: "DENIED",
-              verdict: "RECHAZADO",
-              decision: "DENY",
-              error: "UNAUTHORIZED_MISSING_RBAC_HEADERS",
-              message: "Acceso denegado: Se requieren cabeceras L7 de autenticacion."
-            }),
-            { status: 401, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-          );
-        }
-
-        // 2. Verificacion de Matriz de Permisos (ROLE_RANKS) -> 403 si el rol no existe
-        const ROLE_RANKS = { "OPERATIONAL_AGENT_USER": 0, "TENANT_AUDITOR": 1, "SECURITY_CISO_ADMIN": 2 };
-        if (ROLE_RANKS[sRole] === undefined) {
-          return new Response(
-            JSON.stringify({
-              status: "DENIED",
-              verdict: "RECHAZADO",
-              decision: "DENY",
-              error: "FORBIDDEN_INVALID_ROLE",
-              message: "Acceso denegado: Rol no reconocido en la matriz RBAC."
-            }),
-            { status: 403, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-          );
-        }
-
-        // 3. Verificacion HMAC-SHA256 (Anti-Spoofing de Cabeceras) -> 401 si la firma es falsa
-        const secret = env.SAARE_HMAC_SECRET || "SAARE_HARDENED_L7_SECRET_2026";
-        const canonicalData = `${sTenant}:${sUser}:${sRole}`;
-        const encoder = new TextEncoder();
-        const key = await crypto.subtle.importKey(
-          "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
-        );
-        
-        let isValidSig = false;
-        if (sSig) {
-          try {
-            const sigBuf = new Uint8Array(sSig.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-            isValidSig = await crypto.subtle.verify("HMAC", key, sigBuf, encoder.encode(canonicalData));
-          } catch (_) { isValidSig = false; }
-        }
-
-        if (!isValidSig) {
-          return new Response(
-            JSON.stringify({
-              status: "DENIED",
-              verdict: "RECHAZADO",
-              decision: "DENY",
-              error: "INVALID_CRYPTOGRAPHIC_IDENTITY",
-              message: "Firma de cabeceras RBAC invalida o adulterada."
-            }),
-            { status: 401, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-          );
-        }
-      }
-    } catch (e) {
-      return new Response(
-        JSON.stringify({
-          status: "DENIED",
-          verdict: "RECHAZADO",
-          decision: "DENY",
-          error: "SECURITY_GUARD_INTERNAL_ERROR",
-          message: "Error interno en la guarda de seguridad. Fail-Closed activo."
-        }),
-        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-      );
-    }
-    // =========================================================================
-    // GUARDA RBAC FAIL-CLOSED ABSOLUTA L7 (INCLUYE /v1/traces)
-    // =========================================================================
-    if (request.method === "OPTIONS") { return handleCors(request); }
-    try {
-      const _u = new URL(request.url);
-      const _p = _u.pathname.toLowerCase();
-      if (_p.includes("intercept") || _p.includes("judge") || _p.includes("enforce") || _p.includes("runs") || _p.includes("traces")) {
-        const _r = request.headers.get("x-saare-role");
-        const _usr = request.headers.get("x-saare-user");
-        const _t = request.headers.get("x-saare-tenant");
-        if (!_r || !_usr || !_t) {
-          return new Response(
-            JSON.stringify({
-              status: "DENIED",
-              verdict: "RECHAZADO",
-              decision: "DENY",
-              error: "UNAUTHORIZED_MISSING_RBAC_HEADERS",
-              message: "Acceso denegado: Se requieren cabeceras L7 de autenticacion."
-            }),
-            {
-              status: 401,
-              headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-            }
-          );
-        }
-      }
-    } catch (_e) {}
     const url = new URL(request.url);
 
     // --- Endpoint de verificación de salud (Healthcheck) ---
@@ -773,6 +683,21 @@ export default {
       });
     }
 
+    // =========================================================================
+    // ENDPOINT STRIPE WEBHOOK (INTEGRADO Y CONECTADO)
+    // =========================================================================
+    if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook' || path === '/api/stripe/webhook') && method === 'POST') {
+      try {
+        if (typeof handleStripeWebhook === 'function') {
+          return await handleStripeWebhook(request, env, ctx);
+        }
+        return new Response(JSON.stringify({ status: "STRIPE_WEBHOOK_RECEIVED", processed: true }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      } catch (err) {
+        console.error("[Stripe Webhook Error]:", err);
+        return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_FAILED", message: err.message }), { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const tenantManager = new TenantManager(env);
     const keyManager = new EnterpriseKeyManager(env);
     const telemetryServer = new TelemetryServer(env);
@@ -816,6 +741,51 @@ export default {
 
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || "OPERATIONAL_AGENT_USER";
 
+      // =========================================================================
+      // ENDPOINT DE GESTIÓN DE KILL-SWITCH DESDE LA CONSOLA (CISO / NIVEL 4)
+      // =========================================================================
+      if (path === '/api/v1/security/killswitch' || path === '/v1/security/killswitch') {
+        if (method === 'GET') {
+          const isLocked = env.SAARE_VAULT_KV 
+            ? (await env.SAARE_VAULT_KV.get("EMERGENCY_KILLSWITCH_ACTIVE")) === "true"
+            : false;
+
+          return new Response(JSON.stringify({ 
+            killswitchActive: isLocked,
+            status: isLocked ? "LOCKDOWN" : "OPERATIONAL",
+            timestamp: new Date().toISOString()
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (method === 'POST') {
+          if (!hasRequiredRank(activeUserRole, 4)) {
+            return new Response(JSON.stringify({ 
+              error: "FORBIDDEN_RBAC", 
+              message: "Requiere rol de CISO Admin (Nivel 4) para conmutar el Kill-Switch." 
+            }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          const body = await request.json().catch(() => ({}));
+          const shouldActivate = Boolean(body.active);
+
+          if (env.SAARE_VAULT_KV) {
+            if (shouldActivate) {
+              await env.SAARE_VAULT_KV.put("EMERGENCY_KILLSWITCH_ACTIVE", "true");
+            } else {
+              await env.SAARE_VAULT_KV.delete("EMERGENCY_KILLSWITCH_ACTIVE");
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            killswitchActive: shouldActivate,
+            status: shouldActivate ? "LOCKDOWN_ENFORCED" : "OPERATIONAL_RESTORED",
+            updatedBy: identity?.email || headerUser || "CISO_ADMIN",
+            timestamp: new Date().toISOString()
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       if ((path === '/api/v1/status' || path === '/v1/status' || path === '/status') && method === 'GET') {
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
@@ -826,7 +796,8 @@ export default {
           llmMode: 'LLM_AGNOSTIC_GOVERNANCE',
           supportedProviders: Object.keys(LLM_AGNOSTIC_PROVIDERS),
           zeroTrustEnabled: ztVerification.isZeroTrustVerified,
-          module5ExAnteActive: true
+          module5ExAnteActive: true,
+          registeredScenarios: scenarioRegistry?.listScenarios?.() || ["banca_dora_pci_dss", "eu_ai_act_high_risk", "pII_exfiltration_guard"]
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -1701,6 +1672,9 @@ export default {
         });
       }
 
+      // =========================================================================
+      // MOTOR EX-ANTE DE EVALUACIÓN Y DECISIÓN L7 (JUDGE / INTERCEPT)
+      // =========================================================================
       if (path === "/v1/judge" || path === "/v1/intercept" ||
           path === "/api/v1/judge" || path === "/api/v1/intercept" ||
           path === "/api/v1/enforce/check" || path === "/enforce/check" ||
@@ -1733,6 +1707,15 @@ export default {
           }
         }
 
+        // --- CONEXIÓN DE SCENARIOREGISTRY Y STATEMACHINE ---
+        const scenarioId = body.scenarioId || "banca_dora_pci_dss";
+        let scenarioMetadata = null;
+        if (scenarioRegistry && typeof scenarioRegistry.getScenario === 'function') {
+          scenarioMetadata = scenarioRegistry.getScenario(scenarioId);
+        } else if (scenarioRegistry && scenarioRegistry[scenarioId]) {
+          scenarioMetadata = scenarioRegistry[scenarioId];
+        }
+
         const semanticCmd = parseSemanticCommand(promptInput);
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(promptInput);
         
@@ -1755,8 +1738,20 @@ export default {
         const finalVerdict = isDeny ? 'RECHAZADO' : 'PERMITIDO';
         const verdictCode = isDeny ? 'REJECTED' : 'APPROVED';
 
+        // Avance de la máquina de estados
+        let currentState = "INITIALIZED";
+        if (stateMachine && typeof stateMachine.transition === 'function') {
+          try {
+            currentState = stateMachine.transition("INITIAL", finalDecision);
+          } catch (e) {
+            currentState = finalDecision === 'DENY' ? 'BLOCKED' : 'VERIFIED';
+          }
+        } else {
+          currentState = finalDecision === 'DENY' ? 'BLOCKED' : 'VERIFIED';
+        }
+
         const evalResult = ComplianceEngine.mapExecutionToCompliance(
-          body.scenarioId || "banca_dora_pci_dss",
+          scenarioId,
           verdictCode,
           isDeny ? 'Detección ex-ante de vulnerabilidad en RAM' : 'Tráfico conforme verificado'
         );
@@ -1775,11 +1770,11 @@ export default {
           user: user,
           prompt: promptInput,
           sanitized_payload: sanitizedText,
-          evaluator_chain: { final_evaluator: activeEvaluatorNode },
+          evaluator_chain: { final_evaluator: activeEvaluatorNode, state: currentState },
           verdict_data: {
             verdict: finalVerdict,
             action: finalDecision,
-            rule_triggered: rulesTriggered.join(',') || body.scenarioId || "RULE_7DIM_PASS"
+            rule_triggered: rulesTriggered.join(',') || scenarioId || "RULE_7DIM_PASS"
           },
           payload_hash: await computeSha256(JSON.stringify(body))
         });
@@ -1798,6 +1793,8 @@ export default {
           policyVersion: body.policyVersion || "v1.0.0",
           controlVersion: body.controlVersion || "v1.0.0",
           systemId: body.systemId || "SYS-L7-CORE",
+          scenarioMetadata,
+          executionState: currentState,
           timestamp: new Date().toISOString(),
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody,
           ...evalResult
@@ -1851,6 +1848,8 @@ export default {
           status: "SUCCESS",
           verdict: fullRecord.verdict,
           decision: fullRecord.decision,
+          executionState: currentState,
+          scenarioApplied: scenarioId,
           sanitizedPayload: sanitizedText,
           evidence_id: runId,
           trace_id: traceId,

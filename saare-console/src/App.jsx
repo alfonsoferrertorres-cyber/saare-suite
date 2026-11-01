@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx â€” Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (ProducciÃ³n V12.1 Integrada)
+// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1 Integrada)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -10,7 +10,7 @@ import { API_BASE_URL, saareFetch } from './utils/api';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
 import cabeceraImg from './assets/cabecera.png';
 
-// TAXONOMÃA CANÃ“NICA Y MATRIZ DE COMANDOS SEMÃNTICOS (S.A.A.R.E. V10.0 / SGP 1.0)
+// TAXONOMÍA CANÓNICA Y MATRIZ DE COMANDOS SEMÁNTICOS (S.A.A.R.E. V10.0 / SGP 1.0)
 const SAARE_SEMANTIC_COMMANDS = {
   MODULE_5_BOOTSTRAP: "Iniciar_cumplimiento_exante_saare --route-vault=D1",
   WITNESS_TAG: "[MS3V-COMPLIANCE-L7-OK]",
@@ -82,7 +82,7 @@ export default function App() {
   const [showAddFilterModal, setShowAddFilterModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
-  const [testPrompt, setTestPrompt] = useState("Auditar crÃ©dito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
+  const [testPrompt, setTestPrompt] = useState("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
   const [testResult, setTestResult] = useState(null);
   const [auditedEvidenceId, setAuditedEvidenceId] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -96,7 +96,7 @@ export default function App() {
     const regContent = `Windows Registry Editor Version 5.00
 
 ; ================================================================
-; S.A.A.R.E. Enterprise GPO Policy - Despliegue AgnÃ³stico Capa 7 (Zero-Touch)
+; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
 ; Tenant: ${tenantId}
 ; ================================================================
 
@@ -116,18 +116,18 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    triggerGovernance("Archivo GPO .reg generado y descargado para producciÃ³n.");
+    triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
   };
 
   const [directives, setDirectives] = useState([
-    { id: 1, name: 'ISO/IEC 42001 - Sistema de GestiÃ³n de IA (SGIA)', active: true, standard: 'ISO/IEC 42001:2023 (Annex A.6 / A.8)', category: 'GOBERNANZA' },
+    { id: 1, name: 'ISO/IEC 42001 - Sistema de Gestión de IA (SGIA)', active: true, standard: 'ISO/IEC 42001:2023 (Annex A.6 / A.8)', category: 'GOBERNANZA' },
     { id: 2, name: 'DORA - Resiliencia Operativa Digital', active: true, standard: 'EU Regulation 2022/2554', category: 'FINANCIERO' },
-    { id: 3, name: 'EU AI Act - PrevenciÃ³n de Fugas PII', active: true, standard: 'Articles 10 & 15', category: 'PRIVACIDAD' },
+    { id: 3, name: 'EU AI Act - Prevención de Fugas PII', active: true, standard: 'Articles 10 & 15', category: 'PRIVACIDAD' },
     { id: 4, name: 'ISO/IEC 27037 - Cadena de Custodia Forense', active: true, standard: 'Digital Evidence Handling', category: 'TRAZABILIDAD' },
     { id: 5, name: 'LOPDGDD - Cifrado Ex-Ante de Datos Sensibles', active: true, standard: 'Organic Law 3/2018', category: 'PRIVACIDAD' },
-    { id: 6, name: 'L7 Hook - IntercepciÃ³n de Prompts LLM', active: true, standard: 'Runtime Guardrail v1.0', category: 'CIBERSEGURIDAD' },
-    { id: 7, name: 'Firma CriptogrÃ¡fica Ed25519 En Vivo', active: true, standard: 'RFC 8032 Standard', category: 'TRAZABILIDAD' },
-    { id: 8, name: 'SanitizaciÃ³n de Archivos y Adjuntos', active: true, standard: 'OWASP LLM01 / LLM06', category: 'CIBERSEGURIDAD' },
+    { id: 6, name: 'L7 Hook - Intercepción de Prompts LLM', active: true, standard: 'Runtime Guardrail v1.0', category: 'CIBERSEGURIDAD' },
+    { id: 7, name: 'Firma Criptográfica Ed25519 En Vivo', active: true, standard: 'RFC 8032 Standard', category: 'TRAZABILIDAD' },
+    { id: 8, name: 'Sanitización de Archivos y Adjuntos', active: true, standard: 'OWASP LLM01 / LLM06', category: 'CIBERSEGURIDAD' },
   ]);
 
   const [evidences, setEvidences] = useState([]);
@@ -288,7 +288,7 @@ export default function App() {
       cat: "MODULE_5_EX_ANTE_BOOTSTRAP",
       sub: "ISO/IEC 42001 / EU AI Act Art. 27 / RGPD Art. 25",
       prompt: `${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} ${SAARE_SEMANTIC_COMMANDS.MODULE_5_BOOTSTRAP}`,
-      responseOutput: "NODO L7 ACTIVADO â€” BÃ“VEDA D1 WORM ENGAGED (0 DISK AT REST)",
+      responseOutput: "NODO L7 ACTIVADO — BÓVEDA D1 WORM ENGAGED (0 DISK AT REST)",
       verdict: "PERMITIDO",
       decision: "ALLOW",
       anchored: 1,
@@ -323,7 +323,7 @@ export default function App() {
       });
     } catch (e) {}
 
-    triggerGovernance(`âš¡ MÃ³dulo 5 Activado: ${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} Notario Digital D1 Enganchado.`);
+    triggerGovernance(`⚡ Módulo 5 Activado: ${SAARE_SEMANTIC_COMMANDS.WITNESS_TAG} Notario Digital D1 Enganchado.`);
   }, [userEmail, tenantId, userRole, mergeEvidences, triggerGovernance]);
 
   const handleLogout = useCallback(async () => {
@@ -347,7 +347,7 @@ export default function App() {
     localStorage.removeItem('saare_consent_accepted');
     setIsAuthenticated(false);
     setActiveSemanticHeaders([]);
-    triggerGovernance("ðŸ›‘ Kill-Switch Ejecutado: Comandos Persistentes Desactivados y SesiÃ³n Cerrada.");
+    triggerGovernance("🛑 Kill-Switch Ejecutado: Comandos Persistentes Desactivados y Sesión Cerrada.");
   }, [userEmail, tenantId, triggerGovernance]);
 
   const fetchTelemetryOnce = useCallback(async () => {
@@ -467,21 +467,21 @@ export default function App() {
       await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Ejecuta la validaciÃ³n de licencia con el comando semÃ¡ntico ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}`,
+          prompt: `Ejecuta la validación de licencia con el comando semántico ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}`,
           user: userEmail,
           tenant: tenantId
         })
       });
       fetchTelemetryOnce();
-      triggerGovernance("Licencia Enterprise S.A.A.R.E. (SGP 1.0) Validada en BÃ³veda Central D1.");
+      triggerGovernance("Licencia Enterprise S.A.A.R.E. (SGP 1.0) Validada en Bóveda Central D1.");
     } catch (e) {
-      triggerGovernance("VerificaciÃ³n de licencia completada (Modo AutÃ³nomo L7).");
+      triggerGovernance("Verificación de licencia completada (Modo Autónomo L7).");
     }
   };
 
   const handleRunResilienceCheck = async () => {
     if (!hasRequiredRank(userRole, 3)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
     triggerGovernance(`Invocando Veredicto de Integridad (${SAARE_SEMANTIC_COMMANDS.MODE_VERDICT})...`);
@@ -504,12 +504,12 @@ export default function App() {
   };
 
   const handleGenerateCorporateReport = async () => {
-    triggerGovernance(`Invocando CertificaciÃ³n Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE})...`);
+    triggerGovernance(`Invocando Certificación Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE})...`);
     try {
       await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Genera un informe oficial de S.A.A.R.E. con formato de CertificaciÃ³n Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE}). Incluye matriz de KPIs de resiliencia.`,
+          prompt: `Genera un informe oficial de S.A.A.R.E. con formato de Certificación Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE}). Incluye matriz de KPIs de resiliencia.`,
           user: userEmail,
           tenant: tenantId
         })
@@ -522,12 +522,12 @@ export default function App() {
   };
 
   const handleExportChainOfCustody = async () => {
-    triggerGovernance(`Invocando AuditorÃ­a de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY})...`);
+    triggerGovernance(`Invocando Auditoría de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY})...`);
     try {
       await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Ejecuta la AuditorÃ­a de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY}). Verifica hashes SHA-256, Root Digest e inmutabilidad WORM bajo Art. 326 LEC.`,
+          prompt: `Ejecuta la Auditoría de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY}). Verifica hashes SHA-256, Root Digest e inmutabilidad WORM bajo Art. 326 LEC.`,
           user: userEmail,
           tenant: tenantId
         })
@@ -563,15 +563,15 @@ export default function App() {
 
   const handleExportGrantDossier = async () => {
     if (!hasRequiredRank(userRole, 2)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
       return;
     }
-    triggerGovernance(`Invocando AuditorÃ­a JurÃ­dica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL})...`);
+    triggerGovernance(`Invocando Auditoría Jurídica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL})...`);
     try {
       await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Ejecuta la AuditorÃ­a JurÃ­dica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL}) sobre el contexto legal provisto frente a RGPD y EU AI Act.`,
+          prompt: `Ejecuta la Auditoría Jurídica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL}) sobre el contexto legal provisto frente a RGPD y EU AI Act.`,
           user: userEmail,
           tenant: tenantId
         })
@@ -589,7 +589,7 @@ export default function App() {
         status: "COMPLIANT_DNSH",
         tokenSavingsPercentage: "45%",
         ramComputeBytesWritten: 0,
-        description: "OperaciÃ³n Zero-Disk en RAM (mlock) que evita procesamiento innecesario en servidores cloud."
+        description: "Operación Zero-Disk en RAM (mlock) que evita procesamiento innecesario en servidores cloud."
       },
       grantBreakdown: {
         kitConsulting: evidences.filter(e => e?.cat?.includes("PII") || e?.sub?.includes("AI Act")),
@@ -613,16 +613,16 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    triggerGovernance("Dossier TÃ©cnico de JustificaciÃ³n de SubvenciÃ³n generado para Red.es / INCIBE.");
+    triggerGovernance("Dossier Técnico de Justificación de Subvención generado para Red.es / INCIBE.");
   };
 
   const handleOpenAuditTokenModal = async () => {
-    triggerGovernance(`Invocando AuditorÃ­a IP (${SAARE_SEMANTIC_COMMANDS.MODE_IP})...`);
+    triggerGovernance(`Invocando Auditoría IP (${SAARE_SEMANTIC_COMMANDS.MODE_IP})...`);
     try {
       await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Ejecuta la AuditorÃ­a de Propiedad Intelectual e IP (${SAARE_SEMANTIC_COMMANDS.MODE_IP}) bajo la Ley 1/2019 de Secretos Empresariales.`,
+          prompt: `Ejecuta la Auditoría de Propiedad Intelectual e IP (${SAARE_SEMANTIC_COMMANDS.MODE_IP}) bajo la Ley 1/2019 de Secretos Empresariales.`,
           user: userEmail,
           tenant: tenantId
         })
@@ -634,7 +634,7 @@ export default function App() {
 
   const handleGenerateFriaDocument = async (friaConfig) => {
     if (!hasRequiredRank(userRole, 2)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol GRC / DPO (Nivel 2).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol GRC / DPO (Nivel 2).");
       return;
     }
     triggerGovernance(`Compilando Expediente FRIA (${SAARE_SEMANTIC_COMMANDS.MODE_FRIA})...`);
@@ -668,7 +668,7 @@ export default function App() {
       },
       grantComplianceMetadata: {
         grantFramework: "KIT_CONSULTING_REDES",
-        eligibleItem: "EvaluaciÃ³n de Impacto en Derechos Fundamentales (FRIA)",
+        eligibleItem: "Evaluación de Impacto en Derechos Fundamentales (FRIA)",
         verificationEndpoint: `${API_BASE_URL.replace(/\/$/, '')}/verify/${sampleMerkle}`
       }
     };
@@ -683,7 +683,7 @@ export default function App() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     fetchTelemetryOnce();
-    triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) compilado y sellado criptogrÃ¡ficamente.");
+    triggerGovernance("Expediente FRIA (Art. 27 EU AI Act) compilado y sellado criptográficamente.");
   };
 
   const handleDownloadSingleEvidencePdf = async (ev) => {
@@ -703,7 +703,7 @@ export default function App() {
 
   const handleExportToSiem = async (ev) => {
     if (!hasRequiredRank(userRole, 3)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
     try {
@@ -731,7 +731,7 @@ export default function App() {
     setAuditedEvidenceId(ev.id);
     setViewMode('GRC_AUDIT');
     setActiveTab('RUNLIVE');
-    triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditorÃ­a.`);
+    triggerGovernance(`Evidencia ${ev.id} cargada en S.A.A.R.E. ENFORCEMENT para auditoría.`);
   };
 
   const handleExecuteTestExAnte = async () => {
@@ -804,7 +804,7 @@ export default function App() {
       fetchTelemetryOnce();
       triggerGovernance(`Dictamen Ex-Ante emitido (${evalResult.decision}) en ${latencyMs}.`);
     } catch (err) {
-      triggerGovernance(`EvaluaciÃ³n ex-ante ejecutada: ${err.message}`);
+      triggerGovernance(`Evaluación ex-ante ejecutada: ${err.message}`);
     } finally {
       setIsEvaluating(false);
     }
@@ -812,18 +812,18 @@ export default function App() {
 
   const executeResilienceSimulation = async (scenario) => {
     if (!hasRequiredRank(userRole, 3)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
     setSimulationRunning(true);
     const targetCmd = scenario === 'DEEPFAKE_DETECTION' ? SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE : SAARE_SEMANTIC_COMMANDS.MODE_SECURITY;
-    triggerGovernance(`Ejecutando comando semÃ¡ntico ${targetCmd}: ${scenario}...`);
+    triggerGovernance(`Ejecutando comando semántico ${targetCmd}: ${scenario}...`);
 
     try {
       const res = await saareFetch('/intercept', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `Invocando ${targetCmd} sobre escenario ${scenario}. Analiza artefactos espectrales en RAM y deriva a BÃ³veda D1.`,
+          prompt: `Invocando ${targetCmd} sobre escenario ${scenario}. Analiza artefactos espectrales en RAM y deriva a Bóveda D1.`,
           user: userEmail,
           tenant: tenantId
         })
@@ -831,9 +831,9 @@ export default function App() {
       const data = await res.json();
       setSimulationResult(data);
       fetchTelemetryOnce();
-      triggerGovernance(`SimulaciÃ³n ${scenario} finalizada con veredicto PASS.`);
+      triggerGovernance(`Simulación ${scenario} finalizada con veredicto PASS.`);
     } catch (err) {
-      triggerGovernance(`Error en simulaciÃ³n: ${err.message}`);
+      triggerGovernance(`Error en simulación: ${err.message}`);
     } finally {
       setSimulationRunning(false);
     }
@@ -858,10 +858,10 @@ export default function App() {
           node: verifyData.node || "RPI-2607076315021",
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
           rfc3161Timestamp: verifyData.timestamp || new Date().toISOString(),
-          evidenceBundle: verifyData.evidence || "CertificaciÃ³n cryptographic integrity OK",
-          details: verifyData.message || "Sello e inmutabilidad acreditados contra la BÃ³veda WORM D1."
+          evidenceBundle: verifyData.evidence || "Certificación cryptographic integrity OK",
+          details: verifyData.message || "Sello e inmutabilidad acreditados contra la Bóveda WORM D1."
         });
-        triggerGovernance("Firma Notarial Ed25519 acreditada en BÃ³veda D1.");
+        triggerGovernance("Firma Notarial Ed25519 acreditada en Bóveda D1.");
       } else {
         setSelectedJson({
           auditStatus: "VERIFIED",
@@ -870,9 +870,9 @@ export default function App() {
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / eIDAS RFC 3161",
           timestamp: new Date().toISOString(),
           verdict: "ALLOW / VERIFIED",
-          details: "Sello criptogrÃ¡fico eIDAS verificado en la BÃ³veda D1."
+          details: "Sello criptográfico eIDAS verificado en la Bóveda D1."
         });
-        triggerGovernance("Firma eIDAS RFC 3161 validada con Ã©xito.");
+        triggerGovernance("Firma eIDAS RFC 3161 validada con éxito.");
       }
     } catch (e) {
       setSelectedJson({
@@ -882,19 +882,19 @@ export default function App() {
         standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC",
         timestamp: new Date().toISOString(),
         verdict: "VERIFIED_OFFLINE",
-        details: "Acreditado localmente mediante firma Ed25519 en RAM volÃ¡til (mlock)."
+        details: "Acreditado localmente mediante firma Ed25519 en RAM volátil (mlock)."
       });
-      triggerGovernance("VerificaciÃ³n completada en modo aislado ex-ante.");
+      triggerGovernance("Verificación completada en modo aislado ex-ante.");
     }
   };
 
   const handleAddCustomFilter = async () => {
     if (!hasRequiredRank(userRole, 3)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
     if (!newRuleName || !newRulePattern) {
-      triggerGovernance("Especifique un nombre y una regla sintÃ¡ctica vÃ¡lida.");
+      triggerGovernance("Especifique un nombre y una regla sintáctica válida.");
       return;
     }
 
@@ -925,7 +925,7 @@ export default function App() {
 
   const handleDeleteCustomFilter = async (id) => {
     if (!hasRequiredRank(userRole, 3)) {
-      triggerGovernance("âŒ AcciÃ³n Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
+      triggerGovernance("❌ Acción Denegada: Se requiere rol SecOps / CISO (Nivel 3).");
       return;
     }
 
@@ -944,7 +944,7 @@ export default function App() {
   };
 
   const handleDownloadTeaser = () => {
-    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: InspecciÃ³n L7 Ex-Ante obligatoria.\n2. Invariante 0x02: Firma e inmutabilidad en BÃ³veda WORM D1.\n3. Invariante 0x03: Operaciones Zero-Disk en RAM (mlock_ephemeral).\n====================================================`;
+    const teaserText = `====================================================\nS.A.A.R.E. GRC & IA GOVERNANCE - MATRIZ DE INVARIANTES\n====================================================\n1. Invariante 0x01: Inspección L7 Ex-Ante obligatoria.\n2. Invariante 0x02: Firma e inmutabilidad en Bóveda WORM D1.\n3. Invariante 0x03: Operaciones Zero-Disk en RAM (mlock_ephemeral).\n====================================================`;
     const blob = new Blob([teaserText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -966,10 +966,10 @@ export default function App() {
           </div>
 
           <h2 style={{ fontSize: '1.35rem', fontWeight: '900', color: '#f8fafc', margin: '0 0 10px 0', letterSpacing: '0.02em' }}>
-            ACTIVACIÃ“N DEL MÃ“DULO HÃBRIDO EX-ANTE Y BÃ“VEDA D1
+            ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1
           </h2>
           <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-            Al confirmar el acceso a la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong>, se inyectarÃ¡ el comando semÃ¡ntico del <strong>MÃ³dulo 5 (Notario Digital Ex-Ante D1)</strong> y la Matriz de Directivas Persistentes.
+            Al confirmar el acceso a la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong>, se inyectará el comando semántico del <strong>Módulo 5 (Notario Digital Ex-Ante D1)</strong> y la Matriz de Directivas Persistentes.
           </p>
 
           <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', textAlign: 'left', marginBottom: '20px' }}>
@@ -1006,11 +1006,11 @@ export default function App() {
                   value={userRole}
                   onChange={(e) => setUserRole(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', background: '#0b0f19', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '800', boxSizing: 'border-box' }}>
-                  <option value="CISO_ADMIN">ðŸ‘‘ CISO ADMIN (L4)</option>
-                  <option value="CISO_SECOPS_LEVEL_3">ðŸ›¡ï¸ SECOPS (L3)</option>
-                  <option value="DPO_GRC_LEVEL_2">âš–ï¸ DPO GRC (L2)</option>
-                  <option value="BOARD_EXECUTIVE_LEVEL_1">ðŸ“ˆ EXECUTIVE (L1)</option>
-                  <option value="OPERATIONAL_AGENT_USER">âš™ï¸ AGENT (L0)</option>
+                  <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+                  <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+                  <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+                  <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+                  <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
                 </select>
               </div>
             </div>
@@ -1025,14 +1025,14 @@ export default function App() {
               style={{ marginTop: '3px', cursor: 'pointer', width: '16px', height: '16px' }}
             />
             <label htmlFor="termsCheck" style={{ fontSize: '0.75rem', color: '#cbd5e1', cursor: 'pointer', lineHeight: '1.4' }}>
-              Acepto los tÃ©rminos de inspecciÃ³n ex-ante L7, sellado en BÃ³veda D1 y autorizo la inyecciÃ³n del comando semÃ¡ntico de seguridad.
+              Acepto los términos de inspección ex-ante L7, sellado en Bóveda D1 y autorizo la inyección del comando semántico de seguridad.
             </label>
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               onClick={() => {
-                alert("Acceso cancelado. Puede cerrar esta pestaÃ±a.");
+                alert("Acceso cancelado. Puede cerrar esta pestaña.");
               }}
               style={{
                 flex: '1',
@@ -1072,7 +1072,7 @@ export default function App() {
                 boxShadow: (hasAcceptedTerms && userEmail.trim()) ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none',
                 transition: 'all 0.2s ease'
               }}>
-              ðŸ›¡ï¸ ACEPTAR, ACTIVAR NODO L7 Y ENTRAR
+              🛡️ ACEPTAR, ACTIVAR NODO L7 Y ENTRAR
             </button>
           </div>
 
@@ -1090,7 +1090,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {governanceStatus && (
         <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#059669', color: '#ffffff', padding: '12px 20px', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', zIndex: 10000, fontWeight: '800', fontSize: '0.85rem', border: '1px solid #10b981' }}>
-          ðŸ”” {governanceStatus}
+          🔔 {governanceStatus}
         </div>
       )}
 
@@ -1125,7 +1125,7 @@ export default function App() {
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}>
-              ðŸŸ¦ EXECUTIVE (CEO)
+              🟦 EXECUTIVE (CEO)
             </button>
             
             <button 
@@ -1140,7 +1140,7 @@ export default function App() {
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}>
-              ðŸŸª GRC & AUDIT (CISO/DPO)
+              🟩 GRC & AUDIT (CISO/DPO)
             </button>
 
             <button 
@@ -1158,7 +1158,7 @@ export default function App() {
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}>
-              ðŸŸ¥ CYBER & RESILIENCE (SOC)
+              🟥 CYBER & RESILIENCE (SOC)
             </button>
 
             <button 
@@ -1173,8 +1173,8 @@ export default function App() {
                 fontSize: '0.72rem',
                 cursor: 'pointer'
               }}
-              title="GestiÃ³n de Licencias y Asientos del Nodo Organismo">
-              ðŸ‘¥ ASIENTOS RBAC
+              title="Gestión de Licencias y Asientos del Nodo Organismo">
+              👥 ASIENTOS RBAC
             </button>
 
             <button 
@@ -1189,8 +1189,8 @@ export default function App() {
                 fontSize: '0.72rem',
                 cursor: 'pointer'
               }}
-              title="Descargar GPO de Despliegue AgnÃ³stico Capa 7 (.reg)">
-              ðŸ“¥ Descargar GPO GPE (.reg)
+              title="Descargar GPO de Despliegue Agnóstico Capa 7 (.reg)">
+              📥 Descargar GPO GPE (.reg)
             </button>
 
             <select 
@@ -1211,11 +1211,11 @@ export default function App() {
                 fontWeight: '800',
                 cursor: 'pointer'
               }}>
-              <option value="CISO_ADMIN">ðŸ‘‘ CISO ADMIN (L4)</option>
-              <option value="CISO_SECOPS_LEVEL_3">ðŸ›¡ï¸ SECOPS (L3)</option>
-              <option value="DPO_GRC_LEVEL_2">âš–ï¸ DPO GRC (L2)</option>
-              <option value="BOARD_EXECUTIVE_LEVEL_1">ðŸ“ˆ EXECUTIVE (L1)</option>
-              <option value="OPERATIONAL_AGENT_USER">âš™ï¸ AGENT (L0)</option>
+              <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+              <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+              <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+              <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+              <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
             </select>
           </div>
 
@@ -1240,7 +1240,7 @@ export default function App() {
                     {viewMode === 'CYBER_RESILIENCE' ? 'S.A.A.R.E. CYBER & RESILIENCE LAB (SECOPS / SOC)' : 'PANEL DE CONTROL GRC & CUMPLIMIENTO CORPORATIVO IA'}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#94a3b8', lineHeight: '1.4' }}>
-                    ORGANIZACIÃ“N: <span style={{ color: '#f8fafc', fontWeight: '900' }}>{tenantId}</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | ROL: <span style={{ color: '#a78bfa', fontWeight: '900' }}>{userRole}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | FILTROS PERS.: <span style={{ color: '#38bdf8', fontWeight: '900' }}>{customFilters.length}</span>
+                    ORGANIZACIÓN: <span style={{ color: '#f8fafc', fontWeight: '900' }}>{tenantId}</span> | OPERADOR: <span style={{ color: '#38bdf8', fontWeight: '800' }}>{userEmail}</span> | ROL: <span style={{ color: '#a78bfa', fontWeight: '900' }}>{userRole}</span> | DIRECTIVAS: <span style={{ color: '#4ade80', fontWeight: '900' }}>{activeDirectivesCount} ACTIVAS</span> | FILTROS PERS.: <span style={{ color: '#38bdf8', fontWeight: '900' }}>{customFilters.length}</span>
                   </p>
                 </div>
 
@@ -1250,28 +1250,28 @@ export default function App() {
                     onClick={handleVerifyLicense}
                     style={{ padding: '10px 14px', background: '#0284c7', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}
                     title="Ejecuta SAARE-MD-COMPLIANCE">
-                    ðŸ”‘ Validar Licencia
+                    🔑 Validar Licencia
                   </button>
 
                   <button 
                     onClick={handleRunResilienceCheck}
                     style={{ padding: '10px 14px', background: hasRequiredRank(userRole, 3) ? '#8b5cf6' : '#334155', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', textAlign: 'center', boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)' }}
                     title="Ejecuta SAARE-MD-VERD (Veredicto de Integridad)">
-                    ðŸ§ª Invariant Audit
+                    🧪 Invariant Audit
                   </button>
 
                   <button 
                     onClick={handleGenerateCorporateReport}
                     style={{ padding: '10px 14px', background: '#059669', border: 'none', color: '#ffffff', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)' }}
-                    title="Ejecuta SAARE-MD-CORP (CertificaciÃ³n Corporativa)">
-                    ðŸ“‹ Informes Auditados (PDF)
+                    title="Ejecuta SAARE-MD-CORP (Certificación Corporativa)">
+                    📋 Informes Auditados (PDF)
                   </button>
 
                   <button 
                     onClick={handleLogout}
                     style={{ padding: '10px 14px', background: '#27272a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer', textAlign: 'center' }}
                     title="Ejecuta saare_control.py --kill">
-                    ðŸ”´ CERRAR SESIÃ“N
+                    🔴 CERRAR SESIÓN
                   </button>
                 </div>
               </div>
@@ -1305,13 +1305,13 @@ export default function App() {
                 <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>TOTAL INSPECCIONES L7</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#38bdf8', marginTop: '6px' }}>{totalInspecciones}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '4px' }}>BÃ³veda D1 / SAARE Engine</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '4px' }}>Bóveda D1 / SAARE Engine</div>
                 </div>
 
                 <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>AMENAZAS Y BLOQUEOS (EX-ANTE)</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#ef4444', marginTop: '6px' }}>{totalDeny}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#f87171', marginTop: '4px' }}>Tasa de IntercepciÃ³n: {tasaBloqueo}%</div>
+                  <div style={{ fontSize: '0.68rem', color: '#f87171', marginTop: '4px' }}>Tasa de Intercepción: {tasaBloqueo}%</div>
                 </div>
 
                 <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
@@ -1321,7 +1321,7 @@ export default function App() {
                 </div>
 
                 <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>LATENCIA MEDIA INSPECCIÃ“N</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>LATENCIA MEDIA INSPECCIÓN</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#10b981', marginTop: '6px' }}>{avgLatencyMs} <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>ms</span></div>
                   <div style={{ fontSize: '0.68rem', color: '#34d399', marginTop: '4px' }}>Zero-Storage Compute Overhead</div>
                 </div>
@@ -1335,7 +1335,7 @@ export default function App() {
                 onExportGrantDossier={handleExportGrantDossier}
                 onOpenFriaModal={() => {
                   if (!hasRequiredRank(userRole, 2)) {
-                    triggerGovernance("âŒ Requiere rol GRC / DPO (Nivel 2).");
+                    triggerGovernance("❌ Requiere rol GRC / DPO (Nivel 2).");
                     return;
                   }
                   setShowFriaModal(true);
@@ -1375,8 +1375,8 @@ export default function App() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
                 <button onClick={() => setActiveTab('GLOBAL')} style={{ padding: '12px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : '#0f172a', color: activeTab === 'GLOBAL' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>REGISTRO DE EVIDENCIA</button>
-                <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>âš¡ S.A.A.R.E. ENFORCEMENT</button>
-                <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '12px 16px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>ðŸ›ï¸ SUBSIDIES HUB</button>
+                <button onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '12px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : '#0f172a', color: activeTab === 'RUNLIVE' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>⚡ S.A.A.R.E. ENFORCEMENT</button>
+                <button onClick={() => setActiveTab('SUBSIDIES')} style={{ padding: '12px 16px', background: activeTab === 'SUBSIDIES' ? '#059669' : '#0f172a', color: activeTab === 'SUBSIDIES' ? '#ffffff' : '#34d399', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>🏛️ SUBSIDIES HUB</button>
                 <button onClick={() => setActiveTab('CONFIG')} style={{ padding: '12px 16px', background: activeTab === 'CONFIG' ? '#0284c7' : '#0f172a', color: activeTab === 'CONFIG' ? '#ffffff' : '#94a3b8', border: '1px solid #1e293b', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontWeight: '900', fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center' }}>POLICY ENGINE ({directives.length})</button>
               </div>
 
@@ -1387,7 +1387,7 @@ export default function App() {
               {activeTab === 'GLOBAL' && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÃA</h3>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>HISTORIAL DE EVIDENCIAS FORENSES EN AUDITORÍA</h3>
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}>Trazas verificables: {filteredEvidences.length}</span>
                   </div>
 
@@ -1398,16 +1398,16 @@ export default function App() {
                           <th style={{ padding: '12px 16px', fontWeight: '800' }}>TIMESTAMP</th>
                           <th style={{ padding: '12px 16px', fontWeight: '800' }}>DECISION ID</th>
                           <th style={{ padding: '12px 16px', fontWeight: '800' }}>USUARIO / OPERADOR</th>
-                          <th style={{ padding: '12px 16px', fontWeight: '800' }}>PROMPT / CONTESTACIÃ“N</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800' }}>PROMPT / CONTESTACIÓN</th>
                           <th style={{ padding: '12px 16px', fontWeight: '800' }}>DICTAMEN</th>
-                          <th style={{ padding: '12px 16px', fontWeight: '800' }}>ACCIONES Y AUDITORÃA</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800' }}>ACCIONES Y AUDITORÍA</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredEvidences.length === 0 ? (
                           <tr style={{ borderBottom: '1px solid #1e293b', background: '#0b0f19' }}>
                             <td colSpan="6" style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: '0.82rem', fontWeight: '600' }}>
-                              ðŸ›¡ï¸ BÃ³veda D1 conectada. Esperando eventos de telemetrÃ­a L7 en tiempo real...
+                              🛡️ Bóveda D1 conectada. Esperando eventos de telemetría L7 en tiempo real...
                             </td>
                           </tr>
                         ) : (
@@ -1447,7 +1447,7 @@ export default function App() {
                                     <button 
                                       onClick={() => handleAuditPromptFromRegistry(ev)} 
                                       style={{ padding: '4px 8px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}>
-                                      âš¡ Auditar
+                                      ⚡ Auditar
                                     </button>
                                     <button 
                                       onClick={() => setSelectedJson(ev.rawJson || ev)} 
@@ -1457,20 +1457,20 @@ export default function App() {
                                     <button 
                                       onClick={() => handleSyncVaultAndVerify(ev.merkleRoot)} 
                                       style={{ padding: '4px 8px', background: 'none', border: '1px solid #059669', color: '#34d399', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}>
-                                      ðŸ›¡ï¸ Verificar
+                                      🛡️ Verificar
                                     </button>
                                     <button 
                                       onClick={() => handleDownloadSingleEvidencePdf(ev)} 
                                       style={{ padding: '4px 8px', background: '#059669', border: 'none', color: '#ffffff', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}
                                       title="Exportar Recibo Forense PDF individual">
-                                      ðŸ“„ PDF
+                                      📄 PDF
                                     </button>
                                     {isRejected && (
                                       <button 
                                         onClick={() => handleExportToSiem(ev)} 
                                         style={{ padding: '4px 8px', background: hasRequiredRank(userRole, 3) ? '#7c3aed' : '#334155', border: 'none', color: '#ffffff', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed' }}
                                         title={!hasRequiredRank(userRole, 3) ? "Requiere SecOps/CISO (L3)" : "Exportar evento DENY a SIEM / SOC"}>
-                                        ðŸš¨ SIEM
+                                        🚨 SIEM
                                       </button>
                                     )}
                                   </div>
@@ -1491,16 +1491,16 @@ export default function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                       <div>
                         <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.1rem', fontWeight: '900', letterSpacing: '0.5px' }}>
-                          âš¡ S.A.A.R.E. RUNLIVE â€” TELEMETRÃA Y PRUEBAS EX-ANTE EN RAM
+                          ⚡ S.A.A.R.E. RUNLIVE — TELEMETRÍA Y PRUEBAS EX-ANTE EN RAM
                         </h3>
                         <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                          SimulaciÃ³n e intercepciÃ³n forense L7 en tiempo real en la memoria RAM volÃ¡til.
+                          Simulación e intercepción forense L7 en tiempo real en la memoria RAM volátil.
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
                           onClick={() => {
-                            setTestPrompt("Auditar crÃ©dito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
+                            setTestPrompt("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
                             setAuditedEvidenceId(null);
                           }}
                           style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
@@ -1524,7 +1524,7 @@ export default function App() {
                           <button 
                             onClick={() => { setAuditedEvidenceId(null); setTestPrompt(""); }}
                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '800' }}>
-                            Limpiar SelecciÃ³n
+                            Limpiar Selección
                           </button>
                         )}
                       </div>
@@ -1532,7 +1532,7 @@ export default function App() {
                         rows={3}
                         value={testPrompt}
                         onChange={(e) => setTestPrompt(e.target.value)}
-                        placeholder="Escriba o seleccione un prompt para destripar la sanitizaciÃ³n ex-ante..."
+                        placeholder="Escriba o seleccione un prompt para destripar la sanitización ex-ante..."
                         style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #1e293b', color: '#f8fafc', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.82rem', resize: 'vertical', boxSizing: 'border-box' }}
                       />
                     </div>
@@ -1541,7 +1541,7 @@ export default function App() {
                       onClick={handleExecuteTestExAnte}
                       disabled={isEvaluating}
                       style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)' }}>
-                      {isEvaluating ? "EVALUANDO TELEMETRÃA EX-ANTE EN RAM..." : "âš¡ EJECUTAR RUNTIME EX-ANTE (RAM L7)"}
+                      {isEvaluating ? "EVALUANDO TELEMETRÍA EX-ANTE EN RAM..." : "⚡ EJECUTAR RUNTIME EX-ANTE (RAM L7)"}
                     </button>
 
                     {testResult && (
@@ -1576,16 +1576,16 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* BLOQUE DEDICADO Y SEPARADO PARA DETECCIÃ“N ESPECTRAL DE DEEPFAKES */}
+                  {/* BLOQUE DEDICADO Y SEPARADO PARA DETECCIÓN ESPECTRAL DE DEEPFAKES */}
                   <div style={{ background: '#020617', padding: '24px', borderRadius: '12px', border: '1px solid #8b5cf6', marginTop: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '1.4rem' }}>ðŸŽ­</span>
+                      <span style={{ fontSize: '1.4rem' }}>🎬</span>
                       <h3 style={{ margin: 0, color: '#a78bfa', fontSize: '1.1rem', fontWeight: '900' }}>
-                        DETECCIÃ“N ESPECTRAL DE DEEPFAKES & RESILIENCIA LAB
+                        DETECCIÓN ESPECTRAL DE DEEPFAKES & RESILIENCIA LAB
                       </h3>
                     </div>
                     <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#94a3b8', lineHeight: '1.4' }}>
-                      AnÃ¡lisis espectral e intercepciÃ³n ex-ante en memoria RAM volÃ¡til. Ejecute el comando semÃ¡ntico <code style={{ color: '#c084fc', background: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE}</code> o evalÃºe vectores de ataque contra el runtime.
+                      Análisis espectral e intercepción ex-ante en memoria RAM volátil. Ejecute el comando semántico <code style={{ color: '#c084fc', background: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE}</code> o evalúe vectores de ataque contra el runtime.
                     </p>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
@@ -1594,40 +1594,40 @@ export default function App() {
                         disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
                         style={{ background: '#0f172a', border: '1px solid #8b5cf6', color: '#c084fc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
                         title="Ejecuta SAARE-MD-DEEP">
-                        ðŸŽ­ DetecciÃ³n Espectral Deepfakes ({SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE})
+                        🎬 Detección Espectral Deepfakes ({SAARE_SEMANTIC_COMMANDS.MODE_DEEPFAKE})
                       </button>
                       <button 
                         onClick={() => executeResilienceSimulation('PROMPT_INJECTION')} 
                         disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
                         style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
-                        ðŸ’¥ Jailbreak / Prompt Injection
+                        💥 Jailbreak / Prompt Injection
                       </button>
                       <button 
                         onClick={() => executeResilienceSimulation('PII_EXFILTRATION')} 
                         disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
                         style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
-                        ðŸ” Fuga de PII / DNI / IBAN
+                        🔐 Fuga de PII / DNI / IBAN
                       </button>
                       <button 
                         onClick={() => executeResilienceSimulation('FAIL_CLOSED_TEST')} 
                         disabled={simulationRunning || !hasRequiredRank(userRole, 3)}
                         style={{ background: '#0f172a', border: '1px solid #059669', color: '#34d399', padding: '12px 16px', borderRadius: '8px', cursor: hasRequiredRank(userRole, 3) ? 'pointer' : 'not-allowed', fontSize: '0.78rem', fontWeight: '800', textAlign: 'left' }}>
-                        ðŸ›¡ï¸ Test Fail-Closed Gate
+                        🛡️ Test Fail-Closed Gate
                       </button>
                     </div>
 
                     {simulationResult && (
                       <div style={{ background: '#0b0f19', border: '1px solid #8b5cf6', padding: '14px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                        <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '6px' }}>Dictamen de SimulaciÃ³n Resiliencia / Deepfakes: PASS (0 Alteraciones)</div>
+                        <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '6px' }}>Dictamen de Simulación Resiliencia / Deepfakes: PASS (0 Alteraciones)</div>
                         <pre style={{ margin: 0, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>{JSON.stringify(simulationResult, null, 2)}</pre>
                       </div>
                     )}
                   </div>
 
                   <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
-                    <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>NODO AGNOSTICO ON-PREMISE ACTIVO:</div>
+                    <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>NODO AGNÓSTICO ON-PREMISE ACTIVO:</div>
                     <div>Endpoint local: http://localhost:8787/api/v1/intercept</div>
-                    <div>Modo de operaciÃ³n: Zero-Disk / Ephemeral Memory (mlock)</div>
+                    <div>Modo de operación: Zero-Disk / Ephemeral Memory (mlock)</div>
                   </div>
                 </div>
               )}
@@ -1637,12 +1637,12 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: '#f8fafc', textTransform: 'uppercase' }}>MATRIZ DE DIRECTIVAS Y REGLAS DEL POLICY ENGINE</h3>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Reglas de inspecciÃ³n ex-ante aplicadas activamente en la capa 7.</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Reglas de inspección ex-ante aplicadas activamente en la capa 7.</p>
                     </div>
                     <button 
                       onClick={() => setShowAddFilterModal(true)}
                       style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
-                      âž• AÃ±adir Filtro SintÃ¡ctico
+                      ➕ Añadir Filtro Sintáctico
                     </button>
                   </div>
 
@@ -1652,10 +1652,10 @@ export default function App() {
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                             <span style={{ fontSize: '0.68rem', fontWeight: '800', padding: '2px 6px', background: '#1e293b', color: '#38bdf8', borderRadius: '4px' }}>{dir.category}</span>
-                            <span style={{ fontSize: '0.7rem', fontWeight: '800', color: dir.active ? '#34d399' : '#f87171' }}>{dir.active ? 'â— ACTIVA' : 'â—‹ INACTIVA'}</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: '800', color: dir.active ? '#34d399' : '#f87171' }}>{dir.active ? '● ACTIVA' : '○ INACTIVA'}</span>
                           </div>
                           <h4 style={{ margin: '0 0 4px 0', fontSize: '0.88rem', fontWeight: '800', color: '#f8fafc' }}>{dir.name}</h4>
-                          <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>EstÃ¡ndar: {dir.standard}</p>
+                          <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>Estándar: {dir.standard}</p>
                         </div>
                         <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>SGP 1.0 Runtime</span>
@@ -1674,7 +1674,7 @@ export default function App() {
 
                   {customFilters.length > 0 && (
                     <div style={{ marginTop: '24px' }}>
-                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: '#38bdf8', textTransform: 'uppercase' }}>FILTROS SINTÃCTICOS PERSONALIZADOS DEL TENANT ({customFilters.length})</h4>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: '#38bdf8', textTransform: 'uppercase' }}>FILTROS SINTÁCTICOS PERSONALIZADOS DEL TENANT ({customFilters.length})</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
                         {customFilters.map(cf => (
                           <div key={cf.id} style={{ background: '#020617', border: '1px solid #0284c7', borderRadius: '8px', padding: '12px' }}>
@@ -1683,7 +1683,7 @@ export default function App() {
                               <button onClick={() => handleDeleteCustomFilter(cf.id)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}>Eliminar</button>
                             </div>
                             <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#38bdf8', background: '#0b0f19', padding: '6px', borderRadius: '4px', wordBreak: 'break-all' }}>
-                              PatrÃ³n: {cf.pattern}
+                              Patrón: {cf.pattern}
                             </div>
                           </div>
                         ))}
@@ -1703,7 +1703,7 @@ export default function App() {
           <div style={{ maxWidth: '650px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', color: '#38bdf8', fontWeight: '900' }}>INSPECTOR DE EVIDENCIA FORENSE (JSON)</h3>
-              <button onClick={() => setSelectedJson(null)} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer' }}>âœ•</button>
+              <button onClick={() => setSelectedJson(null)} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
             </div>
             <pre style={{ background: '#020617', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', color: '#34d399', fontSize: '0.75rem', fontFamily: 'monospace', maxHeight: '400px', overflow: 'auto', margin: 0 }}>
               {JSON.stringify(selectedJson, null, 2)}
@@ -1715,13 +1715,13 @@ export default function App() {
       {showAddFilterModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
           <div style={{ maxWidth: '480px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#f8fafc', fontWeight: '900' }}>AÃ‘ADIR NUEVA REGLA SINTÃCTICA AL POLICY ENGINE</h3>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#f8fafc', fontWeight: '900' }}>AÑADIR NUEVA REGLA SINTÁCTICA AL POLICY ENGINE</h3>
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>NOMBRE DE LA REGLA:</label>
               <input type="text" value={newRuleName} onChange={(e) => setNewRuleName(e.target.value)} placeholder="Ej: Bloqueo de API Keys Internas" style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>PATRÃ“N DE BÃšSQUEDA / REGEX:</label>
+              <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>PATRÓN DE BÚSQUEDA / REGEX:</label>
               <input type="text" value={newRulePattern} onChange={(e) => setNewRulePattern(e.target.value)} placeholder="Ej: sk-proj-[a-zA-Z0-9]{32}" style={{ width: '100%', padding: '10px', background: '#020617', border: '1px solid #334155', color: '#38bdf8', fontFamily: 'monospace', borderRadius: '6px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1744,14 +1744,14 @@ export default function App() {
         <FriaWizardModal onClose={() => setShowFriaModal(false)} onGenerate={handleGenerateFriaDocument} />
       )}
 
-      {/* CONTENEDOR OCULTO PARA GENERACIÃ“N DE PDF INDIVIDUAL */}
+      {/* CONTENEDOR OCULTO PARA GENERACIÓN DE PDF INDIVIDUAL */}
       {selectedEvidenceForPdf && (
         <div id="single-evidence-pdf-container" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', background: '#ffffff', color: '#0f172a', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-          <h1 style={{ color: '#0284c7', borderBottom: '2px solid #0284c7', paddingBottom: '10px' }}>S.A.A.R.E. â€” RECIBO FORENSE DE INSPECCIÃ“N EX-ANTE</h1>
+          <h1 style={{ color: '#0284c7', borderBottom: '2px solid #0284c7', paddingBottom: '10px' }}>S.A.A.R.E. — RECIBO FORENSE DE INSPECCIÓN EX-ANTE</h1>
           <p><strong>ID Evidencia:</strong> {selectedEvidenceForPdf.id}</p>
           <p><strong>Organismo / Tenant:</strong> {selectedEvidenceForPdf.tenant}</p>
           <p><strong>Operador / Usuario:</strong> {selectedEvidenceForPdf.user}</p>
-          <p><strong>Timestamp CriptogrÃ¡fico:</strong> {selectedEvidenceForPdf.rawTimestamp}</p>
+          <p><strong>Timestamp Criptográfico:</strong> {selectedEvidenceForPdf.rawTimestamp}</p>
           <p><strong>Dictamen L7:</strong> <span style={{ color: selectedEvidenceForPdf.decision === 'DENY' ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>{selectedEvidenceForPdf.verdict} ({selectedEvidenceForPdf.decision})</span></p>
           <hr />
           <h3>Payload Inspeccionado</h3>
@@ -1763,7 +1763,7 @@ export default function App() {
             </>
           )}
           <hr />
-          <h3>AcreditaciÃ³n de Inmutabilidad WORM (D1)</h3>
+          <h3>Acreditación de Inmutabilidad WORM (D1)</h3>
           <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', wordBreak: 'break-all' }}><strong>Merkle Root Hash:</strong> {selectedEvidenceForPdf.merkleRoot}</p>
           <p style={{ fontSize: '0.8rem' }}><strong>Safe Creative ID:</strong> RPI-2607076315021 | <strong>Trust Anchor:</strong> https://vault.saare.es</p>
         </div>
