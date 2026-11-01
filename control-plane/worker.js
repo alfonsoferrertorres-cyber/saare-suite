@@ -507,6 +507,103 @@ async function sendOtpRecoveryEmail(recipientEmail, otp, env) {
 export default {
   async fetch(request, env, ctx) {
     // =========================================================================
+    // HANDLER RAÍZ / Y GUARDA CRIPTOGRÁFICA FAIL-CLOSED SAARE L7 v2.2
+    // =========================================================================
+    if (request.method === "OPTIONS") { return handleCors(request); }
+
+    const _u = new URL(request.url);
+    const _p = _u.pathname.toLowerCase();
+
+    // 1. Endpoint Limpio para GET / (Sustituto definitivo del Login Gate)
+    if (request.method === "GET" && (_p === "/" || _p === "")) {
+      return new Response(
+        JSON.stringify({
+          service: "S.A.A.R.E. Enterprise Control Plane",
+          version: "SGP 1.0 (L7 Hardened v2.2)",
+          status: "ONLINE",
+          node: "RPI-2607076315021",
+          trustAnchor: "https://vault.saare.es"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
+    // 2. Guarda RBAC Fail-Closed y Anti-Spoofing HMAC
+    try {
+      if (_p.includes("intercept") || _p.includes("judge") || _p.includes("enforce") || _p.includes("runs") || _p.includes("traces")) {
+        const sRole = request.headers.get("x-saare-role");
+        const sUser = request.headers.get("x-saare-user");
+        const sTenant = request.headers.get("x-saare-tenant");
+        const sSig = request.headers.get("x-saare-signature");
+
+        if (!sRole || !sUser || !sTenant) {
+          return new Response(
+            JSON.stringify({
+              status: "DENIED",
+              verdict: "RECHAZADO",
+              decision: "DENY",
+              error: "UNAUTHORIZED_MISSING_RBAC_HEADERS",
+              message: "Acceso denegado: Se requieren cabeceras L7 de autenticacion."
+            }),
+            { status: 401, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+          );
+        }
+
+        const ROLE_RANKS = { "OPERATIONAL_AGENT_USER": 0, "TENANT_AUDITOR": 1, "SECURITY_CISO_ADMIN": 2 };
+        if (ROLE_RANKS[sRole] === undefined) {
+          return new Response(
+            JSON.stringify({
+              status: "DENIED",
+              verdict: "RECHAZADO",
+              decision: "DENY",
+              error: "FORBIDDEN_INVALID_ROLE",
+              message: "Acceso denegado: Rol no reconocido en la matriz RBAC."
+            }),
+            { status: 403, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+          );
+        }
+
+        const secret = env.SAARE_HMAC_SECRET || "SAARE_HARDENED_L7_SECRET_2026";
+        const canonicalData = `${sTenant}:${sUser}:${sRole}`;
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
+        );
+        
+        let isValidSig = false;
+        if (sSig) {
+          try {
+            const sigBuf = new Uint8Array(sSig.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            isValidSig = await crypto.subtle.verify("HMAC", key, sigBuf, encoder.encode(canonicalData));
+          } catch (_) { isValidSig = false; }
+        }
+
+        if (!isValidSig) {
+          return new Response(
+            JSON.stringify({
+              status: "DENIED",
+              verdict: "RECHAZADO",
+              decision: "DENY",
+              error: "INVALID_CRYPTOGRAPHIC_IDENTITY",
+              message: "Firma de cabeceras RBAC invalida o adulterada."
+            }),
+            { status: 401, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+          );
+        }
+      }
+    } catch (e) {
+      return new Response(
+        JSON.stringify({
+          status: "DENIED",
+          verdict: "RECHAZADO",
+          decision: "DENY",
+          error: "SECURITY_GUARD_INTERNAL_ERROR",
+          message: "Error interno en la guarda de seguridad. Fail-Closed activo."
+        }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+    // =========================================================================
     // GUARDA DE SEGURIDAD CRIPTOGRÁFICA Y RBAC FAIL-CLOSED SAARE L7 v2.2
     // =========================================================================
     if (request.method === "OPTIONS") { return handleCors(request); }
