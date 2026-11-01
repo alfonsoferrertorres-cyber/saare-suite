@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -9,7 +9,7 @@
     <!-- INDEXACIÓN DE ICONOS Y BRANDING DE MARCA -->
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/LOGO NAVEGADOR.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/LOGO%20NAVEGADOR.png" />
 
     <title>S.A.A.R.E. Platform | Dual-Vault L7 & Audit Console</title>
 
@@ -21,7 +21,6 @@
         const defaultRole = "CISO_ADMIN";
         const masterToken = "sk_saare_live_master_auto_login_session";
 
-        // Fijar sesión automática en localStorage si no existe o si se solicita acceso directo
         if (!localStorage.getItem('saare_token') || !localStorage.getItem('saare_user')) {
           localStorage.setItem('saare_token', masterToken);
           localStorage.setItem('saare_user', JSON.stringify({

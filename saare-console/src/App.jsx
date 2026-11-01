@@ -1,4 +1,4 @@
-﻿// saare-console/src/App.jsx â€” Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (ProducciÃ³n V12.1 Integrada)
+// saare-console/src/App.jsx â€” Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (ProducciÃ³n V12.1 Integrada)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
