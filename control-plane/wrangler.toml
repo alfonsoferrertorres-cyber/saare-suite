@@ -1,15 +1,15 @@
-﻿# wrangler.toml â€” ConfiguraciÃ³n Oficial de Despliegue S.A.A.R.E. Control Plane (SGP 1.0 / V12.1)
+﻿# wrangler.toml — Configuración Oficial de Despliegue S.A.A.R.E. Control Plane (SGP 1.0 / V12.1)
 
 name = "saare-control-plane-prod"
 main = "worker.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
-# AutomatizaciÃ³n de Tareas Programadas (Cron Triggers para Batching Merkle - Fase 3)
+# Automatización de Tareas Programadas (Cron Triggers para Batching Merkle - Fase 3)
 [triggers]
 crons = ["0 */6 * * *"]
 
-# ConfiguraciÃ³n de Observabilidad Avanzada
+# Configuración de Observabilidad Avanzada
 [observability.logs]
 enabled = true
 head_sampling_rate = 1.0
@@ -17,18 +17,17 @@ invocation_logs = true
 persist = true
 
 # ------------------------------------------------------------------------------
-# ENTORNO DE PRODUCCIÃ“N (npx wrangler deploy --env production)
+# ENTORNO DE PRODUCCIÓN (npx wrangler deploy --env production)
 # ------------------------------------------------------------------------------
 [env.production]
 name = "saare-control-plane-prod"
 
-# Enrutamiento de Dominios Oficiales en ProducciÃ³n (Incluye BÃ³veda Vault)
+# Enrutamiento de Dominios Oficiales en Producción (Excluye la raíz saare.es/* para servir la SPA)
 routes = [
   { pattern = "api.saare.es/*", zone_name = "saare.es" },
   { pattern = "vault.saare.es/*", zone_name = "saare.es" },
   { pattern = "saare.es/api/*", zone_name = "saare.es" },
-  { pattern = "saare.es/v1/*", zone_name = "saare.es" },
-  { pattern = "saare.es/*", zone_name = "saare.es" }
+  { pattern = "saare.es/v1/*", zone_name = "saare.es" }
 ]
 
 # Variables de Entorno Oficiales
@@ -42,12 +41,12 @@ ALLOW_FALLBACK_VAULT = "false"
 TRUST_ANCHOR = "https://vault.saare.es"
 SAFE_CREATIVE_ID = "RPI-2607076315021"
 
-# BÃ³veda KV Global
+# Bóveda KV Global
 [[env.production.kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
 
-# BÃ³veda D1 SQL (Verificada y Operativa)
+# Bóveda D1 SQL (Verificada y Operativa)
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1"
