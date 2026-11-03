@@ -1,13 +1,16 @@
 // saare-console/src/config/saareState.js — Configuración Global S.A.A.R.E. (SGP 1.0 / V12.1 Producción Virginizado)
 
 // Helper seguro para resolver variables de entorno en Vite, Node.js o entornos SSR sin lanzar excepciones
-const getEnvVar = (key, fallback) => {
+const getEnvVar = (keys, fallback) => {
+  const keyList = Array.isArray(keys) ? keys : [keys];
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key] !== undefined) {
-      return import.meta.env[key];
-    }
-    if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
-      return process.env[key];
+    for (const key of keyList) {
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key] !== undefined && import.meta.env[key] !== '') {
+        return import.meta.env[key];
+      }
+      if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined && process.env[key] !== '') {
+        return process.env[key];
+      }
     }
   } catch (e) {
     // Fallback silencioso en entornos restringidos
@@ -20,11 +23,14 @@ export const SAARE_CONFIG = Object.freeze({
   SGP_VERSION: "SGP 1.0",
   BUILD_VERSION: "12.1-PRODUCTION",
   COMPANY_NAME: "S.A.A.R.E. Technologies S.L.",
-  DEFAULT_TENANT: getEnvVar('VITE_SAARE_DEFAULT_TENANT', "ENTERPRISE"),
-  DEFAULT_USER: getEnvVar('VITE_SAARE_DEFAULT_USER', "ciso@saare.es"),
-  DEFAULT_ROLE: getEnvVar('VITE_SAARE_DEFAULT_ROLE', "CISO_ADMIN"),
-  TRUST_ANCHOR: getEnvVar('VITE_SAARE_TRUST_ANCHOR', "https://vault.saare.es"),
-  SAFE_CREATIVE_ID: getEnvVar('VITE_SAARE_SAFE_CREATIVE_ID', "RPI-2607076315021"),
+  
+  // Resolución con soporte prioritario VITE_SAARE_* y fallback VITE_*
+  DEFAULT_TENANT: getEnvVar(['VITE_SAARE_DEFAULT_TENANT', 'VITE_DEFAULT_TENANT'], "ENTERPRISE"),
+  DEFAULT_USER: getEnvVar(['VITE_SAARE_DEFAULT_USER', 'VITE_DEFAULT_USER'], "ciso@saare.es"),
+  DEFAULT_ROLE: getEnvVar(['VITE_SAARE_DEFAULT_ROLE', 'VITE_DEFAULT_ROLE'], "CISO_ADMIN"),
+  TRUST_ANCHOR: getEnvVar(['VITE_SAARE_TRUST_ANCHOR', 'VITE_TRUST_ANCHOR'], "https://vault.saare.es"),
+  SAFE_CREATIVE_ID: getEnvVar(['VITE_SAARE_SAFE_CREATIVE_ID', 'VITE_SAFE_CREATIVE_ID'], "RPI-2607076315021"),
+  
   EXPEDIENTE_MASTER: "MS3V-RECON-VALID-2026-MASTER",
   MERKLE_ROOT_VERSION: "MS3V-SGP-1.0",
   LEGAL_FRAMEWORK: "Art. 326 LEC / Ley 1/2019 / EU AI Act Art. 27",
