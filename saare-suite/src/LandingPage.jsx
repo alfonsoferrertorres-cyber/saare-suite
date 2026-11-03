@@ -1,4 +1,4 @@
-// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.2
+// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.3 (Con Guía de Integración L7)
 
 import React, { useState, useEffect } from 'react';
 import PricingSection from './components/PricingSection';
@@ -7,6 +7,7 @@ import { API_HOST } from './api/api';
 const NAV_ITEMS = [
   { label: 'Arquitectura', href: '#motor' },
   { label: 'Diferenciación', href: '#diferenciacion' },
+  { label: 'Integración Proxy', href: '#integracion' },
   { label: 'Biblioteca de Evidencias', href: '#templates' },
   { label: 'Licenciamiento', href: '#pricing' },
 ];
@@ -165,10 +166,10 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                   Solicitar auditoría ex ante
                 </a>
                 <a
-                  href="#pricing"
+                  href="#integracion"
                   className="rounded-xl border border-cyan-500/40 bg-slate-900/80 px-7 py-3.5 text-sm font-semibold text-cyan-300 transition-all hover:bg-slate-800 inline-block text-center"
                 >
-                  Explorar licencias
+                  Ver Guía de Integración
                 </a>
               </div>
               <p className="mt-4 text-[11px] text-slate-500 font-mono">
@@ -286,7 +287,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">03. DIFERENCIACIÓN</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es solo documentación de cumplimiento. Es control técnico de los flujos de IA.</h2>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es geospatial o documentación. Es control técnico de los flujos de IA.</h2>
               <p className="text-slate-400 mt-3 text-sm">La diferencia está en dónde se aplica el control y cómo se demuestra.</p>
             </div>
 
@@ -329,11 +330,82 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 04. GOBERNANZA Y CUMPLIMIENTO */}
-        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+        {/* 04. GUÍA DE INTEGRACIÓN RÁPIDA (PROXY AGNÓSTICO) */}
+        <section id="integracion" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">04. GOBERNANZA Y CUMPLIMIENTO</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">04. GUÍA DE INTEGRACIÓN RÁPIDA</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Conecte su aplicación al Proxy de Gobernanza L7</h2>
+              <p className="text-slate-400 mt-3 text-sm leading-relaxed">
+                Para enrutar sus peticiones de IA a través de la capa de cumplimiento ex-ante de S.A.A.R.E., solo necesita actualizar el destino de sus llamadas API o configurar su variable de entorno.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Opción A: Archivo .env */}
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-bold text-white">Opción A: Cambiar la URL Base (.env)</h3>
+                    <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400 font-mono">RECOMENDADO</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                    Si utiliza librerías estándar compatibles con OpenAI u otros proveedores, simplemente redirija la URL base del servicio en su configuración:
+                  </p>
+                  <div className="rounded-xl bg-slate-950 p-4 border border-slate-800 font-mono text-xs text-cyan-300 mb-4">
+                    OPENAI_BASE_URL=https://api.saare.es/v1/proxy/llm
+                  </div>
+                  <p className="text-xs text-slate-400 mb-2 font-semibold">Cabeceras requeridas en la petición:</p>
+                  <ul className="space-y-1.5 text-xs text-slate-300 font-mono list-disc list-inside">
+                    <li><span className="text-slate-400">Authorization:</span> Bearer sk_saare_live_su_token</li>
+                    <li><span className="text-slate-400">x-saare-tenant:</span> NOMBRE_DE_SU_EMPRESA</li>
+                    <li><span className="text-slate-400">x-saare-provider:</span> OPENAI (o GEMINI, ANTHROPIC, etc.)</li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
+                  Su código funcionará de inmediato pasando por la capa de seguridad sin modificaciones adicionales.
+                </div>
+              </div>
+
+              {/* Opción B: Código Estándar */}
+              <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-bold text-white">Opción B: Llamada HTTP Directa</h3>
+                    <span className="rounded bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 text-[10px] font-bold text-purple-400 font-mono">FETCH / AXIOS</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+                    Ejemplo de integración mediante código estándar en su backend para auditar y sanear prompts antes de la inferencia:
+                  </p>
+                  <pre className="rounded-xl bg-slate-950 p-4 border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto leading-relaxed">
+{`const res = await fetch("https://api.saare.es/v1/proxy/llm", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer sk_saare_live_...",
+    "x-saare-tenant": "ORGANISMO_DEMO_01",
+    "x-saare-provider": "OPENAI"
+  },
+  body: JSON.stringify({
+    model: "gpt-4o",
+    prompt: "Mi NIF es 48553065L y audito este flujo"
+  })
+});`}
+                  </pre>
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
+                  Devuelve el veredicto ex ante, traza firmada en la Bóveda D1 y respuesta saneada en RAM.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 05. GOBERNANZA Y CUMPLIMIENTO */}
+        <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#030712]">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="max-w-3xl mb-12">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">05. GOBERNANZA Y CUMPLIMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Prepara tus procesos de IA para una supervisión demostrable</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
                 S.A.A.R.E. está diseñado para apoyar la implantación de controles técnicos y procesos de gobernanza relacionados con:
@@ -379,11 +451,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 05. LICENCIAMIENTO */}
-        <section id="pricing" className="border-b border-slate-800/80 py-20 bg-[#030712]">
+        {/* 06. LICENCIAMIENTO */}
+        <section id="pricing" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">05. LICENCIAMIENTO</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. LICENCIAMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Empieza con el alcance que necesitas. Escala cuando tu operación lo requiera.</h2>
               <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Ahorra un 20% en modalidad anual (Sandbox permanente gratuito).</p>
             </div>
@@ -392,11 +464,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 06. PARA QUIÉN ES S.A.A.R.E. */}
+        {/* 07. PARA QUIÉN ES S.A.A.R.E. */}
         <section className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. PARA QUIÉN ES S.A.A.R.E.</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">07. PARA QUIÉN ES S.A.A.R.E.</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Una infraestructura para organizaciones que necesitan gobernar la IA de forma operativa.</h2>
             </div>
 
@@ -421,11 +493,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 07. VALIDACIÓN TÉCNICA */}
+        {/* 08. VALIDACIÓN TÉCNICA */}
         <section className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">07. VALIDACIÓN TÉCNICA</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. VALIDACIÓN TÉCNICA</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Las capacidades deben poder demostrarse</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
                 La confianza en una infraestructura de gobernanza no debería depender únicamente de declaraciones comerciales. Por eso, la evaluación técnica de S.A.A.R.E. puede centrarse en aspectos empíricos y verificables.
@@ -461,12 +533,12 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 08. LLAMADA FINAL A LA ACCIÓN */}
+        {/* 09. LLAMADA FINAL A LA ACCIÓN */}
         <section id="evaluation" className="py-20 bg-slate-950">
           <div className="mx-auto max-w-4xl px-6">
             <div className="rounded-3xl border border-slate-800 bg-[#0A101E] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
               <div className="text-center max-w-2xl mx-auto mb-10">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. EVALUACIÓN EX ANTE</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">09. EVALUACIÓN EX ANTE</span>
                 <h2 className="text-3xl font-black text-white mt-2">Antes de confiar en un modelo, establece cómo se gobierna</h2>
                 <p className="text-sm text-slate-400 mt-3">
                   Evalúa cómo S.A.A.R.E. puede incorporarse a tu arquitectura de IA, qué controles necesita tu organización y qué evidencias requiere tu proceso de auditoría.
