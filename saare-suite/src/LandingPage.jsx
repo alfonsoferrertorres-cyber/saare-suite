@@ -84,6 +84,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
     }
   };
 
+  // ACCESO DIRECTO SIN FRICCIÓN HACIA LA CONSOLA
   const handleAction = (plan = 'DISCOVER_FREE') => {
     if (typeof onSelectPlan === 'function') {
       onSelectPlan(plan);
