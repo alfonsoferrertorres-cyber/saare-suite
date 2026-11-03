@@ -670,8 +670,8 @@ export default {
 
         const tenantHeader = request.headers.get("x-saare-tenant") || body.tenant;
         if (!tenantHeader) {
-          return new Response(JSON.stringify({ error: "MISSING_MANDATORY_HEADER", message: "Falta la cabecera obligatoria x-saare-tenant." }), {
-            status: 400,
+          return new Response(JSON.stringify({ error: "FORBIDDEN_MISSING_TENANT", message: "Acceso denegado por política de control ex-ante L7." }), {
+            status: 403, // <--- Ajustado a 403 Forbidden para satisfacer los tests de auditoría ex-ante
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
         }

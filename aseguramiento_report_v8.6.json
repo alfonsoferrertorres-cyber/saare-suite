@@ -1,43 +1,43 @@
 ﻿{
     "auditSuite":  "SAARE L7 Hardened Negative Matrix v2.2",
     "targetHost":  "https://api.saare.es",
-    "executedAt":  "2026-11-01T11:30:13Z",
-    "overallStatus":  "PASS",
+    "executedAt":  "2026-11-03T09:48:12Z",
+    "overallStatus":  "FAIL",
     "results":  [
                     {
                         "id":  "NEG-01",
                         "name":  "Sin cabeceras L7",
                         "category":  "Control Acceso",
-                        "status":  "PASS",
-                        "details":  "Bloqueo correcto verificado: HTTP 401 Unauthorized"
+                        "status":  "FAIL",
+                        "details":  "Código HTTP inesperado: 404"
                     },
                     {
                         "id":  "NEG-02",
                         "name":  "Cabeceras RBAC Spoofed",
                         "category":  "Anti-Spoofing",
-                        "status":  "PASS",
-                        "details":  "Firma adulterada rechazada con exito: HTTP 401 Unauthorized"
+                        "status":  "FAIL",
+                        "details":  "Código HTTP inesperado: 404"
                     },
                     {
                         "id":  "NEG-03",
                         "name":  "Rol No Reconocido",
                         "category":  "RBAC Matriz",
-                        "status":  "PASS",
-                        "details":  "Rol invalido bloqueado con exito: HTTP 403 Forbidden"
+                        "status":  "FAIL",
+                        "details":  "Código HTTP devuelto: 404 (esperado 403)"
                     },
                     {
                         "id":  "POS-01",
                         "name":  "Acceso Legítimo L7",
                         "category":  "Orquestacion",
-                        "status":  "PASS",
-                        "details":  "Petición procesada correctamente: Veredicto [ALLOW] | Status [SUCCESS]"
+                        "status":  "FAIL",
+                        "details":  "Error en peticion legitima: Error en el servidor remoto: (404) No se encontró."
                     },
                     {
                         "id":  "VER-ED25519",
                         "name":  "Sello Criptografico Ed25519",
                         "category":  "Criptografia",
                         "status":  "PASS",
-                        "details":  "Sello localizado con exito: ED25519_SIG_768E278F4105921A"
+                        "details":  "Respuesta autenticada procesada (Sello verificado ex-ante)"
                     }
                 ]
 }
