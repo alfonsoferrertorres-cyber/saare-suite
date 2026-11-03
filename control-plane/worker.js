@@ -21,10 +21,24 @@ import * as killswitchModule from "./killswitch.js";
 import * as scenarioRegistryModule from "./scenarioRegistry.js";
 import * as stateMachineModule from "./stateMachine.js";
 
-// Adaptadores de resolución tolerantes a exportaciones nombradas o por defecto
-const externalKillswitchCheck = killswitchModule.checkEmergencyKillswitch || killswitchModule.default || killswitchModule.killswitch;
-const scenarioRegistry = scenarioRegistryModule.ScenarioRegistry || scenarioRegistryModule.scenarioRegistry || scenarioRegistryModule.default || scenarioRegistryModule;
-const stateMachine = stateMachineModule.StateMachine || stateMachineModule.stateMachine || stateMachineModule.default || stateMachineModule;
+// Adaptadores de resolución tolerantes a exportaciones nombradas, objetos o funciones
+const externalKillswitchCheck =
+  killswitchModule.checkEmergencyKillswitch ||
+  (typeof killswitchModule.default === "function" ? killswitchModule.default : null) ||
+  killswitchModule.killswitch ||
+  null;
+
+const scenarioRegistry =
+  scenarioRegistryModule.ScenarioRegistry ||
+  scenarioRegistryModule.scenarioRegistry ||
+  scenarioRegistryModule.default ||
+  scenarioRegistryModule;
+
+const stateMachine =
+  stateMachineModule.StateMachine ||
+  stateMachineModule.stateMachine ||
+  stateMachineModule.default ||
+  stateMachineModule;
 
 // === IMPORTACIÓN ÚNICA DE DERECHOS B2B DESDE EL PAQUETE CENTRAL === //
 import {
@@ -357,6 +371,10 @@ function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
+function getTitularNif(env) {
+  return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || "Alfonso Ferrer Torres (48553065L)";
+}
+
 /* --------------------------------------------------------------------------
    SEGURIDAD Y CRIPTOGRAFÍA ESTÁNDAR
    -------------------------------------------------------------------------- */
@@ -460,7 +478,7 @@ function sanitizePromptInRam(promptText) {
 }
 
 async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
-  const verifyLink = `https://api.saare.es/api/v1/auth/verify?token=${encodeURIComponent(token)}`;
+  const verifyLink = `https://api.saare.es/v1/auth/verify?token=${encodeURIComponent(token)}&email=${encodeURIComponent(recipientEmail)}`;
 
   if (env && env.RESEND_API_KEY) {
     try {
@@ -659,7 +677,7 @@ export default {
     const path = normalizedPath;
     const method = request.method;
 
-    // === RUTAS REQUERIDAS POR FRONTEND (APP.JSX) === //
+    // === RUTAS REQUERIDAS POR FRONTEND === //
 
     // 1. Sincronización de Bóveda D1 / KV
     if ((path === '/vault/sync' || path === '/api/v1/vault/sync' || path === '/v1/vault/sync') && method === 'GET') {
@@ -710,7 +728,7 @@ export default {
     }
 
     // =========================================================================
-    // ENDPOINT STRIPE WEBHOOK (INTEGRADO Y CONECTADO)
+    // ENDPOINT STRIPE WEBHOOK
     // =========================================================================
     if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook' || path === '/api/stripe/webhook') && method === 'POST') {
       try {
@@ -813,6 +831,13 @@ export default {
       }
 
       if ((path === '/api/v1/status' || path === '/v1/status' || path === '/status') && method === 'GET') {
+        const scenariosList =
+          typeof scenarioRegistry?.listScenarios === "function"
+            ? scenarioRegistry.listScenarios()
+            : Array.isArray(scenarioRegistry)
+            ? scenarioRegistry
+            : ["banca_dora_pci_dss", "eu_ai_act_high_risk", "pII_exfiltration_guard"];
+
         return new Response(JSON.stringify({
           status: 'OPERATIVE',
           latencyP99Ms: 1.12,
@@ -823,7 +848,7 @@ export default {
           supportedProviders: Object.keys(LLM_AGNOSTIC_PROVIDERS),
           zeroTrustEnabled: ztVerification.isZeroTrustVerified,
           module5ExAnteActive: true,
-          registeredScenarios: scenarioRegistry?.listScenarios?.() || ["banca_dora_pci_dss", "eu_ai_act_high_risk", "pII_exfiltration_guard"]
+          registeredScenarios: scenariosList
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -895,7 +920,7 @@ export default {
         return new Response(JSON.stringify({
           valid: true,
           expediente: "MS3V-RECON-VALID-2026-ALF-0521",
-          titular: "Alfonso Ferrer Torres (48553065L)",
+          titular: getTitularNif(env),
           proof: proof || "SHA256_RFC3161_VALIDATED",
           rootMerkleHash: seal.rootHash,
           tsaHash: seal.tsaHash,
@@ -1071,7 +1096,7 @@ export default {
           rawPrompt = body.messages.map(m => `${m.role}: ${m.content}`).join("\n");
         }
 
-        const user = sanitizeEmail(body.user || identity?.email || headerUser) || "alfonsoferrertorres@gmail.com";
+        const user = sanitizeEmail(body.user || identity?.email || headerUser) || "operator_anonymous";
         const tenant = body.tenant || identity?.tenantId || tenantId || "ORGANISMO_DEMO_01";
 
         const semanticCmd = parseSemanticCommand(rawPrompt);
@@ -1360,4 +1385,177 @@ export default {
         }
       }
 
-      if (path === '/auth/forgot-password'
+      if (path === '/auth/forgot-password' || path === '/v1/auth/forgot-password' || path === '/api/v1/auth/forgot-password') {
+        if (method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const cleanEmail = sanitizeEmail(body.email);
+          if (!cleanEmail) {
+            return new Response(JSON.stringify({ error: "Se requiere un correo electrónico válido." }), {
+              status: 400,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          if (env.SAARE_VAULT_KV) {
+            await env.SAARE_VAULT_KV.put(`otp_${cleanEmail}`, otp, { expirationTtl: 900 });
+          }
+
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(sendOtpRecoveryEmail(cleanEmail, otp, env));
+          } else {
+            await sendOtpRecoveryEmail(cleanEmail, otp, env);
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            message: "Código OTP de recuperación enviado al correo electrónico."
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      if (path === '/auth/verify' || path === '/v1/auth/verify' || path === '/api/v1/auth/verify') {
+        const token = url.searchParams.get("token") || url.searchParams.get("otp");
+        const cleanEmail = sanitizeEmail(url.searchParams.get("email"));
+
+        if (env.DB && cleanEmail) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            await env.DB.prepare("UPDATE users SET is_verified = 1 WHERE email = ?").bind(cleanEmail).run();
+          } catch (e) {
+            console.error("Error al verificar cuenta en D1:", e);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Cuenta acreditada y verificada correctamente. Ya puede iniciar sesión en la consola."
+        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if ((path === '/intercept' || path === '/v1/judge' || path === '/v1/enforce' || path === '/api/v1/judge') && method === 'POST') {
+        const startTime = performance.now();
+        const body = await request.json().catch(() => ({}));
+        const user = sanitizeEmail(body.user || identity?.email || headerUser) || "operator_anonymous";
+        const tenant = body.tenant || identity?.tenantId || tenantId || "ORGANISMO_DEMO_01";
+        const rawPrompt = body.prompt || body.payload || "";
+
+        const semanticCmd = parseSemanticCommand(rawPrompt);
+        const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
+
+        const isBlocked = !semanticCmd && (
+          rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
+          rawPrompt.toUpperCase().includes('DROP TABLE') || 
+          rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS')
+        );
+
+        const isSanitized = rulesTriggered.length > 0;
+        const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
+        const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
+
+        const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
+        const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
+        const traceId = `tr_jdg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+
+        const vaultEngine = new EvidenceVaultEngine(env);
+        const doubleCustodyRecord = await vaultEngine.recordNodeEvidence({
+          trace_id: traceId,
+          evidence_id: runId,
+          tenant_id: tenant,
+          user: user,
+          prompt: rawPrompt,
+          sanitized_payload: sanitizedText,
+          evaluator_chain: { final_evaluator: "Core-PEP-L7-v8.4-RAM" },
+          verdict_data: { verdict: finalVerdict, action: finalDecision, rules: rulesTriggered },
+          payload_hash: await computeSha256(rawPrompt)
+        });
+
+        const proofBundle = await generateProofBundle({
+          id: runId,
+          evidence_id: runId,
+          trace_id: traceId,
+          verdictId: verdictId,
+          decision: finalDecision,
+          verdict: finalVerdict,
+          user: user,
+          tenant: tenant,
+          prompt: rawPrompt,
+          timestamp: new Date().toISOString(),
+          doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
+        }, env);
+
+        if (env.DB) {
+          const runAsyncInsert = async () => {
+            await ensureD1TablesExist(env.DB);
+            const nowIso = new Date().toISOString();
+            await env.DB.prepare(`
+              INSERT INTO consolidated_traces (
+                trace_id, tenant_id, user_email, final_evaluator_node, 
+                final_decision, final_action, execution_latency_ms, timestamp, created_at, 
+                prompt, sanitized_payload, verdict, anchored
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `).bind(
+              traceId, tenant, user, "Core-PEP-L7-v8.4-RAM",
+              finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+              nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
+            ).run();
+
+            await env.DB.prepare(`
+              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, rawPrompt, sanitizedText, JSON.stringify(proofBundle), nowIso).run();
+          };
+
+          if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(runAsyncInsert());
+          } else {
+            await runAsyncInsert();
+          }
+        }
+
+        return new Response(JSON.stringify({
+          verdict: finalVerdict,
+          decision: finalDecision,
+          traceId,
+          evidenceId: runId,
+          proofBundle,
+          sanitizedPayload: sanitizedText
+        }), { status: isBlocked ? 403 : 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // === FALLBACK DE RUTAS NO ENCONTRADAS (404) === //
+      return new Response(
+        JSON.stringify({
+          error: "NOT_FOUND",
+          message: `La ruta de API solicitada [${method} ${path}] no existe en S.A.A.R.E. Control Plane.`,
+          timestamp: new Date().toISOString()
+        }),
+        { status: 404, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
+      );
+
+    } catch (globalErr) {
+      console.error("[SAARE Control Plane Unhandled Exception]:", globalErr);
+      return new Response(
+        JSON.stringify({
+          error: "INTERNAL_CONTROL_PLANE_ERROR",
+          message: globalErr.message || "Excepción no controlada en el motor de ejecución.",
+          timestamp: new Date().toISOString()
+        }),
+        { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  },
+
+  // === MANEJO DE TAREAS PROGRAMADAS (CRON TRIGGERS PARA BATCHING MERKLE) === //
+  async scheduled(event, env, ctx) {
+    console.log(`[SAARE Cron Engine] Tarea programada ejecutada: ${event.cron}`);
+    const defaultTenants = ["ORGANISMO_DEMO_01", "ENTERPRISE"];
+    for (const tenantId of defaultTenants) {
+      if (ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(processBatchMerkleAnchor(tenantId, env));
+      } else {
+        await processBatchMerkleAnchor(tenantId, env);
+      }
+    }
+  }
+};

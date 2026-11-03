@@ -1,38 +1,36 @@
-﻿# wrangler.toml — Configuración Oficial de Despliegue S.A.A.R.E. Control Plane (SGP 1.0 / V12.1)
+﻿# wrangler.toml — Configuración Oficial S.A.A.R.E. Control Plane
 
 name = "saare-control-plane-prod"
 main = "worker.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
-# Automatización de Tareas Programadas (Cron Triggers para Batching Merkle)
+workers_dev = false
+preview_urls = false
+
+# Enrutamiento de Dominios Oficiales (Custom Domains)
+routes = [
+  { pattern = "api.saare.es", custom_domain = true },
+  { pattern = "vault.saare.es", custom_domain = true }
+]
+
+# Automatización de Tareas Programadas
 [triggers]
 crons = ["0 */6 * * *"]
 
-# Configuración de Observabilidad Avanzada
-[observability.logs]
+# Configuración de Observabilidad
+[observability]
 enabled = true
 head_sampling_rate = 1.0
-invocation_logs = true
-persist = true
-
-# Enrutamiento de Dominios Oficiales
-routes = [
-  { pattern = "api.saare.es/*", zone_name = "saare.es" },
-  { pattern = "vault.saare.es/*", zone_name = "saare.es" },
-  { pattern = "saare.es/api/*", zone_name = "saare.es" },
-  { pattern = "saare.es/v1/*", zone_name = "saare.es" }
-]
 
 # ------------------------------------------------------------------------------
-# VARIABLES Y BINDINGS GLOBALES (Nivel Raíz)
+# VARIABLES Y BINDINGS GLOBALES
 # ------------------------------------------------------------------------------
 [vars]
 ENVIRONMENT = "production"
 WORKER_NAME = "saare-core-l7-isv"
 SGP_SPEC_VERSION = "SGP 1.0"
 EXPEDIENTE_MASTER = "MS3V-RECON-VALID-2026-ALF-0521"
-TITULAR_NIF = "Alfonso Ferrer Torres (48553065L)"
 ALLOW_FALLBACK_VAULT = "false"
 TRUST_ANCHOR = "https://vault.saare.es"
 SAFE_CREATIVE_ID = "RPI-2607076315021"
