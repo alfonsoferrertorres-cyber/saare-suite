@@ -1,5 +1,5 @@
-// saare-console/src/components/SubsidiesHub.jsx — Justificación Forense & Subvenciones Públicas
-import React, { useState, useCallback } from 'react';
+// saare-console/src/components/SubsidiesHub.jsx — Justificación Forense & Subvenciones Públicas (SGP 1.0 / V12.1)
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import * as CryptoModule from '../services/cryptoService';
 import { saareFetch } from '../utils/api';
 
@@ -9,11 +9,21 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
   const [loadingExport, setLoadingExport] = useState(false);
   const [selectedGrant, setSelectedGrant] = useState('KIT_CONSULTING');
   const [notification, setNotification] = useState(null);
+  
+  const timerRef = useRef(null);
 
-  const showNotification = (message, type = 'info') => {
+  // Limpieza de temporizadores al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const showNotification = useCallback((message, type = 'info') => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
-  };
+    timerRef.current = setTimeout(() => setNotification(null), 4000);
+  }, []);
 
   const handleVerifyForense = useCallback(async () => {
     setVerifying(true);
@@ -78,7 +88,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
     } finally {
       setLoadingExport(false);
     }
-  }, [tenantId, selectedGrant]);
+  }, [tenantId, selectedGrant, showNotification]);
 
   return (
     <div style={{ background: '#0b0f19', border: '1px solid #1e293b', padding: '24px', borderRadius: '12px', color: '#fff', marginTop: '20px' }}>
@@ -112,7 +122,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
         <select
           value={selectedGrant}
           onChange={(e) => setSelectedGrant(e.target.value)}
-          style={{ width: '100%', padding: '10px', background: '#0f172a', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}
+          style={{ width: '100%', padding: '10px', background: '#0f172a', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', outline: 'none' }}
         >
           <option value="KIT_CONSULTING">Kit Consulting (Asesoramiento IA & Gobernanza)</option>
           <option value="KIT_DIGITAL">Kit Digital (Ciberseguridad & Protección L7)</option>
@@ -125,14 +135,14 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
         {/* Widget 1: Verificador ISO 27037 */}
         <div style={{ background: '#020617', border: '1px solid #334155', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#f8fafc' }}>Verificador Forense ISO 27037</h4>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#f8fafc', fontWeight: '800' }}>Verificador Forense ISO 27037</h4>
             <p style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '12px' }}>Valida hashes Ed25519 e inmutabilidad local en RAM.</p>
           </div>
           <div>
             <button 
               onClick={handleVerifyForense} 
               disabled={verifying}
-              style={{ width: '100%', background: '#2563eb', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: verifying ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}
+              style={{ width: '100%', background: '#2563eb', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: verifying ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem', opacity: verifying ? 0.7 : 1 }}
             >
               {verifying ? 'Verificando...' : 'Verificar Validez Judicial'}
             </button>
@@ -146,35 +156,35 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
 
         {/* Widget 2: Descargas Individuales y Paquete Completo */}
         <div style={{ background: '#020617', border: '1px solid #334155', padding: '16px', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#f8fafc' }}>Exportación de Documentación Oficial</h4>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#f8fafc', fontWeight: '800' }}>Exportación de Documentación Oficial</h4>
           <p style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '12px' }}>Descarga individual de memorias y normativas o el paquete ZIP completo.</p>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
             <button 
               onClick={() => handleExportPackage('MEMORIA_TECNICA')} 
               disabled={loadingExport} 
-              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer' }}
+              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer', opacity: loadingExport ? 0.6 : 1 }}
             >
               📄 Memoria Técnica
             </button>
             <button 
               onClick={() => handleExportPackage('DNSH')} 
               disabled={loadingExport} 
-              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer' }}
+              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer', opacity: loadingExport ? 0.6 : 1 }}
             >
               ⚡ Certificado DNSH
             </button>
             <button 
               onClick={() => handleExportPackage('LEY_18_2022')} 
               disabled={loadingExport} 
-              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer' }}
+              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold', cursor: loadingExport ? 'not-allowed' : 'pointer', opacity: loadingExport ? 0.6 : 1 }}
             >
               ⚖️ Ley 18/2022
             </button>
             <button 
               onClick={() => handleExportPackage('FRIA_ART_27')} 
               disabled={loadingExport} 
-              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: loadingExport ? 'not-allowed' : 'pointer' }}
+              style={{ background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', padding: '8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: loadingExport ? 'not-allowed' : 'pointer', opacity: loadingExport ? 0.6 : 1 }}
             >
               📋 Esquema FRIA
             </button>
@@ -183,7 +193,7 @@ export const SubsidiesHub = ({ tenantId = 'ENTERPRISE', currentEvidences = [] })
           <button 
             onClick={() => handleExportPackage('ALL_ZIP')} 
             disabled={loadingExport}
-            style={{ width: '100%', background: '#059669', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: loadingExport ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}
+            style={{ width: '100%', background: '#059669', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: loadingExport ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem', opacity: loadingExport ? 0.7 : 1 }}
           >
             {loadingExport ? 'Generando Archivo...' : '📦 Descargar Expediente Completo (.ZIP)'}
           </button>

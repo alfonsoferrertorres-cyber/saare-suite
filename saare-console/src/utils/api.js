@@ -129,7 +129,20 @@ export async function saareFetch(endpoint, options = {}) {
     return response;
   } catch (error) {
     console.error('[SAARE_CONSOLE_API] Error de conexión con Control Plane / Bóveda:', error);
-    throw new Error(`Error de conexión con la Bóveda (${activeHost}): ${error.message}`);
+    
+    // Oñemyatyrõ: Ndaipóri jave red (offline), ome'ẽ peteĩ Response sintético (status 503) aníagui ojapo error no-manejado (unhandled rejection)
+    return new Response(
+      JSON.stringify({
+        error: true,
+        offline: true,
+        message: `Error de conexión con la Bóveda (${activeHost}): ${error.message}`
+      }),
+      {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 }
 

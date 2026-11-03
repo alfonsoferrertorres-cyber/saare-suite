@@ -1,7 +1,21 @@
-﻿name = "saare-console"
+﻿# saare-console/wrangler.toml — Configuración de Despliegue en Cloudflare Pages
+name = "saare-console"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-09-27"
+compatibility_flags = ["nodejs_compat"]
 
-# Variables de entorno públicas inyectadas en tiempo de cliente (Vite)
+# Variables de entorno públicas inyectadas en tiempo de compilación/cliente (Vite)
 [vars]
 VITE_CONTROL_PLANE_URL = "https://api.saare.es"
+VITE_API_BASE_URL = "https://api.saare.es/api/v1"
+VITE_SAARE_TRUST_ANCHOR = "https://vault.saare.es"
+VITE_SAARE_SAFE_CREATIVE_ID = "RPI-2607076315021"
+VITE_SAARE_DEFAULT_TENANT = "ORGANISMO_DEMO_01"
+VITE_SAARE_DEFAULT_ROLE = "CISO_ADMIN"
+
+# Configuración de entornos de vista previa (Pull Requests / Pre-producción)
+[env.preview.vars]
+VITE_CONTROL_PLANE_URL = "https://staging-api.saare.es"
+VITE_API_BASE_URL = "https://staging-api.saare.es/api/v1"
+VITE_SAARE_TRUST_ANCHOR = "https://vault.saare.es"
+VITE_SAARE_DEFAULT_TENANT = "ORGANISMO_STAGING_01"

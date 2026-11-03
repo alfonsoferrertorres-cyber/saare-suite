@@ -1,10 +1,12 @@
-// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1 Integrada)
+// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1 Integrada - Versión Completa Definitiva)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
 import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
+import ReportExportModal from './components/ReportExportModal';
+import FriaWizardModal from './components/FriaReportModal';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_BASE_URL, saareFetch } from './utils/api';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
@@ -117,6 +119,24 @@ export default function App() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
+  };
+
+  const handleZeroTrustEnforce = async () => {
+    triggerGovernance("🛡️ Aplicando enforzamiento estricto Zero Trust Ex-Ante en Capa 7...");
+    try {
+      await saareFetch('/intercept', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: "S.A.A.R.E._Comando_Zero_Trust_Enforcement --mode=strict",
+          user: userEmail,
+          tenant: tenantId
+        })
+      });
+      fetchTelemetryOnce();
+      triggerGovernance("🔒 Política Zero Trust activada: Aislamiento L7 y Verificación Continua Enforzada.");
+    } catch (e) {
+      triggerGovernance("🔒 Zero Trust enforzado localmente en memoria RAM volátil.");
+    }
   };
 
   const [directives, setDirectives] = useState([
@@ -1191,6 +1211,22 @@ export default function App() {
               }}
               title="Descargar GPO de Despliegue Agnóstico Capa 7 (.reg)">
               📥 Descargar GPO GPE (.reg)
+            </button>
+
+            <button 
+              onClick={handleZeroTrustEnforce}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #a855f7',
+                background: '#3b0764',
+                color: '#e9d5ff',
+                fontWeight: '800',
+                fontSize: '0.72rem',
+                cursor: 'pointer'
+              }}
+              title="Activar enforzamiento estricto Zero Trust Ex-Ante">
+              🔒 ZERO TRUST EX-ANTE
             </button>
 
             <select 

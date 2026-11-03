@@ -1,7 +1,7 @@
-// saare-console/src/components/ExecutiveView.jsx — Panel de Dirección
+// saare-console/src/components/ExecutiveView.jsx — Panel de Dirección (SGP 1.0 / V12.1)
 import React, { useMemo } from 'react';
 
-export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
+export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [], userRole = 'BOARD_EXECUTIVE_LEVEL_1' }) => {
   const { totalAudited, totalBlocked, blockRate } = useMemo(() => {
     const safeEvidences = Array.isArray(evidences) ? evidences : [];
     const audited = safeEvidences.length;
@@ -20,12 +20,12 @@ export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
       {/* Encabezado Corporativo */}
-      <div style={{ background: '#020617', border: '1px solid #0284c7', padding: '24px', borderRadius: '12px' }}>
-        <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.2rem', fontWeight: '900' }}>
+      <div style={{ background: '#020617', border: '1px solid #0284c7', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(2, 132, 199, 0.15)' }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#38bdf8', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '0.02em' }}>
           🏛️ RESILIENCIA ESTRUCTURAL & GOBERNANZA DE IA — DIRECCIÓN
         </h3>
-        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
-          Organización: <strong>{tenantId}</strong> | Estado General:{' '}
+        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.5' }}>
+          Organización: <strong style={{ color: '#f8fafc' }}>{tenantId}</strong> | Rol: <strong style={{ color: '#a78bfa' }}>{userRole}</strong> | Estado General:{' '}
           <span style={{ color: '#4ade80', fontWeight: '900' }}>CONFORME & AUDITADO</span> | Anclaje:{' '}
           <span style={{ color: '#38bdf8', fontWeight: '700' }}>D1-EU-WESTERN-EUROPE</span>
         </p>
@@ -50,21 +50,21 @@ export const ExecutiveView = ({ tenantId = 'ENTERPRISE', evidences = [] }) => {
 
       {/* INDICADORES CLAVE DE NEGOCIO Y TELEMETRÍA */}
       <div style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '20px', borderRadius: '10px' }}>
-        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#f8fafc' }}>
+        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#f8fafc', fontWeight: '800' }}>
           Resumen de Actividad Corporativa y Bóveda D1
         </h4>
         <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
           <div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Interacciones Auditadas:</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8' }}>{totalAudited}</div>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700' }}>Interacciones Auditadas:</span>
+            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8', marginTop: '4px' }}>{totalAudited}</div>
           </div>
           <div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Fugas Preventivamente Interceptadas:</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ef4444' }}>{totalBlocked}</div>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700' }}>Fugas Preventivamente Interceptadas:</span>
+            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ef4444', marginTop: '4px' }}>{totalBlocked}</div>
           </div>
           <div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tasa de Intercepción Activa:</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#10b981' }}>{blockRate}%</div>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700' }}>Tasa de Intercepción Activa:</span>
+            <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#10b981', marginTop: '4px' }}>{blockRate}%</div>
           </div>
         </div>
       </div>
