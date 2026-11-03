@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Producción V12.1 Integrada - Versión Completa Definitiva)
+// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Actualizado: Menú Desplegable Unificado)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -93,20 +93,25 @@ export default function App() {
   const [simulationResult, setSimulationResult] = useState(null);
   const [activeSemanticHeaders, setActiveSemanticHeaders] = useState([]);
 
+  // Estado para controlar el menú desplegable de Despliegue Agnóstico
+  const [showDeployDropdown, setShowDeployDropdown] = useState(false);
+
   const handleDownloadEnterpriseGpoReg = () => {
+    setShowDeployDropdown(false);
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
     const regContent = `Windows Registry Editor Version 5.00
 
 ; ================================================================
 ; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
 ; Tenant: ${tenantId}
+; TrustAnchor: https://vault.saare.es
 ; ================================================================
 
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_DE_GOOGLE_WEBSTORE;https://clients2.google.com/service/update2/crx"
-
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]
-"1"="EXTENSION_ID_DE_GOOGLE_WEBSTORE;https://clients2.google.com/service/update2/crx"
+[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]
+"EnableExAnteEnforcement"=dword:00000001
+"TenantId"="${tenantId}"
+"TrustAnchor"="https://vault.saare.es"
+"ProxyGateway"="https://api.saare.es/api/v1/proxy/llm"
 `;
 
     const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8' });
@@ -118,7 +123,34 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    triggerGovernance("Archivo GPO .reg generado y descargado para producción.");
+    triggerGovernance("Archivo GPO .reg generado y enrutado para la Bóveda D1.");
+  };
+
+  const handleDownloadBrowserExtension = () => {
+    setShowDeployDropdown(false);
+    triggerGovernance("Preparando paquete de extensión de navegador con credenciales de cliente...");
+    
+    const extensionConfig = {
+      extensionName: "S.A.A.R.E. L7 Interceptor Extension",
+      version: "1.0.0",
+      spec: "SGP 1.0",
+      tenantId: tenantId,
+      operatorEmail: userEmail,
+      gatewayEndpoint: "https://api.saare.es/api/v1/proxy/llm",
+      vaultAnchor: "https://vault.saare.es",
+      instructions: "Instale esta extensión en modo desarrollador o cárguela en Chrome/Edge para interceptar llamadas fetch de IA de forma transparente."
+    };
+
+    const blob = new Blob([JSON.stringify(extensionConfig, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `saare_browser_extension_config_${tenantId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    triggerGovernance("Paquete de extensión y credenciales de cliente descargados con éxito.");
   };
 
   const handleZeroTrustEnforce = async () => {
@@ -266,7 +298,7 @@ export default function App() {
   const mergeEvidences = useCallback((existing, incoming) => {
     const mappedIncoming = mapEvidences(incoming);
     const map = new Map();
-    [...mappedIncoming, ...existing].forEach(item => {
+    ([...mappedIncoming, ...existing]).forEach(item => {
       if (item?.id && !map.has(item.id)) {
         map.set(item.id, item);
       }
@@ -1132,7 +1164,7 @@ export default function App() {
             <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG.SPEC_VERSION}</span>
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center', position: 'relative' }}>
             <button 
               onClick={() => setViewMode('EXECUTIVE')}
               style={{
@@ -1197,21 +1229,93 @@ export default function App() {
               👥 ASIENTOS RBAC
             </button>
 
-            <button 
-              onClick={handleDownloadEnterpriseGpoReg}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #10b981',
-                background: '#064e3b',
-                color: '#34d399',
-                fontWeight: '800',
-                fontSize: '0.72rem',
-                cursor: 'pointer'
-              }}
-              title="Descargar GPO de Despliegue Agnóstico Capa 7 (.reg)">
-              📥 Descargar GPO GPE (.reg)
-            </button>
+            {/* BOTÓN DESPLEGABLE UNIFICADO PARA DESPLIEGUE (EXTENSION + .REG) */}
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button 
+                onClick={() => setShowDeployDropdown(!showDeployDropdown)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #10b981',
+                  background: '#064e3b',
+                  color: '#34d399',
+                  fontWeight: '800',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Desplegar Interceptor perimetral y extensión de cliente">
+                📥 Despliegue Cliente / Proxy ▾
+              </button>
+
+              {showDeployDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '115%',
+                  background: '#0b0f19',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.7)',
+                  zIndex: 9999,
+                  minWidth: '260px',
+                  padding: '8px'
+                }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '800', padding: '6px 8px', textTransform: 'uppercase', borderBottom: '1px solid #1e293b', marginBottom: '4px' }}>
+                    Opciones de Despliegue L7 ({tenantId})
+                  </div>
+
+                  <button 
+                    onClick={handleDownloadBrowserExtension}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#38bdf8',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#1e293b'}
+                    onMouseLeave={(e) => e.target.style.background = 'transparent'}>
+                    <span>🧩 Extensión de Navegador</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Incluye credenciales de cliente para interceptación web</span>
+                  </button>
+
+                  <button 
+                    onClick={handleDownloadEnterpriseGpoReg}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#34d399',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      marginTop: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#1e293b'}
+                    onMouseLeave={(e) => e.target.style.background = 'transparent'}>
+                    <span>⚙️ Archivo GPO (.reg)</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Enruta el proxy automáticamente con la bóveda D1</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button 
               onClick={handleZeroTrustEnforce}

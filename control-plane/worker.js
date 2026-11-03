@@ -50,7 +50,7 @@ const ramWebhookConfigCache = new Map();
 
 /* --------------------------------------------------------------------------
    REGISTRO Y PROXIES LLM AGNOSTIC (DESACOPLE DE PROVEEDORES)
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 const LLM_AGNOSTIC_PROVIDERS = {
   GEMINI: { name: "Google Gemini", defaultEndpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent" },
   OPENAI: { name: "OpenAI GPT-4o", defaultEndpoint: "https://api.openai.com/v1/chat/completions" },
@@ -61,7 +61,7 @@ const LLM_AGNOSTIC_PROVIDERS = {
 
 /* --------------------------------------------------------------------------
    DIRECTIVA L7 DE SISTEMA PARA EL NODO NATIVO
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 const SAARE_L7_SYSTEM_DIRECTIVE = {
   role: "system",
   content: `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE]
@@ -74,13 +74,13 @@ Tu cometido es:
 
 /* --------------------------------------------------------------------------
    PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 const MERKLE_BATCH_THRESHOLD = 1000;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 Horas
 
 /* --------------------------------------------------------------------------
    JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC CANÓNICO)
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 const ROLE_RANKS = {
   "OPERATIONAL_AGENT_USER": 0,
   "TENANT_AUDITOR": 1,
@@ -98,13 +98,12 @@ function hasRequiredRank(userRole, minRank) {
 
 /* --------------------------------------------------------------------------
    ANALIZADOR Y PARSER DE LA MATRIZ DE COMANDOS SEMÁNTICOS (V12.1 / SGP 1.0)
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 function parseSemanticCommand(promptText) {
   if (typeof promptText !== 'string') return null;
   const upper = promptText.toUpperCase();
   const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7", expediente: "MS3V-RECON-VALID-2026" };
 
-  // 1. Inicialización y Cumplimiento Ex Ante
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
     return {
       type: "MODULE_5_BOOTSTRAP",
@@ -118,7 +117,6 @@ function parseSemanticCommand(promptText) {
     };
   }
 
-  // 2. Contención y Emergencia (Kill-Switch)
   if (upper.includes("SAARE_CONTROL.PY --KILL") || upper.includes("KILL-SWITCH")) {
     return {
       type: "KILL_SWITCH_TRIGGERED",
@@ -132,7 +130,6 @@ function parseSemanticCommand(promptText) {
     };
   }
 
-  // 3. Modos Operativos y Auditoría Especializada
   if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
   if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
   if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
@@ -149,7 +146,7 @@ function parseSemanticCommand(promptText) {
 
 /* --------------------------------------------------------------------------
    SISTEMA DE CORTE DE EMERGENCIA L7
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 async function checkEmergencyKillswitch(env) {
   if (typeof externalKillswitchCheck === 'function' && externalKillswitchCheck !== checkEmergencyKillswitch) {
     try {
@@ -194,7 +191,7 @@ async function checkEmergencyKillswitch(env) {
 
 /* --------------------------------------------------------------------------
    ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 async function ensureD1TablesExist(db) {
   if (!db) return;
   try {
@@ -240,6 +237,7 @@ async function ensureD1TablesExist(db) {
         name TEXT,
         plan TEXT,
         status TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       );
     `).run();
@@ -282,7 +280,7 @@ async function ensureD1TablesExist(db) {
 
 /* --------------------------------------------------------------------------
    MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 async function processBatchMerkleAnchor(tenantId, env) {
   if (!env || !env.DB) return;
   try {
@@ -328,23 +326,6 @@ async function processBatchMerkleAnchor(tenantId, env) {
     }
   } catch (e) {
     console.error("[SAARE Custody Engine] Error consolidando lote de Merkle:", e);
-  }
-}
-
-async function trackVerdictUsage(tenantId, env) {
-  if (!env || !env.DB) return 1;
-  const currentMonth = new Date().toISOString().substring(0, 7);
-  try {
-    await ensureD1TablesExist(env.DB);
-    const row = await env.DB.prepare(`
-      INSERT INTO tenant_usage (tenant_id, billing_period, verdict_count)
-      VALUES (?, ?, 1)
-      ON CONFLICT(tenant_id, billing_period) DO UPDATE SET verdict_count = verdict_count + 1
-      RETURNING verdict_count
-    `).bind(tenantId, currentMonth).first();
-    return row?.verdict_count || 1;
-  } catch (e) {
-    return 1;
   }
 }
 
@@ -461,7 +442,7 @@ function sanitizePromptInRam(promptText) {
 
 /* --------------------------------------------------------------------------
    ADAPTADOR DE INFERENCIA AGNÓSTICA REAL
-  -------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName, env) {
   const provider = LLM_AGNOSTIC_PROVIDERS[providerKey] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
   
@@ -559,7 +540,6 @@ export default {
       );
     }
 
-    // --- ENDPOINT DESPLIEGUE GPO / POLÍTICA EMPRESARIAL (.REG) ---
     if ((path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/gpo-policy' || path === '/deploy/gpo-policy') && (method === 'GET' || method === 'POST')) {
       const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TrustAnchor"="https://vault.saare.es"\n"LegalRpi"="${env.SAFE_CREATIVE_ID || 'RPI-2607076315021'}"\n"LlmMilestoneRpi"="${env.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-0914X'}"`;
       return new Response(gpoRegistryContent, {
@@ -572,7 +552,6 @@ export default {
       });
     }
 
-    // --- ENDPOINT STRIPE WEBHOOK ---
     if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook') && method === 'POST') {
       try {
         if (typeof handleStripeWebhook === 'function') {
@@ -608,12 +587,6 @@ export default {
             if (results && results.length > 0) tracesList = results;
           } catch (d1Err) {}
         }
-        if (tracesList.length === 0 && env.SAARE_VAULT_KV) {
-          try {
-            const kvTracesRaw = await env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
-            if (Array.isArray(kvTracesRaw)) tracesList = kvTracesRaw;
-          } catch (kvErr) {}
-        }
         return new Response(JSON.stringify({ status: "SUCCESS", count: tracesList.length, traces: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -636,7 +609,6 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // --- ENDPOINT PROXY LLM L7 HARDENED CON SGP 1.0 ---
       if ((path === '/v1/chat/completions' || path === '/v1/proxy/llm' || path === '/api/v1/proxy/llm') && method === 'POST') {
         const startTime = performance.now();
         const body = await request.json().catch(() => ({}));
