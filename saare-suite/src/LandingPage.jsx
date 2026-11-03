@@ -1,5 +1,4 @@
-// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.4 (Sanitized Corporate Identity)
-
+// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.4
 import React, { useState, useEffect } from 'react';
 import PricingSection from './components/PricingSection';
 import { API_HOST } from './api/api';
@@ -41,7 +40,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
   const handleDownloadPdf = (pdfFileName) => {
     const baseUrl = String(API_HOST || '').replace(/\/+$/, '');
     const pdfUrl = `${baseUrl}/api/v1/report/pdf?file=${encodeURIComponent(pdfFileName)}`;
-    window.open(pdfUrl, '_blank');
+    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
   };
 
   const updateEvaluationField = (field, value) => {
@@ -126,7 +125,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             <button
               type="button"
               onClick={() => handleAction('DISCOVER_FREE')}
-              className="rounded-lg px-4 py-2 text-xs font-bold text-slate-300 transition-colors hover:text-white"
+              className="rounded-lg px-4 py-2 text-xs font-bold text-slate-300 transition-colors hover:text-white cursor-pointer"
             >
               Acceso Consola
             </button>
@@ -207,7 +206,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 1. EL PROBLEMA */}
+        {/* 01. EL PROBLEMA */}
         <section className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
@@ -525,7 +524,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               <button
                 type="button"
                 onClick={() => handleDownloadPdf('04_ET_MS3V_Prueba_Reina_2026.pdf')}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 border border-cyan-500/40 px-7 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-slate-800 transition-all"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 border border-cyan-500/40 px-7 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-slate-800 transition-all cursor-pointer"
               >
                 <span>📥</span> Descargar Dossier Técnico de Pruebas Periciales
               </button>
@@ -627,8 +626,15 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                       className="mt-1 h-4 w-4 rounded border-slate-800 bg-slate-950 text-cyan-500 focus:ring-cyan-500"
                     />
                     <label htmlFor="privacyAccepted" className="text-xs text-slate-400 leading-relaxed">
-                      He leído y acepto la <span onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="text-cyan-400 underline cursor-pointer">Política de Privacidad</span>. 
-                      Responsable: S.A.A.R.E. Technologies S.L. (Expediente Marco MS3V-RECON-VALID-2026). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
+                      He leído y acepto la{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} 
+                        className="text-cyan-400 underline cursor-pointer hover:text-cyan-300"
+                      >
+                        Política de Privacidad
+                      </button>
+                      . Responsable: S.A.A.R.E. Technologies S.L. (Expediente Marco MS3V-RECON-VALID-2026). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
                     </label>
                   </div>
 
@@ -640,14 +646,14 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     <button
                       type="submit"
                       disabled={formStatus === 'SUBMITTING' || !evaluationForm.privacyAccepted}
-                      className="flex-1 rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50 cursor-pointer"
                     >
                       {formStatus === 'SUBMITTING' ? 'Procesando Solicitud...' : 'Solicitar auditoría ex ante'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAction('DISCOVER_FREE')}
-                      className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-6 py-4 text-xs font-bold text-white hover:bg-slate-800 transition-all text-center"
+                      className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-6 py-4 text-xs font-bold text-white hover:bg-slate-800 transition-all text-center cursor-pointer"
                     >
                       O comenzar con Sandbox gratuito
                     </button>
@@ -669,9 +675,9 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
           
           <div className="flex flex-wrap justify-center gap-6 text-slate-400 text-xs">
-            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('terms')} className="hover:text-cyan-400 transition-colors">Aviso Legal</button>
-            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="hover:text-cyan-400 transition-colors">Privacidad</button>
-            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="hover:text-cyan-400 transition-colors">Cookies</button>
+            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('terms')} className="hover:text-cyan-400 transition-colors cursor-pointer">Aviso Legal</button>
+            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="hover:text-cyan-400 transition-colors cursor-pointer">Privacidad</button>
+            <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="hover:text-cyan-400 transition-colors cursor-pointer">Cookies</button>
           </div>
         </div>
       </footer>
@@ -681,14 +687,14 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-[#0A101E]/95 backdrop-blur-md p-4 sm:p-6 shadow-2xl">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-300 leading-relaxed text-center sm:text-left">
-              <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este sitio utiliza exclusivamente cookies técnicas esenciales para garantizar la navegación y la gestión de sesión. 
-              <button onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1">Más información</button>
+              <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este sitio utiliza exclusivamente cookies técnicas esenciales para garantizar la navegación y la gestión de sesión.{' '}
+              <button onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1 cursor-pointer">Más información</button>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={handleAcceptCookies}
-                className="rounded-lg bg-[#38BDDB] px-6 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400"
+                className="rounded-lg bg-[#38BDDB] px-6 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 cursor-pointer"
               >
                 Aceptar y Continuar
               </button>

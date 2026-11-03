@@ -50,7 +50,7 @@ const ramWebhookConfigCache = new Map();
 
 /* --------------------------------------------------------------------------
    REGISTRO Y PROXIES LLM AGNOSTIC (DESACOPLE DE PROVEEDORES)
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 const LLM_AGNOSTIC_PROVIDERS = {
   GEMINI: { name: "Google Gemini", defaultEndpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent" },
   OPENAI: { name: "OpenAI GPT-4o", defaultEndpoint: "https://api.openai.com/v1/chat/completions" },
@@ -61,26 +61,26 @@ const LLM_AGNOSTIC_PROVIDERS = {
 
 /* --------------------------------------------------------------------------
    DIRECTIVA L7 DE SISTEMA PARA EL NODO NATIVO
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 const SAARE_L7_SYSTEM_DIRECTIVE = {
   role: "system",
   content: `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE]
-  Actúas como el Punto de Enforcement de Políticas (PEP) de capa 7 para este tenant. 
-  Tu cometido es:
-  1. Analizar el prompt entrante en busca de PII o fugas de datos antes de derivarlo al LLM subyacente.
-  2. Asegurar que la respuesta devuelta mantenga la estructura sintáctica solicitada por el cliente.
-  3. Adjuntar la traza criptográfica y el veredicto ex ante en los metadatos de respuesta del middleware.`
+Actúas como el Punto de Enforcement de Políticas (PEP) de capa 7 para este tenant. 
+Tu cometido es:
+1. Analizar el prompt entrante en busca de PII o fugas de datos antes de derivarlo al LLM subyacente.
+2. Asegurar que la respuesta devuelta mantenga la estructura sintáctica solicitada por el cliente.
+3. Adjuntar la traza criptográfica y el veredicto ex ante en los metadatos de respuesta del middleware.`
 };
 
 /* --------------------------------------------------------------------------
    PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 const MERKLE_BATCH_THRESHOLD = 1000;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 Horas
 
 /* --------------------------------------------------------------------------
    JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC CANÓNICO)
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 const ROLE_RANKS = {
   "OPERATIONAL_AGENT_USER": 0,
   "TENANT_AUDITOR": 1,
@@ -98,7 +98,7 @@ function hasRequiredRank(userRole, minRank) {
 
 /* --------------------------------------------------------------------------
    ANALIZADOR Y PARSER DE LA MATRIZ DE COMANDOS SEMÁNTICOS (V12.1 / SGP 1.0)
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 function parseSemanticCommand(promptText) {
   if (typeof promptText !== 'string') return null;
   const upper = promptText.toUpperCase();
@@ -149,7 +149,7 @@ function parseSemanticCommand(promptText) {
 
 /* --------------------------------------------------------------------------
    SISTEMA DE CORTE DE EMERGENCIA L7
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 async function checkEmergencyKillswitch(env) {
   if (typeof externalKillswitchCheck === 'function' && externalKillswitchCheck !== checkEmergencyKillswitch) {
     try {
@@ -194,7 +194,7 @@ async function checkEmergencyKillswitch(env) {
 
 /* --------------------------------------------------------------------------
    ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 async function ensureD1TablesExist(db) {
   if (!db) return;
   try {
@@ -230,6 +230,17 @@ async function ensureD1TablesExist(db) {
         responseOutput TEXT DEFAULT '',
         payload_json TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS tenants (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE,
+        name TEXT,
+        plan TEXT,
+        status TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
       );
     `).run();
 
@@ -271,7 +282,7 @@ async function ensureD1TablesExist(db) {
 
 /* --------------------------------------------------------------------------
    MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 async function processBatchMerkleAnchor(tenantId, env) {
   if (!env || !env.DB) return;
   try {
@@ -369,20 +380,6 @@ function getTitularNif(env) {
   return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || "S.A.A.R.E. Technologies S.L.";
 }
 
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const derived = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    key,
-    256
-  );
-  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-  const derivedHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `pbkdf2$100000$${saltHex}$${derivedHex}`;
-}
-
 async function verifyPassword(stored, candidate) {
   if (!stored || !candidate) return false;
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
@@ -464,7 +461,7 @@ function sanitizePromptInRam(promptText) {
 
 /* --------------------------------------------------------------------------
    ADAPTADOR DE INFERENCIA AGNÓSTICA REAL
-   -------------------------------------------------------------------------- */
+  -------------------------------------------------------------------------- */
 async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName, env) {
   const provider = LLM_AGNOSTIC_PROVIDERS[providerKey] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
   
@@ -509,43 +506,6 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
   return `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE] Inferencia ejecutada correctamente bajo la política ex-ante sobre el proveedor ${provider.name}. Prompt saneado y validado en RAM.`;
 }
 
-async function sendTransactionalVerificationEmail(recipientEmail, token, env) {
-  const verifyLink = `https://api.saare.es/v1/auth/verify?token=${encodeURIComponent(token)}&email=${encodeURIComponent(recipientEmail)}`;
-  if (env && env.RESEND_API_KEY) {
-    try {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: env.SENDER_EMAIL || 'S.A.A.R.E. Verification <onboarding@resend.dev>',
-          to: recipientEmail,
-          subject: '🛡️ S.A.A.R.E. — Verificación de Bóveda y Acceso CISO',
-          html: `<div style="background:#0b0f19; padding:24px; color:#fff; font-family:sans-serif; border-radius:12px;"><h2 style="color:#38bdf8;">S.A.A.R.E. Access Gate</h2><p>Acredite su identidad corporativa haciendo clic en el siguiente enlace:</p><p><a href="${verifyLink}" style="color:#38bdf8;">${verifyLink}</a></p></div>`
-        })
-      });
-      return;
-    } catch (e) {}
-  }
-}
-
-async function sendOtpRecoveryEmail(recipientEmail, otp, env) {
-  if (env && env.RESEND_API_KEY) {
-    try {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: env.SENDER_EMAIL || 'S.A.A.R.E. Verification <onboarding@resend.dev>',
-          to: recipientEmail,
-          subject: `Código de Verificación S.A.A.R.E.: ${otp}`,
-          html: `<div style="background:#0b0f19; padding:32px; color:#fff; text-align:center;"><h2 style="color:#38bdf8;">S.A.A.R.E. Platform</h2><div style="background:#020617; font-size:32px; font-weight:bold; color:#38bdf8; padding:20px;">${otp}</div></div>`
-        })
-      });
-      return;
-    } catch (e) {}
-  }
-}
-
 export default {
   async fetch(request, env, ctx) {
     const cors = handleCors(request);
@@ -562,7 +522,8 @@ export default {
           service: "S.A.A.R.E. Enterprise Control Plane",
           version: "SGP 1.0 (L7 Hardened v2.2)",
           status: "ONLINE",
-          node: "RPI-2607076315021",
+          legalRpi: env.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          llmMilestoneRpi: env.LLM_MILESTONE_RPI || "RPI-2026-SAARE-0914X",
           trustAnchor: "https://vault.saare.es"
         }),
         { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
@@ -589,7 +550,8 @@ export default {
           status: 'HEALTHY',
           service: env.WORKER_NAME || 'saare-control-plane-prod',
           version: env.SGP_SPEC_VERSION || 'SGP 1.0',
-          node: env.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+          legalRpi: env.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+          llmMilestoneRpi: env.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-0914X',
           trustAnchor: env.TRUST_ANCHOR || 'https://vault.saare.es',
           timestamp: new Date().toISOString()
         }),
@@ -599,7 +561,7 @@ export default {
 
     // --- ENDPOINT DESPLIEGUE GPO / POLÍTICA EMPRESARIAL (.REG) ---
     if ((path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/gpo-policy' || path === '/deploy/gpo-policy') && (method === 'GET' || method === 'POST')) {
-      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TrustAnchor"="https://vault.saare.es"\n"NodeIdentity"="RPI-2607076315021"`;
+      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TrustAnchor"="https://vault.saare.es"\n"LegalRpi"="${env.SAFE_CREATIVE_ID || 'RPI-2607076315021'}"\n"LlmMilestoneRpi"="${env.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-0914X'}"`;
       return new Response(gpoRegistryContent, {
         status: 200,
         headers: {
@@ -610,19 +572,17 @@ export default {
       });
     }
 
+    // --- ENDPOINT STRIPE WEBHOOK ---
     if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook') && method === 'POST') {
       try {
         if (typeof handleStripeWebhook === 'function') {
-          return await handleStripeWebhook(request, env, ctx);
+          return await handleStripeWebhook(request, env);
         }
         return new Response(JSON.stringify({ status: "STRIPE_WEBHOOK_RECEIVED", processed: true }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       } catch (err) {
         return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_FAILED", message: err.message }), { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
     }
-
-    const tenantManager = new TenantManager(env);
-    const keyManager = new EnterpriseKeyManager(env);
 
     try {
       const authHeader = request.headers.get("Authorization") || "";
@@ -780,11 +740,11 @@ export default {
 
         const latencyMs = (performance.now() - startTime).toFixed(2);
 
-        // Estructura de respuesta sintáctica garantizada (SGP 1.0)
         return new Response(JSON.stringify({
           success: true,
           spec: "SGP-1.0",
-          nodeId: env.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          legalRpi: env.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          llmMilestoneRpi: env.LLM_MILESTONE_RPI || "RPI-2026-SAARE-0914X",
           tenant: tenant,
           enforcement: {
             verdict: finalDecision,

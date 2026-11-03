@@ -1,5 +1,17 @@
-// saare-suite/src/components/PricingSection.jsx — Licenciamiento Comercial & Sandbox 0 €
+// saare-suite/src/components/PricingSection.jsx — Licenciamiento Comercial & Sandbox 0 € (SGP 1.0 Integ. Stripe)
 import React, { useState } from 'react';
+
+// Mapeo oficial de enlaces de pago de Stripe Checkout (SGP 1.0)
+const STRIPE_PAYMENT_LINKS = {
+  COMPLIANCE_249: {
+    monthly: 'https://buy.stripe.com/afA4gza217ydegzagd8g006',
+    annual: 'https://buy.stripe.com/fZu14n8XX5q5c8r9c98g008',
+  },
+  PROFESSIONAL_649: {
+    monthly: 'https://buy.stripe.com/fZu5kD0rr5q5egz0FD8g007',
+    annual: 'https://buy.stripe.com/bJe14n8XX4m18Wf5ZX8g009',
+  },
+};
 
 export default function PricingSection({ onSelectPlan }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -7,13 +19,32 @@ export default function PricingSection({ onSelectPlan }) {
 
   const isAnnual = billingCycle === 'annual';
 
-  // Manejo unificado de selección de planes con redirección segura a producción
+  // Redirección directa según el plan y la modalidad de facturación
   const handlePlanSelect = (planId) => {
+    // 1. Redirección a Stripe Checkout para planes de pago autoservicio
+    if (STRIPE_PAYMENT_LINKS[planId]) {
+      const stripeUrl = STRIPE_PAYMENT_LINKS[planId][billingCycle];
+      window.location.href = stripeUrl;
+      return;
+    }
+
+    // 2. Redirección a formulario para Enterprise y Despliegues Privados
+    if (planId === 'ENTERPRISE_1500' || planId === 'PRIVATE_CUSTOM') {
+      const evaluationElement = document.getElementById('evaluation');
+      if (evaluationElement) {
+        evaluationElement.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.location.href = '#evaluation';
+      }
+      return;
+    }
+
+    // 3. Redirección al registro de consola para Sandbox 0 €
     if (onSelectPlan) {
       onSelectPlan(planId);
     } else {
-      const consoleUrl = import.meta.env.VITE_CONSOLE_URL || 'https://saare-console.pages.dev';
-      window.location.href = `${consoleUrl}?plan=${planId}&tenant=DEMO_ENTERPRISE&role=AUDITOR_GUEST&status=ACTIVE&source=saare_suite`;
+      const consoleUrl = import.meta.env.VITE_CONSOLE_URL || 'https://app.saare.es/register';
+      window.location.href = consoleUrl;
     }
   };
 
@@ -24,6 +55,7 @@ export default function PricingSection({ onSelectPlan }) {
       badge: 'Permanente 0 €',
       priceMonthly: 0,
       priceAnnual: 0,
+      annualTotal: 0,
       period: 'Acceso Permanente',
       target: 'Desarrolladores, DPOs y Auditorías Técnicas',
       capacity: '1 Sistema IA · 2 Usuarios',
@@ -38,7 +70,8 @@ export default function PricingSection({ onSelectPlan }) {
       name: 'Compliance',
       badge: 'Gobernanza Base',
       priceMonthly: 249,
-      priceAnnual: 199,
+      priceAnnual: 199.20,
+      annualTotal: '2.390,40',
       period: '€ / mes + IVA',
       target: 'SaaS en Crecimiento y Pymes',
       capacity: '3 Sistemas IA · 5 Usuarios',
@@ -53,13 +86,14 @@ export default function PricingSection({ onSelectPlan }) {
       name: 'Professional',
       badge: 'Recomendado ISVs',
       priceMonthly: 649,
-      priceAnnual: 519,
+      priceAnnual: 519.20,
+      annualTotal: '6.230,40',
       period: '€ / mes + IVA',
       target: 'Empresas B2B e Integradores',
       capacity: '10 Sistemas IA · 15 Usuarios',
       limit: '5.000 evidencias / mes',
       highlightFeature: 'Gobernanza Avanzada + Intercepción Ex-Ante L7',
-      cta: 'Solicitar Professional',
+      cta: 'Contratar Professional',
       ctaStyle: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold shadow-lg shadow-cyan-500/25',
       featured: true
     },
@@ -69,6 +103,7 @@ export default function PricingSection({ onSelectPlan }) {
       badge: 'Corporativo',
       priceMonthly: 1500,
       priceAnnual: 1200,
+      annualTotal: '14.400,00',
       period: '€ / mes + IVA (desde)',
       target: 'Multinacionales y Gran Cuenta',
       capacity: '50 Sistemas IA · 50+ Usuarios',
@@ -101,6 +136,7 @@ export default function PricingSection({ onSelectPlan }) {
 
           <div className="mt-8 inline-flex items-center gap-3 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
             <button
+              type="button"
               onClick={() => setBillingCycle('monthly')}
               className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${
                 !isAnnual ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
@@ -108,6 +144,7 @@ export default function PricingSection({ onSelectPlan }) {
               Facturación Mensual
             </button>
             <button
+              type="button"
               onClick={() => setBillingCycle('annual')}
               className={`px-5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
                 isAnnual ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'
@@ -154,7 +191,7 @@ export default function PricingSection({ onSelectPlan }) {
                     </div>
                     {isAnnual && typeof price === 'number' && price > 0 && (
                       <p className="text-[10px] text-emerald-400 mt-1 font-mono">
-                        Facturado anualmente ({price * 12} €/año)
+                        Facturado anualmente ({plan.annualTotal} €/año)
                       </p>
                     )}
                   </div>
@@ -176,6 +213,7 @@ export default function PricingSection({ onSelectPlan }) {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => handlePlanSelect(plan.id)}
                   className={`w-full py-3 text-xs font-bold rounded-xl transition-all text-center cursor-pointer ${plan.ctaStyle}`}>
                   {plan.cta}
@@ -197,6 +235,7 @@ export default function PricingSection({ onSelectPlan }) {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => handlePlanSelect('PRIVATE_CUSTOM')}
             className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl border border-slate-700 shrink-0 transition-colors cursor-pointer">
             Diseñar Despliegue Privado
@@ -205,6 +244,7 @@ export default function PricingSection({ onSelectPlan }) {
 
         <div className="text-center">
           <button
+            type="button"
             onClick={() => setShowFullComparison(!showFullComparison)}
             className="px-6 py-2.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer">
             {showFullComparison ? 'Ocultar Matriz de Especificaciones ▲' : 'Mostrar Matriz Completa de Especificaciones ▼'}

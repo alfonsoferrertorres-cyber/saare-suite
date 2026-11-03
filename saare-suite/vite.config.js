@@ -16,8 +16,6 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'react': path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
   },
 
@@ -37,7 +35,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            // Coincidencia exacta únicamente con los paquetes núcleo de React
+            if (/\/node_modules\/(react|react-dom|react-router|react-router-dom)\//.test(id)) {
               return 'vendor-react';
             }
             return 'vendor-deps';
