@@ -1,4 +1,4 @@
-// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v8.4 - Corregido y Blindado)
+// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v10.0 - Worker Wajjin Walsimsiifame)
 import { saareFetch } from '../utils/api';
 
 export const apiService = {
@@ -31,14 +31,15 @@ export const apiService = {
 
   async getTelemetryTraces(limit = 100) {
     try {
-      const res = await saareFetch(`/runs?limit=${limit}`, { method: 'GET' });
+      // Endpoint /v1/traces Worker wajjin walsimsiifame
+      const res = await saareFetch(`/traces?limit=${limit}`, { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
-        return Array.isArray(data) ? data : (data.evidences || data.runs || data.data || []);
+        return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
       }
       if (res && res.status === 429) {
         console.warn('⚠️ Límite de tasa alcanzado (Rate Limit 429). Activando protección anti-saturación en UI.');
-        return []; // Retorna array vacío en lugar de null para prevenir fallos en la consola GRC
+        return [];
       }
     } catch (e) {
       console.warn('[SAARE API] Error al recuperar trazas de telemetría:', e);
@@ -48,30 +49,31 @@ export const apiService = {
 
   async getNodeStatus() {
     try {
-      const res = await saareFetch('/status', { method: 'GET' });
+      // Endpoint /health Worker wajjin walsimsiifame
+      const res = await saareFetch('/health', { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
         return {
-          nodeId: data.node || data.service || 'NODE-L7-PRIMARY-MAD',
+          nodeId: data.node || data.service || 'RPI-2607076315021',
           tenantId: 'ENTERPRISE',
           mode: 'FAIL-CLOSED',
-          latencyP99Ms: Number(data.latencyP99Ms ?? 1.12),
+          latencyP99Ms: Number(data.latencyP99Ms ?? 0.8),
           activePolicies: 18,
-          status: data.status || 'OPERATIVE',
-          trustAnchor: data.trustAnchor || 'D1-EU-WESTERN-EUROPE',
-          vaultSource: data.vaultSource || 'D1_HYBRID'
+          status: data.status || 'HEALTHY',
+          trustAnchor: data.trustAnchor || 'https://vault.saare.es',
+          vaultSource: 'D1_HYBRID'
         };
       }
     } catch (e) {}
 
     return {
-      nodeId: 'NODE-L7-PRIMARY-MAD',
+      nodeId: 'RPI-2607076315021',
       tenantId: 'ENTERPRISE',
       mode: 'FAIL-CLOSED',
-      latencyP99Ms: 1.12,
+      latencyP99Ms: 0.8,
       activePolicies: 18,
       status: 'OPERATIVE',
-      trustAnchor: 'D1-EU-WESTERN-EUROPE',
+      trustAnchor: 'https://vault.saare.es',
       vaultSource: 'D1_HYBRID'
     };
   },
@@ -86,7 +88,8 @@ export const apiService = {
         bodyData = { ...payloadOrPrompt, ...(context || {}) };
       }
 
-      const res = await saareFetch('/intercept', {
+      // Endpoint /proxy/llm Worker wajjin walsimsiifame
+      const res = await saareFetch('/proxy/llm', {
         method: 'POST',
         body: JSON.stringify(bodyData)
       });
@@ -95,7 +98,6 @@ export const apiService = {
         return await res.json();
       }
 
-      // Política Fail-Closed estricta ante errores HTTP o saturación (429)
       const errData = await res?.json().catch(() => ({}));
       return { 
         decision: 'DENY', 
@@ -112,12 +114,16 @@ export const apiService = {
       const res = await saareFetch('/vault/sync', { method: 'GET' });
       if (res && res.ok) return await res.json();
     } catch (e) {}
-    return { success: true, trustAnchor: 'D1-EU-WESTERN-EUROPE', source: 'D1_HYBRID' };
+    return { success: true, trustAnchor: 'https://vault.saare.es', source: 'D1_HYBRID' };
   },
 
-  async verifyEvidence(hash) {
+  async verifyEvidence(proof) {
     try {
-      const res = await saareFetch(`/verify/${encodeURIComponent(hash)}`, { method: 'GET' });
+      // Endpoint /evidence/verify Worker wajjin walsimsiifame
+      const res = await saareFetch('/evidence/verify', {
+        method: 'POST',
+        body: JSON.stringify({ proof })
+      });
       if (res && res.ok) return await res.json();
     } catch (e) {}
     return { verified: false, error: "No se pudo establecer conexión con el endpoint de verificación criptográfica." };

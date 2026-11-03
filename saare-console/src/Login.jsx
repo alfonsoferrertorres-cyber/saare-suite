@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { API_BASE_URL } from './utils/api';
 
 export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER_FREE' }) {
-  const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || 'XXXXXX@XXXXX');
-  const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || 'XXXXXXXXX');
-  const [role, setRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_SECOPS_LEVEL_3');
+  const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || 'ciso@saare.es');
+  const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE');
+  const [role, setRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
   const [password, setPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -21,10 +21,9 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
     setLoading(true);
     setErrorMsg('');
 
-    const cleanEmail = email.trim().toLowerCase() || 'XXXXXX@XXXXX';
-    const cleanTenant = tenant.trim().toUpperCase() || 'XXXXXXXX';
+    const cleanEmail = email.trim().toLowerCase() || 'ciso@saare.es';
+    const cleanTenant = tenant.trim().toUpperCase() || 'ENTERPRISE';
 
-    // PAYLOAD DEL DESPLIEGUE AGNÓSTICO CAMUFLADO MEDIANTE COMANDO SINTÁCTICO (CUALQUIER LLM)
     const agnosticCommandPayload = {
       command: 'Iniciar_cumplimiento_exante_saare --route-vault=D1',
       witnessTag: '[MS3V-COMPLIANCE-L7-OK]',
@@ -45,7 +44,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
         },
         body: JSON.stringify({
           email: cleanEmail,
-          password: password || 'AGNOSTIC_BYPASS_KEY',
+          password: password || 'demo',
           tenant: cleanTenant,
           role: role,
           plan: selectedPlan,
@@ -77,7 +76,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
       console.warn("[SAARE GATE] Operando en Modo Autónomo Local / Resilience Gate:", err);
     }
 
-    // Fallback de Resiliencia / Modo Local con Inyección Agnóstica Ex-Ante
     const localToken = `sk_saare_local_exante_${Date.now()}`;
     localStorage.setItem('saare_token', localToken);
     localStorage.setItem('saare_user_email', cleanEmail);
@@ -100,7 +98,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
     <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 font-sans text-slate-100">
       <div className="bg-[#0b0f19] border border-[#1e293b] rounded-2xl max-w-xl w-full p-8 shadow-2xl space-y-6">
         
-        {/* Banner Superior S.A.A.R.E. */}
         <div className="p-4 bg-[#020617] border border-[#1e293b] rounded-xl text-center">
           <div className="inline-flex items-center justify-center w-10 h-10 bg-sky-500/10 border border-sky-500/30 rounded-lg mb-2">
             🧠
@@ -111,7 +108,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
           <p className="text-[11px] text-slate-400 font-mono mt-1">S.A.A.R.E. CONSOLE GRC v10.0 / SGP 1.0</p>
         </div>
 
-        {/* Encabezado Principal de Activación */}
         <div className="text-center space-y-2">
           <h2 className="text-base font-extrabold uppercase text-slate-100 tracking-wide">
             ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1
@@ -127,7 +123,6 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
           </div>
         )}
 
-        {/* Formulario de Activación de Entrada */}
         <form onSubmit={handleActivationSubmit} className="space-y-4">
           <div>
             <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
@@ -138,7 +133,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="alfonsoferrertorres@gmail.com"
+              placeholder="ciso@saare.es"
               className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
             />
           </div>
@@ -153,7 +148,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
                 required
                 value={tenant}
                 onChange={(e) => setTenant(e.target.value)}
-                placeholder="TESTEOOOOORROOR"
+                placeholder="ENTERPRISE"
                 className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -189,23 +184,13 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'DISCOVER
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-            {onBack ? (
-              <button 
-                type="button" 
-                onClick={onBack}
-                className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider"
-              >
-                CANCELAR
-              </button>
-            ) : (
-              <button 
-                type="button" 
-                onClick={() => setEmail('')}
-                className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider"
-              >
-                CANCELAR
-              </button>
-            )}
+            <button 
+              type="button" 
+              onClick={onBack || (() => setEmail(''))}
+              className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider"
+            >
+              CANCELAR
+            </button>
 
             <button 
               type="submit" 

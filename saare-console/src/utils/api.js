@@ -20,12 +20,13 @@ export function getApiHost() {
     return envBaseUrl.replace(/\/api(\/v1)?\/?$/, '').replace(/\/$/, '');
   }
 
-  // 3. Prioridad (Producción / Single-Origin): URL donde corre la web
-  if (typeof window !== 'undefined' && window.location?.origin) {
+  // 3. Prioridad (Producción / Single-Origin): URL donde corre la web si es api.saare.es
+  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin.includes('saare.es')) {
     return window.location.origin;
   }
 
-  return SAARE_CONFIG?.TRUST_ANCHOR || 'http://127.0.0.1:8000';
+  // Fallback predeterminado hacia el API gateway de producción S.A.A.R.E.
+  return SAARE_CONFIG?.TRUST_ANCHOR || 'https://api.saare.es';
 }
 
 // Getters dinámicos para evitar valores estáticos obsoletos si cambia localStorage
@@ -61,7 +62,7 @@ export async function saareFetch(endpoint, options = {}) {
   }
 
   let token = null;
-  let currentUser = SAARE_CONFIG?.DEFAULT_USER || '';
+  let currentUser = SAARE_CONFIG?.DEFAULT_USER || 'admin@saare.es';
   let currentTenant = SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
   let currentRole = SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN';
 
@@ -130,7 +131,6 @@ export async function saareFetch(endpoint, options = {}) {
   } catch (error) {
     console.error('[SAARE_CONSOLE_API] Error de conexión con Control Plane / Bóveda:', error);
     
-    // Oñemyatyrõ: Ndaipóri jave red (offline), ome'ẽ peteĩ Response sintético (status 503) aníagui ojapo error no-manejado (unhandled rejection)
     return new Response(
       JSON.stringify({
         error: true,
@@ -195,24 +195,11 @@ export const api = {
   },
 
   getEvidences: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    const endpoint = `/runs${query ? `?${query}` : ''}`;
-    try {
-      const res = await saareFetch(endpoint, { method: 'GET' });
-      if (!res.ok) return { evidences: [], total: 0 };
-      const data = await res.json();
-      return {
-        evidences: data.evidences || data.runs || data.data || (Array.isArray(data) ? data : []),
-        total: data.total || (data.evidences ? data.evidences.length : 0)
-      };
-    } catch (e) {
-      console.warn('[SAARE_API] Error al cargar evidencias desde /runs, probando fallback /traces:', e);
-      return api.getTraces(params);
-    }
+    return api.getTraces(params);
   },
 
   getRuns: async (params = {}) => {
-    return api.getEvidences(params);
+    return api.getTraces(params);
   },
 
   getTraces: async (params = {}) => {
@@ -223,18 +210,18 @@ export const api = {
       if (!res.ok) return { evidences: [], total: 0 };
       const data = await res.json();
       return {
-        evidences: data.traces || data.evidences || data.data || (Array.isArray(data) ? data : []),
+        evidences: data.traces || data.evidences || data.runs || data.data || (Array.isArray(data) ? data : []),
         total: data.count || data.total || 0
       };
     } catch (e) {
-      console.error('[SAARE_API] Error fatal al obtener trazas:', e);
+      console.error('[SAARE_API] Error al obtener trazas:', e);
       return { evidences: [], total: 0 };
     }
   },
 
   getTraceById: async (traceId) => {
     try {
-      const res = await saareFetch(`/runs/${traceId}`, { method: 'GET' });
+      const res = await saareFetch(`/traces/${traceId}`, { method: 'GET' });
       if (!res.ok) return null;
       return res.json();
     } catch (e) {

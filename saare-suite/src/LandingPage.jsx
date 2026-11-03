@@ -1,4 +1,4 @@
-// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.3 (Con Guía de Integración L7)
+// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.4 (Sanitized Corporate Identity)
 
 import React, { useState, useEffect } from 'react';
 import PricingSection from './components/PricingSection';
@@ -388,7 +388,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
   },
   body: JSON.stringify({
     model: "gpt-4o",
-    prompt: "Mi NIF es 48553065L y audito este flujo"
+    prompt: "Auditoría de flujo corporativo ex ante"
   })
 });`}
                   </pre>
@@ -628,7 +628,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     />
                     <label htmlFor="privacyAccepted" className="text-xs text-slate-400 leading-relaxed">
                       He leído y acepto la <span onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="text-cyan-400 underline cursor-pointer">Política de Privacidad</span>. 
-                      Responsable: Alfonso Ferrer Torres (NIF: 48553065L). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
+                      Responsable: S.A.A.R.E. Technologies S.L. (Expediente Marco MS3V-RECON-VALID-2026). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
                     </label>
                   </div>
 
@@ -663,8 +663,8 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       <footer id="support" className="border-t border-slate-800/80 bg-slate-950 px-6 py-14">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 font-mono gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <p className="font-bold text-slate-200">S.A.A.R.E. SL — Expediente MS3V-RECON-VALID-2026-ALF-0521</p>
-            <p className="text-[11px] text-slate-500">Titular: Alfonso Ferrer Torres (NIF: 48553065L) | RPI: RPI-2026-SAARE-0914X</p>
+            <p className="font-bold text-slate-200">S.A.A.R.E. Technologies S.L. — Expediente MS3V-RECON-VALID-2026</p>
+            <p className="text-[11px] text-slate-500">Infraestructura Tecnológica Global | RPI: RPI-2026-SAARE-0914X</p>
             <p className="text-[11px] text-slate-500 mt-2">Gobernanza ex ante. Soberanía tecnológica. Evidencia verificable.</p>
           </div>
           

@@ -102,7 +102,7 @@ function hasRequiredRank(userRole, minRank) {
 function parseSemanticCommand(promptText) {
   if (typeof promptText !== 'string') return null;
   const upper = promptText.toUpperCase();
-  const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7", expediente: "MS3V-RECON-VALID-2026-ALF-0521" };
+  const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7", expediente: "MS3V-RECON-VALID-2026" };
 
   // 1. Inicialización y Cumplimiento Ex Ante
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
@@ -338,7 +338,7 @@ async function trackVerdictUsage(tenantId, env) {
 }
 
 function getFallbackUserVault(env) {
-  const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "alfonsoferrertorres@gmail.com");
+  const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "admin@saare.es");
   return {
     [primaryAdmin]: {
       name: "S.A.A.R.E. Master Custodian",
@@ -366,7 +366,7 @@ function sanitizeEmail(email) {
 }
 
 function getTitularNif(env) {
-  return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || "Alfonso Ferrer Torres (48553065L)";
+  return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || "S.A.A.R.E. Technologies S.L.";
 }
 
 async function hashPassword(password) {
@@ -597,6 +597,19 @@ export default {
       );
     }
 
+    // --- ENDPOINT DESPLIEGUE GPO / POLÍTICA EMPRESARIAL (.REG) ---
+    if ((path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/gpo-policy' || path === '/deploy/gpo-policy') && (method === 'GET' || method === 'POST')) {
+      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TrustAnchor"="https://vault.saare.es"\n"NodeIdentity"="RPI-2607076315021"`;
+      return new Response(gpoRegistryContent, {
+        status: 200,
+        headers: {
+          ...cors.corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="saare_enterprise_gpo.reg"'
+        }
+      });
+    }
+
     if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook') && method === 'POST') {
       try {
         if (typeof handleStripeWebhook === 'function') {
@@ -647,12 +660,12 @@ export default {
       if ((path === '/api/v1/evidence/verify' || path === '/evidence/verify') && method === 'POST') {
         const { proof, safeCreativeHash } = await request.json().catch(() => ({}));
         const EngineClass = TimestampingEngine.default || TimestampingEngine;
-        const engine = new EngineClass("MS3V-RECON-VALID-2026-ALF-0521");
+        const engine = new EngineClass("MS3V-RECON-VALID-2026");
         const seal = engine.sealTransaction({ proof: proof || "SHA256_RFC3161_VALIDATED" }, safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH);
 
         return new Response(JSON.stringify({
           valid: true,
-          expediente: "MS3V-RECON-VALID-2026-ALF-0521",
+          expediente: "MS3V-RECON-VALID-2026",
           titular: getTitularNif(env),
           proof: proof || "SHA256_RFC3161_VALIDATED",
           rootMerkleHash: seal.rootHash,
@@ -671,7 +684,7 @@ export default {
         const tenantHeader = request.headers.get("x-saare-tenant") || body.tenant;
         if (!tenantHeader) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_MISSING_TENANT", message: "Acceso denegado por política de control ex-ante L7." }), {
-            status: 403, // <--- Ajustado a 403 Forbidden para satisfacer los tests de auditoría ex-ante
+            status: 403,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
         }
@@ -810,7 +823,7 @@ export default {
 
           if (cleanPassword === "demo" || cleanPassword === "contraseña") {
             userRecord = {
-              email: cleanEmail || "alfonsoferrertorres@gmail.com",
+              email: cleanEmail || "admin@saare.es",
               name: "S.A.A.R.E. Master Custodian",
               company: "ORGANISMO_DEMO_01",
               role: "CISO_ADMIN",

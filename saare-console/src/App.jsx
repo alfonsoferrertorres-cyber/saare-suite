@@ -1748,6 +1748,26 @@ export default function App() {
         </div>
       )}
 
+      {auditTokenModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div style={{ maxWidth: '500px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#38bdf8', fontWeight: '900' }}>TOKEN DE AUDITORÍA DE IP Y SECRETOS EMPRESARIALES</h3>
+              <button onClick={() => setAuditTokenModal(false)} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: '1.5' }}>
+              Token criptográfico generado con éxito bajo el comando <code style={{ color: '#38bdf8' }}>{SAARE_SEMANTIC_COMMANDS.MODE_IP}</code> para el operador <strong style={{ color: '#fff' }}>{userEmail}</strong>.
+            </p>
+            <div style={{ background: '#020617', padding: '12px', borderRadius: '6px', border: '1px solid #1e293b', fontFamily: 'monospace', fontSize: '0.75rem', color: '#34d399', wordBreak: 'break-all', marginBottom: '16px' }}>
+              TOKEN_IPRES_{tenantId}_2026_ED25519_VERIFIED
+            </div>
+            <button onClick={() => setAuditTokenModal(false)} style={{ width: '100%', padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', cursor: 'pointer' }}>
+              CERRAR
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAddFilterModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
           <div style={{ maxWidth: '480px', width: '100%', background: '#0b0f19', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>

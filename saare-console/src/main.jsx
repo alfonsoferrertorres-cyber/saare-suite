@@ -1,11 +1,17 @@
-// saare-console/src/main.jsx
+// saare-console/src/main.jsx — Punto de Entrada Oficial S.A.A.R.E. Console GRC (v10.0)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const rootElement = document.getElementById('root');
+
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+} else {
+  console.error('[SAARE_CONSOLE_FATAL] No se encontró el elemento contenedor #root en el DOM.');
+}
