@@ -8,7 +8,7 @@ import SeatsManagementModal from './components/SeatsManagementModal';
 import ReportExportModal from './components/ReportExportModal';
 import FriaWizardModal from './components/FriaReportModal';
 import { SAARE_CONFIG } from './config/saareState';
-import { API_BASE_URL, saareFetch } from './utils/api';
+import { API_BASE_URL, API_HOST, saareFetch } from './utils/api';
 import { generatePdfFromElement } from './services/pdfGeneratorService';
 import cabeceraImg from './assets/cabecera.png';
 
@@ -96,6 +96,7 @@ export default function App() {
   // Estado para controlar el menú desplegable de Despliegue Agnóstico
   const [showDeployDropdown, setShowDeployDropdown] = useState(false);
 
+  // 1. DESCARGA DE ARCHIVO GPO (.REG)
   const handleDownloadEnterpriseGpoReg = () => {
     setShowDeployDropdown(false);
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
@@ -126,31 +127,41 @@ export default function App() {
     triggerGovernance("Archivo GPO .reg generado y enrutado para la Bóveda D1.");
   };
 
-  const handleDownloadBrowserExtension = () => {
+  // 2. DESCARGA DE LA EXTENSIÓN PROXY DE NAVEGADOR (ZIP)
+  const handleDownloadProxyExtensionZip = () => {
     setShowDeployDropdown(false);
-    triggerGovernance("Preparando paquete de extensión de navegador con credenciales de cliente...");
+    triggerGovernance("Iniciando descarga del paquete completo de la Extensión Proxy L7 (.zip)...");
+    const baseUrl = (import.meta.env?.VITE_API_URL || API_HOST || 'https://api.saare.es').replace(/\/$/, '');
+    window.open(`${baseUrl}/api/v1/deploy/extension-zip?tenant=${tenantId}`, '_blank');
+  };
+
+  // 3. DESCARGA DE CREDENCIALES DE ENRUTAMIENTO DE PASARELA (JSON)
+  const handleDownloadRoutingCredentialsJson = () => {
+    setShowDeployDropdown(false);
+    triggerGovernance("Generando archivo JSON de credenciales de enrutamiento y pasarela...");
     
     const extensionConfig = {
-      extensionName: "S.A.A.R.E. L7 Interceptor Extension",
+      extensionName: "S.A.A.R.E. L7 Interceptor Credentials",
       version: "1.0.0",
       spec: "SGP 1.0",
       tenantId: tenantId,
       operatorEmail: userEmail,
-      gatewayEndpoint: "https://api.saare.es/api/v1/proxy/llm",
-      vaultAnchor: "https://vault.saare.es",
-      instructions: "Instale esta extensión en modo desarrollador o cárguela en Chrome/Edge para interceptar llamadas fetch de IA de forma transparente."
+      gatewayEndpoint: `${API_BASE_URL}/proxy/llm`,
+      vaultAnchor: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
+      issuedAt: new Date().toISOString(),
+      instructions: "Cargue o inyecte estas credenciales en el cliente proxy o extensión para enrutamiento seguro."
     };
 
     const blob = new Blob([JSON.stringify(extensionConfig, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `saare_browser_extension_config_${tenantId}.json`;
+    a.download = `saare_routing_credentials_${tenantId}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    triggerGovernance("Paquete de extensión y credenciales de cliente descargados con éxito.");
+    triggerGovernance("Credenciales de enrutamiento (.json) descargadas con éxito.");
   };
 
   const handleZeroTrustEnforce = async () => {
@@ -1229,7 +1240,7 @@ export default function App() {
               👥 ASIENTOS RBAC
             </button>
 
-            {/* BOTÓN DESPLEGABLE UNIFICADO PARA DESPLIEGUE (EXTENSION + .REG) */}
+            {/* BOTÓN DESPLEGABLE UNIFICADO Y SEPARADO PARA DESPLIEGUE (EXTENSION + JSON CREDENCIALES + .REG GPO) */}
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <button 
                 onClick={() => setShowDeployDropdown(!showDeployDropdown)}
@@ -1246,7 +1257,7 @@ export default function App() {
                   alignItems: 'center',
                   gap: '4px'
                 }}
-                title="Desplegar Interceptor perimetral y extensión de cliente">
+                title="Desplegar Interceptor perimetral, credenciales y GPO">
                 📥 Despliegue Cliente / Proxy ▾
               </button>
 
@@ -1258,17 +1269,18 @@ export default function App() {
                   background: '#0b0f19',
                   border: '1px solid #1e293b',
                   borderRadius: '8px',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.7)',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.85)',
                   zIndex: 9999,
-                  minWidth: '260px',
+                  minWidth: '280px',
                   padding: '8px'
                 }}>
                   <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '800', padding: '6px 8px', textTransform: 'uppercase', borderBottom: '1px solid #1e293b', marginBottom: '4px' }}>
                     Opciones de Despliegue L7 ({tenantId})
                   </div>
 
+                  {/* OPCIÓN 1: EXTENSIÓN PROXY DE NAVEGADOR (ZIP) */}
                   <button 
-                    onClick={handleDownloadBrowserExtension}
+                    onClick={handleDownloadProxyExtensionZip}
                     style={{
                       width: '100%',
                       textAlign: 'left',
@@ -1286,10 +1298,36 @@ export default function App() {
                     }}
                     onMouseEnter={(e) => e.target.style.background = '#1e293b'}
                     onMouseLeave={(e) => e.target.style.background = 'transparent'}>
-                    <span>🧩 Extensión de Navegador</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Incluye credenciales de cliente para interceptación web</span>
+                    <span>🧩 Extensión Proxy (.zip)</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Paquete del plugin instalable para Chrome / Edge</span>
                   </button>
 
+                  {/* OPCIÓN 2: CREDENCIALES DE ENRUTAMIENTO (JSON) */}
+                  <button 
+                    onClick={handleDownloadRoutingCredentialsJson}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#f59e0b',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      marginTop: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#1e293b'}
+                    onMouseLeave={(e) => e.target.style.background = 'transparent'}>
+                    <span>🔑 Credenciales Pasarela (.json)</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Parámetros de conexión y enrutamiento del Tenant</span>
+                  </button>
+
+                  {/* OPCIÓN 3: ARCHIVO GPO REGISTRY (.REG) */}
                   <button 
                     onClick={handleDownloadEnterpriseGpoReg}
                     style={{
@@ -1311,7 +1349,7 @@ export default function App() {
                     onMouseEnter={(e) => e.target.style.background = '#1e293b'}
                     onMouseLeave={(e) => e.target.style.background = 'transparent'}>
                     <span>⚙️ Archivo GPO (.reg)</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Enruta el proxy automáticamente con la bóveda D1</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Enruta el proxy automáticamente en Windows</span>
                   </button>
                 </div>
               )}
