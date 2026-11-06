@@ -1,7 +1,0 @@
-Windows Registry Editor Version 5.00
-
-[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\SAARE\L7]
-"EnableExAnteEnforcement"=dword:00000001
-"TrustAnchor"="https://vault.saare.es"
-"LegalRpi"="RPI-2607076315021"
-"LlmMilestoneRpi"="RPI-2026-SAARE-0914X"

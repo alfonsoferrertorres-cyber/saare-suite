@@ -1,0 +1,22 @@
+﻿name = "saare-control-plane-prod"
+main = "worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = false
+preview_urls = false
+
+[vars]
+SAFE_CREATIVE_ID = "2607076315021"
+AUDIT_TOKEN = "IA-2026-VAL-AUD-8842-XF"
+P2026_REGISTRATION = "P202630603"
+SGP_SPEC_VERSION = "SGP 1.0"
+WORKER_NAME = "saare-control-plane-prod"
+TRUST_ANCHOR = "https://vault.saare.es"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "saare-vault-d1"
+database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
+
+[[kv_namespaces]]
+binding = "SAARE_VAULT_KV"
+id = "8dbfe21019834fc1bdefd9b66e4e810b"

@@ -1,0 +1,33 @@
+{
+  "name": "saare-console",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "deps:master": "bash scripts/master-deps.sh",
+    "deps:clean": "bash scripts/master-deps.sh --clean",
+    "build": "vite build",
+    "build:master": "npm run deps:master && npm run build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dompurify": "^3.1.6",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "jszip": "^3.10.1",
+    "jwt-decode": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1",
+    "wrangler": "^3.114.0"
+  }
+}

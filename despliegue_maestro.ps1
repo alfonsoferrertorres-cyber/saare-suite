@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.5 - Corrected)
+# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.6 - Production Ready)
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
@@ -38,13 +38,25 @@ try {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 1: DEPENDENCIAS Y LIMPIEZA DE ARTEFACTOS
+# FASE 1: DEPENDENCIAS, EMPAQUETADO DE EXTENSIÓN Y LIMPIEZA
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [1/6] Resolviendo dependencias y limpiando builds antiguas..." -ForegroundColor Yellow
+Write-Host "`n==> [1/6] Resolviendo dependencias, empaquetando proxy y limpiando builds..." -ForegroundColor Yellow
 pnpm install --no-frozen-lockfile
 
-# Limpieza estricta de dist/ para prevenir despliegues de código obsoleto
+# Limpieza de dist/ antiguos
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist"
+
+# Generación del paquete ZIP dinámico de la extensión L7 para descarga pública
+$extSrc = if (Test-Path "apps/l7-proxy-extension") { "apps/l7-proxy-extension" } elseif (Test-Path "l7-proxy-extension") { "l7-proxy-extension" } else { $null }
+$consolePublicDeploy = if (Test-Path "apps/saare-console") { "apps/saare-console/public/deploy" } elseif (Test-Path "saare-console") { "saare-console/public/deploy" } else { $null }
+
+if ($extSrc -and $consolePublicDeploy) {
+    Write-Host " -> Empaquetando Extensión Proxy L7 en $consolePublicDeploy/saare_l7_proxy_extension.zip..." -ForegroundColor Gray
+    New-Item -ItemType Directory -Force -Path $consolePublicDeploy | Out-Null
+    Compress-Archive -Path "$extSrc/*" -DestinationPath "$consolePublicDeploy/saare_l7_proxy_extension.zip" -Force
+} else {
+    Write-Host "[ADVERTENCIA] No se encontró el origen de la extensión proxy. Se omitirá el empaquetado del ZIP." -ForegroundColor DarkYellow
+}
 
 # ------------------------------------------------------------------------------
 # FASE 2: COMPILACIÓN DIRECTA DE FRONTENDS (PNPM WORKSPACES)
@@ -103,18 +115,18 @@ if ($controlPlanePath) {
 
         if ($sqlPath) {
             Write-Host " -> Aplicando esquema relacional D1 ($sqlPath)..." -ForegroundColor Gray
-            npx wrangler d1 execute saare-vault-d1 --remote --file=$sqlPath --env production --yes
+            npx wrangler d1 execute saare-vault-d1 --remote --file=$sqlPath --yes
         } else {
             Write-Host "[ADVERTENCIA] No se encontró el archivo schema.sql. Omitiendo migración D1." -ForegroundColor DarkYellow
         }
 
         # 4.2 Sincronización de Tipos TypeScript
         Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
-        npx wrangler types --env production
+        npx wrangler types
 
         # 4.3 Despliegue del Worker
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
-        npx wrangler deploy --env production
+        npx wrangler deploy
     } finally {
         Pop-Location
     }
@@ -133,7 +145,7 @@ if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
     if (-not $currentBranch) { $currentBranch = "main" }
 
-    git commit -m "chore(release): despliegue maestro verificado L7 v8.5 (Pages + Worker + D1/KV Sync)"
+    git commit -m "chore(release): despliegue maestro verificado L7 v8.6 (Pages + Worker + D1/KV Sync)"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
@@ -156,7 +168,7 @@ foreach ($url in $endpointsToTest) {
     try {
         $health = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5
         Write-Host " -> [OK] Estado API ($url):" -ForegroundColor Green
-        Write-Host "    Estado: $($health.status) | Nodo: $($health.node) | TrustAnchor: $($health.trustAnchor)" -ForegroundColor Gray
+        Write-Host "    Estado: $($health.status) | Servicio: $($health.service) | TrustAnchor: $($health.trustAnchor)" -ForegroundColor Gray
         $apiOnline = $true
         break
     } catch {

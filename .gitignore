@@ -1,37 +1,4 @@
-# Dependetiae et aedificationes
 node_modules/
-**/node_modules/
-dist/
-**/dist/
-dist_/
-**/dist_/
 .turbo/
-**/.turbo/
-
-# Cloudflare Wrangler et cache
-.wrangler/
-**/.wrangler/
-control-plane-local/
-target/
-
-# Secretes et variabiles ambiente
-.env
-.env.*
-!.env.example
-.dev.vars
-
-# Dati temporarii et repositoria localia
-evidence_vault/
-**/evidence_vault/
-*.json.db
-*.log
-
-# Scrinia compressa et exceptiones
-*.zip
-!saare-console/public/*.zip
-# Certified credentials & local registration
-saare-recognition.json
-
-# Performance & benchmark test outputs
-benchmark_*_summary.json
-*.summary.json
+dist/
+build/
