@@ -1,7 +1,7 @@
 // saare-console/src/components/SubsidiesHub.jsx — Justificación Forense & Subvenciones Públicas (SGP 1.0 / V12.1)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import * as CryptoModule from '../services/cryptoService';
-import { saareFetch, api } from '../utils/api';
+import apiService from '../services/apiService';
 
 export const SubsidiesHub = ({ tenantId, currentEvidences = [] }) => {
   const currentUser = api.getCurrentUser() || {};

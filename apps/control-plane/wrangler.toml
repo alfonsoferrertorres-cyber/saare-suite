@@ -1,8 +1,13 @@
 ﻿name = "saare-control-plane-prod"
-main = "worker.js"
+main = "src/worker.js"
 compatibility_date = "2026-11-06"
 workers_dev = false
 preview_urls = false
+
+# Definición de la ruta para el subdominio de producción
+routes = [
+  { pattern = "api.saare.es/*", custom_domain = true }
+]
 
 [vars]
 SAFE_CREATIVE_ID = "2607076315021"

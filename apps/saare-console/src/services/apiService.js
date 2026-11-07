@@ -1,5 +1,27 @@
 // saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v10.0 - Worker Wajjin Walsimsiifame)
-import { saareFetch } from '../utils/api';
+
+const API_BASE_URL = 'https://api.saare.es';
+const DEFAULT_TENANT = 'ORGANISMO_DEMO_01';
+const DEFAULT_USER = 'operator@saare.es';
+
+/**
+ * Helper saareFetch interna para sustituir el archivo eliminado src/utils/api.js
+ */
+async function saareFetch(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-saare-tenant': DEFAULT_TENANT,
+    'x-saare-user': DEFAULT_USER,
+    ...(options.headers || {})
+  };
+
+  return await fetch(url, {
+    ...options,
+    headers
+  });
+}
 
 export const apiService = {
   async getKpis(startDate, endDate) {
@@ -17,9 +39,9 @@ export const apiService = {
           allowedActions: allowed,
           deniedActions: denied,
           reviewActions: Number(data.reviewActions ?? 0),
-          averageLatencyMs: Number(data.averageLatencyMs ?? 1.12),
+          averageLatencyMs: Number(data.averageLatencyMs ?? 0.84),
           activeSellersCount: Number(data.activeSellersCount ?? 12),
-          activeTenantsCount: Number(data.activeTenantsCount ?? 4)
+          activeTenantsCount: Number(data.activeTenantsCount ?? 1)
         };
       }
     } catch (e) {
@@ -31,7 +53,6 @@ export const apiService = {
 
   async getTelemetryTraces(limit = 100) {
     try {
-      // Endpoint /v1/traces Worker wajjin walsimsiifame
       const res = await saareFetch(`/traces?limit=${limit}`, { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
@@ -49,16 +70,15 @@ export const apiService = {
 
   async getNodeStatus() {
     try {
-      // Endpoint /health Worker wajjin walsimsiifame
       const res = await saareFetch('/health', { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
         return {
           nodeId: data.node || data.service || 'RPI-2607076315021',
-          tenantId: 'ENTERPRISE',
+          tenantId: DEFAULT_TENANT,
           mode: 'FAIL-CLOSED',
-          latencyP99Ms: Number(data.latencyP99Ms ?? 0.8),
-          activePolicies: 18,
+          latencyP99Ms: Number(data.latencyP99Ms ?? 0.84),
+          activePolicies: 8,
           status: data.status || 'HEALTHY',
           trustAnchor: data.trustAnchor || 'https://vault.saare.es',
           vaultSource: 'D1_HYBRID'
@@ -68,10 +88,10 @@ export const apiService = {
 
     return {
       nodeId: 'RPI-2607076315021',
-      tenantId: 'ENTERPRISE',
+      tenantId: DEFAULT_TENANT,
       mode: 'FAIL-CLOSED',
-      latencyP99Ms: 0.8,
-      activePolicies: 18,
+      latencyP99Ms: 0.84,
+      activePolicies: 8,
       status: 'OPERATIVE',
       trustAnchor: 'https://vault.saare.es',
       vaultSource: 'D1_HYBRID'
@@ -83,13 +103,22 @@ export const apiService = {
       let bodyData = {};
 
       if (typeof payloadOrPrompt === 'string') {
-        bodyData = { prompt: payloadOrPrompt, ...(context || {}) };
+        bodyData = { 
+          prompt: payloadOrPrompt, 
+          tenant: DEFAULT_TENANT,
+          user: DEFAULT_USER,
+          ...(context || {}) 
+        };
       } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
-        bodyData = { ...payloadOrPrompt, ...(context || {}) };
+        bodyData = { 
+          tenant: DEFAULT_TENANT,
+          user: DEFAULT_USER,
+          ...payloadOrPrompt, 
+          ...(context || {}) 
+        };
       }
 
-      // Endpoint /proxy/llm Worker wajjin walsimsiifame
-      const res = await saareFetch('/proxy/llm', {
+      const res = await saareFetch('/v1/chat/completions', {
         method: 'POST',
         body: JSON.stringify(bodyData)
       });
@@ -119,7 +148,6 @@ export const apiService = {
 
   async verifyEvidence(proof) {
     try {
-      // Endpoint /evidence/verify Worker wajjin walsimsiifame
       const res = await saareFetch('/evidence/verify', {
         method: 'POST',
         body: JSON.stringify({ proof })

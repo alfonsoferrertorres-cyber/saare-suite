@@ -46,3 +46,20 @@ export function generateDnshStatement(tenantId = 'ENTERPRISE') {
     energyEfficiency: "Optimización L7 ex-ante que reduce consumo computacional superfluo en infraestructura LLM."
   };
 }
+
+/**
+ * Convierte las claves técnicas de GRANT_TYPES a nombres legibles para la interfaz GRC.
+ * @param {string} grantType 
+ * @returns {string}
+ */
+export function formatGrantTypeLabel(grantType) {
+  const labels = {
+    [GRANT_TYPES.KIT_CONSULTING]: 'Kit Consulting (Asesoramiento IA)',
+    [GRANT_TYPES.KIT_DIGITAL]: 'Kit Digital',
+    [GRANT_TYPES.CDTI_NEOTEC]: 'CDTI Neotec',
+    [GRANT_TYPES.INCIBE_CIBER]: 'INCIBE Ciberseguridad',
+    [GRANT_TYPES.IMPULSO_IA]: 'Programa Impulso IA',
+    [GRANT_TYPES.GENERAL_SUBSIDY]: 'Subvención General / Ordenanza GRC'
+  };
+  return labels[grantType] || grantType || 'No Especificado';
+}

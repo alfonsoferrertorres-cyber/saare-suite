@@ -1,6 +1,5 @@
-// saare-console/src/services/proofEngine.js — Motor de Evidencias y Pruebas Criptográficas S.A.A.R.E.
+// saare-console/src/services/proofEngine.js — Motor de Evidencias y Pruebas Criptográficas S.A.A.R.E. (SGP 1.0)
 import * as CryptoModule from './cryptoService';
-import { CLAIMS_TAXONOMY } from '../utils/claimsTaxonomy';
 
 export class ProofEngine {
   /**
