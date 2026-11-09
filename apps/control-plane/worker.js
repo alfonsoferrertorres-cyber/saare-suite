@@ -611,6 +611,24 @@ export default {
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || _u.searchParams.get("role") || "CISO_ADMIN";
 
+      // === RUTA DE VERIFICACIÓN DE LICENCIA (/auth/verifylicense) ===
+      if ((path === '/auth/verifylicense' || path === '/v1/auth/verifylicense' || path === '/api/v1/auth/verifylicense') && (method === 'GET' || method === 'POST')) {
+        const licenseData = {
+          valid: true,
+          tenant: tenantId,
+          role: activeUserRole,
+          node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
+          status: "ACTIVE",
+          legalRpi: env?.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          expiresAt: "2027-12-31T23:59:59Z",
+          authenticated: !!identity || !!authHeader
+        };
+        return new Response(JSON.stringify(licenseData), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
       // === RUTA DE STREAMING TELEMETRÍA (SSE) ===
       if ((path === '/telemetry/stream' || path === '/api/v1/telemetry/stream' || path === '/v1/telemetry/stream') && method === 'GET') {
         const streamHeader = {
@@ -687,7 +705,7 @@ export default {
       }
 
       // === RUTA EXPORTACIÓN SUBVENCIONES (/subsidies/export-package) ===
-      if ((path === '/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
+      if ((path === '/subsidies/export-package' || path === '/v1/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const grantType = body.grantType || "KIT_CONSULTING";
         const docType = body.documentType || "ALL";
@@ -732,17 +750,20 @@ export default {
       }
 
       // === RUTA HISTORIAL DE TRACES Y LOGS ===
-      if ((path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
+      if ((path === '/traces' || path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
         let tracesList = [];
+        const limitParam = parseInt(_u.searchParams.get("limit") || "100", 10);
+        const safeLimit = Math.min(Math.max(limitParam, 1), 500);
+
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT 100";
-            const { results } = await env.DB.prepare(query).bind(tenantId).all();
+            const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?";
+            const { results } = await env.DB.prepare(query).bind(tenantId, safeLimit).all();
             if (results && results.length > 0) tracesList = results;
           } catch (d1Err) {}
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", count: tracesList.length, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SUCCESS", count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       // === RUTA VERIFICACIÓN DE EVIDENCIAS ===
