@@ -14,7 +14,6 @@ export class TelemetryServer {
       try {
         let initialEvidences = [];
 
-        // 1. CARGA DE EVIDENCIAS INICIALES DESDE BÓVEDA D1
         try {
           if (this.env.DB) {
             let query = `
@@ -47,7 +46,8 @@ export class TelemetryServer {
             if (results?.length > 0) {
               initialEvidences = results.map(row => {
                 const isDeny = row.decision === "DENY" || row.verdict === "RECHAZADO";
-                const evId = row.evidence_id || row.trace_id;
+                const evId = String(row.evidence_id || row.trace_id || `EV-L7-${Date.now()}`);
+                const cleanId = evId.replace('EV-L7-', '');
                 
                 let parsedBundle = null;
                 if (row.proof_bundle) {
@@ -57,8 +57,8 @@ export class TelemetryServer {
                 return {
                   id: evId,
                   evidence_id: evId,
-                  trace_id: row.trace_id,
-                  verdictId: `VRD-2026-${evId.replace('EV-L7-', '')}`,
+                  trace_id: row.trace_id || evId,
+                  verdictId: `VRD-2026-${cleanId}`,
                   decision: isDeny ? "DENY" : "ALLOW",
                   verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
                   user: row.user || currentUser,
@@ -69,9 +69,9 @@ export class TelemetryServer {
                   rawTimestamp: row.timestamp || new Date().toISOString(),
                   timestamp: row.timestamp || new Date().toISOString(),
                   proofBundle: parsedBundle || {
-                    verdictId: `VRD-2026-${evId.replace('EV-L7-', '')}`,
+                    verdictId: `VRD-2026-${cleanId}`,
                     payloadHash: "7a9f82c41e523b1082a4d093fe812739a1b0293847e201b1a5d62901c89f2134",
-                    ed25519Signature: `ED25519_SIG_${evId}`,
+                    ed25519Signature: `ED25519_SIG_${cleanId}`,
                     rfc3161Timestamp: row.timestamp || new Date().toISOString()
                   }
                 };
@@ -82,7 +82,6 @@ export class TelemetryServer {
           console.warn("[TelemetryStream D1 Warning]:", dbErr.message);
         }
 
-        // 2. FALLBACK A BÓVEDA KV SI D1 NO RETORNA RESULTADOS
         if (initialEvidences.length === 0 && this.env.SAARE_VAULT_KV) {
           try {
             const kvData = await this.env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
@@ -103,7 +102,6 @@ export class TelemetryServer {
           }
         }
 
-        // 3. EVENTO DE CONFIGURACIÓN Y CARGA INICIAL SSE
         await writer.write(encoder.encode(`retry: 5000\n`));
         
         const initEvent = {
@@ -123,15 +121,12 @@ export class TelemetryServer {
 
         await writer.write(encoder.encode(`data: ${JSON.stringify(initEvent)}\n\n`));
 
-        // 4. BUCLE DE TRANSMISIÓN DE EVENTOS Y PING HEARTBEAT
         let keepAliveCounter = 0;
 
         for (let i = 0; i < 300; i++) {
           await new Promise(r => setTimeout(r, 2000));
-
           keepAliveCounter++;
 
-          // Heartbeat Ping cada 14 segundos para mantener la conexión HTTP/2
           if (keepAliveCounter >= 7) {
             await writer.write(encoder.encode(`: ping\n\n`));
             keepAliveCounter = 0;

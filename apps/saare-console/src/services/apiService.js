@@ -1,19 +1,34 @@
-// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v10.0 - Worker Wajjin Walsimsiifame)
-
-const API_BASE_URL = 'https://api.saare.es';
-const DEFAULT_TENANT = 'ORGANISMO_DEMO_01';
-const DEFAULT_USER = 'operator@saare.es';
+// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v10.0 / SGP 1.0 Producción Conectada)
+import { SAARE_CONFIG } from '../config/saareState';
 
 /**
- * Helper saareFetch interna para sustituir el archivo eliminado src/utils/api.js
+ * Auxiliar dinámico para obtener la configuración activa de sesión y servidor
+ */
+function getAuthContext() {
+  const token = localStorage.getItem('saare_token') || '';
+  const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
+  const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '';
+  const baseUrl = SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1';
+
+  return { token, tenant, user, baseUrl };
+}
+
+/**
+ * Helper saareFetch dinámico e higienizado para peticiones HTTP
  */
 async function saareFetch(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const { token, tenant, user, baseUrl } = getAuthContext();
+  
+  // Normalización de la URL base
+  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBaseUrl}${cleanEndpoint}`;
   
   const headers = {
     'Content-Type': 'application/json',
-    'x-saare-tenant': DEFAULT_TENANT,
-    'x-saare-user': DEFAULT_USER,
+    'x-saare-tenant': tenant,
+    'x-saare-user': user,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
 
@@ -51,9 +66,16 @@ export const apiService = {
     return null;
   },
 
-  async getTelemetryTraces(limit = 100) {
+  async getTelemetryTraces(params = {}) {
     try {
-      const res = await saareFetch(`/traces?limit=${limit}`, { method: 'GET' });
+      const { tenant, user } = getAuthContext();
+      const limit = params.limit || 100;
+      const activeTenant = params.tenant || tenant;
+      const activeUser = params.user || user;
+      
+      const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
+      const res = await saareFetch(`/traces${query}`, { method: 'GET' });
+      
       if (res && res.ok) {
         const data = await res.json();
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
@@ -69,56 +91,58 @@ export const apiService = {
   },
 
   async getNodeStatus() {
+    const { tenant } = getAuthContext();
     try {
       const res = await saareFetch('/health', { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
         return {
-          nodeId: data.node || data.service || 'RPI-2607076315021',
-          tenantId: DEFAULT_TENANT,
+          nodeId: data.node || data.service || SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+          tenantId: tenant,
           mode: 'FAIL-CLOSED',
           latencyP99Ms: Number(data.latencyP99Ms ?? 0.84),
           activePolicies: 8,
           status: data.status || 'HEALTHY',
-          trustAnchor: data.trustAnchor || 'https://vault.saare.es',
+          trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es',
           vaultSource: 'D1_HYBRID'
         };
       }
     } catch (e) {}
 
     return {
-      nodeId: 'RPI-2607076315021',
-      tenantId: DEFAULT_TENANT,
+      nodeId: SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+      tenantId: tenant,
       mode: 'FAIL-CLOSED',
       latencyP99Ms: 0.84,
       activePolicies: 8,
       status: 'OPERATIVE',
-      trustAnchor: 'https://vault.saare.es',
+      trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es',
       vaultSource: 'D1_HYBRID'
     };
   },
 
   async interceptPrompt(payloadOrPrompt, context) {
+    const { tenant, user } = getAuthContext();
     try {
       let bodyData = {};
 
       if (typeof payloadOrPrompt === 'string') {
         bodyData = { 
           prompt: payloadOrPrompt, 
-          tenant: DEFAULT_TENANT,
-          user: DEFAULT_USER,
+          tenant: tenant,
+          user: user,
           ...(context || {}) 
         };
       } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
         bodyData = { 
-          tenant: DEFAULT_TENANT,
-          user: DEFAULT_USER,
+          tenant: tenant,
+          user: user,
           ...payloadOrPrompt, 
           ...(context || {}) 
         };
       }
 
-      const res = await saareFetch('/v1/chat/completions', {
+      const res = await saareFetch('/chat/completions', {
         method: 'POST',
         body: JSON.stringify(bodyData)
       });
@@ -143,7 +167,7 @@ export const apiService = {
       const res = await saareFetch('/vault/sync', { method: 'GET' });
       if (res && res.ok) return await res.json();
     } catch (e) {}
-    return { success: true, trustAnchor: 'https://vault.saare.es', source: 'D1_HYBRID' };
+    return { success: true, trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es', source: 'D1_HYBRID' };
   },
 
   async verifyEvidence(proof) {

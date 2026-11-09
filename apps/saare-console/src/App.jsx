@@ -14,8 +14,8 @@ import cabeceraImg from './assets/cabecera.png';
 
 // TAXONOMÍA CANÓNICA Y MATRIZ DE COMANDOS SEMÁNTICOS (S.A.A.R.E. V10.0 / SGP 1.0)
 const SAARE_SEMANTIC_COMMANDS = {
-  MODULE_5_BOOTSTRAP: "Iniciar_cumplimiento_exante_saare --route-vault=D1",
-  WITNESS_TAG: "[MS3V-COMPLIANCE-L7-OK]",
+  MODULE_5_BOOTSTRAP: SAARE_CONFIG?.MODULE_5?.BOOTSTRAP_COMMAND || "Iniciar_cumplimiento_exante_saare --route-vault=D1",
+  WITNESS_TAG: SAARE_CONFIG?.MODULE_5?.WITNESS_TAG || "[MS3V-COMPLIANCE-L7-OK]",
   CMD_DASHBOARD: "S.A.A.R.E._Comando_Deploy_Dashboard_GRC",
   CMD_AGNOSTIC_L7: "S.A.A.R.E._Comando_Activar_Nodo_L7_Agnostic_OnPremise",
   CMD_ZERO_DISK: "S.A.A.R.E._Comando_Ingesta_Cero",
@@ -52,11 +52,15 @@ export default function App() {
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(true);
 
-  // Estados dinámicos de credenciales de usuario
-  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('saare_user_email') || 'alfonsoferrertorres@gmail.com');
+  // Lectura del parámetro URL ?tenant=...
+  const queryParams = new URLSearchParams(window.location.search);
+  const urlTenant = queryParams.get('tenant');
+
+  // Estados dinámicos de credenciales de usuario (vinculados a SAARE_CONFIG sin PII estática)
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '');
   const [userPassword, setUserPassword] = useState('');
-  const [tenantId, setTenantId] = useState(() => localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01');
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
+  const [tenantId, setTenantId] = useState(() => urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01');
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN');
 
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
@@ -78,7 +82,7 @@ export default function App() {
   const [showAddFilterModal, setShowAddFilterModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePattern, setNewRulePattern] = useState('');
-  const [testPrompt, setTestPrompt] = useState("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
+  const [testPrompt, setTestPrompt] = useState("Auditar cumplimiento normativo del titular con DNI anonimizado y cuenta bancaria de prueba.");
   const [testResult, setTestResult] = useState(null);
   const [auditedEvidenceId, setAuditedEvidenceId] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -99,8 +103,10 @@ export default function App() {
           const session = await apiService.verifyLicense({ token });
           if (session && session.user) {
             setUserEmail(session.user.email);
-            setTenantId(session.user.tenantName || session.user.company);
-            setUserRole(session.user.role || 'CISO_ADMIN');
+            const effectiveTenant = urlTenant || session.user.tenantName || session.user.company || tenantId;
+            setTenantId(effectiveTenant);
+            localStorage.setItem('saare_tenant_domain', effectiveTenant);
+            setUserRole(session.user.role || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN');
             setIsAuthenticated(true);
           }
         }
@@ -110,7 +116,7 @@ export default function App() {
     };
 
     initUserSession();
-  }, []);
+  }, [urlTenant, tenantId]);
 
   // 2. PROCESAMIENTO DE LOGIN Y VERIFICACIÓN DE CREDENCIALES
   const handleLoginSubmit = async (e) => {
@@ -128,7 +134,7 @@ export default function App() {
 
     setLoginLoading(true);
     const cleanEmail = userEmail.trim().toLowerCase();
-    const cleanTenant = tenantId.trim().toUpperCase() || 'ORGANISMO_DEMO_01';
+    const cleanTenant = tenantId.trim().toUpperCase() || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
 
     try {
       const authData = await apiService.verifyLicense({ email: cleanEmail, password: userPassword, tenant: cleanTenant });
@@ -177,15 +183,15 @@ export default function App() {
 
 ; ================================================================
 ; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
-; Tenant: ${tenantId || 'DEFAULT_TENANT'}
-; TrustAnchor: https://vault.saare.es
+; Tenant: ${tenantId || SAARE_CONFIG?.DEFAULT_TENANT}
+; TrustAnchor: ${SAARE_CONFIG?.TRUST_ANCHOR}
 ; ================================================================
 
 [HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]
 "EnableExAnteEnforcement"=dword:00000001
 "TenantId"="${tenantId}"
-"TrustAnchor"="https://vault.saare.es"
-"ProxyGateway"="https://api.saare.es/v1/chat/completions"
+"TrustAnchor"="${SAARE_CONFIG?.TRUST_ANCHOR}"
+"ProxyGateway"="${SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1'}/chat/completions"
 `;
 
     const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8' });
@@ -204,21 +210,21 @@ export default function App() {
   const handleDownloadProxyExtensionZip = () => {
     setShowDeployDropdown(false);
     triggerGovernance("Iniciando descarga del paquete completo de la Extensión Proxy L7 (.zip)...");
-    window.open(`https://api.saare.es/api/v1/deploy/extension-zip?tenant=${encodeURIComponent(tenantId)}`, '_blank');
+    window.open(`${SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1'}/deploy/extension-zip?tenant=${encodeURIComponent(tenantId)}`, '_blank');
   };
 
   // DESCARGA DE CREDENCIALES DE ENRUTAMIENTO DE PASARELA (JSON)
   const handleDownloadRoutingCredentialsJson = () => {
     setShowDeployDropdown(false);
     triggerGovernance("Generando archivo JSON de credenciales de enrutamiento...");
-    
+
     const extensionConfig = {
       extensionName: "S.A.A.R.E. L7 Interceptor Credentials",
-      version: "1.0.0",
-      spec: "SGP 1.0",
+      version: SAARE_CONFIG?.SPEC_VERSION || "1.0.0",
+      spec: SAARE_CONFIG?.SGP_VERSION || "SGP 1.0",
       tenantId: tenantId,
       operatorEmail: userEmail,
-      gatewayEndpoint: `https://api.saare.es/v1/chat/completions`,
+      gatewayEndpoint: `${SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1'}/chat/completions`,
       vaultAnchor: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
       issuedAt: new Date().toISOString(),
       instructions: "Cargue o inyecte estas credenciales en el cliente proxy o extensión para enrutamiento seguro."
@@ -343,7 +349,7 @@ export default function App() {
           user: item.user_email || item.user || item.user_id || userEmail,
           tenant: item.tenant_id || item.tenant || tenantId,
           merkleRoot: payloadHash,
-          node: item.final_evaluator_node || item.node || 'RPI-2607076315021',
+          node: item.final_evaluator_node || item.node || SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
           grantMetadata: item.grantMetadata || null,
           proofBundle: item.proofBundle || {
             verdictId: item.verdictId || `VRD-2026-${evidenceId}`,
@@ -385,7 +391,7 @@ export default function App() {
         SAARE_SEMANTIC_COMMANDS.CMD_ZERO_DISK,
         SAARE_SEMANTIC_COMMANDS.CMD_FAIL_STOP
       ],
-      headers: [
+      headers: SAARE_CONFIG?.ACTIVE_HEADERS || [
         "X-SAARE-L7-DASHBOARD-ACTIVE",
         "X-SAARE-L7-ONPREM-AGNOSTIC-SECURE",
         "X-SAARE-L7-ZERO-DISK-PASS",
@@ -414,7 +420,7 @@ export default function App() {
       user: userEmail,
       tenant: tenantId,
       merkleRoot: "7a9f82c41e523b1082a4d093fe812739a1b0293847e201b1a5d62901c89f2134",
-      node: "RPI-2607076315021",
+      node: SAARE_CONFIG?.SAFE_CREATIVE_ID || "RPI-2607076315021",
       latency: 0.84,
       proofBundle: {
         verdictId: `VRD-2026-${evidenceId}`,
@@ -465,12 +471,12 @@ export default function App() {
 
   const fetchTelemetryOnce = useCallback(async () => {
     try {
-      const traces = await apiService.getTelemetryTraces();
+      const traces = await apiService.getTelemetryTraces({ tenant: tenantId, user: userEmail });
       if (traces && Array.isArray(traces)) {
         setEvidences(prev => mergeEvidences(prev, traces));
       }
     } catch (e) {}
-  }, [mergeEvidences]);
+  }, [tenantId, userEmail, mergeEvidences]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -495,7 +501,7 @@ export default function App() {
       fetchTelemetryOnce();
     }, 3000);
 
-    const streamUrl = `https://api.saare.es/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
+    const streamUrl = `${SAARE_CONFIG?.CONTROL_PLANE_URL || 'https://api.saare.es'}/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`;
 
     try {
       const es = new EventSource(streamUrl);
@@ -608,20 +614,20 @@ export default function App() {
   const handleExportChainOfCustody = async () => {
     triggerGovernance(`Invocando Auditoría de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY})...`);
     const custodyData = JSON.stringify({
-      protocol: "SGP 1.0 / V12.1",
+      protocol: `${SAARE_CONFIG?.SGP_VERSION || 'SGP 1.0'} / ${SAARE_CONFIG?.BUILD_VERSION || 'V12.1'}`,
       commandExecuted: SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY,
       organization: tenantId,
       user: userEmail,
       role: userRole,
       timestamp: new Date().toISOString(),
-      standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
+      standard: SAARE_CONFIG?.LEGAL_FRAMEWORK || "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
       witnessTag: SAARE_SEMANTIC_COMMANDS.WITNESS_TAG,
       activeDirectives: directives.filter(d => d.active).length,
       evidenceCount: evidences.length,
       evidences: evidences
     }, null, 2);
 
-    const safeFileEmail = (userEmail || 'usuario').replace(/[@.]/g, '_');
+    const safeFileEmail = (userEmail || 'operador').replace(/[@.]/g, '_');
     const blob = new Blob([custodyData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -641,7 +647,7 @@ export default function App() {
     }
     triggerGovernance(`Invocando Auditoría Jurídica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL})...`);
     const grantReport = {
-      expedienteRef: "MS3V-AUDIT-CONSOLIDATED-2026-09",
+      expedienteRef: SAARE_CONFIG?.EXPEDIENTE_MASTER || "MS3V-AUDIT-CONSOLIDATED-2026-09",
       command: SAARE_SEMANTIC_COMMANDS.MODE_LEGAL,
       tenantId: tenantId,
       operatorEmail: userEmail,
@@ -660,8 +666,8 @@ export default function App() {
       },
       evidenceSummary: {
         totalEvidences: evidences.length,
-        cryptoAnchor: "https://vault.saare.es",
-        safeCreativeId: "RPI-2607076315021"
+        cryptoAnchor: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
+        safeCreativeId: SAARE_CONFIG?.SAFE_CREATIVE_ID || "RPI-2607076315021"
       }
     };
 
@@ -697,7 +703,7 @@ export default function App() {
         type: "FUNDAMENTAL_RIGHTS_IMPACT_ASSESSMENT_FRIA",
         command: SAARE_SEMANTIC_COMMANDS.MODE_FRIA,
         regulation: "EU Artificial Intelligence Act (Regulation EU 2024/1689) - Article 27 / ISO/IEC 42001",
-        auditNode: "https://vault.saare.es",
+        auditNode: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
         timestamp: new Date().toISOString(),
         tenantId: tenantId,
         cisoOperator: userEmail
@@ -719,7 +725,7 @@ export default function App() {
       grantComplianceMetadata: {
         grantFramework: "KIT_CONSULTING_REDES",
         eligibleItem: "Evaluación de Impacto en Derechos Fundamentales (FRIA)",
-        verificationEndpoint: `https://api.saare.es/verify/${sampleMerkle}`
+        verificationEndpoint: `${SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1'}/verify/${sampleMerkle}`
       }
     };
 
@@ -813,7 +819,7 @@ export default function App() {
         evidence_id: evidenceId,
         proofBundle: data.proofBundle || {
           verdictId: `VRD-2026-${evidenceId}`,
-          payloadHash: data.enforcement?.ms3vIntegrityHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          payloadHash: data.enforcement?.ms3vIntegrityHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855",
           ed25519Signature: `ED25519_SIG_${evidenceId}`,
           merkleRoot: data.enforcement?.ms3vIntegrityHash || "SAARE-MD-IPRES-2026",
           rfc3161Timestamp: new Date().toISOString(),
@@ -864,8 +870,8 @@ export default function App() {
         setSelectedJson({
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
-          node: verifyData.node || "RPI-2607076315021",
-          standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
+          node: verifyData.node || SAARE_CONFIG?.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          standard: SAARE_CONFIG?.LEGAL_FRAMEWORK || "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
           rfc3161Timestamp: verifyData.timestamp || new Date().toISOString(),
           evidenceBundle: verifyData.evidence || "Certificación cryptographic integrity OK",
           details: verifyData.message || "Sello e inmutabilidad acreditados contra la Bóveda WORM D1."
@@ -875,7 +881,7 @@ export default function App() {
         setSelectedJson({
           auditStatus: "VERIFIED",
           merkleRoot: hashToVerify,
-          node: "RPI-2607076315021",
+          node: SAARE_CONFIG?.SAFE_CREATIVE_ID || "RPI-2607076315021",
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / eIDAS RFC 3161",
           timestamp: new Date().toISOString(),
           verdict: "ALLOW / VERIFIED",
@@ -887,7 +893,7 @@ export default function App() {
       setSelectedJson({
         auditStatus: "VERIFIED",
         merkleRoot: hashToVerify,
-        trustAnchor: "https://vault.saare.es",
+        trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
         standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC",
         timestamp: new Date().toISOString(),
         verdict: "VERIFIED_OFFLINE",
@@ -1094,7 +1100,7 @@ export default function App() {
           </form>
 
           <div style={{ marginTop: '16px', fontSize: '0.68rem', color: '#64748b' }}>
-            Trust Anchor: https://vault.saare.es | Safe Creative ID: RPI-2607076315021
+            Trust Anchor: {SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es'} | Safe Creative ID: {SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021'}
           </div>
         </div>
       </div>
@@ -1126,7 +1132,7 @@ export default function App() {
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#94a3b8', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px', fontSize: '0.9rem' }}>S.A.A.R.E. CONSOLE GRC</span>
-            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG.SPEC_VERSION}</span>
+            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG?.SPEC_VERSION || 'v10.0'}</span>
           </div>
 
           <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center', position: 'relative' }}>
@@ -1343,8 +1349,8 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <span>Trust Anchor: <strong style={{ color: '#4ade80' }}>https://vault.saare.es</strong></span>
-            <span>Safe Creative ID: <strong style={{ color: '#38bdf8' }}>RPI-2607076315021</strong></span>
+            <span>Trust Anchor: <strong style={{ color: '#4ade80' }}>{SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es'}</strong></span>
+            <span>Safe Creative ID: <strong style={{ color: '#38bdf8' }}>{SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021'}</strong></span>
           </div>
         </div>
       </header>
@@ -1622,7 +1628,7 @@ export default function App() {
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
                           onClick={() => {
-                            setTestPrompt("Auditar crédito del titular con DNI 48593021X y cuenta bancaria ES21 1465 0100 2030 4050.");
+                            setTestPrompt("Auditar cumplimiento normativo del titular con DNI anonimizado y cuenta bancaria de prueba.");
                             setAuditedEvidenceId(null);
                           }}
                           style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
@@ -1747,7 +1753,7 @@ export default function App() {
 
                   <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#a7f3d0', border: '1px solid #1e293b' }}>
                     <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>NODO AGNÓSTICO ON-PREMISE ACTIVO:</div>
-                    <div>Endpoint local: http://localhost:8787/v1/chat/completions</div>
+                    <div>Endpoint local: {SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1'}/chat/completions</div>
                     <div>Modo de operación: Zero-Disk / Ephemeral Memory (mlock)</div>
                   </div>
                 </div>
@@ -1779,7 +1785,7 @@ export default function App() {
                           <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>Estándar: {dir.standard}</p>
                         </div>
                         <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>SGP 1.0 Runtime</span>
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{SAARE_CONFIG?.SGP_VERSION || 'SGP 1.0'} Runtime</span>
                           <button 
                             onClick={() => {
                               setDirectives(directives.map(d => d.id === dir.id ? { ...d, active: !d.active } : d));
@@ -1906,7 +1912,7 @@ export default function App() {
           <hr />
           <h3>Acreditación de Inmutabilidad WORM (D1)</h3>
           <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', wordBreak: 'break-all' }}><strong>Merkle Root Hash:</strong> {selectedEvidenceForPdf.merkleRoot}</p>
-          <p style={{ fontSize: '0.8rem' }}><strong>Safe Creative ID:</strong> RPI-2607076315021 | <strong>Trust Anchor:</strong> https://vault.saare.es</p>
+          <p style={{ fontSize: '0.8rem' }}><strong>Safe Creative ID:</strong> {SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021'} | <strong>Trust Anchor:</strong> {SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es'}</p>
         </div>
       )}
     </div>

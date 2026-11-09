@@ -13,7 +13,6 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
 
   if (!timestamp || v1Signatures.length === 0) return false;
 
-  // Tolerancia de 5 minutos para evitar ataques de réplica (Replay Attacks)
   const TOLERANCE_SECONDS = 300;
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - Number(timestamp)) > TOLERANCE_SECONDS) return false;
@@ -34,7 +33,6 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 
-  // Comparación en tiempo constante para evitar Timing Attacks
   return v1Signatures.some(sig => {
     if (sig.length !== expectedHex.length) return false;
     let diff = 0;
@@ -45,9 +43,6 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
   });
 }
 
-/**
- * Mapeo de Nivel (Tier) o Price ID a Rol RBAC de S.A.A.R.E.
- */
 function mapTierToRole(tierOrPlan, priceId) {
   const target = (tierOrPlan || "").toLowerCase();
   if (target.includes("enterprise") || priceId === "price_1UHuuwFlwFW4ifPS66wDvS4n") {
@@ -65,9 +60,6 @@ function mapTierToRole(tierOrPlan, priceId) {
   return "BOARD_EXECUTIVE_LEVEL_1";
 }
 
-/**
- * Normalización del ID de Plan canónico según metadatos de Stripe o Price ID
- */
 function resolvePlanId(session) {
   const metadata = session.metadata || {};
   const tier = metadata.tier || metadata.plan || metadata.planId;
@@ -91,7 +83,6 @@ export async function handleStripeWebhook(request, env) {
   const bodyText = await request.text();
   const signature = request.headers.get("stripe-signature");
 
-  // 1. Validación de Seguridad de la Firma
   const isValidStripeEvent = await verifyStripeSignature(bodyText, signature, env.STRIPE_WEBHOOK_SECRET);
   if (!isValidStripeEvent) {
     console.error("[SAARE Stripe Webhook] Firma inválida rechazada.");
@@ -105,7 +96,6 @@ export async function handleStripeWebhook(request, env) {
     return new Response(JSON.stringify({ error: "Invalid JSON Payload" }), { status: 400 });
   }
 
-  // 2. Control de Idempotencia (Prevención de duplicación mediante KV)
   if (env.SAARE_VAULT_KV && event.id) {
     const seenKey = `stripe_event:${event.id}`;
     const alreadyProcessed = await env.SAARE_VAULT_KV.get(seenKey);
@@ -115,15 +105,12 @@ export async function handleStripeWebhook(request, env) {
         headers: { "Content-Type": "application/json" }
       });
     }
-    // Marcar como procesado por 30 días
     await env.SAARE_VAULT_KV.put(seenKey, "1", { expirationTtl: 60 * 60 * 24 * 30 });
   }
 
-  // 3. Procesamiento de Eventos de Checkout Completo y Pago
   if (event.type === "checkout.session.completed" || event.type === "invoice.payment_succeeded") {
     const session = event.data.object;
     
-    // Ignorar facturas que no correspondan a suscripciones o ventas directas
     if (event.type === "invoice.payment_succeeded" && session.billing_reason === "subscription_cycle") {
       return new Response(JSON.stringify({ status: "CYCLE_RENEWAL_ACKNOWLEDGED" }), { status: 200 });
     }
@@ -150,7 +137,7 @@ export async function handleStripeWebhook(request, env) {
     }
 
     if (!customerEmail) {
-      console.error("[SAARE Stripe Webhook] checkout.session.completed sin email de cliente:", session.id);
+      console.error("[SAARE Stripe Webhook] Evento sin email de cliente:", session.id);
       return new Response(JSON.stringify({ status: "NO_EMAIL", sessionId: session.id }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -169,44 +156,13 @@ export async function handleStripeWebhook(request, env) {
       updatedAt: new Date().toISOString()
     };
 
-    // A. Sincronización en Cloudflare KV (Lecturas ultrarrápidas de sesión)
     if (env.SAARE_VAULT_KV) {
       await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(tenantRecord));
       await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantRecord));
     }
 
-    // B. Persistencia y Aprovisionamiento en D1 Database
     if (env.DB) {
       try {
-        // Garantizar existencia de esquemas
-        await env.DB.batch([
-          env.DB.prepare(`
-            CREATE TABLE IF NOT EXISTS tenants (
-              id TEXT PRIMARY KEY,
-              email TEXT UNIQUE,
-              name TEXT,
-              plan TEXT,
-              status TEXT,
-              updated_at TEXT
-            );
-          `),
-          env.DB.prepare(`
-            CREATE TABLE IF NOT EXISTS users (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              email TEXT UNIQUE,
-              password_hash TEXT,
-              name TEXT,
-              company TEXT,
-              role TEXT,
-              verification_token TEXT,
-              verification_expires_at TEXT,
-              is_verified INTEGER DEFAULT 0,
-              created_at TEXT
-            );
-          `)
-        ]);
-
-        // Actualizar/Insertar Tenant
         await env.DB.prepare(`
           INSERT INTO tenants (id, email, name, plan, status, updated_at)
           VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))
@@ -217,7 +173,6 @@ export async function handleStripeWebhook(request, env) {
             updated_at = datetime('now')
         `).bind(tenantId, customerEmail, customerName, planId).run();
 
-        // Actualizar/Insertar Usuario Aprovisionado
         await env.DB.prepare(`
           INSERT INTO users (email, password_hash, name, company, role, is_verified, created_at)
           VALUES (?, 'demo', ?, ?, ?, 1, datetime('now'))
@@ -248,15 +203,34 @@ export async function handleStripeWebhook(request, env) {
     });
   }
 
-  // 4. Gestión de Bajas y Cancelaciones de Suscripción
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object;
     const customerEmail = subscription.metadata?.customerEmail;
+    const tenantId = subscription.metadata?.tenant;
 
-    if (customerEmail && env.DB) {
-      await env.DB.prepare(`
-        UPDATE tenants SET status = 'CANCELLED', updated_at = datetime('now') WHERE email = ?
-      `).bind(customerEmail).run();
+    if (customerEmail) {
+      if (env.DB) {
+        await env.DB.prepare(`
+          UPDATE tenants SET status = 'CANCELLED', updated_at = datetime('now') WHERE email = ?
+        `).bind(customerEmail).run();
+      }
+
+      if (env.SAARE_VAULT_KV) {
+        const existingKv = await env.SAARE_VAULT_KV.get(`user:${customerEmail}`, "json");
+        if (existingKv) {
+          existingKv.status = "CANCELLED";
+          existingKv.updatedAt = new Date().toISOString();
+          await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(existingKv));
+        }
+        if (tenantId) {
+          const existingTenantKv = await env.SAARE_VAULT_KV.get(`tenant:${tenantId}`, "json");
+          if (existingTenantKv) {
+            existingTenantKv.status = "CANCELLED";
+            existingTenantKv.updatedAt = new Date().toISOString();
+            await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(existingTenantKv));
+          }
+        }
+      }
     }
 
     return new Response(JSON.stringify({ status: "SUBSCRIPTION_CANCELLED" }), { status: 200 });

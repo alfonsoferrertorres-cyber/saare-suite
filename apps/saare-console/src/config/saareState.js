@@ -24,14 +24,18 @@ export const SAARE_CONFIG = Object.freeze({
   BUILD_VERSION: "12.1-PRODUCTION",
   COMPANY_NAME: "S.A.A.R.E. Technologies S.L.",
   
-  // Resolución dinámica mediante variables de entorno (sin datos personales hardcodeados)
+  // Endpoints y Pasarelas (Resolución dinámica sin hardcodeo de servidor)
+  API_BASE_URL: getEnvVar(['VITE_SAARE_API_BASE_URL', 'VITE_API_BASE_URL'], "https://api.saare.es/api/v1"),
+  CONTROL_PLANE_URL: getEnvVar(['VITE_SAARE_CONTROL_PLANE_URL', 'VITE_CONTROL_PLANE_URL'], "https://api.saare.es"),
+  
+  // Resolución dinámica mediante variables de entorno (sin PII hardcodeada)
   DEFAULT_TENANT: getEnvVar(['VITE_SAARE_DEFAULT_TENANT', 'VITE_DEFAULT_TENANT'], "ORGANISMO_DEMO_01"),
   DEFAULT_USER: getEnvVar(['VITE_SAARE_DEFAULT_USER', 'VITE_DEFAULT_USER'], ""),
   DEFAULT_ROLE: getEnvVar(['VITE_SAARE_DEFAULT_ROLE', 'VITE_DEFAULT_ROLE'], "CISO_ADMIN"),
   TRUST_ANCHOR: getEnvVar(['VITE_SAARE_TRUST_ANCHOR', 'VITE_TRUST_ANCHOR'], "https://vault.saare.es"),
   SAFE_CREATIVE_ID: getEnvVar(['VITE_SAARE_SAFE_CREATIVE_ID', 'VITE_SAFE_CREATIVE_ID'], "RPI-2607076315021"),
   
-  EXPEDIENTE_MASTER: "MS3V-RECON-VALID-2026-MASTER",
+  EXPEDIENTE_MASTER: getEnvVar(['VITE_EXPEDIENTE_MASTER'], "MS3V-RECON-VALID-2026-MASTER"),
   MERKLE_ROOT_VERSION: "MS3V-SGP-1.0",
   LEGAL_FRAMEWORK: "Art. 326 LEC / Ley 1/2019 / EU AI Act Art. 27",
 

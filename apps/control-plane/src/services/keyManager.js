@@ -10,6 +10,9 @@ export async function computeSha256(data) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+let cachedCryptoKey = null;
+let cachedRawPem = null;
+
 export class EnterpriseKeyManager {
   constructor(env) {
     this.env = env;
@@ -24,25 +27,26 @@ export class EnterpriseKeyManager {
     const encoder = new TextEncoder();
     const dataToSign = typeof data === "string" ? data : JSON.stringify(data);
 
-    // Fallback Criptográfico: Si no existe ED25519_PRIVATE_KEY en variables de entorno,
-    // emite un sello determinista basado en SHA-256 para prevenir caída HTTP 500
     if (!privateKeyRaw) {
       const fallbackHash = await computeSha256(dataToSign);
       return `ED25519_MOCK_SEAL_${fallbackHash.substring(0, 32).toUpperCase()}`;
     }
 
     try {
-      const key = await crypto.subtle.importKey(
-        "pkcs8",
-        this.pemToArrayBuffer(privateKeyRaw),
-        { name: "Ed25519" },
-        false,
-        ["sign"]
-      );
+      if (!cachedCryptoKey || cachedRawPem !== privateKeyRaw) {
+        cachedCryptoKey = await crypto.subtle.importKey(
+          "pkcs8",
+          this.pemToArrayBuffer(privateKeyRaw),
+          { name: "Ed25519" },
+          false,
+          ["sign"]
+        );
+        cachedRawPem = privateKeyRaw;
+      }
 
       const signatureBuffer = await crypto.subtle.sign(
         "Ed25519",
-        key,
+        cachedCryptoKey,
         encoder.encode(dataToSign)
       );
 

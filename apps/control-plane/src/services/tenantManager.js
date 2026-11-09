@@ -6,7 +6,15 @@ export class TenantManager {
   }
 
   /**
-   * Normaliza y mapea los datos del plan para mantener compatibilidad con verifyLicense y Entitlements
+   * Sanitiza y normaliza el identificador del tenant para evitar duplicidades por capitalización.
+   */
+  _normalizeId(tenantId) {
+    if (!tenantId) return "ENTERPRISE";
+    return String(tenantId).trim().toUpperCase();
+  }
+
+  /**
+   * Normaliza y mapea los datos del plan para mantener compatibilidad con verifyLicense y Entitlements.
    */
   _buildTenantObject(cleanId, name, config = {}) {
     const planId = config.planId || config.plan_id || config.plan || "PROFESSIONAL_649";
@@ -30,15 +38,15 @@ export class TenantManager {
   }
 
   /**
-   * Registra o actualiza la configuración de un Tenant en KV y RAM
+   * Registra o actualiza la configuración de un Tenant en KV y RAM.
    */
   async registerTenant(tenantId, name, config = {}) {
-    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
+    const cleanId = this._normalizeId(tenantId);
     const tenantData = this._buildTenantObject(cleanId, name, config);
 
     this.cache.set(cleanId, tenantData);
 
-    if (this.env && this.env.SAARE_VAULT_KV) {
+    if (this.env?.SAARE_VAULT_KV) {
       try {
         await this.env.SAARE_VAULT_KV.put(`tenant:${cleanId}`, JSON.stringify(tenantData));
       } catch (e) {
@@ -50,10 +58,10 @@ export class TenantManager {
   }
 
   /**
-   * Obtiene la metainformación del Tenant con fallback de resistencia
+   * Obtiene la metainformación del Tenant con fallback de resistencia (RAM -> KV -> Dynamic).
    */
   async getTenant(tenantId) {
-    const cleanId = tenantId ? String(tenantId).trim() : "ENTERPRISE";
+    const cleanId = this._normalizeId(tenantId);
 
     // 1. Nivel 1: RAM efímera
     if (this.cache.has(cleanId)) {
@@ -61,7 +69,7 @@ export class TenantManager {
     }
 
     // 2. Nivel 2: Bóveda Cloudflare KV
-    if (this.env && this.env.SAARE_VAULT_KV) {
+    if (this.env?.SAARE_VAULT_KV) {
       try {
         const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${cleanId}`, "json");
         if (storedTenant) {
@@ -86,19 +94,32 @@ export class TenantManager {
   }
 
   /**
-   * Valida el acceso ex-ante de un Tenant a un escenario normativo
+   * Valida el acceso ex-ante de un Tenant a un escenario normativo (verificando estado y expiración).
    */
   async validateAccess(tenantId, scenarioId) {
     try {
       const tenant = await this.getTenant(tenantId);
       
+      // Verificación de estado del contrato
       if (tenant.status !== "ACTIVE") {
         return {
           allowed: false,
-          reason: `El Tenant ${tenantId} no se encuentra activo o su suscripción ha sido suspendida.`
+          reason: `El Tenant ${tenant.tenantId} no se encuentra activo (Estado actual: ${tenant.status}).`
         };
       }
 
+      // Verificación de vencimiento temporal
+      if (tenant.expiresAt) {
+        const expirationDate = new Date(tenant.expiresAt);
+        if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
+          return {
+            allowed: false,
+            reason: `La suscripción del Tenant ${tenant.tenantId} expiró el ${expirationDate.toISOString()}.`
+          };
+        }
+      }
+
+      // Verificación de matriz de escenarios permitidos
       const scenarios = tenant.activeScenarios || [];
       const hasDirectAccess = scenarios.includes(scenarioId);
       const hasGlobalAccess = scenarios.includes("*") || tenant.tenantId === "ENTERPRISE";
@@ -106,7 +127,7 @@ export class TenantManager {
       if (!hasDirectAccess && !hasGlobalAccess) {
         return { 
           allowed: false, 
-          reason: `Escenario ${scenarioId} no habilitado por contrato para el Tenant ${tenantId}` 
+          reason: `Escenario ${scenarioId} no habilitado por contrato para el Tenant ${tenant.tenantId}.` 
         };
       }
 
