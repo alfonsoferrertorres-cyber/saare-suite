@@ -4,7 +4,7 @@ compatibility_date = "2026-11-06"
 workers_dev = false
 preview_urls = false
 
-# Dominio personalizado de producción (sin /* al final)
+# Dominio personalizado de producción
 routes = [
   { pattern = "api.saare.es", custom_domain = true }
 ]
@@ -20,8 +20,8 @@ TRUST_ANCHOR = "https://vault.saare.es"
 [[d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1"
-database_id = "PEGA_AQUI_EL_DATABASE_ID_DE_D1_LIST"
+database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
 
 [[kv_namespaces]]
 binding = "SAARE_VAULT_KV"
-id = "e96291b2d09840b1b1376151417e272b"
+id = "8dbfe21019834fc1bdefd9b66e4e810b"
