@@ -10,4 +10,4 @@ Windows Registry Editor Version 5.00
 "EnableExAnteEnforcement"=dword:00000001
 "TenantId"="ORGANISMO_DEMO_01"
 "TrustAnchor"="https://vault.saare.es"
-"ProxyGateway"="https://api.saare.es/api/v1/proxy/llm"
+"ProxyGateway"="https://api.saare.es/api/v1/chat/completions"
