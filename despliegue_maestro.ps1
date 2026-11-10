@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.6 - Production Ready)
+# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.7 - Production Ready)
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
@@ -97,25 +97,26 @@ if ($suiteDist) {
 # ------------------------------------------------------------------------------
 # FASE 4: MIGRACIONES DE BASE DE DATOS & CONTROL PLANE WORKER
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [4/6] Desplegando Control Plane Worker y Esquemas..." -ForegroundColor Cyan
+Write-Host "`n==> [4/6] Desplegando Control Plane Worker y Esquemas D1..." -ForegroundColor Cyan
 $controlPlanePath = if (Test-Path "control-plane") { "control-plane" } elseif (Test-Path "apps\control-plane") { "apps/control-plane" } else { $null }
 
 if ($controlPlanePath) {
     Push-Location $controlPlanePath
     try {
-        # 4.1 Aplicación de esquema relacional en Cloudflare D1
+        # 4.1 Aplicación automática del esquema relacional D1
         $sqlPath = $null
-        if (Test-Path "config/schema.sql") {
-            $sqlPath = "config/schema.sql"
-        } elseif (Test-Path "schema.sql") {
+        if (Test-Path "schema.sql") {
             $sqlPath = "schema.sql"
+        } elseif (Test-Path "config/schema.sql") {
+            $sqlPath = "config/schema.sql"
         } elseif (Test-Path "../config/schema.sql") {
             $sqlPath = "../config/schema.sql"
         }
 
         if ($sqlPath) {
-            Write-Host " -> Aplicando esquema relacional D1 ($sqlPath)..." -ForegroundColor Gray
+            Write-Host " -> Aplicando esquema relacional D1 ($sqlPath) en remoto..." -ForegroundColor Gray
             npx wrangler d1 execute saare-vault-d1 --remote --file=$sqlPath --yes
+            Write-Host " -> [OK] Esquema D1 aplicado correctamente." -ForegroundColor Green
         } else {
             Write-Host "[ADVERTENCIA] No se encontró el archivo schema.sql. Omitiendo migración D1." -ForegroundColor DarkYellow
         }
@@ -145,7 +146,7 @@ if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
     if (-not $currentBranch) { $currentBranch = "main" }
 
-    git commit -m "chore(release): despliegue maestro verificado L7 v8.6 (Pages + Worker + D1/KV Sync)"
+    git commit -m "chore(release): despliegue maestro verificado con schema.sql D1 L7 v8.7"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
