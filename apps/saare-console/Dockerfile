@@ -1,28 +1,33 @@
-# --- ETAPA 1: Compilación ---
-FROM node:18-alpine AS builder
+# --- ETAPA 1: Compilación en Monorepo PNPM ---
+FROM node:20-alpine AS builder
+
+# Habilitar pnpm vía corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY package*.json ./
+# 1. Copiar manifiestos de raíz y workspaces
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+COPY apps/saare-console ./apps/saare-console
 
-# Instalación limpia de dependencias
-RUN npm ci
+# 2. Instalación de dependencias del workspace sin congelar lockfile estricto
+RUN pnpm install --frozen-lockfile
 
-# Copiar el resto del código y compilar para producción
-COPY . .
-RUN npm run build
+# 3. Compilación de paquetes internos y de la consola GRC
+RUN pnpm --filter saare-console run build
 
-# --- ETAPA 2: Servidor de producción ---
+# --- ETAPA 2: Servidor de producción NGINX ---
 FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
 
-# Eliminar los archivos por defecto de NGINX
+# Eliminar archivos estáticos por defecto
 RUN rm -rf ./*
 
-# Copiar el bundle estático desde la etapa de compilación
-COPY --from=builder /app/dist .
+# Copiar los artefactos generados por Vite en apps/saare-console/dist
+COPY --from=builder /app/apps/saare-console/dist .
 
-# Configurar NGINX para fallback SPA (React Router / redirecciones)
+# Configuración NGINX con fallback para SPA (React Router)
 RUN echo 'server { \
     listen 80; \
     location / { \

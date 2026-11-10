@@ -1,4 +1,4 @@
-// S.A.A.R.E. Popup Controller — Production Build
+// S.A.A.R.E. Popup Controller — Production Build (Fallback de Placeholders Activo)
 
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl");
@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
-  // Recuperación dinámica de credenciales almacenadas
+  // 1. Recuperación dinámica de credenciales almacenadas
   try {
     const { saareConfig } = await chrome.storage.local.get("saareConfig");
     if (saareConfig) {
@@ -19,15 +19,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("[S.A.A.R.E. Popup Error]:", err);
   }
 
-  // Guardado seguro y sanitizado en storage local
+  // 2. Guardado seguro con fallback automático a placeholders si el campo está vacío
   saveBtn.addEventListener("click", async () => {
-    const apiUrl = apiUrlInput.value.trim();
-    const tenantId = tenantInput.value.trim();
-    const userEmail = userInput.value.trim().toLowerCase();
+    const apiUrl = (apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es").trim();
+    const tenantId = (tenantInput.value.trim() || tenantInput.placeholder || "DEMO_ENTERPRISE").trim();
+    const userEmail = (userInput.value.trim() || userInput.placeholder || "operador_anonimo@saare.local").trim().toLowerCase();
 
     if (!apiUrl || !tenantId || !userEmail) {
       statusDiv.style.color = "#f87171";
-      statusDiv.textContent = "⚠️ Debe completar todos los campos.";
+      statusDiv.textContent = "⚠️ Debe especificar un tenant y correo de operador.";
       return;
     }
 
@@ -40,12 +40,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       await chrome.storage.local.set({ saareConfig });
+      
+      // Refleja de inmediato los valores vinculados en la interfaz
+      apiUrlInput.value = apiUrl;
+      tenantInput.value = tenantId;
+      userInput.value = userEmail;
+
       statusDiv.style.color = "#34d399";
-      statusDiv.textContent = "✅ Nodo L7 Vinculado con éxito.";
+      statusDiv.textContent = `✅ Nodo L7 Vinculado (${tenantId})`;
       
       setTimeout(() => {
         statusDiv.textContent = "";
-      }, 3000);
+      }, 3500);
     } catch (err) {
       console.error("[S.A.A.R.E. Save Error]:", err);
       statusDiv.style.color = "#f87171";
