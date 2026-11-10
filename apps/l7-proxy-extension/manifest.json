@@ -10,6 +10,7 @@
   "host_permissions": [
     "https://*.saare.es/*",
     "https://api.saare.es/*",
+    "https://vault.saare.es/*",
     "https://gemini.google.com/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
@@ -28,6 +29,12 @@
       ],
       "js": ["contentScript.js"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["config/credentials.json"],
+      "matches": ["<all_urls>"]
     }
   ],
   "action": {

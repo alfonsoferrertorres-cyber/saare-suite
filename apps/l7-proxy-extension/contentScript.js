@@ -1,81 +1,144 @@
-// S.A.A.R.E. Content Script — Interceptor Universal de Interfaces Web de IA en RAM (SGP 1.0)
+// S.A.A.R.E. Content Script — Interceptor Universal Resiliente (SGP 1.0 Production)
 
 (function () {
-  console.log("[S.A.A.R.E. L7 Proxy] Agente de Inspección Activo.");
+  console.log("[S.A.A.R.E. L7 Proxy] Agente de Inspección Resiliente Activo.");
 
-  document.addEventListener("keydown", async (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      const inputEl = event.target;
-      if (isAiInputField(inputEl)) {
-        const rawPrompt = getInputValue(inputEl);
-        if (!rawPrompt || !rawPrompt.trim()) return;
+  let isProcessing = false;
 
-        event.preventDefault();
-        event.stopPropagation();
-
-        console.log("[S.A.A.R.E. L7] Interceptando Prompt Ex-Ante...");
-
-        try {
-          const response = await chrome.runtime.sendMessage({
-            action: "INSPECT_PROMPT_EX_ANTE",
-            payload: rawPrompt
-          });
-
-          if (response && response.success && response.verdict) {
-            const verdictData = response.verdict;
-
-            if (verdictData.decision === "DENY" || verdictData.verdict === "RECHAZADO" || verdictData.verdict === "FAIL_CLOSED_BLOCKED") {
-              alert(`[S.A.A.R.E. SECURITY BLOCK]\nAcceso Bloqueado por Política Ex-Ante L7.\n\nEvidencia: ${verdictData.evidence_id || verdictData.id || 'N/A'}\nDetalle: ${verdictData.error || verdictData.category || 'Infracción de Política'}`);
-              return;
-            }
-
-            const sanitizedPrompt = verdictData.sanitizedPrompt 
-              || verdictData.sanitized_payload 
-              || verdictData.inference?.responseContent 
-              || verdictData.enforcement?.sanitizedPrompt;
-
-            if (sanitizedPrompt && sanitizedPrompt !== rawPrompt) {
-              setInputValue(inputEl, sanitizedPrompt);
-            }
-
-            setTimeout(() => {
-              dispatchOriginalSubmit(inputEl);
-            }, 50);
-
-          } else {
-            console.warn("[S.A.A.R.E.] Fallo en respuesta de inspección:", response?.error || "Sin respuesta válida del Service Worker", "-> Aplicando contingencia pass-through.");
-            dispatchOriginalSubmit(inputEl);
-          }
-        } catch (err) {
-          console.error("[S.A.A.R.E. Proxy Error]:", err);
-          dispatchOriginalSubmit(inputEl);
-        }
-      }
+  function isExtensionContextValid() {
+    try {
+      return typeof chrome !== "undefined" && !!chrome.runtime && !!chrome.runtime.id;
+    } catch (e) {
+      return false;
     }
-  }, true);
+  }
+
+  async function handleKeyDown(event) {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    if (isProcessing) return;
+
+    const inputEl = event.target;
+    if (!isAiInputField(inputEl)) return;
+
+    const rawPrompt = getInputValue(inputEl);
+    if (!rawPrompt || !rawPrompt.trim()) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    isProcessing = true;
+    console.log("[S.A.A.R.E. L7] Interceptando Prompt Ex-Ante...");
+
+    try {
+      if (!isExtensionContextValid()) {
+        console.warn("[S.A.A.R.E.] Contexto de extensión invalidado. Passthrough activado.");
+        bypassAndSubmit(inputEl);
+        return;
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        action: "INSPECT_PROMPT_EX_ANTE",
+        payload: rawPrompt
+      });
+
+      if (response && response.success && response.verdict) {
+        const verdictData = response.verdict;
+
+        if (
+          verdictData.decision === "DENY" ||
+          verdictData.verdict === "RECHAZADO" ||
+          verdictData.verdict === "FAIL_CLOSED_BLOCKED"
+        ) {
+          alert(
+            `[S.A.A.R.E. SECURITY BLOCK]\nAcceso Bloqueado por Política Ex-Ante L7.\n\nEvidencia: ${
+              verdictData.evidence_id || verdictData.id || "N/A"
+            }\nDetalle: ${verdictData.error || verdictData.category || "Infracción de Política"}`
+          );
+          isProcessing = false;
+          return;
+        }
+
+        const sanitizedPrompt =
+          verdictData.sanitizedPrompt ||
+          verdictData.sanitized_payload ||
+          verdictData.enforcement?.sanitizedPrompt;
+
+        const isAuditStamp = sanitizedPrompt && (
+          sanitizedPrompt.includes("[S.A.A.R.E.") || 
+          sanitizedPrompt.includes("MS3V BLOCK LOGIC")
+        );
+
+        if (
+          sanitizedPrompt &&
+          typeof sanitizedPrompt === "string" &&
+          sanitizedPrompt !== rawPrompt &&
+          !isAuditStamp
+        ) {
+          setInputValue(inputEl, sanitizedPrompt);
+        }
+
+        setTimeout(() => {
+          bypassAndSubmit(inputEl);
+        }, 50);
+
+      } else {
+        console.warn("[S.A.A.R.E.] Sin respuesta válida del Service Worker. Fail-Open activado.");
+        bypassAndSubmit(inputEl);
+      }
+    } catch (err) {
+      console.error("[S.A.A.R.E. Proxy Error]:", err);
+      bypassAndSubmit(inputEl);
+    }
+  }
+
+  function bypassAndSubmit(el) {
+    isProcessing = false;
+    dispatchOriginalSubmit(el);
+  }
 
   function isAiInputField(el) {
-    if (!el) return false;
+    if (!el || typeof el.getAttribute !== "function") return false;
     const tag = el.tagName.toLowerCase();
-    return tag === "textarea" || el.isContentEditable || el.getAttribute("role") === "textbox";
+    return (
+      tag === "textarea" ||
+      tag === "input" ||
+      el.isContentEditable ||
+      el.getAttribute("role") === "textbox"
+    );
   }
 
   function getInputValue(el) {
-    if (el.tagName.toLowerCase() === "textarea" || el.tagName.toLowerCase() === "input") {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "textarea" || tag === "input") {
       return el.value;
     }
     return el.innerText || el.textContent || "";
   }
 
   function setInputValue(el, text) {
-    if (el.tagName.toLowerCase() === "textarea" || el.tagName.toLowerCase() === "input") {
-      el.value = text;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "textarea" || tag === "input") {
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value"
+      )?.set || Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      )?.set;
+
+      if (nativeSetter) {
+        nativeSetter.call(el, text);
+      } else {
+        el.value = text;
+      }
+
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     } else if (el.isContentEditable) {
       el.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, text);
+      document.execCommand("selectAll", false, null);
+      document.execCommand("insertText", false, text);
       el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }
@@ -86,9 +149,8 @@
     const sendButton = container.querySelector(
       'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"]'
     );
-    
-    if (sendButton) {
-      sendButton.removeAttribute("disabled");
+
+    if (sendButton && !sendButton.hasAttribute("disabled")) {
       sendButton.click();
       return;
     }
@@ -103,4 +165,30 @@
     });
     el.dispatchEvent(enterEvent);
   }
+
+  function attachListeners() {
+    window.removeEventListener("keydown", handleKeyDown, true);
+    document.removeEventListener("keydown", handleKeyDown, true);
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("keydown", handleKeyDown, true);
+  }
+
+  attachListeners();
+
+  const observer = new MutationObserver(() => {
+    if (!window.__saare_active) {
+      window.__saare_active = true;
+      attachListeners();
+    }
+  });
+
+  observer.observe(document.body || document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  window.addEventListener("error", () => {
+    if (isProcessing) isProcessing = false;
+  });
 })();

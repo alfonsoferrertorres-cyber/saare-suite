@@ -17,9 +17,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   saveBtn.addEventListener("click", async () => {
-    let rawUrl = apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es";
+    let rawUrl = apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es/v1/chat/completions";
     let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
-    cleanUrl = cleanUrl.replace(/\/api\/v1$/, "").replace(/\/api$/, "");
 
     if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
       cleanUrl = "https://" + cleanUrl;
