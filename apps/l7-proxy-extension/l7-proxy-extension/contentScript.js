@@ -40,9 +40,13 @@
               setInputValue(inputEl, sanitizedPrompt);
             }
 
-            dispatchOriginalSubmit(inputEl);
+            // Esperar un ciclo de renderizado antes de disparar el submit para asegurar la reactividad
+            setTimeout(() => {
+              dispatchOriginalSubmit(inputEl);
+            }, 50);
+
           } else {
-            console.warn("[S.A.A.R.E.] Fallo en respuesta de inspección, aplicando contingencia.");
+            console.warn("[S.A.A.R.E.] Fallo en respuesta de inspección, aplicando contingencia pass-through.");
             dispatchOriginalSubmit(inputEl);
           }
         } catch (err) {
@@ -56,7 +60,7 @@
   function isAiInputField(el) {
     if (!el) return false;
     const tag = el.tagName.toLowerCase();
-    return tag === "textarea" || el.isContentEditable || el.getAttribute("role") === "textbox";
+    return tag === "textarea" || el.isContentEditable || el.getAttribute("role"] === "textbox";
   }
 
   function getInputValue(el) {
@@ -69,27 +73,43 @@
   function setInputValue(el, text) {
     if (el.tagName.toLowerCase() === "textarea" || el.tagName.toLowerCase() === "input") {
       el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
     } else if (el.isContentEditable) {
-      el.innerText = text;
+      // Forzar la actualización limpia para editores enriquecidos basados en React / ProseMirror
+      el.focus();
+      document.execCommand('selectAll', false, null);
+      document.execCommand('insertText', false, text);
+      
+      // Fallback de eventos sintácticos
+      el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   function dispatchOriginalSubmit(el) {
-    const form = el.closest("form");
-    if (form && typeof form.requestSubmit === "function") {
-      try {
-        form.requestSubmit();
-        return;
-      } catch (e) {}
+    // 1. Buscar el botón de envío interactivo específico de la interfaz web
+    const container = el.closest("form") || el.closest("div[class*='relative']") || document;
+    const sendButton = container.querySelector(
+      'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"]'
+    );
+    
+    if (sendButton) {
+      // Habilitar temporalmente el botón si estuviera bloqueado por estado visual previo
+      sendButton.removeAttribute("disabled");
+      sendButton.click();
+      return;
     }
 
-    const container = el.closest("fieldset") || el.closest("form") || el.parentElement?.parentElement || document;
-    const sendButton = container.querySelector('button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"]');
-    
-    if (sendButton && !sendButton.disabled) {
-      sendButton.click();
-    }
+    // 2. Fallback por simulación de evento Enter si no se detecta el botón físico
+    const enterEvent = new KeyboardEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true
+    });
+    el.dispatchEvent(enterEvent);
   }
 })();
