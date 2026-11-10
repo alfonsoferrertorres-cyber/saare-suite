@@ -1,10 +1,24 @@
 /**
  * --------------------------------------------------------------------------
+ * ÍNDICE MAESTRO DE PROPIEDAD INTELECTUAL — PROTOCOLO DE AUDITORÍA VAL-AUD & S.A.A.R.E. L7
+ * Titular / Inventor: Alfonso Ferrer Torres (NIF: 48553065L)
+ * Fecha de Consolidación: Mayo 2026
+ * Registro B2B: MS3V-SGP1.0-SOFTWARE-2026 | Registro RPI: RPI-2026-SAARE-0914X
+ * Aislamiento Tecnológico: Zero-Disk RAM (mlock)
+ * Huella Raíz (SHA-256): 9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7
+ * --------------------------------------------------------------------------
  * PROTOCOLO DE AUDITORÍA DETERMINISTA MS3V
- * MOTOR DE GOBERNANZA: BLOCK LOGIC
- * Arquitectura: Middleware de Gobernanza Determinista en Tiempo Real
+ * MOTOR DE GOBERNANZA: BLOCK LOGIC (Middleware Determinista en Tiempo Real)
  * --------------------------------------------------------------------------
  */
+
+export const IP_MANIFEST = {
+  AUTHOR: "Alfonso Ferrer Torres",
+  NIF: "48553065L",
+  REGISTRO_B2B: "MS3V-SGP1.0-SOFTWARE-2026",
+  REGISTRO_RPI: "RPI-2026-SAARE-0914X",
+  MANIFEST_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"
+};
 
 /**
  * Genera la huella criptográfica SHA-256 (Bloque 3)
@@ -42,12 +56,16 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
     // ----------------------------------------------------------------------
     // BLOQUE 1: Módulo de Intercepción y Normalización de Flujo
     // ----------------------------------------------------------------------
-    let data = (typeof instruction === "string" ? instruction : "").trim().toUpperCase();
+    let rawString = typeof instruction === "string" ? instruction : "";
+    let data = rawString.trim().toUpperCase();
 
     // ----------------------------------------------------------------------
     // BLOQUE 2: Motor de Validación Determinista (Core Logic)
     // ----------------------------------------------------------------------
-    if (!approvedParams.includes(data)) {
+    const normalizedApproved = approvedParams.map(p => String(p).trim().toUpperCase());
+    const isApproved = normalizedApproved.some(param => data === param || data.includes(param));
+
+    if (!isApproved) {
       data = "LOGIC_SAFE_STATE";
     }
 
@@ -69,19 +87,24 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
         EXECUTE: data,
         HASH: integrityHash,
         TS: timestamp,
-        AUTHOR: env.AUTHOR_NAME || "Enterprise System",
-        PROTOCOL: env.PROTOCOL_VERSION || "MS3V_BLOCK_LOGIC_V12.1"
+        AUTHOR: env.AUTHOR_NAME || IP_MANIFEST.AUTHOR,
+        TITULAR_NIF: env.TITULAR_NIF || IP_MANIFEST.NIF,
+        PROTOCOL: env.PROTOCOL_VERSION || "MS3V_BLOCK_LOGIC_V12.1",
+        RPI_REGISTRATION: IP_MANIFEST.REGISTRO_RPI,
+        MANIFEST_ROOT_HASH: IP_MANIFEST.MANIFEST_SHA256
       };
     } else {
       return { 
         STATUS: "ABORT_SEQUENCE",
-        REASON: "SAFETY_DISJUNCTOR_ENGAGED"
+        REASON: "SAFETY_DISJUNCTOR_ENGAGED",
+        AUTHOR: IP_MANIFEST.AUTHOR
       };
     }
   } catch (error) {
     return { 
       STATUS: "ABORT_SEQUENCE",
-      REASON: `RUNTIME_ERROR: ${error.message}`
+      REASON: `RUNTIME_ERROR: ${error.message}`,
+      AUTHOR: IP_MANIFEST.AUTHOR
     };
   }
 }

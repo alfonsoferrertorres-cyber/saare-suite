@@ -285,10 +285,6 @@ importers:
 
   packages/entitlements: {}
 
-  packages/policies: {}
-
-  packages/proof-verifier: {}
-
 packages:
 
   '@alloc/quick-lru@5.3.0':

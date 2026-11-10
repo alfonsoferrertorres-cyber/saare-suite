@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saare-l7-control-plane
+  namespace: saare-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: saare-l7-node
+  template:
+    metadata:
+      labels:
+        app: saare-l7-node
+    spec:
+      containers:
+      - name: control-plane-node
+        image: saare-control-plane:v12.1
+        envFrom:
+        - configMapRef:
+            name: saare-ip-manifest
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: ram-lock-volume
+      volumes:
+      - name: ram-lock-volume
+        emptyDir:
+          medium: Memory

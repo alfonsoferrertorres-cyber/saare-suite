@@ -72,6 +72,155 @@ const SAARE_APPROVED_COMMANDS = [
 ];
 
 /* --------------------------------------------------------------------------
+   MÓDULO DE INTEGRACIÓN DE 4 CPAAS (TWILIO, MESSAGEBIRD, VONAGE, INFOBIP)
+   -------------------------------------------------------------------------- */
+class CPaaSAdapterManager {
+  static async sendTwilio(payload, env) {
+    const accountSid = env.TWILIO_ACCOUNT_SID;
+    const authToken = env.TWILIO_AUTH_TOKEN;
+    if (!accountSid || !authToken) throw new Error("Faltan credenciales de Twilio.");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const auth = btoa(`${accountSid}:${authToken}`);
+      const body = new URLSearchParams({
+        To: payload.to,
+        From: payload.from || env.TWILIO_FROM_NUMBER || '+1234567890',
+        Body: payload.body
+      });
+
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString(),
+        signal: controller.signal
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error en envío vía Twilio");
+
+      return { provider: "Twilio", messageId: data.sid || `tw_${Date.now()}` };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  static async sendMessageBird(payload, env) {
+    const apiKey = env.MESSAGEBIRD_API_KEY;
+    if (!apiKey) throw new Error("Falta API Key de MessageBird.");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const res = await fetch('https://rest.messagebird.com/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `AccessKey ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          originator: payload.from || 'SAARE',
+          recipients: [payload.to],
+          body: payload.body
+        }),
+        signal: controller.signal
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.errors?.[0]?.description || "Error en envío vía MessageBird");
+
+      return { provider: "MessageBird", messageId: data.id || `mb_${Date.now()}` };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  static async sendVonage(payload, env) {
+    const apiKey = env.VONAGE_API_KEY;
+    const apiSecret = env.VONAGE_API_SECRET;
+    if (!apiKey || !apiSecret) throw new Error("Faltan credenciales de Vonage.");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const res = await fetch('https://rest.nexmo.com/sms/json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          api_secret: apiSecret,
+          to: payload.to,
+          from: payload.from || 'SAARE',
+          text: payload.body
+        }),
+        signal: controller.signal
+      });
+      const data = await res.json();
+      if (!res.ok || data.messages?.[0]?.status !== '0') {
+        throw new Error(data.messages?.[0]?.['error-text'] || "Error en envío vía Vonage");
+      }
+
+      return { provider: "Vonage", messageId: data.messages[0]['message-id'] || `vn_${Date.now()}` };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  static async sendInfobip(payload, env) {
+    const baseUrl = env.INFOBIP_BASE_URL || "https://api.infobip.com";
+    const apiKey = env.INFOBIP_API_KEY;
+    if (!apiKey) throw new Error("Faltan credenciales de Infobip.");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/sms/2/text/advanced`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `App ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [{
+            from: payload.from || 'SAARE',
+            destinations: [{ to: payload.to }],
+            text: payload.body
+          }]
+        }),
+        signal: controller.signal
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error("Error en envío vía Infobip");
+
+      return { provider: "Infobip", messageId: data.messages?.[0]?.messageId || `ib_${Date.now()}` };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  static async sendWithFailover(payload, env, priorityOrder = ['twilio', 'messagebird', 'vonage', 'infobip']) {
+    const errors = [];
+    for (const key of priorityOrder) {
+      try {
+        if (key === 'twilio') return await this.sendTwilio(payload, env);
+        if (key === 'messagebird') return await this.sendMessageBird(payload, env);
+        if (key === 'vonage') return await this.sendVonage(payload, env);
+        if (key === 'infobip') return await this.sendInfobip(payload, env);
+      } catch (err) {
+        errors.push(`${key.toUpperCase()}: ${err.message}`);
+      }
+    }
+    throw new Error(`[CPaaS Failover Exhausted] Ningún proveedor pudo completar el envío: ${errors.join(' | ')}`);
+  }
+}
+
+/* --------------------------------------------------------------------------
    REGISTRO Y PROXIES LLM AGNOSTIC (DESACOPLE DE PROVEEDORES)
    -------------------------------------------------------------------------- */
 const LLM_AGNOSTIC_PROVIDERS = {
@@ -223,7 +372,7 @@ async function checkEmergencyKillswitch(env) {
 }
 
 /* --------------------------------------------------------------------------
-   ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1
+   ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1 (CON AUDITORÍA CPAAS)
    -------------------------------------------------------------------------- */
 async function ensureD1TablesExist(db) {
   if (!db) return;
@@ -245,6 +394,19 @@ async function ensureD1TablesExist(db) {
         anchored INTEGER DEFAULT 0,
         ms3v_hash TEXT DEFAULT '',
         ms3v_timestamp_ns TEXT DEFAULT ''
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        status TEXT NOT NULL,
+        evidence_hash TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `).run();
 
@@ -654,6 +816,63 @@ export default {
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || _u.searchParams.get("role") || "CISO_ADMIN";
 
+      // === RUTA DE ENVIÓ MULTI-CPAAS (TWILIO, MESSAGEBIRD, VONAGE, INFOBIP) CON AUDITORÍA D1 ===
+      if ((path === '/cpaas/send' || path === '/api/v1/cpaas/send' || path === '/v1/cpaas/send') && method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        if (!body.to || !body.body) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const priorityOrder = Array.isArray(body.priority) ? body.priority : ['twilio', 'messagebird', 'vonage', 'infobip'];
+
+        try {
+          const cpaasResult = await CPaaSAdapterManager.sendWithFailover(body, env, priorityOrder);
+          const evidenceHash = await computeSha256(`${tenantId}:${cpaasResult.provider}:${cpaasResult.messageId}:${Date.now()}`);
+
+          if (env?.DB) {
+            const auditInsert = async () => {
+              try {
+                await ensureD1TablesExist(env.DB);
+                await env.DB.prepare(`
+                  INSERT INTO cpaas_audit_logs (id, tenant_id, provider, message_id, recipient, status, evidence_hash, created_at)
+                  VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?, ?)
+                `).bind(
+                  `cpaas_${crypto.randomUUID().substring(0, 8)}`,
+                  tenantId,
+                  cpaasResult.provider,
+                  cpaasResult.messageId,
+                  body.to,
+                  evidenceHash,
+                  new Date().toISOString()
+                ).run();
+              } catch (auditErr) {
+                console.error("[CPaaS Audit Error]:", auditErr.message);
+              }
+            };
+
+            if (ctx && typeof ctx.waitUntil === 'function') {
+              ctx.waitUntil(auditInsert());
+            } else {
+              await auditInsert();
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            provider: cpaasResult.provider,
+            messageId: cpaasResult.messageId,
+            evidenceHash: evidenceHash,
+            timestamp: new Date().toISOString()
+          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        } catch (err) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: "CPAAS_DISPATCH_FAILED",
+            message: err.message
+          }), { status: 502, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       // === RUTA DE VERIFICACIÓN DE LICENCIA Y PROPIEDAD INTELECTUAL MS3V ===
       if ((path === '/auth/verifylicense' || path === '/v1/auth/verifylicense' || path === '/api/v1/auth/verifylicense') && (method === 'GET' || method === 'POST')) {
         const licenseData = {
@@ -937,26 +1156,30 @@ export default {
 
         if (env?.DB) {
           const runAsyncInsert = async () => {
-            await ensureD1TablesExist(env.DB);
-            const nowIso = new Date().toISOString();
-            await env.DB.prepare(`
-              INSERT INTO consolidated_traces (
-                trace_id, tenant_id, user_email, final_evaluator_node, 
-                final_decision, final_action, execution_latency_ms, timestamp, created_at, 
-                prompt, sanitized_payload, verdict, anchored, ms3v_hash, ms3v_timestamp_ns
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-            `).bind(
-              traceId, tenant, user, activeEvaluatorNode,
-              finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
-              nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict,
-              ms3vVerdict.HASH || blockLogicVerdict.HASH,
-              ms3vVerdict.TS || blockLogicVerdict.TS
-            ).run();
+            try {
+              await ensureD1TablesExist(env.DB);
+              const nowIso = new Date().toISOString();
+              await env.DB.prepare(`
+                INSERT INTO consolidated_traces (
+                  trace_id, tenant_id, user_email, final_evaluator_node, 
+                  final_decision, final_action, execution_latency_ms, timestamp, created_at, 
+                  prompt, sanitized_payload, verdict, anchored, ms3v_hash, ms3v_timestamp_ns
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+              `).bind(
+                traceId, tenant, user, activeEvaluatorNode,
+                finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+                nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict,
+                ms3vVerdict.HASH || blockLogicVerdict.HASH,
+                ms3vVerdict.TS || blockLogicVerdict.TS
+              ).run();
 
-            await env.DB.prepare(`
-              INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, rawPrompt, llmOutputContent, JSON.stringify(proofBundle), nowIso).run();
+              await env.DB.prepare(`
+                INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, rawPrompt, llmOutputContent, JSON.stringify(proofBundle), nowIso).run();
+            } catch (asyncErr) {
+              console.error("[Async Insert Error]:", asyncErr.message);
+            }
           };
 
           if (ctx && typeof ctx.waitUntil === 'function') {

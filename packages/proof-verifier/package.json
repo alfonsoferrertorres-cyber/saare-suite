@@ -1,7 +1,0 @@
-{
-  "name": "@saare/proof-verifier",
-  "version": "1.0.0",
-  "description": "Verificador criptográfico independiente sin dependencias externas para evidencias .saare-proof",
-  "main": "index.js",
-  "type": "module"
-}

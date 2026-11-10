@@ -1,9 +1,0 @@
-⚡ El Proceso de Despacho en 3 Pasos Rápidos
-
-Cuando un desarrollador te pida la prueba, ya no tienes que pensar. Haces esto mecánicamente:
-
-Copias el Core: Copias tus archivos de la carpeta 01 y los pegas en la nueva carpeta del cliente (ej. CLIENTE_01_TRIAL_7DIAS).
-
-Escribes el Nombre: Abres el archivo config.env del cliente y pones su nombre en SAARE_CLIENT_NAME.
-
-Clonas la Licencia: Copias tu plantilla_trial.lic, cambias el nombre de la empresa en la línea Issued-To:, la guardas como saare.lic dentro de su carpeta y ¡listo!

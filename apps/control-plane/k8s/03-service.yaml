@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: saare-control-plane-service
+  namespace: saare-system
+  labels:
+    app: saare-l7-node
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: saare-l7-node

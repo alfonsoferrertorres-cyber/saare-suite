@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. v12.1 / SGP 1.0 (Despliegue Lean & Conexión Directa Bóveda D1)
+// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. v12.1 / SGP 1.0 (Despliegue Multicliente Enterprise & Conexión Bóveda D1)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -50,7 +50,7 @@ function hasRequiredRank(role, minRank) {
 }
 
 export default function App() {
-  // Autenticado por defecto para simplificar el flujo inicial en despliegues con menor tracción
+  // Autenticado por defecto para simplificar el flujo inicial en despliegues
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(true);
 
@@ -59,8 +59,19 @@ export default function App() {
 
   const [userEmail, setUserEmail] = useState(() => (localStorage.getItem('saare_user_email') || 'operador@saare.es').trim().toLowerCase());
   const [userPassword, setUserPassword] = useState('demo1234');
-  const [tenantId, setTenantId] = useState(() => (urlTenant || localStorage.getItem('saare_tenant_domain') || 'ORGANISMO_DEMO_01').trim());
+  
+  // Estado Dinámico de Inquilino/Tenant Multicliente
+  const [tenantId, setTenantId] = useState(() => (urlTenant || localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE').trim());
   const [userRole, setUserRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem('saare_auth_token') || '');
+
+  // Lista de Inquilinos Disponibles para el Selector Multicliente
+  const [availableTenants] = useState([
+    { id: 'DEMO_ENTERPRISE', name: 'Demo Enterprise (Global)' },
+    { id: 'ORGANISMO_DEMO_01', name: 'Organismo Demo 01' },
+    { id: 'ORGANISMO_SALUD_ES', name: 'Servicio de Salud Regional' },
+    { id: 'FINTECH_CORP_01', name: 'Fintech Banking Corp' }
+  ]);
 
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
@@ -134,24 +145,38 @@ export default function App() {
       });
   }, [userEmail, tenantId]);
 
-  // Conexión y consulta directa a la Bóveda D1 del cliente
-  const fetchTelemetryDirectFromVault = useCallback(async () => {
+  // Conexión y consulta directa a la Bóveda D1 del cliente (con cabeceras multicliente)
+  const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null) => {
+    const targetTenant = overrideTenant || tenantId;
     setIsFetchingVault(true);
     try {
-      const traces = await apiService.getTelemetryTraces({ tenant: tenantId, user: userEmail });
+      const traces = await apiService.getTelemetryTraces({ 
+        tenant: targetTenant, 
+        user: userEmail,
+        token: authToken,
+        role: userRole
+      });
+
       if (traces && Array.isArray(traces)) {
         setEvidences(mapEvidences(traces));
-        triggerGovernance(`Bóveda D1 consultada (${traces.length} registros hallados).`);
+        triggerGovernance(`Bóveda D1 [${targetTenant}] consultada (${traces.length} registros).`);
       } else {
         setEvidences([]);
-        triggerGovernance("Bóveda D1 consultada: 0 registros para este tenant.");
+        triggerGovernance(`Bóveda D1 [${targetTenant}] consultada: 0 registros.`);
       }
     } catch (e) {
-      triggerGovernance("⚠️ Error al conectar con la Bóveda D1 del cliente.");
+      triggerGovernance(`⚠️ Error al conectar con la Bóveda D1 de [${targetTenant}].`);
     } finally {
       setIsFetchingVault(false);
     }
-  }, [tenantId, userEmail, mapEvidences, triggerGovernance]);
+  }, [tenantId, userEmail, authToken, userRole, mapEvidences, triggerGovernance]);
+
+  // Manejador del cambio de Inquilino/Tenant Multicliente
+  const handleTenantChange = (newTenant) => {
+    setTenantId(newTenant);
+    localStorage.setItem('saare_tenant_domain', newTenant);
+    fetchTelemetryDirectFromVault(newTenant);
+  };
 
   useEffect(() => {
     const updateClock = () => setTimeStr(new Date().toTimeString().split(' ')[0]);
@@ -181,7 +206,13 @@ export default function App() {
     const t0 = performance.now();
 
     try {
-      const data = await apiService.interceptPrompt({ prompt: testPrompt, user: userEmail, tenant: tenantId });
+      const data = await apiService.interceptPrompt({ 
+        prompt: testPrompt, 
+        user: userEmail, 
+        tenant: tenantId,
+        token: authToken,
+        role: userRole
+      });
       const latencyMs = (performance.now() - t0).toFixed(2) + " ms";
       const isDeny = data?.decision === 'DENY' || data?.verdict === 'FAIL_CLOSED_BLOCKED';
 
@@ -215,12 +246,12 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER PRINCIPAL */}
+      {/* HEADER PRINCIPAL CON SELECTOR MULTICLIENTE */}
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', fontSize: '1rem', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
-            <span style={{ background: '#1e293b', color: '#34d399', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>SGP 1.0 Lean</span>
+            <span style={{ background: '#1e293b', color: '#34d399', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>SGP 1.0 Enterprise</span>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -241,12 +272,19 @@ export default function App() {
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
         <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
           
-          {/* MÉTRICAS SUPERIORES */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8' }}>TENANT Y ORGANISMO</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#38bdf8', marginTop: '4px' }}>{tenantId}</div>
-              <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Conexión Directa Bóveda D1</div>
+          {/* MÉTRICAS SUPERIORES CON SELECTOR MULTICLIENTE INTERACTIVO */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ background: '#020617', border: '1px solid #38bdf8', padding: '16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>TENANT / ORGANISMO ACTIVO</div>
+              <select 
+                value={tenantId} 
+                onChange={(e) => handleTenantChange(e.target.value)}
+                style={{ width: '100%', marginTop: '6px', padding: '6px 8px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', fontWeight: '900', fontSize: '0.95rem', borderRadius: '6px', cursor: 'pointer' }}>
+                {availableTenants.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.id})</option>
+                ))}
+              </select>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '6px' }}>Conexión Directa Bóveda D1</div>
             </div>
 
             <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
@@ -273,16 +311,16 @@ export default function App() {
               </button>
             </div>
 
-            {/* BOTÓN DE CONEXIÓN/SINCRONIZACIÓN DIRECTA A BÓVEDA D1 POR CLIENTE */}
+            {/* BOTÓN DE SINCRONIZACIÓN DIRECTA BÓVEDA D1 */}
             <button
-              onClick={fetchTelemetryDirectFromVault}
+              onClick={() => fetchTelemetryDirectFromVault()}
               disabled={isFetchingVault}
               style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-              {isFetchingVault ? "Consultando Bóveda..." : "🔄 Sincronizar Bóveda D1 Directa"}
+              {isFetchingVault ? "Consultando Bóveda..." : `🔄 Sincronizar Bóveda D1 (${tenantId})`}
             </button>
           </div>
 
-          {/* TAB 1: REGISTRO DE EVIDENCIAS (Limpio si no hay trazas reales) */}
+          {/* TAB 1: REGISTRO DE EVIDENCIAS */}
           {activeTab === 'GLOBAL' && (
             <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
@@ -336,7 +374,7 @@ export default function App() {
                 onClick={handleExecuteTestExAnte}
                 disabled={isEvaluating}
                 style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
-                {isEvaluating ? "PROCESANDO..." : "EJECUTAR RUNTIME EX-ANTE"}
+                {isEvaluating ? "PROCESANDO..." : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId}]`}
               </button>
 
               {testResult && (
