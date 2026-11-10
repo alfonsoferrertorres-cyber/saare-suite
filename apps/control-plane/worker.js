@@ -579,6 +579,22 @@ export default {
     const path = normalizedPath;
     const method = request.method;
 
+    // === RUTA DE VERIFICACIÓN DE RESILIENCIA Y SALUD EX-ANTE ===
+    if ((path === '/resilience/check' || path === '/v1/resilience/check' || path === '/api/v1/resilience/check') && method === 'GET') {
+      return new Response(
+        JSON.stringify({
+          status: 'HEALTHY',
+          resilience: 'ACTIVE',
+          service: env?.WORKER_NAME || 'saare-control-plane-prod',
+          version: env?.SGP_SPEC_VERSION || 'SGP 1.0 MS3V',
+          engine: 'BLOCK LOGIC v12.1',
+          trustAnchor: env?.TRUST_ANCHOR || 'https://vault.saare.es',
+          timestamp: new Date().toISOString()
+        }),
+        { status: 200, headers: { ...cors.corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+      );
+    }
+
     if ((path === '/health' || path === '/v1/health' || path === '/api/health' || path === '/api/v1/health') && method === 'GET') {
       return new Response(
         JSON.stringify({
@@ -1087,19 +1103,3 @@ export default {
     }
   }
 };
-
-// === RUTA DE VERIFICACIÓN DE RESILIENCIA Y SALUD EX-ANTE ===
-    if ((path === '/resilience/check' || path === '/v1/resilience/check' || path === '/api/v1/resilience/check') && method === 'GET') {
-      return new Response(
-        JSON.stringify({
-          status: 'HEALTHY',
-          resilience: 'ACTIVE',
-          service: env?.WORKER_NAME || 'saare-control-plane-prod',
-          version: env?.SGP_SPEC_VERSION || 'SGP 1.0 MS3V',
-          engine: 'BLOCK LOGIC v12.1',
-          trustAnchor: env?.TRUST_ANCHOR || 'https://vault.saare.es',
-          timestamp: new Date().toISOString()
-        }),
-        { status: 200, headers: { ...cors.corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
-      );
-    }
