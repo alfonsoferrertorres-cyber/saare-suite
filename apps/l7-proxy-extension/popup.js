@@ -1,4 +1,4 @@
-// S.A.A.R.E. Popup Controller — Production Build (Fallback de Placeholders Activo)
+// S.A.A.R.E. Popup Controller - Production Build (UTF-8 / SGP 1.0)
 
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl");
@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
-  // 1. Recuperación dinámica de credenciales almacenadas
+  // 1. Cargar credenciales guardadas en chrome.storage.local
   try {
     const { saareConfig } = await chrome.storage.local.get("saareConfig");
     if (saareConfig) {
@@ -19,20 +19,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("[S.A.A.R.E. Popup Error]:", err);
   }
 
-  // 2. Guardado seguro con fallback automático a placeholders si el campo está vacío
+  // 2. Guardar y normalizar credenciales con fallback seguro
   saveBtn.addEventListener("click", async () => {
-    const apiUrl = (apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es").trim();
+    let rawUrl = apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es";
+    let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
+    cleanUrl = cleanUrl.replace(/\/api\/v1$/, "").replace(/\/api$/, "");
+
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = "https://" + cleanUrl;
+    }
+
     const tenantId = (tenantInput.value.trim() || tenantInput.placeholder || "DEMO_ENTERPRISE").trim();
     const userEmail = (userInput.value.trim() || userInput.placeholder || "operador_anonimo@saare.local").trim().toLowerCase();
 
-    if (!apiUrl || !tenantId || !userEmail) {
-      statusDiv.style.color = "#f87171";
-      statusDiv.textContent = "⚠️ Debe especificar un tenant y correo de operador.";
-      return;
-    }
-
     const saareConfig = {
-      apiUrl,
+      apiUrl: cleanUrl,
       tenantId,
       userEmail,
       updatedAt: new Date().toISOString()
@@ -40,15 +41,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       await chrome.storage.local.set({ saareConfig });
-      
-      // Refleja de inmediato los valores vinculados en la interfaz
-      apiUrlInput.value = apiUrl;
+
+      apiUrlInput.value = cleanUrl;
       tenantInput.value = tenantId;
       userInput.value = userEmail;
 
       statusDiv.style.color = "#34d399";
       statusDiv.textContent = `✅ Nodo L7 Vinculado (${tenantId})`;
-      
+
       setTimeout(() => {
         statusDiv.textContent = "";
       }, 3500);
