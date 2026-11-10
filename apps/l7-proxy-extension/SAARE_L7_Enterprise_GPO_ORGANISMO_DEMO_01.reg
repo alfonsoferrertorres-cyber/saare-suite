@@ -1,0 +1,13 @@
+Windows Registry Editor Version 5.00
+
+; ================================================================
+; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
+; Tenant: ORGANISMO_DEMO_01
+; TrustAnchor: https://vault.saare.es
+; ================================================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\SAARE\L7]
+"EnableExAnteEnforcement"=dword:00000001
+"TenantId"="ORGANISMO_DEMO_01"
+"TrustAnchor"="https://vault.saare.es"
+"ProxyGateway"="https://api.saare.es/api/v1/chat/completions"
