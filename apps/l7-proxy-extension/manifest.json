@@ -8,6 +8,7 @@
     "activeTab"
   ],
   "host_permissions": [
+    "https://*.saare.es/*",
     "https://api.saare.es/*",
     "https://gemini.google.com/*",
     "https://chatgpt.com/*",

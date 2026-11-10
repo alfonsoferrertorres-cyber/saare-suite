@@ -1,15 +1,19 @@
+// S.A.A.R.E. Service Worker (Background Script) — Production Build (SGP 1.0)
+
 async function handleExAnteInspection(promptText) {
-  const { saareConfig } = await chrome.storage.local.get("saareConfig");
-  let rawUrl = saareConfig?.apiUrl || "https://api.saare.es";
+  const storageData = await chrome.storage.local.get("saareConfig");
+  const saareConfig = storageData?.saareConfig || {};
   
+  let rawUrl = saareConfig.apiUrl || "https://api.saare.es";
   let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
   cleanUrl = cleanUrl.replace(/\/api\/v1$/, "").replace(/\/api$/, "");
   
   const endpointUrl = `${cleanUrl}/v1/chat/completions`;
 
-  const tenantId = saareConfig?.tenantId || "ORGANISMO_DEMO_01";
-  const userEmail = saareConfig?.userEmail || "operador_anonimo";
-  const token = saareConfig?.authToken || "";
+  // Fallbacks genéricos y neutros para producción (Zero-Hardcoded PII)
+  const tenantId = (saareConfig.tenantId || "DEMO_ENTERPRISE").trim();
+  const userEmail = (saareConfig.userEmail || "operador_anonimo@saare.local").trim().toLowerCase();
+  const token = saareConfig.authToken || "";
 
   const headers = {
     "Content-Type": "application/json",
@@ -21,8 +25,11 @@ async function handleExAnteInspection(promptText) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Payload multinivel agnóstico para el backend
   const body = JSON.stringify({
     prompt: promptText,
+    input: promptText,
+    messages: [{ role: "user", content: promptText }],
     tenant: tenantId,
     user: userEmail,
     provider: "AGNOSTIC_WEB_PROXY"
@@ -46,7 +53,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "INSPECT_PROMPT_EX_ANTE") {
     handleExAnteInspection(request.payload)
       .then(data => sendResponse({ success: true, verdict: data }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true; 
+      .catch(err => {
+        console.error("[S.A.A.R.E. Background Error]:", err);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true;
   }
 });
