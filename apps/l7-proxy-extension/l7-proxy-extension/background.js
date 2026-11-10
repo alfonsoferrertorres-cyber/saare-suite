@@ -1,6 +1,6 @@
 // S.A.A.R.E. Background Service Worker — Enrutador Agnóstico y Punto PEP L7
 
-const DEFAULT_API_URL = "https://api.saare.es/api/v1";
+const DEFAULT_API_URL = "https://api.saare.es";
 const DEFAULT_TENANT = "ORGANISMO_DEMO_01";
 
 // Inicializar la configuración predeterminada de forma limpia
