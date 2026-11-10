@@ -2,3 +2,5 @@ node_modules/
 .turbo/
 dist/
 build/
+.env
+.env.*

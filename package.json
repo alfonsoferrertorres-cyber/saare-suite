@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build --ui=stream",
+    "preview": "pnpm --filter saare-console preview",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
   }
 }

@@ -19,7 +19,7 @@ const getEnvVar = (keys, fallback = "") => {
 };
 
 export const SAARE_CONFIG = Object.freeze({
-  SPEC_VERSION: "v10.0",
+  SPEC_VERSION: "v12.1", // <-- Actualizado unificado a v12.1
   SGP_VERSION: "SGP 1.0",
   BUILD_VERSION: "12.1-PRODUCTION",
   COMPANY_NAME: "S.A.A.R.E. Technologies S.L.",

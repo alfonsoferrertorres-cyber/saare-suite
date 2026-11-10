@@ -1,4 +1,4 @@
-// // saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Autenticación Real & Motor MS3V / Bóveda D1)
+// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v12.1 / SGP 1.0 (Autenticación Real & Motor MS3V / Bóveda D1)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -20,7 +20,7 @@ const getApiEndpoint = (path = '') => {
   return `${cleanBase}${cleanPath}`;
 };
 
-// TAXONOMÍA CANÓNICA Y MATRIZ DE COMANDOS SEMÁNTICOS (S.A.A.R.E. V10.0 / SGP 1.0)
+// TAXONOMÍA CANÓNICA Y MATRIZ DE COMANDOS SEMÁNTICOS (S.A.A.R.E. V12.1 / SGP 1.0)
 const SAARE_SEMANTIC_COMMANDS = {
   MODULE_5_BOOTSTRAP: SAARE_CONFIG?.MODULE_5?.BOOTSTRAP_COMMAND || "Iniciar_cumplimiento_exante_saare --route-vault=D1",
   WITNESS_TAG: SAARE_CONFIG?.MODULE_5?.WITNESS_TAG || "[MS3V-COMPLIANCE-L7-OK]",
@@ -320,7 +320,6 @@ export default function App() {
         const itemTenant = (item.tenant_id || item.tenant || '').trim();
         const itemUser = (item.user_email || item.user || item.user_id || '').trim().toLowerCase();
 
-        // Filtrado estricto opcional si se requiere aislar por tenant/usuario actual
         if (cleanCurrentTenant && itemTenant && itemTenant !== cleanCurrentTenant) {
           return null;
         }
@@ -420,7 +419,7 @@ export default function App() {
   const mergeEvidences = useCallback((existing, incoming) => {
     const mappedIncoming = mapEvidences(incoming);
     const map = new Map();
-    (([...mappedIncoming, ...existing])).forEach(item => {
+    [...mappedIncoming, ...existing].forEach(item => {
       if (item?.id && !map.has(item.id)) {
         map.set(item.id, item);
       }
@@ -539,7 +538,6 @@ export default function App() {
     } catch (e) {}
   }, [tenantId, userEmail, mergeEvidences]);
 
-  // EFECTO PRINCIPAL DE TELEMETRÍA, POLLING Y SSE CON RECONEXIÓN EXPONENCIAL
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -563,7 +561,6 @@ export default function App() {
       fetchTelemetryOnce();
     }, 3000);
 
-    // Conexión SSE con Reconexión Automática y Backoff Exponencial
     const connectSSE = () => {
       const cleanTenant = (tenantId || '').trim();
       const cleanUser = (userEmail || '').trim().toLowerCase();
@@ -574,7 +571,7 @@ export default function App() {
         eventSourceRef.current = es;
 
         es.onopen = () => {
-          retryCountRef.current = 0; // Restablecer intentos al conectar exitosamente
+          retryCountRef.current = 0;
         };
 
         es.onmessage = (event) => {
@@ -596,7 +593,6 @@ export default function App() {
             eventSourceRef.current = null;
           }
 
-          // Backoff exponencial con límite de 30 segundos
           const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
           retryCountRef.current += 1;
 
@@ -1067,7 +1063,6 @@ export default function App() {
     triggerGovernance('Matriz de Invariantes descargada.');
   };
 
-  // 3. FORMULARIO DINÁMICO DE ACTIVACIÓN Y VERIFICACIÓN DE CREDENCIALES
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -1080,7 +1075,7 @@ export default function App() {
             ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1
           </h2>
           <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-            Ingresa tus credenciales para autenticarte en la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong> e inyectar el comando semántico del <strong>Módulo 5 (Notario Digital Ex-Ante D1)</strong>[cite: 1].
+            Ingresa tus credenciales para autenticarte en la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong> e inyectar el comando semántico del <strong>Módulo 5 (Notario Digital Ex-Ante D1)</strong>.
           </p>
 
           <form onSubmit={handleLoginSubmit}>
@@ -1233,220 +1228,220 @@ export default function App() {
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#94a3b8', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', letterSpacing: '0.5px', fontSize: '0.9rem' }}>S.A.A.R.E. CONSOLE GRC</span>
-            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG?.SPEC_VERSION || 'v10.0'}</span>
-          </div>
+            <span style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{SAARE_CONFIG?.SPEC_VERSION || 'v12.1'}</span>
 
-          <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center', position: 'relative' }}>
-            <button 
-              onClick={() => setViewMode('EXECUTIVE')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === 'EXECUTIVE' ? '#0284c7' : 'transparent',
-                color: viewMode === 'EXECUTIVE' ? '#ffffff' : '#94a3b8',
-                fontWeight: '800',
-                fontSize: '0.75rem',
-                cursor: 'pointer'
-              }}>
-              🟦 EXECUTIVE (CEO)
-            </button>
-
-            <button 
-              onClick={() => setViewMode('GRC_AUDIT')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === 'GRC_AUDIT' ? '#059669' : 'transparent',
-                color: viewMode === 'GRC_AUDIT' ? '#ffffff' : '#94a3b8',
-                fontWeight: '800',
-                fontSize: '0.75rem',
-                cursor: 'pointer'
-              }}>
-              🟩 GRC & AUDIT (CISO/DPO)
-            </button>
-
-            <button 
-              onClick={() => {
-                setViewMode('CYBER_RESILIENCE');
-                setActiveTab('RUNLIVE');
-              }}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === 'CYBER_RESILIENCE' ? '#7c3aed' : 'transparent',
-                color: viewMode === 'CYBER_RESILIENCE' ? '#ffffff' : '#94a3b8',
-                fontWeight: '800',
-                fontSize: '0.75rem',
-                cursor: 'pointer'
-              }}>
-              🟥 CYBER & RESILIENCE (SOC)
-            </button>
-
-            <button 
-              onClick={() => setShowSeatsModal(true)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #38bdf8',
-                background: '#0f172a',
-                color: '#38bdf8',
-                fontWeight: '800',
-                fontSize: '0.72rem',
-                cursor: 'pointer'
-              }}
-              title="Gestión de Licencias y Asientos del Nodo Organismo">
-              👥 ASIENTOS RBAC
-            </button>
-
-            {/* BOTÓN DESPLEGABLE DE DESPLIEGUE */}
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ display: 'flex', gap: '6px', background: '#020617', padding: '4px', borderRadius: '8px', border: '1px solid #1e293b', alignItems: 'center', position: 'relative' }}>
               <button 
-                onClick={() => setShowDeployDropdown(!showDeployDropdown)}
+                onClick={() => setViewMode('EXECUTIVE')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'EXECUTIVE' ? '#0284c7' : 'transparent',
+                  color: viewMode === 'EXECUTIVE' ? '#ffffff' : '#94a3b8',
+                  fontWeight: '800',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}>
+                🟦 EXECUTIVE (CEO)
+              </button>
+
+              <button 
+                onClick={() => setViewMode('GRC_AUDIT')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'GRC_AUDIT' ? '#059669' : 'transparent',
+                  color: viewMode === 'GRC_AUDIT' ? '#ffffff' : '#94a3b8',
+                  fontWeight: '800',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}>
+                🟩 GRC & AUDIT (CISO/DPO)
+              </button>
+
+              <button 
+                onClick={() => {
+                  setViewMode('CYBER_RESILIENCE');
+                  setActiveTab('RUNLIVE');
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'CYBER_RESILIENCE' ? '#7c3aed' : 'transparent',
+                  color: viewMode === 'CYBER_RESILIENCE' ? '#ffffff' : '#94a3b8',
+                  fontWeight: '800',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}>
+                🟥 CYBER & RESILIENCE (SOC)
+              </button>
+
+              <button 
+                onClick={() => setShowSeatsModal(true)}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  border: '1px solid #10b981',
-                  background: '#064e3b',
-                  color: '#34d399',
+                  border: '1px solid #38bdf8',
+                  background: '#0f172a',
+                  color: '#38bdf8',
                   fontWeight: '800',
                   fontSize: '0.72rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  cursor: 'pointer'
                 }}
-                title="Desplegar Interceptor perimetral, credenciales y GPO">
-                📥 Despliegue Cliente / Proxy ▾
+                title="Gestión de Licencias y Asientos del Nodo Organismo">
+                👥 ASIENTOS RBAC
               </button>
 
-              {showDeployDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: '115%',
-                  background: '#0b0f19',
-                  border: '1px solid #1e293b',
-                  borderRadius: '8px',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.85)',
-                  zIndex: 9999,
-                  minWidth: '280px',
-                  padding: '8px'
-                }}>
-                  <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '800', padding: '6px 8px', textTransform: 'uppercase', borderBottom: '1px solid #1e293b', marginBottom: '4px' }}>
-                    Opciones de Despliegue L7 ({tenantId || 'MODO DINÁMICO'})
+              {/* BOTÓN DESPLEGABLE DE DESPLIEGUE */}
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button 
+                  onClick={() => setShowDeployDropdown(!showDeployDropdown)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #10b981',
+                    background: '#064e3b',
+                    color: '#34d399',
+                    fontWeight: '800',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Desplegar Interceptor perimetral, credenciales y GPO">
+                  📥 Despliegue Cliente / Proxy ▾
+                </button>
+
+                {showDeployDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '115%',
+                    background: '#0b0f19',
+                    border: '1px solid #1e293b',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.85)',
+                    zIndex: 9999,
+                    minWidth: '280px',
+                    padding: '8px'
+                  }}>
+                    <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '800', padding: '6px 8px', textTransform: 'uppercase', borderBottom: '1px solid #1e293b', marginBottom: '4px' }}>
+                      Opciones de Despliegue L7 ({tenantId || 'MODO DINÁMICO'})
+                    </div>
+
+                    <button 
+                      onClick={handleDownloadProxyExtensionZip}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#38bdf8',
+                        fontSize: '0.75rem',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}>
+                      <span>🧩 Extensión Proxy (.zip)</span>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Paquete del plugin instalable para Chrome / Edge</span>
+                    </button>
+
+                    <button 
+                      onClick={handleDownloadRoutingCredentialsJson}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#f59e0b',
+                        fontSize: '0.75rem',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        marginTop: '4px'
+                      }}>
+                      <span>🔑 Credenciales Pasarela (.json)</span>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Parámetros de conexión y enrutamiento del Tenant</span>
+                    </button>
+
+                    <button 
+                      onClick={handleDownloadEnterpriseGpoReg}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#34d399',
+                        fontSize: '0.75rem',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        marginTop: '4px'
+                      }}>
+                      <span>⚙️ Archivo GPO (.reg)</span>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Enruta el proxy automáticamente en Windows</span>
+                    </button>
                   </div>
+                )}
+              </div>
 
-                  <button 
-                    onClick={handleDownloadProxyExtensionZip}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#38bdf8',
-                      fontSize: '0.75rem',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}>
-                    <span>🧩 Extensión Proxy (.zip)</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Paquete del plugin instalable para Chrome / Edge</span>
-                  </button>
+              <button 
+                onClick={handleZeroTrustEnforce}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #a855f7',
+                  background: '#3b0764',
+                  color: '#e9d5ff',
+                  fontWeight: '800',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer'
+                }}
+                title="Activar enforzamiento estricto Zero Trust Ex-Ante">
+                🔒 ZERO TRUST EX-ANTE
+              </button>
 
-                  <button 
-                    onClick={handleDownloadRoutingCredentialsJson}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#f59e0b',
-                      fontSize: '0.75rem',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                      marginTop: '4px'
-                    }}>
-                    <span>🔑 Credenciales Pasarela (.json)</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Parámetros de conexión y enrutamiento del Tenant</span>
-                  </button>
-
-                  <button 
-                    onClick={handleDownloadEnterpriseGpoReg}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#34d399',
-                      fontSize: '0.75rem',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                      marginTop: '4px'
-                    }}>
-                    <span>⚙️ Archivo GPO (.reg)</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'normal' }}>Enruta el proxy automáticamente en Windows</span>
-                  </button>
-                </div>
-              )}
+              <select 
+                value={userRole}
+                onChange={(e) => {
+                  const selected = e.target.value;
+                  setUserRole(selected);
+                  localStorage.setItem('saare_user_role', selected);
+                  triggerGovernance(`Rol de operador actualizado a: ${selected}`);
+                }}
+                style={{
+                  background: '#0f172a',
+                  color: '#38bdf8',
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: '800',
+                  cursor: 'pointer'
+                }}>
+                <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
+                <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
+                <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
+                <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
+                <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
+              </select>
             </div>
-
-            <button 
-              onClick={handleZeroTrustEnforce}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #a855f7',
-                background: '#3b0764',
-                color: '#e9d5ff',
-                fontWeight: '800',
-                fontSize: '0.72rem',
-                cursor: 'pointer'
-              }}
-              title="Activar enforzamiento estricto Zero Trust Ex-Ante">
-              🔒 ZERO TRUST EX-ANTE
-            </button>
-
-            <select 
-              value={userRole}
-              onChange={(e) => {
-                const selected = e.target.value;
-                setUserRole(selected);
-                localStorage.setItem('saare_user_role', selected);
-                triggerGovernance(`Rol de operador actualizado a: ${selected}`);
-              }}
-              style={{
-                background: '#0f172a',
-                color: '#38bdf8',
-                border: '1px solid #334155',
-                borderRadius: '6px',
-                padding: '4px 8px',
-                fontSize: '0.72rem',
-                fontWeight: '800',
-                cursor: 'pointer'
-              }}>
-              <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
-              <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
-              <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
-              <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
-              <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
-            </select>
           </div>
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
@@ -1795,7 +1790,7 @@ export default function App() {
 
                         <div>
                           <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', marginBottom: '4px' }}>
-                            SELLO FORENSE & PROOF BUNDLE (SAARE v10.0 / eIDAS RFC 3161):
+                            SELLO FORENSE & PROOF BUNDLE (SAARE v12.1 / eIDAS RFC 3161):
                           </div>
                           <div style={{ background: '#020617', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#38bdf8', border: '1px solid #1e293b', wordBreak: 'break-all' }}>
                             {testResult.seal}
