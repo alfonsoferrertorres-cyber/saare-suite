@@ -2,7 +2,7 @@
   "name": "cloud-isv-desarrollo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.11.2",
+  "packageManager": "pnpm@12.18.0",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build --ui=stream",
