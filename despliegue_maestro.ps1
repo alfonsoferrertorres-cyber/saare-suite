@@ -154,18 +154,20 @@ if ($gitStatus) {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 6: PRUEBA DE SALUD Y VERIFICACIÓN HTTP
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [6/6] Verificando salud del entorno de Producción..." -ForegroundColor Cyan
+# FASE 6: PRUEBA DE SALUD Y VERIFICACIÓN HTTP INTEGRAL
+# ------------------------------------------------------------------------------
+Write-Host "`n==> [6/6] Verificando salud del entorno de Producción (Workers y Frontends)..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 
-$endpointsToTest = @(
+# 1. Verificación del Control Plane Worker (API)
+$apiEndpoints = @(
     "https://api.saare.es/health",
     "https://api.saare.es/api/v1/health"
 )
 
 $apiOnline = $false
-foreach ($url in $endpointsToTest) {
+foreach ($url in $apiEndpoints) {
     try {
         $health = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5
         Write-Host " -> [OK] Estado API ($url):" -ForegroundColor Green
@@ -173,12 +175,31 @@ foreach ($url in $endpointsToTest) {
         $apiOnline = $true
         break
     } catch {
-        # Intenta con el siguiente endpoint
+        # Intenta con el siguiente endpoint alternativo
     }
 }
 
 if (-not $apiOnline) {
-    Write-Host "[ADVERTENCIA] No se recibió respuesta HTTP 200 en los endpoints de salud. Revise los registros en Cloudflare Worker Dashboard." -ForegroundColor DarkYellow
+    Write-Host "[ADVERTENCIA] El Control Plane (api.saare.es) no respondió al chequeo de salud." -ForegroundColor DarkYellow
+}
+
+# 2. Verificación de Frontends (Cloudflare Pages / Dominios asociados)
+$frontendsToTest = @(
+    @{ Name = "Consola GRC (saare-console)"; Url = "https://saare-console.pages.dev" }, # O tu dominio personalizado si lo tienes mapeado ej: https://console.saare.es
+    @{ Name = "Landing Comercial (saare-suite)"; Url = "https://saare-suite.pages.dev" }   # O tu dominio personalizado ej: https://saare.es
+)
+
+foreach ($fe in $frontendsToTest) {
+    try {
+        $response = Invoke-WebRequest -Uri $fe.Url -Method Get -UseBasicParsing -TimeoutSec 5
+        if ($response.StatusCode -eq 200) {
+            Write-Host " -> [OK] Frontend operativo: $($fe.Name) ($($fe.Url))" -ForegroundColor Green
+        } else {
+            Write-Host " -> [ADVERTENCIA] $($fe.Name) respondió con código HTTP: $($response.StatusCode)" -ForegroundColor DarkYellow
+        }
+    } catch {
+        Write-Host " -> [ADVERTENCIA] No se pudo conectar con $($fe.Name) en $($fe.Url)" -ForegroundColor DarkYellow
+    }
 }
 
 Write-Host "`n==> DESPLIEGUE COMPLETO INTEGRAL FINALIZADO CON ÉXITO 🚀" -ForegroundColor Green
