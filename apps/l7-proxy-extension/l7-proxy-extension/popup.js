@@ -6,12 +6,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusMsg = document.getElementById("statusMsg");
 
-  // Cargar configuración guardada (sin hardcodeo de correos personales)
+  // Cargar configuración guardada (actualizado a la raíz de producción)
   chrome.storage.local.get(["saareConfig"], (res) => {
     const config = res.saareConfig || {};
     tenantInput.value = config.tenantId || "ORGANISMO_DEMO_01";
     emailInput.value = config.userEmail || "";
-    apiInput.value = config.apiUrl || "https://api.saare.es/api/v1";
+    apiInput.value = config.apiUrl || "https://api.saare.es";
     tokenInput.value = config.authToken || "";
   });
 
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const updatedConfig = {
       tenantId: tenantInput.value.trim() || "ORGANISMO_DEMO_01",
       userEmail: emailInput.value.trim(),
-      apiUrl: apiInput.value.trim() || "https://api.saare.es/api/v1",
+      apiUrl: apiInput.value.trim() || "https://api.saare.es",
       authToken: tokenInput.value.trim(),
       enforceMode: true
     };
