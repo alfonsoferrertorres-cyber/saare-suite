@@ -1,4 +1,6 @@
 // control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción Conectada)
+// Muro de Gobernanza Determinista — Protocolo MS3V / Motor BLOCK LOGIC
+
 import { handleCors } from "./src/middleware/corsHandler.js";
 import { AuthMiddleware } from "./src/middleware/authMiddleware.js";
 import { ZeroTrustMiddleware } from "./src/middleware/zeroTrustMiddleware.js";
@@ -13,6 +15,9 @@ import { EvidenceVaultEngine } from "./src/engines/evidenceVaultEngine.js";
 import { TelemetryServer } from "./src/services/telemetryServer.js";
 import { generateProofBundle } from "./src/services/proofBundle.js";
 import TimestampingEngine from "./src/services/timestampingEngine.js";
+
+// === NÚCLEO NATIVO DE GOBERNANZA DETERMINISTA MS3V (BLOCK LOGIC) === //
+import { engineBlockLogic } from "./src/packages/ms3v-core.js";
 
 // === MÓDULOS DE CONTROL DE ESTADO, REGISTRO DE ESCENARIOS Y CONTENCIÓN DE EMERGENCIA === //
 import * as killswitchModule from "./src/modules/killswitch.js";
@@ -44,7 +49,7 @@ import {
 // Subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 
-// Parámetros de Seguridad Físicos Aprobados para el Motor MS3V (BLOCK-LOGIC)
+// Parámetros de Seguridad Físicos Aprobados para el Motor MS3V (BLOCK LOGIC)
 const SAARE_APPROVED_COMMANDS = [
   "INICIAR_CUMPLIMIENTO_EXANTE_SAARE",
   "SAARE_CONTROL.PY --KILL",
@@ -78,17 +83,22 @@ const LLM_AGNOSTIC_PROVIDERS = {
 };
 
 /* --------------------------------------------------------------------------
-   DIRECTIVA L7 DE SISTEMA PARA EL NODO NATIVO
+   DIRECTIVA L7 DINÁMICA DE SISTEMA PARA EL NODO NATIVO MS3V
    -------------------------------------------------------------------------- */
-const SAARE_L7_SYSTEM_DIRECTIVE = {
-  role: "system",
-  content: `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE]
-Actúas como el Punto de Enforcement de Políticas (PEP) de capa 7 para este tenant. 
-Tu cometido es:
-1. Analizar el prompt entrante en busca de PII o fugas de datos antes de derivarlo al LLM subyacente.
-2. Asegurar que la respuesta devuelta mantenga la estructura sintáctica solicitada por el cliente.
-3. Adjuntar la traza criptográfica y el veredicto ex ante en los metadatos de respuesta del middleware.`
-};
+function getSaareL7SystemDirective(env = {}) {
+  const authorName = env.AUTHOR_NAME || "Enterprise System";
+  return {
+    role: "system",
+    content: `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE / MS3V PROTOCOL]
+Autoridad Intelectual: ${authorName}
+Motor de Gobernanza: BLOCK LOGIC (Middleware Determinista en Tiempo Real)
+Cometido del PEP L7:
+1. Normalizar e interceptar el prompt entrante en el runtime de ejecución (Bloque 1).
+2. Validar sintaxis y contrastar contra el Set de Parámetros Físicos Aprobados (Bloque 2).
+3. Emitir sello criptográfico SHA-256 e inmutabilidad con trazabilidad RFC-3161 (Bloques 3 y 4).
+4. Condicionar la liberación de la salida mediante el disyuntor lógico Safe-Release (Bloque 5).`
+  };
+}
 
 /* --------------------------------------------------------------------------
    PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
@@ -115,12 +125,17 @@ function hasRequiredRank(userRole, minRank) {
 }
 
 /* --------------------------------------------------------------------------
-   ANALIZADOR Y PARSER DE LA MATRIZ DE COMANDOS SEMÁNTICOS (V12.1 / SGP 1.0)
+   ANALIZADOR Y PARSER DE LA MATRIZ DE COMANDOS SEMÁNTICOS
    -------------------------------------------------------------------------- */
-function parseSemanticCommand(promptText) {
+function parseSemanticCommand(promptText, env = {}) {
   if (typeof promptText !== 'string') return null;
   const upper = promptText.toUpperCase();
-  const baseIdentity = { nodeIdentity: "NATIVE_SEMANTIC_NODE_L7", expediente: "MS3V-RECON-VALID-2026" };
+  const authorName = env.AUTHOR_NAME || "Enterprise System";
+  const baseIdentity = { 
+    nodeIdentity: "NATIVE_MS3V_BLOCK_LOGIC_PEP_L7", 
+    expediente: env.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026",
+    author: authorName
+  };
 
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
     return {
@@ -141,7 +156,7 @@ function parseSemanticCommand(promptText) {
       verdict: "RECHAZADO",
       decision: "DENY",
       category: "EMERGENCY_DEACTIVATION",
-      norma: "S.A.A.R.E. Core Security Protocol",
+      norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico",
       witness: "[KILL-SWITCH-ENFORCED]",
       vaultTarget: "RAM",
       ...baseIdentity
@@ -153,7 +168,7 @@ function parseSemanticCommand(promptText) {
   if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
   if (upper.includes("SAARE-MD-VERD")) return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
   if (upper.includes("SAARE-MD-LEGAL")) return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
-  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: "Ley 1/2019 / Safe Creative (RPI-2607076315021)", ...baseIdentity };
+  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: `Ley 1/2019 / Safe Creative (${env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected'})`, ...baseIdentity };
   if (upper.includes("SAARE-MD-CUST")) return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
   if (upper.includes("SAARE-MD-COMPLIANCE")) return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "[MS3V-COMPLIANCE-L7-OK]", ...baseIdentity };
   if (upper.includes("SAARE-MD-DEEP")) return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
@@ -188,7 +203,7 @@ async function checkEmergencyKillswitch(env) {
         JSON.stringify({
           status: "BLOCKED",
           error: "EMERGENCY_KILLSWITCH_TRIGGERED",
-          message: "Acceso denegado por el protocolo de contención y aislamiento L7.",
+          message: "Acceso denegado por el protocolo de contención y disyuntor lógico MS3V.",
           timestamp: new Date().toISOString()
         }),
         {
@@ -196,7 +211,7 @@ async function checkEmergencyKillswitch(env) {
           headers: {
             "Content-Type": "application/json",
             "X-SAARE-Killswitch": "ACTIVE",
-            "X-SAARE-Spec": "SGP-1.0"
+            "X-MS3V-Spec": "BLOCK-LOGIC-2026"
           }
         }
       );
@@ -218,7 +233,7 @@ async function ensureD1TablesExist(db) {
         trace_id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
         user_email TEXT NOT NULL,
-        final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER_PEP_L7',
+        final_evaluator_node TEXT NOT NULL DEFAULT 'MS3V_BLOCK_LOGIC_PEP_L7',
         final_decision TEXT NOT NULL DEFAULT 'ALLOW',
         final_action TEXT NOT NULL DEFAULT 'ALLOWED',
         execution_latency_ms REAL DEFAULT 0.0,
@@ -227,7 +242,9 @@ async function ensureD1TablesExist(db) {
         prompt TEXT NOT NULL DEFAULT '',
         sanitized_payload TEXT DEFAULT '',
         verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-        anchored INTEGER DEFAULT 0
+        anchored INTEGER DEFAULT 0,
+        ms3v_hash TEXT DEFAULT '',
+        ms3v_timestamp_ns TEXT DEFAULT ''
       );
     `).run();
 
@@ -350,7 +367,12 @@ async function processBatchMerkleAnchor(tenantId, env) {
         `UPDATE consolidated_traces SET anchored = 1 WHERE trace_id IN (${placeholders})`
       ).bind(...traceIds).run();
 
-      await registerEvidenceInSafeCreative({ id: anchorId, merkleRoot, batchSize: results.length }, env);
+      await registerEvidenceInSafeCreative({ 
+        id: anchorId, 
+        merkleRoot, 
+        batchSize: results.length, 
+        author: env?.AUTHOR_NAME || "Enterprise System" 
+      }, env);
     }
   } catch (e) {
     console.error("[SAARE Custody Engine] Error consolidando lote de Merkle:", e);
@@ -359,9 +381,10 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
 function getFallbackUserVault(env) {
   const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "admin@saare.es");
+  const authorName = env?.AUTHOR_NAME || "Enterprise Custodian";
   return {
     [primaryAdmin]: {
-      name: "S.A.A.R.E. Master Custodian",
+      name: `S.A.A.R.E. Master Custodian (${authorName})`,
       company: "ORGANISMO_DEMO_01",
       password_hash: "demo",
       is_verified: 1,
@@ -386,7 +409,7 @@ function sanitizeEmail(email) {
 }
 
 function getTitularNif(env) {
-  return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || "S.A.A.R.E. Technologies S.L.";
+  return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || env?.AUTHOR_NAME || "Enterprise Intellectual Property Holder";
 }
 
 async function verifyPassword(stored, candidate) {
@@ -473,6 +496,7 @@ function sanitizePromptInRam(promptText) {
    -------------------------------------------------------------------------- */
 async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName, env) {
   const provider = LLM_AGNOSTIC_PROVIDERS[providerKey] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
+  const authorName = env?.AUTHOR_NAME || "Enterprise System";
   
   if (providerKey === 'LOCAL_ONPREM') {
     try {
@@ -512,7 +536,7 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
     } catch (e) {}
   }
 
-  return `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE] Inferencia ejecutada correctamente bajo la política ex-ante sobre el proveedor ${provider.name}. Prompt saneado y validado en RAM.`;
+  return `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE / MS3V BLOCK LOGIC] Inferencia ejecutada correctamente bajo la política ex-ante sobre el proveedor ${provider.name}. Comando auditado y sellado criptográficamente por ${authorName}.`;
 }
 
 export default {
@@ -529,11 +553,13 @@ export default {
       return new Response(
         JSON.stringify({
           service: "S.A.A.R.E. Enterprise Control Plane",
-          version: "SGP 1.0 (L7 Hardened v2.2)",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0 (MS3V Hardened v12.1)",
+          author: env?.AUTHOR_NAME || "Enterprise System",
+          engine: "BLOCK LOGIC (Middleware Determinista en Tiempo Real)",
           status: "ONLINE",
-          legalRpi: env?.SAFE_CREATIVE_ID || "RPI-2607076315021",
-          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-0914X",
-          trustAnchor: "https://vault.saare.es"
+          legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
+          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-MILESTONE",
+          trustAnchor: env?.TRUST_ANCHOR || "https://vault.saare.es"
         }),
         { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
       );
@@ -558,9 +584,11 @@ export default {
         JSON.stringify({
           status: 'HEALTHY',
           service: env?.WORKER_NAME || 'saare-control-plane-prod',
-          version: env?.SGP_SPEC_VERSION || 'SGP 1.0',
-          legalRpi: env?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
-          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-0914X',
+          version: env?.SGP_SPEC_VERSION || 'SGP 1.0 MS3V',
+          author: env?.AUTHOR_NAME || 'Enterprise System',
+          engine: 'BLOCK LOGIC v12.1',
+          legalRpi: env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected',
+          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-MILESTONE',
           trustAnchor: env?.TRUST_ANCHOR || 'https://vault.saare.es',
           timestamp: new Date().toISOString()
         }),
@@ -569,18 +597,17 @@ export default {
     }
 
     if ((path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/gpo-policy' || path === '/deploy/gpo-policy') && (method === 'GET' || method === 'POST')) {
-      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TrustAnchor"="https://vault.saare.es"\n"LegalRpi"="${env?.SAFE_CREATIVE_ID || 'RPI-2607076315021'}"\n"LlmMilestoneRpi"="${env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-0914X'}"`;
+      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"MS3VProtocolEngine"="BLOCK LOGIC"\n"Author"="${env?.AUTHOR_NAME || 'Enterprise System'}"\n"TrustAnchor"="${env?.TRUST_ANCHOR || 'https://vault.saare.es'}"\n"LegalRpi"="${env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected'}"\n"LlmMilestoneRpi"="${env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-MILESTONE'}"`;
       return new Response(gpoRegistryContent, {
         status: 200,
         headers: {
           ...cors.corsHeaders,
           "Content-Type": "text/plain; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="saare_enterprise_gpo.reg"'
+          "Content-Disposition": 'attachment; filename="saare_enterprise_ms3v_gpo.reg"'
         }
       });
     }
 
-    // REDIRECCIÓN DIRECTA A LA DESCARGA DE LA EXTENSIÓN PROXY (.ZIP)
     if ((path === '/api/v1/deploy/extension-zip' || path === '/v1/deploy/extension-zip' || path === '/deploy/extension-zip') && method === 'GET') {
       const downloadUrl = env?.EXTENSION_DOWNLOAD_URL || "https://console.saare.es/deploy/saare_l7_proxy_extension.zip";
       return Response.redirect(downloadUrl, 302);
@@ -611,15 +638,17 @@ export default {
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || _u.searchParams.get("role") || "CISO_ADMIN";
 
-      // === RUTA DE VERIFICACIÓN DE LICENCIA (/auth/verifylicense) ===
+      // === RUTA DE VERIFICACIÓN DE LICENCIA Y PROPIEDAD INTELECTUAL MS3V ===
       if ((path === '/auth/verifylicense' || path === '/v1/auth/verifylicense' || path === '/api/v1/auth/verifylicense') && (method === 'GET' || method === 'POST')) {
         const licenseData = {
           valid: true,
           tenant: tenantId,
           role: activeUserRole,
+          author: env?.AUTHOR_NAME || "Enterprise System",
+          protocol: "Protocolo MS3V / Motor BLOCK LOGIC",
           node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
           status: "ACTIVE",
-          legalRpi: env?.SAFE_CREATIVE_ID || "RPI-2607076315021",
+          legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
           expiresAt: "2027-12-31T23:59:59Z",
           authenticated: !!identity || !!authHeader
         };
@@ -637,7 +666,7 @@ export default {
           "Connection": "keep-alive",
           ...cors.corsHeaders
         };
-        const initialChunk = `data: ${JSON.stringify({ status: "RUNTIME_ACTIVE", tenant: tenantId, timestamp: new Date().toISOString() })}\n\n`;
+        const initialChunk = `data: ${JSON.stringify({ status: "RUNTIME_ACTIVE", engine: "BLOCK LOGIC MS3V", tenant: tenantId, timestamp: new Date().toISOString() })}\n\n`;
         return new Response(initialChunk, { status: 200, headers: streamHeader });
       }
 
@@ -653,7 +682,7 @@ export default {
         }
         if (usersList.length === 0) {
           usersList = [
-            { email: identity?.email || headerUser || "admin@saare.es", name: "Operador Principal", role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split('T')[0] }
+            { email: identity?.email || headerUser || "admin@saare.es", name: `Operador Principal (${env?.AUTHOR_NAME || 'Enterprise System'})`, role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split('T')[0] }
           ];
         }
         return new Response(JSON.stringify({ status: "SUCCESS", tenant: tenantId, maxSeats: 10, usedSeats: usersList.length, users: usersList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
@@ -742,10 +771,11 @@ export default {
           verified: true,
           status: "VERIFIED",
           merkleRoot: hash,
-          node: "RPI-2607076315021",
-          standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC",
+          author: env?.AUTHOR_NAME || "Enterprise System",
+          node: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
+          standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC / RFC 3161",
           timestamp: new Date().toISOString(),
-          message: "Sello criptográfico e inmutabilidad acreditados contra la Bóveda WORM D1."
+          message: "Sello criptográfico e inmutabilidad acreditados contra la Bóveda WORM D1 con trazabilidad MS3V."
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -766,23 +796,24 @@ export default {
         return new Response(JSON.stringify({ status: "SUCCESS", count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA VERIFICACIÓN DE EVIDENCIAS ===
+      // === RUTA VERIFICACIÓN DE EVIDENCIAS Y SELLADO DE TIEMPO RFC-3161 ===
       if ((path === '/api/v1/evidence/verify' || path === '/evidence/verify') && method === 'POST') {
         const { proof, safeCreativeHash } = await request.json().catch(() => ({}));
         const EngineClass = TimestampingEngine.default || TimestampingEngine;
-        const engine = new EngineClass("MS3V-RECON-VALID-2026");
+        const engine = new EngineClass(env?.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026");
         const seal = engine.sealTransaction({ proof: proof || "SHA256_RFC3161_VALIDATED" }, safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH);
 
         return new Response(JSON.stringify({
           valid: true,
-          expediente: "MS3V-RECON-VALID-2026",
+          expediente: env?.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026",
+          author: env?.AUTHOR_NAME || "Enterprise System",
           titular: getTitularNif(env),
           proof: proof || "SHA256_RFC3161_VALIDATED",
           rootMerkleHash: seal.rootHash,
           tsaHash: seal.tsaHash,
           isQualifiedTSA: !!seal.tsaHash,
           timestampUtc: seal.timestampUtc,
-          standard: 'ISO/IEC 27037:2012 / RFC 3161'
+          standard: 'ISO/IEC 27037:2012 / RFC 3161 / eIDAS'
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -793,7 +824,7 @@ export default {
 
         const tenantHeader = request.headers.get("x-saare-tenant") || body.tenant;
         if (!tenantHeader) {
-          return new Response(JSON.stringify({ error: "FORBIDDEN_MISSING_TENANT", message: "Acceso denegado por política de control ex-ante L7." }), {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_MISSING_TENANT", message: "Acceso denegado por política de control ex-ante L7 MS3V." }), {
             status: 403,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
@@ -804,26 +835,29 @@ export default {
 
         let rawPrompt = body.prompt || "";
         if (!rawPrompt && Array.isArray(body.messages)) {
-          body.messages.unshift(SAARE_L7_SYSTEM_DIRECTIVE);
+          body.messages.unshift(getSaareL7SystemDirective(env));
           rawPrompt = body.messages.map(m => `${m.role}: ${m.content}`).join("\n");
         }
 
         const user = sanitizeEmail(body.user || identity?.email || headerUser) || "operator_anonymous";
         const tenant = tenantHeader;
 
-        // Integración del motor MS3V Zero Trust
-        const zeroTrustInstance = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS);
-        const blockLogicVerdict = await zeroTrustInstance.processBlockLogic(rawPrompt);
+        // Ejecución del motor Block Logic pasando env
+        const ms3vVerdict = await engineBlockLogic(rawPrompt, SAARE_APPROVED_COMMANDS, env);
 
-        if (blockLogicVerdict.STATUS === "ABORT_SEQUENCE") {
+        if (ms3vVerdict.STATUS === "ABORT_SEQUENCE") {
           return new Response(JSON.stringify({
-            error: "BLOCK_LOGIC_SECURITY_ABORT",
-            message: "Acceso bloqueado por fallo en motor determinista MS3V.",
-            reason: blockLogicVerdict.REASON
+            error: "MS3V_BLOCK_LOGIC_SECURITY_ABORT",
+            message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V. La instrucción viola los límites operativos aprobados.",
+            ms3vStatus: "ABORT_SEQUENCE",
+            author: env?.AUTHOR_NAME || "Enterprise System"
           }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const semanticCmd = parseSemanticCommand(rawPrompt);
+        const zeroTrustInstance = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS);
+        const blockLogicVerdict = await zeroTrustInstance.processBlockLogic(rawPrompt);
+
+        const semanticCmd = parseSemanticCommand(rawPrompt, env);
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
         
         const isBlocked = !semanticCmd && (
@@ -836,7 +870,7 @@ export default {
         const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
         const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
 
-        const activeEvaluatorNode = semanticCmd ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]` : `Core-PEP-L7-MS3V-RAM [${providerMeta.name}]`;
+        const activeEvaluatorNode = semanticCmd ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]` : `MS3V_BLOCK_LOGIC_PEP_L7 [${providerMeta.name}]`;
 
         const llmOutputContent = await invokeAgnosticLlmProvider(targetProvider, sanitizedText, body.model, env);
 
@@ -853,7 +887,14 @@ export default {
           prompt: rawPrompt,
           sanitized_payload: sanitizedText,
           evaluator_chain: { final_evaluator: activeEvaluatorNode },
-          verdict_data: { verdict: finalVerdict, action: finalDecision, rules: rulesTriggered, ms3vHash: blockLogicVerdict.HASH },
+          verdict_data: { 
+            verdict: finalVerdict, 
+            action: finalDecision, 
+            rules: rulesTriggered, 
+            ms3vHash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
+            ms3vTimestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+            executedCommand: ms3vVerdict.EXECUTE
+          },
           payload_hash: await computeSha256(rawPrompt)
         });
 
@@ -869,9 +910,11 @@ export default {
           prompt: rawPrompt,
           timestamp: new Date().toISOString(),
           ms3vAudit: {
-            hash: blockLogicVerdict.HASH,
-            timestampNs: blockLogicVerdict.TS,
-            executedCommand: blockLogicVerdict.EXECUTE
+            hash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
+            timestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+            executedCommand: ms3vVerdict.EXECUTE,
+            author: env?.AUTHOR_NAME || "Enterprise System",
+            protocol: "MS3V / BLOCK LOGIC"
           },
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
         }, env);
@@ -884,12 +927,14 @@ export default {
               INSERT INTO consolidated_traces (
                 trace_id, tenant_id, user_email, final_evaluator_node, 
                 final_decision, final_action, execution_latency_ms, timestamp, created_at, 
-                prompt, sanitized_payload, verdict, anchored
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                prompt, sanitized_payload, verdict, anchored, ms3v_hash, ms3v_timestamp_ns
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
             `).bind(
               traceId, tenant, user, activeEvaluatorNode,
               finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
-              nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict
+              nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict,
+              ms3vVerdict.HASH || blockLogicVerdict.HASH,
+              ms3vVerdict.TS || blockLogicVerdict.TS
             ).run();
 
             await env.DB.prepare(`
@@ -909,9 +954,10 @@ export default {
 
         return new Response(JSON.stringify({
           success: true,
-          spec: "SGP-1.0",
-          legalRpi: env?.SAFE_CREATIVE_ID || "RPI-2607076315021",
-          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-0914X",
+          spec: "SGP-1.0 MS3V",
+          legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
+          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-MILESTONE",
+          author: env?.AUTHOR_NAME || "Enterprise System",
           tenant: tenant,
           evidence_id: runId,
           decision: finalDecision,
@@ -920,8 +966,9 @@ export default {
             verdict: finalDecision,
             sanitizedInRam: true,
             piiDetected: rulesTriggered.length > 0,
-            ms3vIntegrityHash: blockLogicVerdict.HASH,
-            ms3vTimestampNs: blockLogicVerdict.TS
+            ms3vIntegrityHash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
+            ms3vTimestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+            executedCommand: ms3vVerdict.EXECUTE
           },
           inference: {
             provider: targetProvider,
@@ -942,7 +989,8 @@ export default {
             'X-SAARE-Witness-Tag': '[MS3V-COMPLIANCE-L7-OK]',
             'X-SAARE-Provider': providerMeta.name,
             'X-SAARE-Latency-Ms': latencyMs,
-            'X-SAARE-MS3V-Hash': blockLogicVerdict.HASH,
+            'X-SAARE-MS3V-Hash': ms3vVerdict.HASH || blockLogicVerdict.HASH,
+            'X-SAARE-MS3V-Timestamp': ms3vVerdict.TS || blockLogicVerdict.TS,
             'X-SAARE-Proof-Status': 'VERIFIED_ED25519'
           }
         });
@@ -959,7 +1007,7 @@ export default {
           if (cleanPassword === "demo" || cleanPassword === "contraseña") {
             userRecord = {
               email: cleanEmail || "admin@saare.es",
-              name: "S.A.A.R.E. Master Custodian",
+              name: `S.A.A.R.E. Master Custodian (${env?.AUTHOR_NAME || 'Enterprise System'})`,
               company: body.tenant || "ORGANISMO_DEMO_01",
               role: "CISO_ADMIN",
               is_verified: 1

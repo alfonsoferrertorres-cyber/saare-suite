@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "S.A.A.R.E. L7 Interceptor Proxy (RAM Ex-Ante)",
+  "version": "1.0.0",
+  "description": "Proxy de inspección ex-ante en memoria RAM efímera para interfaces web de IA (SGP 1.0).",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.saare.es/*",
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

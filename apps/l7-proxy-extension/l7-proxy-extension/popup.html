@@ -1,0 +1,48 @@
+// S.A.A.R.E. Popup Controller — Sincronización con chrome.storage.local
+
+document.addEventListener("DOMContentLoaded", () => {
+  const apiUrlInput = document.getElementById("apiUrl");
+  const tenantInput = document.getElementById("tenant");
+  const userInput = document.getElementById("user");
+  const saveBtn = document.getElementById("saveBtn");
+  const statusDiv = document.getElementById("status");
+
+  // 1. Cargar configuración guardada al abrir el popup
+  chrome.storage.local.get(["saareConfig"], (res) => {
+    const config = res.saareConfig || {};
+    apiUrlInput.value = config.apiUrl || "https://api.saare.es";
+    tenantInput.value = config.tenantId || "ORGANISMO_DEMO_01";
+    userInput.value = config.userEmail || "";
+  });
+
+  // 2. Guardar y normalizar credenciales al hacer clic
+  saveBtn.addEventListener("click", () => {
+    let rawUrl = apiUrlInput.value.trim() || "https://api.saare.es";
+
+    // Normalización de URL: elimina prefijos /api/v1 sobrantes y barras al final
+    let cleanUrl = rawUrl.replace(/\/+$/, "");
+    cleanUrl = cleanUrl.replace(/\/api\/v1$/, "").replace(/\/api$/, "").replace(/\/v1$/, "");
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = "https://" + cleanUrl;
+    }
+
+    const updatedConfig = {
+      apiUrl: cleanUrl,
+      tenantId: tenantInput.value.trim() || "ORGANISMO_DEMO_01",
+      userEmail: userInput.value.trim() || "operador@empresa.com",
+      authToken: "",
+      enforceMode: true
+    };
+
+    // Actualizar input visualmente con la URL limpia
+    apiUrlInput.value = cleanUrl;
+
+    // Guardar en el storage local de la extensión
+    chrome.storage.local.set({ saareConfig: updatedConfig }, () => {
+      statusDiv.textContent = "🛡️ Nodo L7 Vinculado Correctamente";
+      setTimeout(() => {
+        statusDiv.textContent = "";
+      }, 2500);
+    });
+  });
+});
