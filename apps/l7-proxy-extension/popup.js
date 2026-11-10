@@ -1,5 +1,3 @@
-// S.A.A.R.E. Popup Controller - Production Build (UTF-8 / SGP 1.0)
-
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl");
   const tenantInput = document.getElementById("tenant");
@@ -7,7 +5,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
-  // 1. Cargar credenciales guardadas en chrome.storage.local
   try {
     const { saareConfig } = await chrome.storage.local.get("saareConfig");
     if (saareConfig) {
@@ -19,7 +16,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("[S.A.A.R.E. Popup Error]:", err);
   }
 
-  // 2. Guardar y normalizar credenciales con fallback seguro
   saveBtn.addEventListener("click", async () => {
     let rawUrl = apiUrlInput.value.trim() || apiUrlInput.placeholder || "https://api.saare.es";
     let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
