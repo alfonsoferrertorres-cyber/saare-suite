@@ -1,0 +1,6 @@
+apps/l7-proxy-extension/
+├── manifest.json
+├── background.js
+├── contentScript.js
+├── popup.html
+└── popup.js
