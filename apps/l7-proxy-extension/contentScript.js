@@ -60,7 +60,8 @@
   function isAiInputField(el) {
     if (!el) return false;
     const tag = el.tagName.toLowerCase();
-    return tag === "textarea" || el.isContentEditable || el.getAttribute("role"] === "textbox";
+    // CORREGIDO: Se sustituyó el corchete de cierre ']' por el paréntesis ')'
+    return tag === "textarea" || el.isContentEditable || el.getAttribute("role") === "textbox";
   }
 
   function getInputValue(el) {
