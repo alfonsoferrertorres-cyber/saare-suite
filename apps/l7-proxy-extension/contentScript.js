@@ -24,13 +24,11 @@
           if (response && response.success && response.verdict) {
             const verdictData = response.verdict;
 
-            // Bloqueo explícito Ex-Ante (DENY / RECHAZADO)
             if (verdictData.decision === "DENY" || verdictData.verdict === "RECHAZADO" || verdictData.verdict === "FAIL_CLOSED_BLOCKED") {
               alert(`[S.A.A.R.E. SECURITY BLOCK]\nAcceso Bloqueado por Política Ex-Ante L7.\n\nEvidencia: ${verdictData.evidence_id || verdictData.id || 'N/A'}\nDetalle: ${verdictData.error || verdictData.category || 'Infracción de Política'}`);
               return;
             }
 
-            // Normalización multi-clave para sustitución del prompt sanitizado
             const sanitizedPrompt = verdictData.sanitizedPrompt 
               || verdictData.sanitized_payload 
               || verdictData.inference?.responseContent 

@@ -1,15 +1,13 @@
 async function handleExAnteInspection(promptText) {
   const { saareConfig } = await chrome.storage.local.get("saareConfig");
-  let rawUrl = saareConfig?.apiUrl || DEFAULT_API_URL;
+  let rawUrl = saareConfig?.apiUrl || "https://api.saare.es";
   
-  // Normalización robusta: Elimina barras finales, '/api/v1' y cualquier '/api' al final
   let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
   cleanUrl = cleanUrl.replace(/\/api\/v1$/, "").replace(/\/api$/, "");
   
-  // El endpoint final correcto apuntará siempre a https://api.saare.es/v1/chat/completions
   const endpointUrl = `${cleanUrl}/v1/chat/completions`;
 
-  const tenantId = saareConfig?.tenantId || DEFAULT_TENANT;
+  const tenantId = saareConfig?.tenantId || "ORGANISMO_DEMO_01";
   const userEmail = saareConfig?.userEmail || "operador_anonimo";
   const token = saareConfig?.authToken || "";
 
@@ -43,3 +41,12 @@ async function handleExAnteInspection(promptText) {
 
   return await response.json();
 }
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "INSPECT_PROMPT_EX_ANTE") {
+    handleExAnteInspection(request.payload)
+      .then(data => sendResponse({ success: true, verdict: data }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true; 
+  }
+});
