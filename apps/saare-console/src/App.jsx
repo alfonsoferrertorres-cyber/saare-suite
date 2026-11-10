@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Autenticación Real & Motor MS3V / Bóveda D1)
+// // saare-console/src/App.jsx — Consola GRC & Ciberresiliencia S.A.A.R.E. v10.0 / SGP 1.0 (Autenticación Real & Motor MS3V / Bóveda D1)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -60,14 +60,20 @@ export default function App() {
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(true);
 
-  // Lectura del parámetro URL ?tenant=...
+  // Lectura del parámetro URL ?tenant=... con normalización estricta
   const queryParams = new URLSearchParams(window.location.search);
-  const urlTenant = queryParams.get('tenant');
+  const urlTenant = queryParams.get('tenant') ? queryParams.get('tenant').trim() : null;
 
-  // Estados dinámicos de credenciales de usuario (vinculados a SAARE_CONFIG sin PII estática)
-  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '');
+  // Estados dinámicos de credenciales de usuario (con normalización estricta)
+  const [userEmail, setUserEmail] = useState(() => {
+    const saved = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '';
+    return saved.trim().toLowerCase();
+  });
   const [userPassword, setUserPassword] = useState('');
-  const [tenantId, setTenantId] = useState(() => urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01');
+  const [tenantId, setTenantId] = useState(() => {
+    const saved = urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
+    return saved.trim();
+  });
   const [userRole, setUserRole] = useState(() => localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN');
 
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
@@ -102,6 +108,11 @@ export default function App() {
   const [showDeployDropdown, setShowDeployDropdown] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // Referencias para la reconexión SSE con backoff exponencial
+  const eventSourceRef = useRef(null);
+  const retryCountRef = useRef(0);
+  const reconnectTimeoutRef = useRef(null);
+
   // 1. CARGA Y VERIFICACIÓN DE SESIÓN DESDE EL PROVEEDOR DE AUTENTICACIÓN
   useEffect(() => {
     const initUserSession = async () => {
@@ -110,8 +121,11 @@ export default function App() {
         if (token) {
           const session = await apiService.verifyLicense({ token });
           if (session && session.user) {
-            setUserEmail(session.user.email);
-            const effectiveTenant = urlTenant || session.user.tenantName || session.user.company || tenantId;
+            if (session.user.email) {
+              setUserEmail(session.user.email.trim().toLowerCase());
+            }
+            const rawEffectiveTenant = urlTenant || session.user.tenantName || session.user.company || tenantId;
+            const effectiveTenant = rawEffectiveTenant ? rawEffectiveTenant.trim() : 'ORGANISMO_DEMO_01';
             setTenantId(effectiveTenant);
             localStorage.setItem('saare_tenant_domain', effectiveTenant);
             setUserRole(session.user.role || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN');
@@ -142,14 +156,14 @@ export default function App() {
 
     setLoginLoading(true);
     const cleanEmail = userEmail.trim().toLowerCase();
-    const cleanTenant = tenantId.trim().toUpperCase() || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
+    const cleanTenant = (tenantId || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01').trim();
 
     try {
       const authData = await apiService.verifyLicense({ email: cleanEmail, password: userPassword, tenant: cleanTenant });
 
       if (authData?.user) {
-        setUserEmail(authData.user.email || cleanEmail);
-        setTenantId(authData.user.tenantName || cleanTenant);
+        setUserEmail((authData.user.email || cleanEmail).trim().toLowerCase());
+        setTenantId((authData.user.tenantName || cleanTenant).trim());
         setUserRole(authData.user.role || userRole);
       } else {
         setUserEmail(cleanEmail);
@@ -187,17 +201,18 @@ export default function App() {
   const handleDownloadEnterpriseGpoReg = () => {
     setShowDeployDropdown(false);
     triggerGovernance("Generando plantilla GPO Enterprise Registry (.reg)...");
+    const cleanTenant = (tenantId || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01').trim();
     const regContent = `Windows Registry Editor Version 5.00
 
 ; ================================================================
 ; S.A.A.R.E. Enterprise GPO Policy - Despliegue Agnóstico Capa 7 (Zero-Touch)
-; Tenant: ${tenantId || SAARE_CONFIG?.DEFAULT_TENANT}
+; Tenant: ${cleanTenant}
 ; TrustAnchor: ${SAARE_CONFIG?.TRUST_ANCHOR}
 ; ================================================================
 
 [HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]
 "EnableExAnteEnforcement"=dword:00000001
-"TenantId"="${tenantId}"
+"TenantId"="${cleanTenant}"
 "TrustAnchor"="${SAARE_CONFIG?.TRUST_ANCHOR}"
 "ProxyGateway"="${getApiEndpoint('/v1/chat/completions')}"
 `;
@@ -206,7 +221,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SAARE_L7_Enterprise_GPO_${tenantId || 'CLIENT'}.reg`;
+    a.download = `SAARE_L7_Enterprise_GPO_${cleanTenant}.reg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -218,7 +233,8 @@ export default function App() {
   const handleDownloadProxyExtensionZip = () => {
     setShowDeployDropdown(false);
     triggerGovernance("Iniciando descarga del paquete completo de la Extensión Proxy L7 (.zip)...");
-    window.open(getApiEndpoint(`/v1/deploy/extension-zip?tenant=${encodeURIComponent(tenantId)}`), '_blank');
+    const cleanTenant = (tenantId || '').trim();
+    window.open(getApiEndpoint(`/v1/deploy/extension-zip?tenant=${encodeURIComponent(cleanTenant)}`), '_blank');
   };
 
   // DESCARGA DE CREDENCIALES DE ENRUTAMIENTO DE PASARELA (JSON)
@@ -226,12 +242,15 @@ export default function App() {
     setShowDeployDropdown(false);
     triggerGovernance("Generando archivo JSON de credenciales de enrutamiento...");
 
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
+
     const extensionConfig = {
       extensionName: "S.A.A.R.E. L7 Interceptor Credentials",
       version: SAARE_CONFIG?.SPEC_VERSION || "1.0.0",
       spec: SAARE_CONFIG?.SGP_VERSION || "SGP 1.0",
-      tenantId: tenantId,
-      operatorEmail: userEmail,
+      tenantId: cleanTenant,
+      operatorEmail: cleanUser,
       gatewayEndpoint: getApiEndpoint('/v1/chat/completions'),
       vaultAnchor: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
       issuedAt: new Date().toISOString(),
@@ -242,7 +261,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `saare_routing_credentials_${tenantId || 'client'}.json`;
+    a.download = `saare_routing_credentials_${cleanTenant || 'client'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -252,11 +271,13 @@ export default function App() {
 
   const handleZeroTrustEnforce = async () => {
     triggerGovernance("🛡️ Aplicando enforzamiento estricto Zero Trust Ex-Ante en Capa 7...");
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     try {
       await apiService.interceptPrompt({
         prompt: "S.A.A.R.E._Comando_Zero_Trust_Enforcement --mode=strict",
-        user: userEmail,
-        tenant: tenantId
+        user: cleanUser,
+        tenant: cleanTenant
       });
       fetchTelemetryOnce();
       triggerGovernance("🔒 Política Zero Trust activada: Aislamiento L7 y Verificación Continua Enforzada.");
@@ -277,7 +298,6 @@ export default function App() {
   ]);
 
   const [evidences, setEvidences] = useState([]);
-  const eventSourceRef = useRef(null);
 
   const triggerGovernance = useCallback((msg) => {
     setGovernanceStatus(msg);
@@ -291,9 +311,20 @@ export default function App() {
 
     if (!Array.isArray(rawList)) return [];
 
+    const cleanCurrentTenant = (tenantId || '').trim();
+    const cleanCurrentUser = (userEmail || '').trim().toLowerCase();
+
     return rawList
       .filter(item => item && typeof item === 'object')
       .map((item, idx) => {
+        const itemTenant = (item.tenant_id || item.tenant || '').trim();
+        const itemUser = (item.user_email || item.user || item.user_id || '').trim().toLowerCase();
+
+        // Filtrado estricto opcional si se requiere aislar por tenant/usuario actual
+        if (cleanCurrentTenant && itemTenant && itemTenant !== cleanCurrentTenant) {
+          return null;
+        }
+
         const isDeny = item.final_decision === 'DENY' || item.decision === 'DENY' || item.verdict === 'RECHAZADO' || item.verdict === 'REJECTED';
 
         let rawPromptVal = item.prompt 
@@ -324,7 +355,6 @@ export default function App() {
           if (typeof cleanResponse === 'string' && cleanResponse.includes('%')) cleanResponse = decodeURIComponent(cleanResponse);
         } catch (e) {}
 
-        // Evaluación dinámica para desvincular el prompt de la respuesta
         if (!cleanResponse) {
           const sanitized = item.sanitized_payload || item.sanitizedPrompt;
           if (sanitized && sanitized !== cleanPrompt) {
@@ -366,8 +396,8 @@ export default function App() {
           decision: isDeny ? 'DENY' : 'ALLOW',
           anchored: item.anchored !== undefined ? item.anchored : 1,
           type: inferredType,
-          user: item.user_email || item.user || item.user_id || userEmail,
-          tenant: item.tenant_id || item.tenant || tenantId,
+          user: itemUser || cleanCurrentUser,
+          tenant: itemTenant || cleanCurrentTenant,
           merkleRoot: payloadHash,
           node: item.final_evaluator_node || item.node || SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
           grantMetadata: item.grantMetadata || null,
@@ -390,7 +420,7 @@ export default function App() {
   const mergeEvidences = useCallback((existing, incoming) => {
     const mappedIncoming = mapEvidences(incoming);
     const map = new Map();
-    ([...mappedIncoming, ...existing]).forEach(item => {
+    (([...mappedIncoming, ...existing])).forEach(item => {
       if (item?.id && !map.has(item.id)) {
         map.set(item.id, item);
       }
@@ -401,6 +431,9 @@ export default function App() {
   const handleExecuteSemanticBootstrap = useCallback(async () => {
     const bootstrapTimestamp = new Date().toISOString();
     const evidenceId = `EV-L7-BOOTSTRAP-${Date.now().toString(36).toUpperCase()}`;
+
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
 
     const bootstrapPayload = {
       command: SAARE_SEMANTIC_COMMANDS.MODULE_5_BOOTSTRAP,
@@ -417,8 +450,8 @@ export default function App() {
         "X-SAARE-L7-ZERO-DISK-PASS",
         "X-SAARE-L7-FAIL-STOP-ENFORCED"
       ],
-      user: userEmail,
-      tenant: tenantId,
+      user: cleanUser,
+      tenant: cleanTenant,
       role: userRole,
       timestamp: bootstrapTimestamp
     };
@@ -437,8 +470,8 @@ export default function App() {
       decision: "ALLOW",
       anchored: 1,
       type: "WORKFLOWS",
-      user: userEmail,
-      tenant: tenantId,
+      user: cleanUser,
+      tenant: cleanTenant,
       merkleRoot: "7a9f82c41e523b1082a4d093fe812739a1b0293847e201b1a5d62901c89f2134",
       node: SAARE_CONFIG?.SAFE_CREATIVE_ID || "RPI-2607076315021",
       latency: 0.84,
@@ -458,8 +491,8 @@ export default function App() {
     try {
       await apiService.interceptPrompt({
         prompt: initialBootstrapEvidence.prompt,
-        user: userEmail,
-        tenant: tenantId,
+        user: cleanUser,
+        tenant: cleanTenant,
         evidence_id: evidenceId
       });
     } catch (e) {}
@@ -468,14 +501,20 @@ export default function App() {
   }, [userEmail, tenantId, userRole, mergeEvidences, triggerGovernance]);
 
   const handleLogout = useCallback(async () => {
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     try {
       await apiService.interceptPrompt({
         prompt: "python saare_control.py --kill --all",
-        user: userEmail,
-        tenant: tenantId
+        user: cleanUser,
+        tenant: cleanTenant
       });
     } catch (e) {}
 
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -491,13 +530,16 @@ export default function App() {
 
   const fetchTelemetryOnce = useCallback(async () => {
     try {
-      const traces = await apiService.getTelemetryTraces({ tenant: tenantId, user: userEmail });
+      const cleanTenant = (tenantId || '').trim();
+      const cleanUser = (userEmail || '').trim().toLowerCase();
+      const traces = await apiService.getTelemetryTraces({ tenant: cleanTenant, user: cleanUser });
       if (traces && Array.isArray(traces)) {
         setEvidences(prev => mergeEvidences(prev, traces));
       }
     } catch (e) {}
   }, [tenantId, userEmail, mergeEvidences]);
 
+  // EFECTO PRINCIPAL DE TELEMETRÍA, POLLING Y SSE CON RECONEXIÓN EXPONENCIAL
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -521,36 +563,60 @@ export default function App() {
       fetchTelemetryOnce();
     }, 3000);
 
-    const streamUrl = getApiEndpoint(`/telemetry/stream?tenant=${encodeURIComponent(tenantId)}&user=${encodeURIComponent(userEmail)}`);
+    // Conexión SSE con Reconexión Automática y Backoff Exponencial
+    const connectSSE = () => {
+      const cleanTenant = (tenantId || '').trim();
+      const cleanUser = (userEmail || '').trim().toLowerCase();
+      const streamUrl = getApiEndpoint(`/telemetry/stream?tenant=${encodeURIComponent(cleanTenant)}&user=${encodeURIComponent(cleanUser)}`);
 
-    try {
-      const es = new EventSource(streamUrl);
-      eventSourceRef.current = es;
+      try {
+        const es = new EventSource(streamUrl);
+        eventSourceRef.current = es;
 
-      es.onmessage = (event) => {
-        try {
-          const streamData = JSON.parse(event.data);
-          if (streamData.evidences || streamData.runs || streamData.traces || Array.isArray(streamData)) {
-            setEvidences(prev => mergeEvidences(prev, streamData));
-          } else if (streamData.status === 'RUNTIME_ACTIVE') {
-            fetchTelemetryOnce();
-          } else if (streamData.id || streamData.evidence_id || streamData.trace_id) {
-            setEvidences(prev => mergeEvidences(prev, [streamData]));
+        es.onopen = () => {
+          retryCountRef.current = 0; // Restablecer intentos al conectar exitosamente
+        };
+
+        es.onmessage = (event) => {
+          try {
+            const streamData = JSON.parse(event.data);
+            if (streamData.evidences || streamData.runs || streamData.traces || Array.isArray(streamData)) {
+              setEvidences(prev => mergeEvidences(prev, streamData));
+            } else if (streamData.status === 'RUNTIME_ACTIVE') {
+              fetchTelemetryOnce();
+            } else if (streamData.id || streamData.evidence_id || streamData.trace_id) {
+              setEvidences(prev => mergeEvidences(prev, [streamData]));
+            }
+          } catch (err) {}
+        };
+
+        es.onerror = () => {
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
           }
-        } catch (err) {}
-      };
 
-      es.onerror = () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
-      };
-    } catch (e) {}
+          // Backoff exponencial con límite de 30 segundos
+          const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
+          retryCountRef.current += 1;
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (isAuthenticated) {
+              connectSSE();
+            }
+          }, delay);
+        };
+      } catch (e) {}
+    };
+
+    connectSSE();
 
     return () => {
       clearInterval(intervalClock);
       clearInterval(pollingInterval);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -591,8 +657,10 @@ export default function App() {
 
   const handleVerifyLicense = async () => {
     triggerGovernance(`Ejecutando ${SAARE_SEMANTIC_COMMANDS.MODE_COMPLIANCE}...`);
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     try {
-      await apiService.verifyLicense({ tenant: tenantId, user: userEmail });
+      await apiService.verifyLicense({ tenant: cleanTenant, user: cleanUser });
       fetchTelemetryOnce();
       triggerGovernance("Licencia Enterprise S.A.A.R.E. (SGP 1.0) Validada en Bóveda Central D1.");
     } catch (e) {
@@ -618,11 +686,13 @@ export default function App() {
 
   const handleGenerateCorporateReport = async () => {
     triggerGovernance(`Invocando Certificación Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE})...`);
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     try {
       await apiService.interceptPrompt({
         prompt: `Genera un informe oficial de S.A.A.R.E. con formato de Certificación Corporativa (${SAARE_SEMANTIC_COMMANDS.MODE_CORPORATE}).`,
-        user: userEmail,
-        tenant: tenantId
+        user: cleanUser,
+        tenant: cleanTenant
       });
       fetchTelemetryOnce();
       setShowExportModal(true);
@@ -633,11 +703,14 @@ export default function App() {
 
   const handleExportChainOfCustody = async () => {
     triggerGovernance(`Invocando Auditoría de Cadena de Custodia (${SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY})...`);
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
+
     const custodyData = JSON.stringify({
       protocol: `${SAARE_CONFIG?.SGP_VERSION || 'SGP 1.0'} / ${SAARE_CONFIG?.BUILD_VERSION || 'V12.1'}`,
       commandExecuted: SAARE_SEMANTIC_COMMANDS.MODE_CUSTODY,
-      organization: tenantId,
-      user: userEmail,
+      organization: cleanTenant,
+      user: cleanUser,
       role: userRole,
       timestamp: new Date().toISOString(),
       standard: SAARE_CONFIG?.LEGAL_FRAMEWORK || "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / DORA / Art. 326 LEC",
@@ -647,7 +720,7 @@ export default function App() {
       evidences: evidences
     }, null, 2);
 
-    const safeFileEmail = (userEmail || 'operador').replace(/[@.]/g, '_');
+    const safeFileEmail = cleanUser.replace(/[@.]/g, '_');
     const blob = new Blob([custodyData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -666,11 +739,14 @@ export default function App() {
       return;
     }
     triggerGovernance(`Invocando Auditoría Jurídica (${SAARE_SEMANTIC_COMMANDS.MODE_LEGAL})...`);
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
+
     const grantReport = {
       expedienteRef: SAARE_CONFIG?.EXPEDIENTE_MASTER || "MS3V-AUDIT-CONSOLIDATED-2026-09",
       command: SAARE_SEMANTIC_COMMANDS.MODE_LEGAL,
-      tenantId: tenantId,
-      operatorEmail: userEmail,
+      tenantId: cleanTenant,
+      operatorEmail: cleanUser,
       timestamp: new Date().toISOString(),
       dnshCompliance: {
         status: "COMPLIANT_DNSH",
@@ -695,7 +771,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${(tenantId || 'TENANT').replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+    a.download = `EXPEDIENTE_JUSTIFICACION_REDES_${cleanTenant.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -715,6 +791,8 @@ export default function App() {
     }
     triggerGovernance(`Compilando Expediente FRIA (${SAARE_SEMANTIC_COMMANDS.MODE_FRIA})...`);
 
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     const deniedEvidences = evidences.filter(e => e && (e.verdict === 'RECHAZADO' || e.decision === 'DENY'));
     const sampleMerkle = evidences[0]?.merkleRoot || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855";
 
@@ -725,8 +803,8 @@ export default function App() {
         regulation: "EU Artificial Intelligence Act (Regulation EU 2024/1689) - Article 27 / ISO/IEC 42001",
         auditNode: SAARE_CONFIG?.TRUST_ANCHOR || "https://vault.saare.es",
         timestamp: new Date().toISOString(),
-        tenantId: tenantId,
-        cisoOperator: userEmail
+        tenantId: cleanTenant,
+        cisoOperator: cleanUser
       },
       systemContext: {
         useCase: friaConfig.useCaseName,
@@ -753,7 +831,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `EXPEDIENTE_FRIA_ART27_${(tenantId || 'TENANT').replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+    a.download = `EXPEDIENTE_FRIA_ART27_${cleanTenant.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -785,8 +863,8 @@ export default function App() {
     try {
       await apiService.exportToSiem({
         evidenceId: ev.id,
-        tenant: ev.tenant,
-        operator: ev.user,
+        tenant: (ev.tenant || '').trim(),
+        operator: (ev.user || '').trim().toLowerCase(),
         blockedPayload: ev.prompt,
         verdict: ev.decision,
         merkleRoot: ev.merkleRoot,
@@ -814,12 +892,14 @@ export default function App() {
     }
 
     setIsEvaluating(true);
+    const cleanTenant = (tenantId || '').trim();
+    const cleanUser = (userEmail || '').trim().toLowerCase();
     const t0 = performance.now();
     try {
       const data = await apiService.interceptPrompt({
         prompt: testPrompt,
-        user: userEmail,
-        tenant: tenantId,
+        user: cleanUser,
+        tenant: cleanTenant,
         evidence_id: auditedEvidenceId || undefined
       });
 
@@ -840,7 +920,7 @@ export default function App() {
         evidence_id: evidenceId,
         proofBundle: data.proofBundle || {
           verdictId: `VRD-2026-${evidenceId}`,
-          payloadHash: data.enforcement?.ms3vIntegrityHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991678526855",
+          payloadHash: data.enforcement?.ms3vIntegrityHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49599167852b855",
           ed25519Signature: `ED25519_SIG_${evidenceId}`,
           merkleRoot: data.enforcement?.ms3vIntegrityHash || "SAARE-MD-IPRES-2026",
           rfc3161Timestamp: new Date().toISOString(),
@@ -1000,7 +1080,7 @@ export default function App() {
             ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1
           </h2>
           <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-            Ingresa tus credenciales para autenticarte en la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong> e inyectar el comando semántico del <strong>Módulo 5 (Notario Digital Ex-Ante D1)</strong>.
+            Ingresa tus credenciales para autenticarte en la <strong>Consola GRC S.A.A.R.E. (SGP 1.0)</strong> e inyectar el comando semántico del <strong>Módulo 5 (Notario Digital Ex-Ante D1)</strong>[cite: 1].
           </p>
 
           <form onSubmit={handleLoginSubmit}>
