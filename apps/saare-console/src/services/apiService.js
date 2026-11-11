@@ -5,29 +5,36 @@ import { SAARE_CONFIG } from '../config/saareState';
  * Auxiliar dinámico para obtener la configuración activa de sesión y servidor
  */
 function getAuthContext() {
-  const token = localStorage.getItem('saare_token') || '';
+  const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
   const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
-  const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '';
-  const baseUrl = SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es/api/v1';
+  const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'operador@saare.es';
+  const role = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
+  
+  // Normalización limpia de la URL base para evitar /v1/v1 o /api/v1/api/v1
+  let baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
+  if (!baseUrl.endsWith('/v1') && !baseUrl.endsWith('/api/v1')) {
+    baseUrl = `${baseUrl}/v1`;
+  }
 
-  return { token, tenant, user, baseUrl };
+  return { token, tenant, user, role, baseUrl };
 }
 
 /**
  * Helper saareFetch dinámico e higienizado para peticiones HTTP
  */
 async function saareFetch(endpoint, options = {}) {
-  const { token, tenant, user, baseUrl } = getAuthContext();
+  const { token, tenant, user, role, baseUrl } = getAuthContext();
   
-  // Normalización de la URL base
-  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  // Limpieza de barras dobles en endpoints
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBaseUrl}${cleanEndpoint}`;
   
   const headers = {
     'Content-Type': 'application/json',
-    'x-saare-tenant': tenant,
-    'x-saare-user': user,
+    'x-saare-tenant': options.overrideTenant || tenant,
+    'x-saare-user': options.overrideUser || user,
+    'x-saare-role': options.overrideRole || role,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
@@ -74,7 +81,11 @@ export const apiService = {
       const activeUser = params.user || user;
       
       const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
-      const res = await saareFetch(`/traces${query}`, { method: 'GET' });
+      const res = await saareFetch(`/traces${query}`, { 
+        method: 'GET',
+        overrideTenant: activeTenant,
+        overrideUser: activeUser
+      });
       
       if (res && res.ok) {
         const data = await res.json();
@@ -121,29 +132,34 @@ export const apiService = {
     };
   },
 
-  async interceptPrompt(payloadOrPrompt, context) {
-    const { tenant, user } = getAuthContext();
+  async interceptPrompt(payloadOrPrompt, context = {}) {
+    const { tenant, user, role } = getAuthContext();
     try {
       let bodyData = {};
 
       if (typeof payloadOrPrompt === 'string') {
         bodyData = { 
           prompt: payloadOrPrompt, 
-          tenant: tenant,
-          user: user,
-          ...(context || {}) 
+          tenant: context.tenant || tenant,
+          user: context.user || user,
+          role: context.role || role,
+          ...context 
         };
       } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
         bodyData = { 
           tenant: tenant,
           user: user,
+          role: role,
           ...payloadOrPrompt, 
-          ...(context || {}) 
+          ...context 
         };
       }
 
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
+        overrideTenant: bodyData.tenant,
+        overrideUser: bodyData.user,
+        overrideRole: bodyData.role,
         body: JSON.stringify(bodyData)
       });
 
@@ -184,8 +200,7 @@ export const apiService = {
   async runResilienceCheck(payload) {
     try {
       const res = await saareFetch('/resilience/check', {
-        method: 'POST',
-        body: JSON.stringify(payload || { scenario: 'FULL_CHECK' })
+        method: 'GET'
       });
       if (res && res.ok) return await res.json();
     } catch (e) {}
@@ -250,7 +265,7 @@ export const apiService = {
 
   async assignExecutiveSeat(seatData) {
     try {
-      const res = await saareFetch('/executive/seats', {
+      const res = await saareFetch('/executive/seats/assign', {
         method: 'POST',
         body: JSON.stringify(seatData)
       });

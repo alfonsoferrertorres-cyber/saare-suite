@@ -46,7 +46,7 @@ function getTimestampNs() {
  * IMPLEMENTACIÓN ALGORÍTMICA DEL MOTOR BLOCK LOGIC
  * Intercepta, valida, audita y condiciona la ejecución de comandos en el runtime.
  * 
- * @param {string} instruction - Instrucción o prompt entrante
+ * @param {string|Object} instruction - Instrucción o prompt entrante
  * @param {Array<string>} approvedParams - Set de Parámetros de Seguridad Físicos Aprobados
  * @param {Object} env - Entorno de ejecución (Cloudflare Environment / Variables)
  * @returns {Promise<Object>} Resultado de la ejecución o aborto de secuencia
@@ -56,16 +56,25 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
     // ----------------------------------------------------------------------
     // BLOQUE 1: Módulo de Intercepción y Normalización de Flujo
     // ----------------------------------------------------------------------
-    let rawString = typeof instruction === "string" ? instruction : "";
+    let rawString = "";
+    if (typeof instruction === "string") {
+      rawString = instruction;
+    } else if (instruction && typeof instruction === "object") {
+      rawString = instruction.prompt || instruction.instruction || JSON.stringify(instruction);
+    }
+    
     let data = rawString.trim().toUpperCase();
 
     // ----------------------------------------------------------------------
     // BLOQUE 2: Motor de Validación Determinista (Core Logic)
     // ----------------------------------------------------------------------
-    const normalizedApproved = approvedParams.map(p => String(p).trim().toUpperCase());
+    const normalizedApproved = Array.isArray(approvedParams) 
+      ? approvedParams.map(p => String(p).trim().toUpperCase()) 
+      : [];
+      
     const isApproved = normalizedApproved.some(param => data === param || data.includes(param));
 
-    if (!isApproved) {
+    if (!isApproved && data !== "") {
       data = "LOGIC_SAFE_STATE";
     }
 
@@ -87,9 +96,9 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
         EXECUTE: data,
         HASH: integrityHash,
         TS: timestamp,
-        AUTHOR: env.AUTHOR_NAME || IP_MANIFEST.AUTHOR,
-        TITULAR_NIF: env.TITULAR_NIF || IP_MANIFEST.NIF,
-        PROTOCOL: env.PROTOCOL_VERSION || "MS3V_BLOCK_LOGIC_V12.1",
+        AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR,
+        TITULAR_NIF: env?.TITULAR_NIF || IP_MANIFEST.NIF,
+        PROTOCOL: env?.PROTOCOL_VERSION || "MS3V_BLOCK_LOGIC_V12.1",
         RPI_REGISTRATION: IP_MANIFEST.REGISTRO_RPI,
         MANIFEST_ROOT_HASH: IP_MANIFEST.MANIFEST_SHA256
       };
