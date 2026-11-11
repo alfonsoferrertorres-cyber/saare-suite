@@ -1014,21 +1014,27 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA HISTORIAL DE TRACES Y LOGS ===
+      // === RUTA HISTORIAL DE TRACES Y LOGS (FILTRADO ESTRICTO POR TENANT) ===
       if ((path === '/traces' || path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
         let tracesList = [];
         const limitParam = parseInt(_u.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
 
+        // Extracción explícita del tenant de la request (Header, Query o Contexto)
+        const activeTenant = request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || tenantId;
+
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
+            // FILTRADO ESTRICTO POR TENANT EN D1
             const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?";
-            const { results } = await env.DB.prepare(query).bind(tenantId, safeLimit).all();
+            const { results } = await env.DB.prepare(query).bind(activeTenant, safeLimit).all();
             if (results && results.length > 0) tracesList = results;
-          } catch (d1Err) {}
+          } catch (d1Err) {
+            console.error("[D1 Traces Error]:", d1Err.message);
+          }
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SUCCESS", tenant: activeTenant, count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       // === RUTA VERIFICACIÓN DE EVIDENCIAS Y SELLADO DE TIEMPO RFC-3161 ===

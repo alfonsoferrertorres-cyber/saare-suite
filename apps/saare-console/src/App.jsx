@@ -64,7 +64,7 @@ export default function App() {
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
-  // Probador de Inferencia Ex-Ante
+  // Probador de Inferencia Ex-Ante y Quick Prompts
   const [testPrompt, setTestPrompt] = useState("Auditar cumplimiento normativo ex-ante bajo RPI-2026-SAARE-0914X.");
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -163,9 +163,12 @@ export default function App() {
     triggerGovernance("Plantilla GPO registrada y descargada.");
   };
 
-  // DESCARGA REAL DE MANIFIESTO KUBERNETES
+  // DESCARGA SANEADA DE MANIFIESTO KUBERNETES (IDENTIDAD JURÍDICA ANONIMIZADA)
   const handleDownloadK8sManifest = () => {
-    const yamlContent = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: saare-ip-manifest\n  namespace: saare-system\ndata:\n  TITULAR_INVENTOR: "Alfonso Ferrer Torres (NIF: 48553065L)"\n  REGISTRO_RPI: "RPI-2026-SAARE-0914X"\n  TENANT_ID: "${tenantId}"\n  HUELLA_RAIZ_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"\n  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"\n`;
+    const enterpriseHolder = "S.A.A.R.E. Enterprise Custodian Corp";
+    const enterpriseNif = "A-00000000";
+
+    const yamlContent = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: saare-ip-manifest\n  namespace: saare-system\ndata:\n  TITULAR_INVENTOR: "${enterpriseHolder} (${enterpriseNif})"\n  REGISTRO_RPI: "RPI-2026-SAARE-0914X"\n  TENANT_ID: "${tenantId}"\n  HUELLA_RAIZ_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"\n  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"\n`;
     const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -173,18 +176,20 @@ export default function App() {
     a.download = `01-ip-manifest-${tenantId.toLowerCase()}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-    triggerGovernance("Manifiesto YAML K8s generado.");
+    triggerGovernance("Manifiesto YAML K8s anonimizado generado.");
   };
 
-  // PRUEBA REAL EX-ANTE EN TIEMPO REAL
-  const handleExecuteTestExAnte = async () => {
-    if (!testPrompt.trim()) return;
+  // PRUEBA REAL EX-ANTE / INYECCIÓN DE PROMPT RÁPIDA (CON BAJA FRICCIÓN)
+  const handleExecuteTestExAnte = async (customPrompt = null) => {
+    const promptToRun = customPrompt || testPrompt;
+    if (!promptToRun.trim()) return;
+    
     setIsEvaluating(true);
     const t0 = performance.now();
 
     try {
       const data = await apiService.interceptPrompt({ 
-        prompt: testPrompt, 
+        prompt: promptToRun, 
         user: userEmail, 
         tenant: tenantId,
         token: authToken,
@@ -196,14 +201,16 @@ export default function App() {
       const evalResult = {
         verdict: isDeny ? "RECHAZADO / SANITIZADO EN RAM" : "PERMITIDO CONFORME",
         decision: isDeny ? "DENY" : "ALLOW",
-        sanitizedPrompt: data?.sanitizedPrompt || data?.enforcement?.executedCommand || testPrompt,
+        sanitizedPrompt: data?.sanitizedPrompt || data?.enforcement?.executedCommand || promptToRun,
         latency: latencyMs,
         seal: data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"
       };
 
       setTestResult(evalResult);
-      triggerGovernance(`Inspección Ex-Ante ejecutada (${evalResult.decision})`);
-      fetchTelemetryDirectFromVault();
+      triggerGovernance(`⚡ Prompt interceptado (${evalResult.decision}) y sellado en D1.`);
+      
+      // Sincronización automática inmediata con la Bóveda para reflejar la traza en la tabla
+      await fetchTelemetryDirectFromVault();
     } catch (err) {
       triggerGovernance("Error al evaluar el prompt en el gateway L7.");
     } finally {
@@ -339,6 +346,33 @@ export default function App() {
 
             </div>
 
+            {/* SECCIÓN DE ACCESOS RÁPIDOS (MENSAJES DE BAJA FRICCIÓN: "BUENOS DÍAS", ETC.) */}
+            <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase' }}>
+                ⚡ Inyección Rápida y Auditoría Ex-Ante (Capa 7)
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  onClick={() => handleExecuteTestExAnte("Buenos días, por favor audita el estado actual.")}
+                  disabled={isEvaluating}
+                  style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #10b981', color: '#34d399', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+                  👋 Enviar "Buenos días"
+                </button>
+                <button
+                  onClick={() => handleExecuteTestExAnte("Verificar estado de cumplimiento normativo ex-ante.")}
+                  disabled={isEvaluating}
+                  style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+                  🛡️ Test Compliance Check
+                </button>
+                <button
+                  onClick={() => handleExecuteTestExAnte("Simular inyección con PII corporativo confidencial.")}
+                  disabled={isEvaluating}
+                  style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #ef4444', color: '#f87171', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+                  ⚠️ Simular Alerta PII (Deny)
+                </button>
+              </div>
+            </div>
+
             {/* SELECCIÓN DE PESTAÑAS Y REFRESCADO D1 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -421,7 +455,7 @@ export default function App() {
                   style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontFamily: 'monospace', boxSizing: 'border-box' }}
                 />
                 <button
-                  onClick={handleExecuteTestExAnte}
+                  onClick={() => handleExecuteTestExAnte()}
                   disabled={isEvaluating}
                   style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
                   {isEvaluating ? "PROCESANDO EN DISYUNTOR L7..." : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId}]`}
