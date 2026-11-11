@@ -4,7 +4,7 @@ compatibility_date = "2026-11-06"
 workers_dev = false
 preview_urls = false
 
-# Dominio personalizado de producción L7
+# Dominio personalizado de producción L7 (al usar custom_domain = true, NO se deben incluir comodines /*)
 routes = [
   { pattern = "api.saare.es", custom_domain = true }
 ]
@@ -21,7 +21,7 @@ CPAAS_DEFAULT_PROVIDER = "twilio"
 TWILIO_FROM_NUMBER = "+1234567890"
 INFOBIP_BASE_URL = "https://api.infobip.com"
 
-# Base de Datos D1 Principal (Producción)
+# Base de Datos D1 Principal (Producción - Auditoría Legal y Evidencias)
 [[d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1"
@@ -32,18 +32,16 @@ database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
 
-# ...
+# Dataset para Telemetría y Métricas de Consumo Multi-Tenant en Tiempo Real
+[[analytics_engine_datasets]]
+binding = "USAGE_ANALYTICS"
+dataset = "saare_tenant_usage"
+
+# Configuración de Observabilidad y Logs
+[observability]
+enabled = true
+
 [observability.logs]
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
-persist = true
-
-[observability.traces]
-enabled = false
-head_sampling_rate = 1
-persist = true
-
-[observability.issue_detection]
-enabled = false
-# ...

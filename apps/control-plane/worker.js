@@ -816,6 +816,34 @@ export default {
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = identity?.role || request.headers.get("x-saare-role") || _u.searchParams.get("role") || "CISO_ADMIN";
 
+      // === RUTA DE MÉTRICAS MULTI-TENANT PARA SAARE-CONSOLE (D1 CONSUMO) ===
+      if ((path === '/metrics/tenants' || path === '/v1/metrics/tenants' || path === '/api/v1/metrics/tenants') && method === 'GET') {
+        let metricsData = [];
+        if (env?.DB) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            const { results } = await env.DB.prepare(`
+              SELECT 
+                  tenant_id,
+                  COUNT(*) AS total_prompts,
+                  SUM(CASE WHEN final_decision = 'ALLOW' OR verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
+                  SUM(CASE WHEN final_decision = 'DENY' OR verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
+                  MAX(datetime(timestamp)) AS ultima_actividad
+              FROM consolidated_traces
+              GROUP BY tenant_id
+              ORDER BY total_prompts DESC;
+            `).all();
+            if (results) metricsData = results;
+          } catch (mErr) {
+            console.error("[D1 Tenant Metrics Error]:", mErr.message);
+          }
+        }
+        return new Response(JSON.stringify({ success: true, status: "SUCCESS", data: metricsData }), {
+          status: 200,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
       // === RUTA DE ENVIÓ MULTI-CPAAS (TWILIO, MESSAGEBIRD, VONAGE, INFOBIP) CON AUDITORÍA D1 ===
       if ((path === '/cpaas/send' || path === '/api/v1/cpaas/send' || path === '/v1/cpaas/send') && method === 'POST') {
         const body = await request.json().catch(() => ({}));
@@ -1020,13 +1048,11 @@ export default {
         const limitParam = parseInt(_u.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
 
-        // Extracción explícita del tenant de la request (Header, Query o Contexto)
         const activeTenant = request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || tenantId;
 
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            // FILTRADO ESTRICTO POR TENANT EN D1
             const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?";
             const { results } = await env.DB.prepare(query).bind(activeTenant, safeLimit).all();
             if (results && results.length > 0) tracesList = results;
@@ -1160,6 +1186,21 @@ export default {
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
         }, env);
 
+        const latencyMs = parseFloat((performance.now() - startTime).toFixed(2));
+
+        // Registro de telemetría en tiempo real en Workers Analytics Engine
+        if (env?.USAGE_ANALYTICS) {
+          try {
+            env.USAGE_ANALYTICS.writeDataPoint({
+              blobs: [tenant, finalDecision, targetProvider],
+              doubles: [latencyMs, rawPrompt.length],
+              indexes: [tenant]
+            });
+          } catch (analyticsErr) {
+            console.warn("[Analytics Engine Error]:", analyticsErr.message);
+          }
+        }
+
         if (env?.DB) {
           const runAsyncInsert = async () => {
             try {
@@ -1173,7 +1214,7 @@ export default {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
               `).bind(
                 traceId, tenant, user, activeEvaluatorNode,
-                finalDecision, finalDecision, parseFloat((performance.now() - startTime).toFixed(2)),
+                finalDecision, finalDecision, latencyMs,
                 nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict,
                 ms3vVerdict.HASH || blockLogicVerdict.HASH,
                 ms3vVerdict.TS || blockLogicVerdict.TS
@@ -1194,8 +1235,6 @@ export default {
             await runAsyncInsert();
           }
         }
-
-        const latencyMs = (performance.now() - startTime).toFixed(2);
 
         return new Response(JSON.stringify({
           success: true,
@@ -1233,7 +1272,7 @@ export default {
             'X-SAARE-Verdict': finalDecision,
             'X-SAARE-Witness-Tag': '[MS3V-COMPLIANCE-L7-OK]',
             'X-SAARE-Provider': providerMeta.name,
-            'X-SAARE-Latency-Ms': latencyMs,
+            'X-SAARE-Latency-Ms': latencyMs.toString(),
             'X-SAARE-MS3V-Hash': ms3vVerdict.HASH || blockLogicVerdict.HASH,
             'X-SAARE-MS3V-Timestamp': ms3vVerdict.TS || blockLogicVerdict.TS,
             'X-SAARE-Proof-Status': 'VERIFIED_ED25519'

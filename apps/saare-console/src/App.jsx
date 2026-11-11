@@ -1,5 +1,5 @@
 // saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.1 / SGP 1.0
-// Producción Real: Conexiones Directas Bóveda D1, Modal de Auditorías, Generación PDF e Integración GPO/K8s
+// Producción Real: Conexiones Directas Bóveda D1, Métricas Multi-Tenant, Generación PDF e Integración GPO/K8s
 import React, { useState, useEffect, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -52,7 +52,7 @@ export default function App() {
 
   // Modales y Vistas Operativas
   const [viewMode, setViewMode] = useState('GRC_AUDIT'); // 'GRC_AUDIT', 'EXECUTIVE', 'SUBSIDIES'
-  const [activeTab, setActiveTab] = useState('GLOBAL'); // 'GLOBAL', 'RUNLIVE'
+  const [activeTab, setActiveTab] = useState('GLOBAL'); // 'GLOBAL', 'METRICS', 'RUNLIVE'
   const [governanceStatus, setGovernanceStatus] = useState('');
   const [timeStr, setTimeStr] = useState('');
   const [isFetchingVault, setIsFetchingVault] = useState(false);
@@ -71,6 +71,7 @@ export default function App() {
 
   // Estado de Evidencias Conectado a la Bóveda D1 Real
   const [evidences, setEvidences] = useState([]);
+  const [tenantMetrics, setTenantMetrics] = useState([]);
 
   const triggerGovernance = useCallback((msg) => {
     setGovernanceStatus(msg);
@@ -108,6 +109,26 @@ export default function App() {
       });
   }, [userEmail, tenantId]);
 
+  // Consulta de Métricas Agregadas Multi-Tenant desde D1
+  const fetchTenantMetrics = useCallback(async () => {
+    try {
+      const endpoint = getApiEndpoint('/v1/metrics/tenants');
+      const res = await fetch(endpoint, {
+        headers: {
+          'Authorization': authToken ? `Bearer ${authToken}` : '',
+          'x-saare-tenant': tenantId,
+          'Content-Type': 'application/json'
+        }
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setTenantMetrics(json.data);
+      }
+    } catch (e) {
+      console.warn("Métricas agregadas no disponibles temporalmente:", e.message);
+    }
+  }, [tenantId, authToken]);
+
   // Consulta Directa a la Bóveda D1 en api.saare.es
   const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null) => {
     const targetTenant = overrideTenant || tenantId;
@@ -127,12 +148,14 @@ export default function App() {
         setEvidences([]);
         triggerGovernance(`Bóveda D1 [${targetTenant}] conectada: 0 registros.`);
       }
+
+      await fetchTenantMetrics();
     } catch (e) {
       triggerGovernance(`⚠️ Error al conectar con la Bóveda D1 de [${targetTenant}].`);
     } finally {
       setIsFetchingVault(false);
     }
-  }, [tenantId, userEmail, authToken, userRole, mapEvidences, triggerGovernance]);
+  }, [tenantId, userEmail, authToken, userRole, mapEvidences, fetchTenantMetrics, triggerGovernance]);
 
   const handleTenantChange = (newTenant) => {
     setTenantId(newTenant);
@@ -382,6 +405,11 @@ export default function App() {
                   EVIDENCIAS Y TRAZAS D1
                 </button>
                 <button 
+                  onClick={() => setActiveTab('METRICS')} 
+                  style={{ padding: '10px 16px', background: activeTab === 'METRICS' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  📊 CONSUMO MULTI-TENANT
+                </button>
+                <button 
                   onClick={() => setActiveTab('RUNLIVE')} 
                   style={{ padding: '10px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   ⚡ EVALUADOR EX-ANTE EN RAM
@@ -444,7 +472,46 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: PROBADOR EX-ANTE EN TIEMPO REAL */}
+            {/* TAB 2: TELEMETRÍA Y CONSUMO MULTI-TENANT */}
+            {activeTab === 'METRICS' && (
+              <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', background: '#020617' }}>
+                <h3 style={{ margin: '0 0 16px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
+                  📊 Métricas Agregadas de Consumo por Inquilino (D1 Vault)
+                </h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
+                  <thead>
+                    <tr style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
+                      <th style={{ padding: '12px' }}>TENANT ID</th>
+                      <th style={{ padding: '12px' }}>TOTAL PROMPTS</th>
+                      <th style={{ padding: '12px' }}>APROBADOS (ALLOW)</th>
+                      <th style={{ padding: '12px' }}>BLOQUEADOS (DENY)</th>
+                      <th style={{ padding: '12px' }}>ÚLTIMA ACTIVIDAD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tenantMetrics.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                          Sin registros de consumo multi-tenant acumulado.
+                        </td>
+                      </tr>
+                    ) : (
+                      tenantMetrics.map((row, idx) => (
+                        <tr key={row.tenant_id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
+                          <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold', fontFamily: 'monospace' }}>{row.tenant_id || 'UNKNOWN'}</td>
+                          <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{row.total_prompts}</td>
+                          <td style={{ padding: '12px', color: '#34d399', fontWeight: 'bold' }}>{row.aprobados}</td>
+                          <td style={{ padding: '12px', color: '#f87171', fontWeight: 'bold' }}>{row.bloqueados_pii}</td>
+                          <td style={{ padding: '12px', color: '#94a3b8' }}>{row.ultima_actividad || 'N/A'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB 3: PROBADOR EX-ANTE EN TIEMPO REAL */}
             {activeTab === 'RUNLIVE' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
                 <h3 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>⚡ EVALUADOR PROMPT EX-ANTE EN RAM (BLOCK LOGIC)</h3>
