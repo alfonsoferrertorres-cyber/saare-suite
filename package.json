@@ -8,8 +8,5 @@
     "build": "turbo run build --ui=stream",
     "preview": "pnpm --filter saare-console preview",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
-  },
-  "dependencies": {
-    "build": "^0.1.4"
   }
 }

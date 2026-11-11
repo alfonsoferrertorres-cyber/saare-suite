@@ -19,19 +19,6 @@ const getApiEndpoint = (path = '') => {
   return `${cleanBase}${cleanPath}`;
 };
 
-const ROLE_RANKS = {
-  "OPERATIONAL_AGENT_USER": 0,
-  "BOARD_EXECUTIVE_LEVEL_1": 1,
-  "DPO_GRC_LEVEL_2": 2,
-  "CISO_SECOPS_LEVEL_3": 3,
-  "CISO_ADMIN": 4
-};
-
-function hasRequiredRank(role, minRank) {
-  const rank = ROLE_RANKS[role] !== undefined ? ROLE_RANKS[role] : 0;
-  return rank >= minRank;
-}
-
 export default function App() {
   // Autenticación y Contexto de Sesión Real
   const queryParams = new URLSearchParams(window.location.search);
@@ -56,6 +43,8 @@ export default function App() {
   const [governanceStatus, setGovernanceStatus] = useState('');
   const [timeStr, setTimeStr] = useState('');
   const [isFetchingVault, setIsFetchingVault] = useState(false);
+  const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState('');
 
   // Estados de Modales Reales
   const [showOfficialReportModal, setShowOfficialReportModal] = useState(false);
@@ -111,21 +100,30 @@ export default function App() {
 
   // Consulta de Métricas Agregadas Multi-Tenant desde D1
   const fetchTenantMetrics = useCallback(async () => {
+    setIsFetchingMetrics(true);
+    setMetricsError('');
     try {
       const endpoint = getApiEndpoint('/v1/metrics/tenants');
-      const res = await fetch(endpoint, {
-        headers: {
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
-          'x-saare-tenant': tenantId,
-          'Content-Type': 'application/json'
-        }
-      });
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setTenantMetrics(json.data);
+      const headers = {
+        'x-saare-tenant': tenantId,
+        'Content-Type': 'application/json'
+      };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
       }
+
+      const res = await fetch(endpoint, { method: 'GET', headers });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} al consultar métricas multi-tenant`);
+      }
+
+      const json = await res.json();
+      const rows = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+      setTenantMetrics(rows);
     } catch (e) {
-      console.warn("Métricas agregadas no disponibles temporalmente:", e.message);
+      setMetricsError(e.message || 'Error al cargar métricas agregadas desde D1.');
+    } finally {
+      setIsFetchingMetrics(false);
     }
   }, [tenantId, authToken]);
 
@@ -134,8 +132,8 @@ export default function App() {
     const targetTenant = overrideTenant || tenantId;
     setIsFetchingVault(true);
     try {
-      const traces = await apiService.getTelemetryTraces({ 
-        tenant: targetTenant, 
+      const traces = await apiService.getTelemetryTraces({
+        tenant: targetTenant,
         user: userEmail,
         token: authToken,
         role: userRole
@@ -186,12 +184,25 @@ export default function App() {
     triggerGovernance("Plantilla GPO registrada y descargada.");
   };
 
-  // DESCARGA SANEADA DE MANIFIESTO KUBERNETES (IDENTIDAD JURÍDICA ANONIMIZADA)
+  // DESCARGA SANEADA DE MANIFIESTO KUBERNETES (ESPACIOS ESTÁNDAR YAML)
   const handleDownloadK8sManifest = () => {
     const enterpriseHolder = "S.A.A.R.E. Enterprise Custodian Corp";
     const enterpriseNif = "A-00000000";
 
-    const yamlContent = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: saare-ip-manifest\n  namespace: saare-system\ndata:\n  TITULAR_INVENTOR: "${enterpriseHolder} (${enterpriseNif})"\n  REGISTRO_RPI: "RPI-2026-SAARE-0914X"\n  TENANT_ID: "${tenantId}"\n  HUELLA_RAIZ_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"\n  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"\n`;
+    const yamlContent = [
+      'apiVersion: v1',
+      'kind: ConfigMap',
+      'metadata:',
+      '  name: saare-ip-manifest',
+      '  namespace: saare-system',
+      'data:',
+      `  TITULAR_INVENTOR: "${enterpriseHolder} (${enterpriseNif})"`,
+      '  REGISTRO_RPI: "RPI-2026-SAARE-0914X"',
+      `  TENANT_ID: "${tenantId}"`,
+      '  HUELLA_RAIZ_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"',
+      `  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"`
+    ].join('\n') + '\n';
+
     const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -206,14 +217,14 @@ export default function App() {
   const handleExecuteTestExAnte = async (customPrompt = null) => {
     const promptToRun = customPrompt || testPrompt;
     if (!promptToRun.trim()) return;
-    
+
     setIsEvaluating(true);
     const t0 = performance.now();
 
     try {
-      const data = await apiService.interceptPrompt({ 
-        prompt: promptToRun, 
-        user: userEmail, 
+      const data = await apiService.interceptPrompt({
+        prompt: promptToRun,
+        user: userEmail,
         tenant: tenantId,
         token: authToken,
         role: userRole
@@ -231,7 +242,7 @@ export default function App() {
 
       setTestResult(evalResult);
       triggerGovernance(`⚡ Prompt interceptado (${evalResult.decision}) y sellado en D1.`);
-      
+
       // Sincronización automática inmediata con la Bóveda para reflejar la traza en la tabla
       await fetchTelemetryDirectFromVault();
     } catch (err) {
@@ -253,7 +264,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-      
+
       {/* ALERTA FLOTANTE DE ESTADO */}
       {governanceStatus && (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: '#059669', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 10000, fontWeight: '800', fontSize: '0.82rem', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
@@ -263,8 +274,8 @@ export default function App() {
 
       {/* HEADER PRINCIPAL CON BOTONES OPERATIVOS DERECHO */}
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          
+        <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
             <span style={{ background: '#1e293b', color: '#34d399', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>SGP 1.0 Enterprise</span>
@@ -272,40 +283,40 @@ export default function App() {
 
           {/* BARRA NAVEGACIÓN Y BOTONES ACCIÓN REALES */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => setViewMode('GRC_AUDIT')} 
+            <button
+              onClick={() => setViewMode('GRC_AUDIT')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'GRC_AUDIT' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🟩 GRC & AUDIT
             </button>
-            <button 
-              onClick={() => setViewMode('EXECUTIVE')} 
+            <button
+              onClick={() => setViewMode('EXECUTIVE')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'EXECUTIVE' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🟦 EJECUTIVO
             </button>
-            <button 
-              onClick={() => setViewMode('SUBSIDIES')} 
+            <button
+              onClick={() => setViewMode('SUBSIDIES')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'SUBSIDIES' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📙 SUBVENCIONES
             </button>
 
             {/* ACCIONES DE DESPLIEGUE REALES */}
-            <button 
-              onClick={() => setShowSeatsModal(true)} 
+            <button
+              onClick={() => setShowSeatsModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               👥 ROLES/ASIENTOS
             </button>
-            <button 
-              onClick={() => setShowFriaModal(true)} 
+            <button
+              onClick={() => setShowFriaModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📋 AUDITORÍA FRIA
             </button>
-            <button 
-              onClick={handleDownloadEnterpriseGpoReg} 
+            <button
+              onClick={handleDownloadEnterpriseGpoReg}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #10b981', background: '#064e3b', color: '#34d399', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               ⚙️ POLÍTICA GPO (.REG)
             </button>
-            <button 
-              onClick={handleDownloadK8sManifest} 
+            <button
+              onClick={handleDownloadK8sManifest}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #8b5cf6', background: '#4c1d95', color: '#c084fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               ☸️ MANIFIESTO K8S
             </button>
@@ -316,7 +327,7 @@ export default function App() {
 
       {/* CUERPO PRINCIPAL SECTORES DEDICADOS */}
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
-        
+
         {/* VISTA 1: CENTRO DE SUBVENCIONES */}
         {viewMode === 'SUBSIDIES' && (
           <SubsidiesHub tenantId={tenantId} onBack={() => setViewMode('GRC_AUDIT')} />
@@ -330,9 +341,9 @@ export default function App() {
         {/* VISTA 3: AUDITORÍA GRC Y TELEMETRÍA (PRINCIPAL) */}
         {viewMode === 'GRC_AUDIT' && (
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
-            
+
             {/* TOOLBAR SUPERIOR CON CONTEXTO NORMATIVO */}
-            <GovernanceToolbar 
+            <GovernanceToolbar
               tenantId={tenantId}
               userEmail={userEmail}
               userRole={userRole}
@@ -341,11 +352,11 @@ export default function App() {
 
             {/* TARJETAS DE MÉTRICAS CON SELECTOR DINÁMICO DE ORGANISMOS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
-              
+
               <div style={{ background: '#020617', border: '1px solid #38bdf8', padding: '16px', borderRadius: '8px' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>ORGANISMO / TENANT ACTIVO</div>
-                <select 
-                  value={tenantId} 
+                <select
+                  value={tenantId}
                   onChange={(e) => handleTenantChange(e.target.value)}
                   style={{ width: '100%', marginTop: '6px', padding: '6px 8px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', fontWeight: '900', fontSize: '0.9rem', borderRadius: '6px', cursor: 'pointer' }}>
                   {availableTenants.map((t) => (
@@ -397,20 +408,23 @@ export default function App() {
             </div>
 
             {/* SELECCIÓN DE PESTAÑAS Y REFRESCADO D1 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => setActiveTab('GLOBAL')} 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setActiveTab('GLOBAL')}
                   style={{ padding: '10px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   EVIDENCIAS Y TRAZAS D1
                 </button>
-                <button 
-                  onClick={() => setActiveTab('METRICS')} 
+                <button
+                  onClick={() => {
+                    setActiveTab('METRICS');
+                    fetchTenantMetrics();
+                  }}
                   style={{ padding: '10px 16px', background: activeTab === 'METRICS' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   📊 CONSUMO MULTI-TENANT
                 </button>
-                <button 
-                  onClick={() => setActiveTab('RUNLIVE')} 
+                <button
+                  onClick={() => setActiveTab('RUNLIVE')}
                   style={{ padding: '10px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   ⚡ EVALUADOR EX-ANTE EN RAM
                 </button>
@@ -458,7 +472,7 @@ export default function App() {
                           </td>
                           <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>{ev.merkleRoot.substring(0, 20)}...</td>
                           <td style={{ padding: '12px', textAlign: 'center' }}>
-                            <button 
+                            <button
                               onClick={() => handleOpenPdfReport(ev)}
                               style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
                               📄 IMPRIMIR PDF
@@ -475,9 +489,24 @@ export default function App() {
             {/* TAB 2: TELEMETRÍA Y CONSUMO MULTI-TENANT */}
             {activeTab === 'METRICS' && (
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', background: '#020617' }}>
-                <h3 style={{ margin: '0 0 16px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
-                  📊 Métricas Agregadas de Consumo por Inquilino (D1 Vault)
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
+                    📊 Métricas Agregadas de Consumo por Inquilino (D1 Vault)
+                  </h3>
+                  <button
+                    onClick={fetchTenantMetrics}
+                    disabled={isFetchingMetrics}
+                    style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}>
+                    {isFetchingMetrics ? 'Actualizando...' : '↻ Refrescar Métricas'}
+                  </button>
+                </div>
+
+                {metricsError && (
+                  <div style={{ marginBottom: '12px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', borderRadius: '6px', color: '#fca5a5', fontSize: '0.78rem' }}>
+                    ⚠️ {metricsError}
+                  </div>
+                )}
+
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
                   <thead>
                     <tr style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
@@ -489,7 +518,13 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tenantMetrics.length === 0 ? (
+                    {isFetchingMetrics ? (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                          Consultando consumo agregado multi-tenant en D1...
+                        </td>
+                      </tr>
+                    ) : tenantMetrics.length === 0 ? (
                       <tr>
                         <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
                           Sin registros de consumo multi-tenant acumulado.
@@ -499,9 +534,9 @@ export default function App() {
                       tenantMetrics.map((row, idx) => (
                         <tr key={row.tenant_id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
                           <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold', fontFamily: 'monospace' }}>{row.tenant_id || 'UNKNOWN'}</td>
-                          <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{row.total_prompts}</td>
-                          <td style={{ padding: '12px', color: '#34d399', fontWeight: 'bold' }}>{row.aprobados}</td>
-                          <td style={{ padding: '12px', color: '#f87171', fontWeight: 'bold' }}>{row.bloqueados_pii}</td>
+                          <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{row.total_prompts ?? 0}</td>
+                          <td style={{ padding: '12px', color: '#34d399', fontWeight: 'bold' }}>{row.aprobados ?? 0}</td>
+                          <td style={{ padding: '12px', color: '#f87171', fontWeight: 'bold' }}>{row.bloqueados_pii ?? 0}</td>
                           <td style={{ padding: '12px', color: '#94a3b8' }}>{row.ultima_actividad || 'N/A'}</td>
                         </tr>
                       ))
@@ -545,34 +580,34 @@ export default function App() {
 
       {/* MODALES FUNCIONALES CONECTADOS */}
       {showOfficialReportModal && selectedEvidenceForPdf && (
-        <OfficialReportModal 
-          evidence={selectedEvidenceForPdf} 
+        <OfficialReportModal
+          evidence={selectedEvidenceForPdf}
           onClose={() => {
             setShowOfficialReportModal(false);
             setSelectedEvidenceForPdf(null);
-          }} 
+          }}
         />
       )}
 
       {showSeatsModal && (
-        <SeatsManagementModal 
-          tenantId={tenantId} 
-          onClose={() => setShowSeatsModal(false)} 
+        <SeatsManagementModal
+          tenantId={tenantId}
+          onClose={() => setShowSeatsModal(false)}
         />
       )}
 
       {showExportModal && (
-        <ReportExportModal 
-          tenantId={tenantId} 
-          evidences={evidences} 
-          onClose={() => setShowExportModal(false)} 
+        <ReportExportModal
+          tenantId={tenantId}
+          evidences={evidences}
+          onClose={() => setShowExportModal(false)}
         />
       )}
 
       {showFriaModal && (
-        <FriaWizardModal 
-          tenantId={tenantId} 
-          onClose={() => setShowFriaModal(false)} 
+        <FriaWizardModal
+          tenantId={tenantId}
+          onClose={() => setShowFriaModal(false)}
         />
       )}
 
