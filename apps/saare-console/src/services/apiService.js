@@ -1,4 +1,4 @@
-// saare-console/src/services/apiService.js — Tajaajila Guutuu S.A.A.R.E. (v10.0 / SGP 1.0 Producción Conectada)
+// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v10.1 / SGP 1.0 Producción Conectada)
 import { SAARE_CONFIG } from '../config/saareState';
 
 /**
@@ -6,15 +6,14 @@ import { SAARE_CONFIG } from '../config/saareState';
  */
 function getAuthContext() {
   const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
-  const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01';
+  const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE';
   const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'operador@saare.es';
   const role = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
-  
-  // Normalización limpia de la URL base para evitar /v1/v1 o /api/v1/api/v1
-  let baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
-  if (!baseUrl.endsWith('/v1') && !baseUrl.endsWith('/api/v1')) {
-    baseUrl = `${baseUrl}/v1`;
-  }
+
+  // Normalización estricta: elimina /api/v1, /api o /v1 heredados de SAARE_CONFIG y fija /v1
+  const rawBase = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
+  const cleanRoot = rawBase.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
+  const baseUrl = `${cleanRoot}/v1`;
 
   return { token, tenant, user, role, baseUrl };
 }
@@ -24,23 +23,25 @@ function getAuthContext() {
  */
 async function saareFetch(endpoint, options = {}) {
   const { token, tenant, user, role, baseUrl } = getAuthContext();
-  
-  // Limpieza de barras dobles en endpoints
+
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBaseUrl}${cleanEndpoint}`;
-  
+  const activeToken = options.overrideToken || token;
+
   const headers = {
     'Content-Type': 'application/json',
     'x-saare-tenant': options.overrideTenant || tenant,
     'x-saare-user': options.overrideUser || user,
     'x-saare-role': options.overrideRole || role,
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {}),
     ...(options.headers || {})
   };
 
+  const { overrideTenant, overrideUser, overrideRole, overrideToken, ...fetchOptions } = options;
+
   return await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers
   });
 }
@@ -79,14 +80,16 @@ export const apiService = {
       const limit = params.limit || 100;
       const activeTenant = params.tenant || tenant;
       const activeUser = params.user || user;
-      
+
       const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
-      const res = await saareFetch(`/traces${query}`, { 
+      const res = await saareFetch(`/traces${query}`, {
         method: 'GET',
         overrideTenant: activeTenant,
-        overrideUser: activeUser
+        overrideUser: activeUser,
+        overrideRole: params.role,
+        overrideToken: params.token
       });
-      
+
       if (res && res.ok) {
         const data = await res.json();
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
@@ -138,20 +141,20 @@ export const apiService = {
       let bodyData = {};
 
       if (typeof payloadOrPrompt === 'string') {
-        bodyData = { 
-          prompt: payloadOrPrompt, 
+        bodyData = {
+          prompt: payloadOrPrompt,
           tenant: context.tenant || tenant,
           user: context.user || user,
           role: context.role || role,
-          ...context 
+          ...context
         };
       } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
-        bodyData = { 
+        bodyData = {
           tenant: tenant,
           user: user,
           role: role,
-          ...payloadOrPrompt, 
-          ...context 
+          ...payloadOrPrompt,
+          ...context
         };
       }
 
@@ -160,6 +163,7 @@ export const apiService = {
         overrideTenant: bodyData.tenant,
         overrideUser: bodyData.user,
         overrideRole: bodyData.role,
+        overrideToken: bodyData.token,
         body: JSON.stringify(bodyData)
       });
 
@@ -168,10 +172,10 @@ export const apiService = {
       }
 
       const errData = await res?.json().catch(() => ({}));
-      return { 
-        decision: 'DENY', 
-        verdict: 'FAIL_CLOSED_BLOCKED', 
-        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado preventivamente por la Bóveda L7.` 
+      return {
+        decision: 'DENY',
+        verdict: 'FAIL_CLOSED_BLOCKED',
+        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado preventivamente por la Bóveda L7.`
       };
     } catch (e) {
       return { decision: 'DENY', verdict: 'FAIL_CLOSED', error: e.message };
