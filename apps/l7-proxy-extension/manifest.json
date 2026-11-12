@@ -1,20 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "S.A.A.R.E. L7 Interceptor Proxy (RAM Ex-Ante)",
+  "name": "S.A.A.R.E. L7 Ex-Ante AI Interceptor",
   "version": "1.0.0",
-  "description": "Proxy de inspección ex-ante en memoria RAM efímera para interfaces web de IA (SGP 1.0).",
-  "permissions": [
-    "storage",
-    "activeTab"
-  ],
+  "permissions": ["storage"],
+  "storage": {
+    "managed_schema": "schema.json"
+  },
   "host_permissions": [
-    "https://*.saare.es/*",
-    "https://api.saare.es/*",
-    "https://vault.saare.es/*",
-    "https://gemini.google.com/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
-    "https://claude.ai/*"
+    "https://gemini.google.com/*",
+    "https://claude.ai/*",
+    "https://copilot.microsoft.com/*",
+    "https://api.saare.es/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,32 +20,26 @@
   "content_scripts": [
     {
       "matches": [
-        "https://gemini.google.com/*",
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://claude.ai/*"
+        "https://gemini.google.com/*",
+        "https://claude.ai/*",
+        "https://copilot.microsoft.com/*"
       ],
-      "js": ["contentScript.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    },
     {
-      "resources": ["config/credentials.json"],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://claude.ai/*",
+        "https://copilot.microsoft.com/*"
+      ],
+      "js": ["interceptor.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
     }
-  ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+  ]
 }

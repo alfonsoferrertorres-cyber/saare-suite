@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "TenantId": {
+      "type": "string",
+      "title": "Identificador de Inquilino S.A.A.R.E."
+    },
+    "ProxyGateway": {
+      "type": "string",
+      "title": "Endpoint Control Plane L7"
+    },
+    "FailClosed": {
+      "type": "boolean",
+      "title": "Bloquear si el Control Plane no responde"
+    }
+  }
+}
