@@ -1,5 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.1 / SGP 1.0
-// Producción Real: Conexiones Directas Bóveda D1, Métricas Multi-Tenant, Generación PDF e Integración GPO/K8s
+// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.2 / SGP 1.0 (Producción Multi-Tenant)
 import React, { useState, useEffect, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -11,54 +10,84 @@ import FriaWizardModal from './components/FriaReportModal';
 import { SAARE_CONFIG } from './config/saareState';
 import apiService from './services/apiService';
 
-// HELPER DE NORMALIZACIÓN DE ENDPOINTS REALES
+const EXTENSION_ID = 'jmlakofckaafjpjnfbihgchkeiglamme';
+
+// Normalización estricta de endpoints hacia https://api.saare.es
 const getApiEndpoint = (path = '') => {
   const baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
-  const cleanBase = baseUrl.replace(/\/api\/v1$/, '').replace(/\/api$/, '').replace(/\/v1$/, '');
+  const cleanBase = baseUrl.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${cleanBase}${cleanPath}`;
 };
 
+// Redacción Zero-PII en cliente para evitar exposición de datos personales en pantalla
+const redactSensitiveText = (value = '') => {
+  return String(value || '')
+    .replace(/\b\d{8}[A-HJ-NP-TV-Z]\b/gi, '[DNI_REDACTED]')
+    .replace(/\b[XYZ]\d{7}[A-HJ-NP-TV-Z]\b/gi, '[NIE_REDACTED]')
+    .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, '[IBAN_REDACTED]')
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]')
+    .replace(/\b(?:\d[ -]*?){13,16}\b/g, '[CARD_REDACTED]');
+};
+
+// Filtro de higiene para excluir registros de prueba o identificadores personales en métricas
+const isProductionTenantId = (id = '') => {
+  const normalized = String(id || '').trim();
+  if (!normalized || normalized.length < 4) return false;
+  if (normalized.includes('@')) return false;
+  if (/alfonso|ficticio|test_node|^sdf$/i.test(normalized)) return false;
+  return true;
+};
+
 export default function App() {
-  // Autenticación y Contexto de Sesión Real
   const queryParams = new URLSearchParams(window.location.search);
   const urlTenant = queryParams.get('tenant') ? queryParams.get('tenant').trim() : null;
+  const urlRole = queryParams.get('role') ? queryParams.get('role').trim() : null;
 
-  const [userEmail] = useState(() => (localStorage.getItem('saare_user_email') || 'operador@saare.es').trim().toLowerCase());
-  const [tenantId, setTenantId] = useState(() => (urlTenant || localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE').trim());
-  const [userRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
+  const [userEmail] = useState(() => {
+    const stored = (localStorage.getItem('saare_user_email') || '').trim().toLowerCase();
+    if (!stored || !stored.endsWith('@saare.es')) return 'auditor@saare.es';
+    return stored;
+  });
+
+  const [tenantId, setTenantId] = useState(() => {
+    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE').trim();
+    return isProductionTenantId(candidate) ? candidate : 'DEMO_ENTERPRISE';
+  });
+
+  const [userRole] = useState(() => (urlRole || localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST').trim());
   const [authToken] = useState(() => localStorage.getItem('saare_auth_token') || '');
 
-  // Inquilinos multicliente sincronizados
+  // Catálogo oficial de organizaciones multi-tenant
   const [availableTenants] = useState([
     { id: 'DEMO_ENTERPRISE', name: 'Demo Enterprise (Global)' },
-    { id: 'ORGANISMO_DEMO_01', name: 'Organismo Publico Demo 01' },
+    { id: 'ORGANISMO_DEMO_01', name: 'Organismo Público Demo 01' },
     { id: 'ORGANISMO_SALUD_ES', name: 'Servicio de Salud Regional' },
     { id: 'FINTECH_CORP_01', name: 'Fintech Banking Corp' }
   ]);
 
-  // Modales y Vistas Operativas
-  const [viewMode, setViewMode] = useState('GRC_AUDIT'); // 'GRC_AUDIT', 'EXECUTIVE', 'SUBSIDIES'
-  const [activeTab, setActiveTab] = useState('GLOBAL'); // 'GLOBAL', 'METRICS', 'RUNLIVE'
+  // Estados de navegación y runtime
+  const [viewMode, setViewMode] = useState('GRC_AUDIT');
+  const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
   const [timeStr, setTimeStr] = useState('');
   const [isFetchingVault, setIsFetchingVault] = useState(false);
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState('');
 
-  // Estados de Modales Reales
+  // Estados de modales operativos
   const [showOfficialReportModal, setShowOfficialReportModal] = useState(false);
   const [showSeatsModal, setShowSeatsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
-  // Probador de Inferencia Ex-Ante y Quick Prompts
-  const [testPrompt, setTestPrompt] = useState("Auditar cumplimiento normativo ex-ante bajo RPI-2026-SAARE-0914X.");
+  // Evaluador Ex-Ante en RAM
+  const [testPrompt, setTestPrompt] = useState('Auditar cumplimiento normativo ex-ante bajo RPI-2026-SAARE-0914X.');
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Estado de Evidencias Conectado a la Bóveda D1 Real
+  // Datos de Bóveda D1
   const [evidences, setEvidences] = useState([]);
   const [tenantMetrics, setTenantMetrics] = useState([]);
 
@@ -67,7 +96,7 @@ export default function App() {
     setTimeout(() => setGovernanceStatus(''), 4000);
   }, []);
 
-  // Mapeo Dinámico de Telemetría Real
+  // Mapeo higienizado de evidencias D1 (sin datos personales en claro)
   const mapEvidences = useCallback((remoteEvidences) => {
     const rawList = Array.isArray(remoteEvidences) ? remoteEvidences : (remoteEvidences?.evidences || [remoteEvidences]);
     if (!Array.isArray(rawList)) return [];
@@ -76,29 +105,38 @@ export default function App() {
       .filter(item => item && typeof item === 'object')
       .map((item, idx) => {
         const isDeny = item.final_decision === 'DENY' || item.decision === 'DENY' || item.verdict === 'RECHAZADO';
-        const promptVal = item.prompt || item.rawPrompt || item.input || '';
+        const rawPromptVal = item.prompt || item.rawPrompt || item.input || '';
+        const safePrompt = isDeny
+          ? '[CONTENIDO BLOQUEADO Y SANITIZADO EX-ANTE POR POLÍTICA DLP]'
+          : redactSensitiveText(rawPromptVal || '(Sin instrucción)');
+
         return {
           id: item.trace_id || item.id || `EV-L7-${1000 + idx}`,
           time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
           rawTimestamp: item.timestamp || new Date().toISOString(),
           cat: item.cat || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
           sub: item.sub || 'ISO/IEC 42001 / EU AI Act',
-          prompt: String(promptVal || '(Sin prompt)'),
-          responseOutput: String(item.responseOutput || item.response || (isDeny ? '[BLOQUEADO EX-ANTE]' : '')),
+          prompt: safePrompt,
+          responseOutput: isDeny ? '[BLOQUEADO EX-ANTE]' : redactSensitiveText(item.responseOutput || item.response || ''),
           verdict: item.verdict || (isDeny ? 'RECHAZADO' : 'PERMITIDO'),
           decision: isDeny ? 'DENY' : 'ALLOW',
           anchored: item.anchored !== undefined ? item.anchored : 1,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
-          user: item.user_email || item.user || userEmail,
-          tenant: item.tenant_id || item.tenant || tenantId,
-          merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7",
+          user: 'operador@' + tenantId.toLowerCase().replace(/[^a-z0-9]/g, '') + '.es',
+          tenant: isProductionTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : tenantId,
+          merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7',
           latency: item.execution_latency_ms || item.latency || 0.84,
-          rawJson: item
+          rawJson: {
+            trace_id: item.trace_id || item.id,
+            tenant_id: tenantId,
+            decision: isDeny ? 'DENY' : 'ALLOW',
+            ms3v_hash: item.ms3v_hash || item.merkle_root || item.merkleRoot
+          }
         };
       });
-  }, [userEmail, tenantId]);
+  }, [tenantId]);
 
-  // Consulta de Métricas Agregadas Multi-Tenant desde D1
+  // Consulta de Métricas Agregadas Multi-Tenant con aislamiento por rol/tenant
   const fetchTenantMetrics = useCallback(async () => {
     setIsFetchingMetrics(true);
     setMetricsError('');
@@ -106,6 +144,7 @@ export default function App() {
       const endpoint = getApiEndpoint('/v1/metrics/tenants');
       const headers = {
         'x-saare-tenant': tenantId,
+        'x-saare-role': userRole,
         'Content-Type': 'application/json'
       };
       if (authToken) {
@@ -118,16 +157,23 @@ export default function App() {
       }
 
       const json = await res.json();
-      const rows = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
-      setTenantMetrics(rows);
+      const rawRows = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+
+      // Filtrar registros de prueba/personales y aislar por inquilino si no es administrador autenticado
+      const isGlobalAdmin = userRole === 'CISO_ADMIN' && Boolean(authToken);
+      const cleanRows = rawRows
+        .filter(row => isProductionTenantId(row?.tenant_id))
+        .filter(row => isGlobalAdmin || row.tenant_id === tenantId);
+
+      setTenantMetrics(cleanRows);
     } catch (e) {
       setMetricsError(e.message || 'Error al cargar métricas agregadas desde D1.');
     } finally {
       setIsFetchingMetrics(false);
     }
-  }, [tenantId, authToken]);
+  }, [tenantId, userRole, authToken]);
 
-  // Consulta Directa a la Bóveda D1 en api.saare.es
+  // Sincronización con Bóveda D1
   const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null) => {
     const targetTenant = overrideTenant || tenantId;
     setIsFetchingVault(true);
@@ -171,9 +217,29 @@ export default function App() {
     return () => clearInterval(intervalClock);
   }, [fetchTelemetryDirectFromVault]);
 
-  // DESCARGA REAL DE POLÍTICA REGISTRY GPO WINDOWS
+  // Descarga de directiva GPO Multi-Tenant para Edge y Chrome (Managed Storage de extensión)
   const handleDownloadEnterpriseGpoReg = () => {
-    const regContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"TenantId"="${tenantId}"\n"TrustAnchor"="${SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es'}"\n"ProxyGateway"="${getApiEndpoint('/v1/chat/completions')}"\n"RpiRegistration"="RPI-2026-SAARE-0914X"\n`;
+    const gateway = getApiEndpoint('/v1/chat/completions');
+    const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
+
+    const regContent = [
+      'Windows Registry Editor Version 5.00',
+      '',
+      `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\${EXTENSION_ID}\\policy]`,
+      `"TenantId"="${tenantId}"`,
+      `"ProxyGateway"="${gateway}"`,
+      `"TrustAnchor"="${trustAnchor}"`,
+      '"FailClosed"=dword:00000001',
+      '"EnableExAnteEnforcement"=dword:00000001',
+      '',
+      `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\3rdparty\\extensions\\${EXTENSION_ID}\\policy]`,
+      `"TenantId"="${tenantId}"`,
+      `"ProxyGateway"="${gateway}"`,
+      `"TrustAnchor"="${trustAnchor}"`,
+      '"FailClosed"=dword:00000001',
+      '"EnableExAnteEnforcement"=dword:00000001'
+    ].join('\r\n') + '\r\n';
+
     const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -181,14 +247,11 @@ export default function App() {
     a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
     a.click();
     URL.revokeObjectURL(url);
-    triggerGovernance("Plantilla GPO registrada y descargada.");
+    triggerGovernance(`Directiva GPO multi-navegador generada para [${tenantId}].`);
   };
 
-  // DESCARGA SANEADA DE MANIFIESTO KUBERNETES (ESPACIOS ESTÁNDAR YAML)
+  // Descarga de Manifiesto Kubernetes corporativo anonimizado
   const handleDownloadK8sManifest = () => {
-    const enterpriseHolder = "S.A.A.R.E. Enterprise Custodian Corp";
-    const enterpriseNif = "A-00000000";
-
     const yamlContent = [
       'apiVersion: v1',
       'kind: ConfigMap',
@@ -196,7 +259,7 @@ export default function App() {
       '  name: saare-ip-manifest',
       '  namespace: saare-system',
       'data:',
-      `  TITULAR_INVENTOR: "${enterpriseHolder} (${enterpriseNif})"`,
+      '  TITULAR_CORPORATIVO: "S.A.A.R.E. Enterprise Custodian Corp"',
       '  REGISTRO_RPI: "RPI-2026-SAARE-0914X"',
       `  TENANT_ID: "${tenantId}"`,
       '  HUELLA_RAIZ_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"',
@@ -210,10 +273,10 @@ export default function App() {
     a.download = `01-ip-manifest-${tenantId.toLowerCase()}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-    triggerGovernance("Manifiesto YAML K8s anonimizado generado.");
+    triggerGovernance('Manifiesto YAML K8s generado.');
   };
 
-  // PRUEBA REAL EX-ANTE / INYECCIÓN DE PROMPT RÁPIDA (CON BAJA FRICCIÓN)
+  // Ejecución de prueba Ex-Ante L7
   const handleExecuteTestExAnte = async (customPrompt = null) => {
     const promptToRun = customPrompt || testPrompt;
     if (!promptToRun.trim()) return;
@@ -229,30 +292,29 @@ export default function App() {
         token: authToken,
         role: userRole
       });
-      const latencyMs = (performance.now() - t0).toFixed(2) + " ms";
+      const latencyMs = (performance.now() - t0).toFixed(2) + ' ms';
       const isDeny = data?.decision === 'DENY' || data?.verdict === 'FAIL_CLOSED_BLOCKED';
 
       const evalResult = {
-        verdict: isDeny ? "RECHAZADO / SANITIZADO EN RAM" : "PERMITIDO CONFORME",
-        decision: isDeny ? "DENY" : "ALLOW",
-        sanitizedPrompt: data?.sanitizedPrompt || data?.enforcement?.executedCommand || promptToRun,
+        verdict: isDeny ? 'RECHAZADO / SANITIZADO EN RAM' : 'PERMITIDO CONFORME',
+        decision: isDeny ? 'DENY' : 'ALLOW',
+        sanitizedPrompt: isDeny
+          ? '[PAYLOAD BLOQUEADO Y REDACTADO EN RAM]'
+          : redactSensitiveText(data?.sanitizedPrompt || data?.enforcement?.executedCommand || promptToRun),
         latency: latencyMs,
-        seal: data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"
+        seal: data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7'
       };
 
       setTestResult(evalResult);
       triggerGovernance(`⚡ Prompt interceptado (${evalResult.decision}) y sellado en D1.`);
-
-      // Sincronización automática inmediata con la Bóveda para reflejar la traza en la tabla
       await fetchTelemetryDirectFromVault();
     } catch (err) {
-      triggerGovernance("Error al evaluar el prompt en el gateway L7.");
+      triggerGovernance('Error al evaluar el prompt en el gateway L7.');
     } finally {
       setIsEvaluating(false);
     }
   };
 
-  // ACCIÓN REAL: GENERACIÓN DE INFORME OFICIAL PDF
   const handleOpenPdfReport = (evidence) => {
     setSelectedEvidenceForPdf(evidence);
     setShowOfficialReportModal(true);
@@ -265,14 +327,13 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
 
-      {/* ALERTA FLOTANTE DE ESTADO */}
       {governanceStatus && (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: '#059669', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 10000, fontWeight: '800', fontSize: '0.82rem', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
           🔔 {governanceStatus}
         </div>
       )}
 
-      {/* HEADER PRINCIPAL CON BOTONES OPERATIVOS DERECHO */}
+      {/* HEADER PRINCIPAL */}
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
 
@@ -281,7 +342,6 @@ export default function App() {
             <span style={{ background: '#1e293b', color: '#34d399', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>SGP 1.0 Enterprise</span>
           </div>
 
-          {/* BARRA NAVEGACIÓN Y BOTONES ACCIÓN REALES */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => setViewMode('GRC_AUDIT')}
@@ -298,8 +358,6 @@ export default function App() {
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'SUBSIDIES' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📙 SUBVENCIONES
             </button>
-
-            {/* ACCIONES DE DESPLIEGUE REALES */}
             <button
               onClick={() => setShowSeatsModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
@@ -325,24 +383,20 @@ export default function App() {
         </div>
       </header>
 
-      {/* CUERPO PRINCIPAL SECTORES DEDICADOS */}
+      {/* CUERPO PRINCIPAL */}
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
 
-        {/* VISTA 1: CENTRO DE SUBVENCIONES */}
         {viewMode === 'SUBSIDIES' && (
           <SubsidiesHub tenantId={tenantId} onBack={() => setViewMode('GRC_AUDIT')} />
         )}
 
-        {/* VISTA 2: PANEL EJECUTIVO */}
         {viewMode === 'EXECUTIVE' && (
           <ExecutiveView tenantId={tenantId} evidences={evidences} onManageSeats={() => setShowSeatsModal(true)} />
         )}
 
-        {/* VISTA 3: AUDITORÍA GRC Y TELEMETRÍA (PRINCIPAL) */}
         {viewMode === 'GRC_AUDIT' && (
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
 
-            {/* TOOLBAR SUPERIOR CON CONTEXTO NORMATIVO */}
             <GovernanceToolbar
               tenantId={tenantId}
               userEmail={userEmail}
@@ -350,7 +404,7 @@ export default function App() {
               onExportClick={() => setShowExportModal(true)}
             />
 
-            {/* TARJETAS DE MÉTRICAS CON SELECTOR DINÁMICO DE ORGANISMOS */}
+            {/* TARJETAS DE MÉTRICAS Y SELECTOR DE INQUILINO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
 
               <div style={{ background: '#020617', border: '1px solid #38bdf8', padding: '16px', borderRadius: '8px' }}>
@@ -380,26 +434,26 @@ export default function App() {
 
             </div>
 
-            {/* SECCIÓN DE ACCESOS RÁPIDOS (MENSAJES DE BAJA FRICCIÓN: "BUENOS DÍAS", ETC.) */}
+            {/* INYECCIÓN RÁPIDA DE AUDITORÍA EX-ANTE */}
             <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '14px 18px', borderRadius: '8px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase' }}>
                 ⚡ Inyección Rápida y Auditoría Ex-Ante (Capa 7)
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
-                  onClick={() => handleExecuteTestExAnte("Buenos días, por favor audita el estado actual.")}
+                  onClick={() => handleExecuteTestExAnte('Buenos días, por favor audita el estado actual.')}
                   disabled={isEvaluating}
                   style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #10b981', color: '#34d399', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
                   👋 Enviar "Buenos días"
                 </button>
                 <button
-                  onClick={() => handleExecuteTestExAnte("Verificar estado de cumplimiento normativo ex-ante.")}
+                  onClick={() => handleExecuteTestExAnte('Verificar estado de cumplimiento normativo ex-ante.')}
                   disabled={isEvaluating}
                   style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #0284c7', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
                   🛡️ Test Compliance Check
                 </button>
                 <button
-                  onClick={() => handleExecuteTestExAnte("Simular inyección con PII corporativo confidencial.")}
+                  onClick={() => handleExecuteTestExAnte('Simular inyección con PII corporativo confidencial.')}
                   disabled={isEvaluating}
                   style={{ padding: '6px 12px', background: '#0f172a', border: '1px solid #ef4444', color: '#f87171', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
                   ⚠️ Simular Alerta PII (Deny)
@@ -407,7 +461,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* SELECCIÓN DE PESTAÑAS Y REFRESCADO D1 */}
+            {/* PESTAÑAS DE TELEMETRÍA */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
@@ -434,11 +488,11 @@ export default function App() {
                 onClick={() => fetchTelemetryDirectFromVault()}
                 disabled={isFetchingVault}
                 style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-                {isFetchingVault ? "Consultando Bóveda..." : `🔄 Sincronizar Bóveda (${tenantId})`}
+                {isFetchingVault ? 'Consultando Bóveda...' : `🔄 Sincronizar Bóveda (${tenantId})`}
               </button>
             </div>
 
-            {/* TAB 1: REGISTRO REAL DE EVIDENCIAS Y GENERACIÓN DE REPORTES PDF */}
+            {/* TAB 1: EVIDENCIAS Y TRAZAS D1 */}
             {activeTab === 'GLOBAL' && (
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
@@ -486,7 +540,7 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: TELEMETRÍA Y CONSUMO MULTI-TENANT */}
+            {/* TAB 2: CONSUMO MULTI-TENANT AISLADO */}
             {activeTab === 'METRICS' && (
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', background: '#020617' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
@@ -527,13 +581,13 @@ export default function App() {
                     ) : tenantMetrics.length === 0 ? (
                       <tr>
                         <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                          Sin registros de consumo multi-tenant acumulado.
+                          Sin registros de consumo acumulado para el ámbito seleccionado.
                         </td>
                       </tr>
                     ) : (
                       tenantMetrics.map((row, idx) => (
                         <tr key={row.tenant_id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
-                          <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold', fontFamily: 'monospace' }}>{row.tenant_id || 'UNKNOWN'}</td>
+                          <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold', fontFamily: 'monospace' }}>{row.tenant_id}</td>
                           <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{row.total_prompts ?? 0}</td>
                           <td style={{ padding: '12px', color: '#34d399', fontWeight: 'bold' }}>{row.aprobados ?? 0}</td>
                           <td style={{ padding: '12px', color: '#f87171', fontWeight: 'bold' }}>{row.bloqueados_pii ?? 0}</td>
@@ -546,7 +600,7 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 3: PROBADOR EX-ANTE EN TIEMPO REAL */}
+            {/* TAB 3: EVALUADOR EX-ANTE EN RAM */}
             {activeTab === 'RUNLIVE' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
                 <h3 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>⚡ EVALUADOR PROMPT EX-ANTE EN RAM (BLOCK LOGIC)</h3>
@@ -560,7 +614,7 @@ export default function App() {
                   onClick={() => handleExecuteTestExAnte()}
                   disabled={isEvaluating}
                   style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
-                  {isEvaluating ? "PROCESANDO EN DISYUNTOR L7..." : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId}]`}
+                  {isEvaluating ? 'PROCESANDO EN DISYUNTOR L7...' : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId}]`}
                 </button>
 
                 {testResult && (
@@ -578,7 +632,7 @@ export default function App() {
 
       </main>
 
-      {/* MODALES FUNCIONALES CONECTADOS */}
+      {/* MODALES FUNCIONALES */}
       {showOfficialReportModal && selectedEvidenceForPdf && (
         <OfficialReportModal
           evidence={selectedEvidenceForPdf}
