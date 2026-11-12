@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.3 / SGP 1.0 (Producción Multi-Tenant)
+// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.4 / SGP 1.0 (Producción Multi-Tenant)
 import React, { useState, useEffect, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -217,6 +217,17 @@ export default function App() {
     return () => clearInterval(intervalClock);
   }, [fetchTelemetryDirectFromVault]);
 
+  // Descarga directa del paquete de Extensión Proxy L7 (.ZIP)
+  const handleDownloadL7Extension = () => {
+    const a = document.createElement('a');
+    a.href = '/deploy/saare_l7_proxy_extension.zip';
+    a.download = `saare_l7_proxy_extension_${tenantId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId}].`);
+  };
+
   // Descarga de directiva GPO Multi-Tenant para Edge y Chrome (Instalación forzada + Managed Storage)
   const handleDownloadEnterpriseGpoReg = () => {
     const gateway = getApiEndpoint('/v1/chat/completions');
@@ -375,6 +386,11 @@ export default function App() {
               onClick={() => setShowFriaModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📋 AUDITORÍA FRIA
+            </button>
+            <button
+              onClick={handleDownloadL7Extension}
+              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              🧩 EXTENSIÓN L7 (.ZIP)
             </button>
             <button
               onClick={handleDownloadEnterpriseGpoReg}
