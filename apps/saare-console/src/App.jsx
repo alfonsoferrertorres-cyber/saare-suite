@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.2 / SGP 1.0 (Producción Multi-Tenant)
+// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.3 / SGP 1.0 (Producción Multi-Tenant)
 import React, { useState, useEffect, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -217,7 +217,7 @@ export default function App() {
     return () => clearInterval(intervalClock);
   }, [fetchTelemetryDirectFromVault]);
 
-  // Descarga de directiva GPO Multi-Tenant para Edge y Chrome (Managed Storage de extensión)
+  // Descarga de directiva GPO Multi-Tenant para Edge y Chrome (Instalación forzada + Managed Storage)
   const handleDownloadEnterpriseGpoReg = () => {
     const gateway = getApiEndpoint('/v1/chat/completions');
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
@@ -225,6 +225,14 @@ export default function App() {
     const regContent = [
       'Windows Registry Editor Version 5.00',
       '',
+      '; 1. Instalacion silenciosa y bloqueo de desinstalacion (Microsoft Edge & Google Chrome)',
+      '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]',
+      `"1"="${EXTENSION_ID};https://edge.microsoft.com/extensionwebstorebase/v1/crx"`,
+      '',
+      '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]',
+      `"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"`,
+      '',
+      '; 2. Inyeccion de identidad Multi-Tenant y Gateway L7 (chrome.storage.managed)',
       `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\${EXTENSION_ID}\\policy]`,
       `"TenantId"="${tenantId}"`,
       `"ProxyGateway"="${gateway}"`,
@@ -247,7 +255,7 @@ export default function App() {
     a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
     a.click();
     URL.revokeObjectURL(url);
-    triggerGovernance(`Directiva GPO multi-navegador generada para [${tenantId}].`);
+    triggerGovernance(`Directiva GPO completa (ForceInstall + Tenant) generada para [${tenantId}].`);
   };
 
   // Descarga de Manifiesto Kubernetes corporativo anonimizado
