@@ -16,6 +16,7 @@
     "https://api.anthropic.com/*",
     "https://api.deepseek.com/*",
     "http://127.0.0.1:11434/*",
+    "http://127.0.0.1:8080/*",
     "https://*.chatgpt.com/*",
     "https://*.claude.ai/*",
     "https://aistudio.google.com/*"
@@ -24,6 +25,20 @@
     "service_worker": "src/background/background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://*.claude.ai/*",
+        "https://aistudio.google.com/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": {

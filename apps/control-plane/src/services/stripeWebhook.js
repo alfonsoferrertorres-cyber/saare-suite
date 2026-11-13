@@ -1,22 +1,17 @@
-// control-plane/stripeWebhook.js — S.A.A.R.E. Enterprise SGP 1.0 (Stripe Sync Engine)
-import { PLAN_IDS, sanitizePlanId } from "@saare/entitlements";
+// apps/control-plane/src/services/stripeWebhook.js
+import { computeSha256 } from "./keyManager.js";
+import { sanitizePlanId, getPlanEntitlements } from "@saare/entitlements";
 
-async function verifyStripeSignature(payload, signatureHeader, secret) {
-  if (!signatureHeader || !secret) return false;
-
-  const elements = signatureHeader.split(',').map(item => item.trim());
-  const timestamp = elements.find(e => e.startsWith('t='))?.split('=')[1];
-  const v1Signatures = elements.filter(e => e.startsWith('v1=')).map(e => e.split('=')[1]);
-
-  if (!timestamp || v1Signatures.length === 0) return false;
-
-  const TOLERANCE_SECONDS = 300;
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - Number(timestamp)) > TOLERANCE_SECONDS) return false;
+async function verifyStripeSignature(payload, sigHeader, secret) {
+  if (!secret || !sigHeader) return false;
+  const parts = Object.fromEntries(
+    sigHeader.split(",").map((item) => item.split("="))
+  );
+  const timestamp = parts.t;
+  const signature = parts.v1;
+  if (!timestamp || !signature) return false;
 
   const encoder = new TextEncoder();
-  const signedPayload = `${timestamp}.${payload}`;
-
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -24,272 +19,163 @@ async function verifyStripeSignature(payload, signatureHeader, secret) {
     false,
     ["sign"]
   );
+  const signed = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${timestamp}.${payload}`)
+  );
+  const expected = Array.from(new Uint8Array(signed))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 
-  const expectedBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
-  const expectedHex = Array.from(new Uint8Array(expectedBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-
-  return v1Signatures.some(sig => {
-    if (sig.length !== expectedHex.length) return false;
-    let diff = 0;
-    for (let i = 0; i < expectedHex.length; i++) {
-      diff |= expectedHex.charCodeAt(i) ^ sig.charCodeAt(i);
-    }
-    return diff === 0;
-  });
+  return expected === signature;
 }
 
-function mapTierToRole(tierOrPlan, priceId) {
-  const target = (tierOrPlan || "").toLowerCase();
-  if (
-    target.includes("enterprise") ||
-    target.includes("professional") ||
-    priceId === "price_1UHuuwFlwFW4ifPS66wDvS4n" ||
-    priceId === "price_1UHuypFlwFW4ifPSyDz1vT47"
-  ) {
-    return "CISO_ADMIN";
-  }
-  if (target.includes("compliance") || target.includes("starter")) {
-    return "DPO_GRC_LEVEL_2";
-  }
-  if (target.includes("sandbox") || target.includes("free")) {
-    return "AUDITOR_GUEST_LEVEL_0";
-  }
-  return "CISO_ADMIN";
-}
+export async function provisionTenantFromBilling({
+  tenantId,
+  companyName,
+  adminEmail,
+  planId,
+  stripeCustomerId,
+  stripeSubscriptionId,
+  env
+}) {
+  const cleanPlan = sanitizePlanId(planId);
+  const entitlements = getPlanEntitlements(cleanPlan);
+  const monthlyQuota = entitlements?.monthlyVerdicts || 25000;
+  const cleanTenant = tenantId
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "_")
+    .slice(0, 32);
 
-function resolvePlanQuota(planId) {
-  const id = String(planId || "").toUpperCase();
-  if (id.includes("ENTERPRISE")) return 1000000;
-  if (id.includes("PROFESSIONAL")) return 100000;
-  if (id.includes("COMPLIANCE") || id.includes("STARTER")) return 10000;
-  return 1000;
-}
+  const licenseKey = `sk_saare_live_${(
+    await computeSha256(`${cleanTenant}:${adminEmail}:${env?.JWT_SECRET || "saare"}`)
+  ).slice(0, 28)}`;
 
-function resolvePlanId(session) {
-  const metadata = session.metadata || {};
-  const tier = metadata.tier || metadata.plan || metadata.planId;
+  const tempPassword = `Saare${(
+    await computeSha256(`${adminEmail}:${Date.now()}`)
+  ).slice(0, 10)}!`;
 
-  if (tier) {
-    return sanitizePlanId(tier.toUpperCase());
+  if (env?.DB) {
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json)
+        VALUES (?, ?, ?, 'ACTIVE', ?, datetime('now', '+35 days'), ?)
+        ON CONFLICT(tenant_id) DO UPDATE SET
+          plan_id = excluded.plan_id,
+          status = 'ACTIVE',
+          quota = excluded.quota,
+          expires_at = excluded.expires_at,
+          config_json = excluded.config_json
+      `).bind(
+        cleanTenant,
+        companyName || cleanTenant,
+        cleanPlan,
+        monthlyQuota,
+        JSON.stringify({
+          stripeCustomerId: stripeCustomerId || null,
+          stripeSubscriptionId: stripeSubscriptionId || null,
+          sgpVersion: "SGP-1.0"
+        })
+      ),
+      env.DB.prepare(`
+        INSERT INTO users (email, password_hash, name, company, role, is_verified)
+        VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)
+        ON CONFLICT(email) DO UPDATE SET
+          company = excluded.company,
+          role = 'CISO_ADMIN',
+          is_verified = 1
+      `).bind(
+        adminEmail.trim().toLowerCase(),
+        tempPassword,
+        `Admin ${companyName || cleanTenant}`,
+        cleanTenant
+      )
+    ]);
   }
 
-  // Soporte para client_reference_id compuesto: "TENANT_ID__PLAN_ID"
-  if (session.client_reference_id && session.client_reference_id.includes("__")) {
-    const [, refPlan] = session.client_reference_id.split("__");
-    if (refPlan) return sanitizePlanId(refPlan.toUpperCase());
+  if (env?.SAARE_VAULT_KV) {
+    await env.SAARE_VAULT_KV.put(`license:${cleanTenant}`, licenseKey);
+    await env.SAARE_VAULT_KV.put(`token_tenant:${licenseKey}`, cleanTenant);
+    await env.SAARE_VAULT_KV.put(
+      `tenant_meta:${cleanTenant}`,
+      JSON.stringify({
+        tenantId: cleanTenant,
+        planId: cleanPlan,
+        quota: monthlyQuota,
+        status: "ACTIVE",
+        stripeCustomerId
+      })
+    );
   }
 
-  const priceId = session.line_items?.data?.[0]?.price?.id || metadata.price_id || metadata.price;
-  if (priceId === "price_1UHuuwFlwFW4ifPS66wDvS4n") return PLAN_IDS.ENTERPRISE_1500;
-  if (priceId === "price_1UHuypFlwFW4ifPSyDz1vT47") return PLAN_IDS.PROFESSIONAL_649;
-
-  return PLAN_IDS.COMPLIANCE_249;
-}
-
-function resolveTenantId(session) {
-  if (session.client_reference_id) {
-    const rawRef = session.client_reference_id.split("__")[0];
-    return rawRef.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_");
-  }
-  if (session.metadata?.tenant) {
-    return String(session.metadata.tenant).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_");
-  }
-  return `TENANT_${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  return {
+    tenantId: cleanTenant,
+    planId: cleanPlan,
+    quota: monthlyQuota,
+    licenseKey,
+    adminEmail: adminEmail.trim().toLowerCase(),
+    tempPassword
+  };
 }
 
 export async function handleStripeWebhook(request, env) {
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405 });
-  }
+  const rawBody = await request.text();
+  const sigHeader = request.headers.get("stripe-signature");
 
-  const bodyText = await request.text();
-  const signature = request.headers.get("stripe-signature");
-
-  const isValidStripeEvent = await verifyStripeSignature(bodyText, signature, env.STRIPE_WEBHOOK_SECRET);
-  if (!isValidStripeEvent) {
-    console.error("[SAARE Stripe Webhook] Firma inválida rechazada.");
-    return new Response(JSON.stringify({ error: "Firma de webhook inválida" }), { status: 401 });
-  }
-
-  let event;
-  try {
-    event = JSON.parse(bodyText);
-  } catch (err) {
-    return new Response(JSON.stringify({ error: "Invalid JSON Payload" }), { status: 400 });
-  }
-
-  if (env.SAARE_VAULT_KV && event.id) {
-    const seenKey = `stripe_event:${event.id}`;
-    const alreadyProcessed = await env.SAARE_VAULT_KV.get(seenKey);
-    if (alreadyProcessed) {
-      return new Response(JSON.stringify({ status: "ALREADY_PROCESSED", eventId: event.id }), {
-        status: 200,
+  if (env?.STRIPE_WEBHOOK_SECRET) {
+    const isValid = await verifyStripeSignature(
+      rawBody,
+      sigHeader,
+      env.STRIPE_WEBHOOK_SECRET
+    );
+    if (!isValid) {
+      return new Response(JSON.stringify({ error: "INVALID_STRIPE_SIGNATURE" }), {
+        status: 400,
         headers: { "Content-Type": "application/json" }
       });
     }
-    await env.SAARE_VAULT_KV.put(seenKey, "1", { expirationTtl: 60 * 60 * 24 * 30 });
   }
 
-  if (event.type === "checkout.session.completed" || event.type === "invoice.payment_succeeded") {
-    const session = event.data.object;
+  const event = JSON.parse(rawBody || "{}");
 
-    if (event.type === "invoice.payment_succeeded" && session.billing_reason === "subscription_cycle") {
-      return new Response(JSON.stringify({ status: "CYCLE_RENEWAL_ACKNOWLEDGED" }), { status: 200 });
-    }
+  if (event.type === "checkout.session.completed" || event.type === "invoice.paid") {
+    const obj = event.data?.object || {};
+    const meta = obj.metadata || {};
+    const email = obj.customer_details?.email || obj.customer_email || meta.adminEmail;
+    const company = meta.companyName || (email ? email.split("@")[1].split(".")[0].toUpperCase() : "TENANT_PRO");
+    const tenantId = meta.tenantId || `TNT_${company}_${Date.now().toString(36).toUpperCase()}`;
+    const planId = meta.planId || "PROFESSIONAL_649";
 
-    const customerEmail = (
-      session.customer_details?.email ||
-      session.customer_email ||
-      session.payer?.email_address ||
-      ""
-    ).toLowerCase().trim();
-
-    const customerName = session.customer_details?.name || session.metadata?.organization || "Organización Suscrita";
-    const planId = resolvePlanId(session);
-    const quota = resolvePlanQuota(planId);
-    const priceId = session.line_items?.data?.[0]?.price?.id || session.metadata?.price_id || "payment_link";
-    const assignedRole = mapTierToRole(session.metadata?.tier || planId, priceId);
-    const tenantId = resolveTenantId(session);
-
-    if (session.payment_status && session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
-      return new Response(JSON.stringify({ status: "PENDING_PAYMENT", sessionId: session.id }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
+    if (email) {
+      const provisioned = await provisionTenantFromBilling({
+        tenantId,
+        companyName: company,
+        adminEmail: email,
+        planId,
+        stripeCustomerId: obj.customer,
+        stripeSubscriptionId: obj.subscription,
+        env
       });
+
+      return new Response(
+        JSON.stringify({ received: true, provisioned: true, tenantId: provisioned.tenantId }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
-
-    if (!customerEmail) {
-      console.error("[SAARE Stripe Webhook] Evento sin email de cliente:", session.id);
-      return new Response(JSON.stringify({ status: "NO_EMAIL", sessionId: session.id }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const nowIso = new Date().toISOString();
-    const tenantRecord = {
-      tenantId,
-      tenant_id: tenantId,
-      customerEmail,
-      name: customerName,
-      companyName: customerName,
-      status: "ACTIVE",
-      plan: planId,
-      planId,
-      quota,
-      priceId,
-      role: assignedRole,
-      activeScenarios: ["*"],
-      updatedAt: nowIso
-    };
-
-    if (env.SAARE_VAULT_KV) {
-      await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(tenantRecord));
-      await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(tenantRecord));
-    }
-
-    if (env.DB) {
-      try {
-        await env.DB.batch([
-          env.DB.prepare(`
-            CREATE TABLE IF NOT EXISTS tenants (
-              tenant_id TEXT PRIMARY KEY,
-              name TEXT NOT NULL,
-              plan_id TEXT NOT NULL,
-              status TEXT NOT NULL DEFAULT 'ACTIVE',
-              quota INTEGER NOT NULL DEFAULT 10000,
-              expires_at TEXT,
-              config_json TEXT,
-              created_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-          `),
-          env.DB.prepare(`
-            CREATE TABLE IF NOT EXISTS users (
-              email TEXT PRIMARY KEY,
-              password_hash TEXT NOT NULL,
-              name TEXT NOT NULL,
-              company TEXT NOT NULL,
-              role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
-              is_verified INTEGER NOT NULL DEFAULT 1,
-              created_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-          `),
-          env.DB.prepare(`
-            INSERT INTO tenants (tenant_id, name, plan_id, status, quota, config_json, created_at)
-            VALUES (?, ?, ?, 'ACTIVE', ?, ?, datetime('now'))
-            ON CONFLICT(tenant_id) DO UPDATE SET
-              name = excluded.name,
-              plan_id = excluded.plan_id,
-              status = 'ACTIVE',
-              quota = excluded.quota,
-              config_json = excluded.config_json
-          `).bind(tenantId, customerName, planId, quota, JSON.stringify(tenantRecord)),
-          env.DB.prepare(`
-            INSERT INTO users (email, password_hash, name, company, role, is_verified, created_at)
-            VALUES (?, 'STRIPE_SSO_PROVISIONED', ?, ?, ?, 1, datetime('now'))
-            ON CONFLICT(email) DO UPDATE SET
-              company = excluded.company,
-              role = excluded.role,
-              is_verified = 1
-          `).bind(customerEmail, customerName, tenantId, assignedRole)
-        ]);
-      } catch (e) {
-        console.error("[SAARE Stripe Webhook] Error sincronizando D1 Database:", e);
-        return new Response(JSON.stringify({ error: "DB_SYNC_FAILED", message: e.message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-    }
-
-    return new Response(JSON.stringify({
-      status: "PROVISIONED",
-      tenantId,
-      user: customerEmail,
-      planId,
-      role: assignedRole
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
   }
 
   if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object;
-    const customerEmail = subscription.metadata?.customerEmail?.toLowerCase().trim();
-    const tenantId = subscription.metadata?.tenant?.toUpperCase().trim();
-
-    if (env.DB && tenantId) {
-      await env.DB.prepare(`
-        UPDATE tenants SET status = 'CANCELLED' WHERE tenant_id = ?
-      `).bind(tenantId).run().catch(() => {});
+    const sub = event.data?.object || {};
+    const tenantId = sub.metadata?.tenantId;
+    if (tenantId && env?.DB) {
+      await env.DB.prepare("UPDATE tenants SET status = 'SUSPENDED' WHERE tenant_id = ?")
+        .bind(tenantId)
+        .run();
     }
-
-    if (env.SAARE_VAULT_KV) {
-      if (customerEmail) {
-        const existingKv = await env.SAARE_VAULT_KV.get(`user:${customerEmail}`, "json");
-        if (existingKv) {
-          existingKv.status = "CANCELLED";
-          existingKv.updatedAt = new Date().toISOString();
-          await env.SAARE_VAULT_KV.put(`user:${customerEmail}`, JSON.stringify(existingKv));
-        }
-      }
-      if (tenantId) {
-        const existingTenantKv = await env.SAARE_VAULT_KV.get(`tenant:${tenantId}`, "json");
-        if (existingTenantKv) {
-          existingTenantKv.status = "CANCELLED";
-          existingTenantKv.updatedAt = new Date().toISOString();
-          await env.SAARE_VAULT_KV.put(`tenant:${tenantId}`, JSON.stringify(existingTenantKv));
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({ status: "SUBSCRIPTION_CANCELLED" }), { status: 200 });
   }
 
-  return new Response(JSON.stringify({ status: "IGNORED", type: event.type }), {
+  return new Response(JSON.stringify({ received: true }), {
     status: 200,
     headers: { "Content-Type": "application/json" }
   });

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saare-edge-agent"
+version = "1.0.0"
+description = "Agente Perimetral L7 Stateless y Motor de Desintoxicación Semántica S.A.A.R.E."
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+saare-agent = "saare_framework:main"

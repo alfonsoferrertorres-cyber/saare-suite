@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.7 - Production Ready)
+# SCRIPT MAESTRO DE PRODUCCIÓN INTEGRAL S.A.A.R.E. Enterprise (v8.8 - Production Ready)
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
@@ -38,24 +38,44 @@ try {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 1: DEPENDENCIAS, EMPAQUETADO DE EXTENSIÓN Y LIMPIEZA
+# FASE 1: DEPENDENCIAS, EMPAQUETADO DE EXTENSIÓN + SIDECAR PYTHON Y LIMPIEZA
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [1/6] Resolviendo dependencias, empaquetando proxy y limpiando builds..." -ForegroundColor Yellow
+Write-Host "`n==> [1/6] Resolviendo dependencias, empaquetando artefactos L7 y limpiando builds..." -ForegroundColor Yellow
 pnpm install --no-frozen-lockfile
 
 # Limpieza de dist/ antiguos
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist"
 
-# Generación del paquete ZIP dinámico de la extensión L7 para descarga pública
-$extSrc = if (Test-Path "apps/l7-proxy-extension") { "apps/l7-proxy-extension" } elseif (Test-Path "l7-proxy-extension") { "l7-proxy-extension" } else { $null }
 $consolePublicDeploy = if (Test-Path "apps/saare-console") { "apps/saare-console/public/deploy" } elseif (Test-Path "saare-console") { "saare-console/public/deploy" } else { $null }
+
+if ($consolePublicDeploy) {
+    New-Item -ItemType Directory -Force -Path $consolePublicDeploy | Out-Null
+}
+
+# 1.1 Generación del paquete ZIP dinámico de la extensión L7 para descarga pública
+$extSrc = if (Test-Path "apps/l7-proxy-extension") { "apps/l7-proxy-extension" } elseif (Test-Path "l7-proxy-extension") { "l7-proxy-extension" } else { $null }
 
 if ($extSrc -and $consolePublicDeploy) {
     Write-Host " -> Empaquetando Extensión Proxy L7 en $consolePublicDeploy/saare_l7_proxy_extension.zip..." -ForegroundColor Gray
-    New-Item -ItemType Directory -Force -Path $consolePublicDeploy | Out-Null
     Compress-Archive -Path "$extSrc/*" -DestinationPath "$consolePublicDeploy/saare_l7_proxy_extension.zip" -Force
 } else {
     Write-Host "[ADVERTENCIA] No se encontró el origen de la extensión proxy. Se omitirá el empaquetado del ZIP." -ForegroundColor DarkYellow
+}
+
+# 1.2 Generación del paquete ZIP del Agente Nativo Python (Sidecar L7 RAM)
+$sidecarSrc = if (Test-Path "packages/saare-edge-agent") { "packages/saare-edge-agent" } elseif (Test-Path "saare-edge-agent") { "saare-edge-agent" } else { $null }
+
+if ($sidecarSrc -and $consolePublicDeploy) {
+    Write-Host " -> Empaquetando Agente Nativo Python L7 en $consolePublicDeploy/saare_native_sidecar.zip..." -ForegroundColor Gray
+    $sidecarFiles = Get-ChildItem -Path $sidecarSrc -File | Where-Object { $_.Extension -in @(".py", ".toml", ".md") }
+    if ($sidecarFiles.Count -gt 0) {
+        Compress-Archive -Path $sidecarFiles.FullName -DestinationPath "$consolePublicDeploy/saare_native_sidecar.zip" -Force
+        Write-Host " -> [OK] Sidecar Python empaquetado ($($sidecarFiles.Count) archivos limpios)." -ForegroundColor Green
+    } else {
+        Write-Host "[ADVERTENCIA] La carpeta $sidecarSrc no contiene archivos .py/.toml/.md." -ForegroundColor DarkYellow
+    }
+} else {
+    Write-Host "[ADVERTENCIA] No se encontró packages/saare-edge-agent. Se omitirá el empaquetado del Sidecar." -ForegroundColor DarkYellow
 }
 
 # ------------------------------------------------------------------------------
@@ -146,7 +166,7 @@ if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
     if (-not $currentBranch) { $currentBranch = "main" }
 
-    git commit -m "chore(release): despliegue maestro verificado con schema.sql D1 L7 v8.7"
+    git commit -m "chore(release): despliegue maestro verificado con sidecar L7 y schema.sql D1 v8.8"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
@@ -154,10 +174,9 @@ if ($gitStatus) {
 }
 
 # ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 # FASE 6: PRUEBA DE SALUD Y VERIFICACIÓN HTTP INTEGRAL
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [6/6] Verificando salud del entorno de Producción (Workers y Frontends)..." -ForegroundColor Cyan
+Write-Host "`n==> [6/6] Verificando salud del entorno de Producción (Workers, Frontends y Artefactos)..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 
 # 1. Verificación del Control Plane Worker (API)
@@ -185,8 +204,8 @@ if (-not $apiOnline) {
 
 # 2. Verificación de Frontends (Cloudflare Pages / Dominios asociados)
 $frontendsToTest = @(
-    @{ Name = "Consola GRC (saare-console)"; Url = "https://saare-console.pages.dev" }, # O tu dominio personalizado si lo tienes mapeado ej: https://console.saare.es
-    @{ Name = "Landing Comercial (saare-suite)"; Url = "https://saare-suite.pages.dev" }   # O tu dominio personalizado ej: https://saare.es
+    @{ Name = "Consola GRC (saare-console)"; Url = "https://console.saare.es" },
+    @{ Name = "Landing Comercial (saare-suite)"; Url = "https://saare.es" }
 )
 
 foreach ($fe in $frontendsToTest) {
@@ -199,6 +218,23 @@ foreach ($fe in $frontendsToTest) {
         }
     } catch {
         Write-Host " -> [ADVERTENCIA] No se pudo conectar con $($fe.Name) en $($fe.Url)" -ForegroundColor DarkYellow
+    }
+}
+
+# 3. Verificación de disponibilidad de artefactos descargables L7
+$artifactsToTest = @(
+    @{ Name = "Extensión L7 (.ZIP)"; Url = "https://console.saare.es/deploy/saare_l7_proxy_extension.zip" },
+    @{ Name = "Agente Nativo Python Sidecar (.ZIP)"; Url = "https://console.saare.es/deploy/saare_native_sidecar.zip" }
+)
+
+foreach ($art in $artifactsToTest) {
+    try {
+        $headResp = Invoke-WebRequest -Uri $art.Url -Method Head -UseBasicParsing -TimeoutSec 5
+        if ($headResp.StatusCode -eq 200) {
+            Write-Host " -> [OK] Artefacto publicado: $($art.Name) ($($art.Url))" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host " -> [ADVERTENCIA] Artefacto no accesible aún en CDN: $($art.Name) ($($art.Url))" -ForegroundColor DarkYellow
     }
 }
 

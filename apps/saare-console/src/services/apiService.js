@@ -1,9 +1,9 @@
-// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v12.5 / Multi-Tenant Conectado)
+// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v12.5 / Multi-Tenant + Enrutador L7 Local)
 import { SAARE_CONFIG } from '../config/saareState';
 
-/**
- * Obtiene el contexto activo de sesión asegurando soporte Multi-Tenant
- */
+const LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
+const ROUTE_MODE_KEY = 'SAARE_ROUTE_MODE'; // 'CLOUD_EDGE' | 'LOCAL_SIDECAR'
+
 function getAuthContext() {
   const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
   const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE';
@@ -14,12 +14,9 @@ function getAuthContext() {
   const cleanRoot = rawBase.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
   const baseUrl = `${cleanRoot}/v1`;
 
-  return { token, tenant, user, role, baseUrl };
+  return { token, tenant, user, role, baseUrl, cleanRoot };
 }
 
-/**
- * Cliente HTTP unificado con inyección de cabeceras multi-tenant
- */
 async function saareFetch(endpoint, options = {}) {
   const { token, tenant, user, role, baseUrl } = getAuthContext();
 
@@ -47,6 +44,35 @@ async function saareFetch(endpoint, options = {}) {
 }
 
 export const apiService = {
+  getRouteMode() {
+    return localStorage.getItem(ROUTE_MODE_KEY) || 'CLOUD_EDGE';
+  },
+
+  async setRouteMode(targetMode) {
+    if (targetMode === 'LOCAL_SIDECAR') {
+      const probe = await fetch(LOCAL_SIDECAR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'PING_HEALTH_CHECK', scenario: 'HEALTH' })
+      });
+      if (!probe.ok) {
+        throw new Error('El agente Python local respondió con error.');
+      }
+      localStorage.setItem(ROUTE_MODE_KEY, 'LOCAL_SIDECAR');
+      return { mode: 'LOCAL_SIDECAR', endpoint: LOCAL_SIDECAR_URL };
+    }
+
+    localStorage.setItem(ROUTE_MODE_KEY, 'CLOUD_EDGE');
+    return { mode: 'CLOUD_EDGE', endpoint: `${getAuthContext().baseUrl}/chat/completions` };
+  },
+
+  downloadNativeSidecar(overrideTenant) {
+    const { tenant, cleanRoot } = getAuthContext();
+    const targetTenant = overrideTenant || tenant;
+    window.open('/deploy/saare_native_sidecar.zip', '_blank');
+    window.open(`${cleanRoot}/api/v1/agent/bootstrap?tenant=${encodeURIComponent(targetTenant)}`, '_blank');
+  },
+
   async getKpis(startDate, endDate) {
     const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
     try {
@@ -80,7 +106,6 @@ export const apiService = {
       const activeTenant = params.tenant || tenant;
       const activeUser = params.user || user;
 
-      // Endpoint limpio hacia D1 con filtrado obligatorio por tenant
       const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
       const res = await saareFetch(`/traces${query}`, {
         method: 'GET',
@@ -137,27 +162,79 @@ export const apiService = {
 
   async interceptPrompt(payloadOrPrompt, context = {}) {
     const { tenant, user, role } = getAuthContext();
-    try {
-      let bodyData = {};
+    const routeMode = this.getRouteMode();
 
-      if (typeof payloadOrPrompt === 'string') {
-        bodyData = {
-          prompt: payloadOrPrompt,
-          tenant: context.tenant || tenant,
-          user: context.user || user,
-          role: context.role || role,
-          ...context
+    let bodyData = {};
+    if (typeof payloadOrPrompt === 'string') {
+      bodyData = {
+        prompt: payloadOrPrompt,
+        tenant: context.tenant || tenant,
+        user: context.user || user,
+        role: context.role || role,
+        ...context
+      };
+    } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
+      bodyData = {
+        tenant,
+        user,
+        role,
+        ...payloadOrPrompt,
+        ...context
+      };
+    }
+
+    // Ruta 1: Sidecar Local en RAM (127.0.0.1:8080)
+    if (routeMode === 'LOCAL_SIDECAR') {
+      try {
+        const localRes = await fetch(LOCAL_SIDECAR_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-SAARE-Tenant': bodyData.tenant
+          },
+          body: JSON.stringify({
+            prompt: bodyData.prompt || '',
+            scenario: bodyData.scenarioId || bodyData.scenario || 'EU_AI_ACT_L7',
+            tenant_id: bodyData.tenant
+          })
+        });
+
+        const localData = await localRes.json();
+        const isDeny = localData.verdict === 'DENY' || localRes.status === 403;
+
+        return {
+          success: !isDeny,
+          route: 'LOCAL_SIDECAR_RAM',
+          tenant: localData.tenant_id || bodyData.tenant,
+          evidence_id: `EV-EDGE-${(localData.evidence_hash || '').slice(0, 10).toUpperCase()}`,
+          decision: isDeny ? 'DENY' : 'ALLOW',
+          verdict: isDeny ? 'RECHAZADO' : (localData.detox_status === 'SANITIZED' ? 'SANCP_SANITIZED' : 'PERMITIDO'),
+          enforcement: {
+            verdict: isDeny ? 'DENY' : 'ALLOW',
+            sanitizedInRam: true,
+            piiDetected: Boolean(localData.threat_detected),
+            ms3vIntegrityHash: localData.evidence_hash,
+            latencyMs: localData.latency_ms,
+            d1VaultSynced: Boolean(localData.d1_vault_synced)
+          },
+          inference: {
+            provider: 'LOCAL_SIDECAR_PYTHON',
+            responseContent: isDeny
+              ? '[BLOQUEO LOCAL EN RAM] Inducción semántica neutralizada en el nodo perimetral.'
+              : localData.clean_prompt
+          }
         };
-      } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
-        bodyData = {
-          tenant: tenant,
-          user: user,
-          role: role,
-          ...payloadOrPrompt,
-          ...context
+      } catch (e) {
+        return {
+          decision: 'DENY',
+          verdict: 'LOCAL_SIDECAR_UNREACHABLE',
+          error: `Agente local 127.0.0.1:8080 inaccesible (${e.message}). Inicia saare_framework.py o cambia a Cloud Edge.`
         };
       }
+    }
 
+    // Ruta 2: Cloud Edge (api.saare.es)
+    try {
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
         overrideTenant: bodyData.tenant,
