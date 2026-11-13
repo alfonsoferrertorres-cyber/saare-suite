@@ -45,3 +45,7 @@ enabled = true
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
+
+# === DISIPADOR / CRON TRIGGER PARA EL ANCLAJE MERKLE PERIODICO ===
+[triggers]
+crons = ["0 */6 * * *"]

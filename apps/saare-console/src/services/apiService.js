@@ -1,16 +1,15 @@
-// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v10.1 / SGP 1.0 Producción Conectada)
+// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v12.5 / Multi-Tenant Conectado)
 import { SAARE_CONFIG } from '../config/saareState';
 
 /**
- * Auxiliar dinámico para obtener la configuración activa de sesión y servidor
+ * Obtiene el contexto activo de sesión asegurando soporte Multi-Tenant
  */
 function getAuthContext() {
   const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
   const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE';
   const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'operador@saare.es';
-  const role = localStorage.getItem('saare_user_role') || 'CISO_ADMIN';
+  const role = localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST';
 
-  // Normalización estricta: elimina /api/v1, /api o /v1 heredados de SAARE_CONFIG y fija /v1
   const rawBase = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
   const cleanRoot = rawBase.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
   const baseUrl = `${cleanRoot}/v1`;
@@ -19,7 +18,7 @@ function getAuthContext() {
 }
 
 /**
- * Helper saareFetch dinámico e higienizado para peticiones HTTP
+ * Cliente HTTP unificado con inyección de cabeceras multi-tenant
  */
 async function saareFetch(endpoint, options = {}) {
   const { token, tenant, user, role, baseUrl } = getAuthContext();
@@ -28,10 +27,11 @@ async function saareFetch(endpoint, options = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBaseUrl}${cleanEndpoint}`;
   const activeToken = options.overrideToken || token;
+  const activeTenant = options.overrideTenant || tenant;
 
   const headers = {
     'Content-Type': 'application/json',
-    'x-saare-tenant': options.overrideTenant || tenant,
+    'x-saare-tenant': activeTenant,
     'x-saare-user': options.overrideUser || user,
     'x-saare-role': options.overrideRole || role,
     ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {}),
@@ -70,7 +70,6 @@ export const apiService = {
     } catch (e) {
       console.warn('[SAARE API] Error en KPIs:', e);
     }
-
     return null;
   },
 
@@ -81,6 +80,7 @@ export const apiService = {
       const activeTenant = params.tenant || tenant;
       const activeUser = params.user || user;
 
+      // Endpoint limpio hacia D1 con filtrado obligatorio por tenant
       const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
       const res = await saareFetch(`/traces${query}`, {
         method: 'GET',
@@ -95,7 +95,7 @@ export const apiService = {
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
       }
       if (res && res.status === 429) {
-        console.warn('⚠️ Límite de tasa alcanzado (Rate Limit 429). Activando protección anti-saturación en UI.');
+        console.warn('⚠️ Rate Limit 429 alcanzado.');
         return [];
       }
     } catch (e) {
@@ -111,26 +111,26 @@ export const apiService = {
       if (res && res.ok) {
         const data = await res.json();
         return {
-          nodeId: data.node || data.service || SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+          nodeId: data.node || data.service || 'RPI-2607076315021',
           tenantId: tenant,
           mode: 'FAIL-CLOSED',
           latencyP99Ms: Number(data.latencyP99Ms ?? 0.84),
           activePolicies: 8,
           status: data.status || 'HEALTHY',
-          trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es',
+          trustAnchor: data.trustAnchor || 'https://vault.saare.es',
           vaultSource: 'D1_HYBRID'
         };
       }
     } catch (e) {}
 
     return {
-      nodeId: SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021',
+      nodeId: 'RPI-2607076315021',
       tenantId: tenant,
       mode: 'FAIL-CLOSED',
       latencyP99Ms: 0.84,
       activePolicies: 8,
       status: 'OPERATIVE',
-      trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es',
+      trustAnchor: 'https://vault.saare.es',
       vaultSource: 'D1_HYBRID'
     };
   },
@@ -187,97 +187,7 @@ export const apiService = {
       const res = await saareFetch('/vault/sync', { method: 'GET' });
       if (res && res.ok) return await res.json();
     } catch (e) {}
-    return { success: true, trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es', source: 'D1_HYBRID' };
-  },
-
-  async verifyEvidence(proof) {
-    try {
-      const res = await saareFetch('/evidence/verify', {
-        method: 'POST',
-        body: JSON.stringify({ proof })
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {}
-    return { verified: false, error: "No se pudo establecer conexión con el endpoint de verificación criptográfica." };
-  },
-
-  async runResilienceCheck(payload) {
-    try {
-      const res = await saareFetch('/resilience/check', {
-        method: 'GET'
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {}
-    return { status: 'FAILED', timestamp: new Date().toISOString(), verdict: 'FAIL_CLOSED' };
-  },
-
-  async exportToSiem(payload) {
-    try {
-      const res = await saareFetch('/integrations/siem', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-    return { success: false, error: 'Error al exportar los eventos hacia el SIEM corporativo.' };
-  },
-
-  async getCustomRules() {
-    try {
-      const res = await saareFetch('/custom-rules', { method: 'GET' });
-      if (res && res.ok) {
-        const data = await res.json();
-        return Array.isArray(data) ? data : (data.rules || []);
-      }
-    } catch (e) {}
-    return [];
-  },
-
-  async saveCustomRules(rules) {
-    try {
-      const res = await saareFetch('/custom-rules', {
-        method: 'POST',
-        body: JSON.stringify({ rules })
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {
-      return { ok: false, error: e.message };
-    }
-    return { ok: false, error: 'Error al persistir las reglas personalizadas en la Bóveda.' };
-  },
-
-  async verifyLicense(payload) {
-    try {
-      const res = await saareFetch('/auth/verifylicense', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {}
-    return { valid: true, success: true };
-  },
-
-  async getExecutiveSeats() {
-    try {
-      const res = await saareFetch('/executive/seats', { method: 'GET' });
-      if (res && res.ok) return await res.json();
-    } catch (e) {}
-    return { success: false, users: [] };
-  },
-
-  async assignExecutiveSeat(seatData) {
-    try {
-      const res = await saareFetch('/executive/seats/assign', {
-        method: 'POST',
-        body: JSON.stringify(seatData)
-      });
-      if (res && res.ok) return await res.json();
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-    return { success: false, error: 'Error al asignar el asiento ejecutivo RBAC.' };
+    return { success: true, trustAnchor: 'https://vault.saare.es', source: 'D1_HYBRID' };
   }
 };
 

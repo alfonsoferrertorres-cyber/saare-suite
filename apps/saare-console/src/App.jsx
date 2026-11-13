@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.4 / SGP 1.0 (Producción Multi-Tenant)
+// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.5 / SGP 1.0 (Arranque Estricto a 0 - Dinámico desde Bóveda D1)
 import React, { useState, useEffect, useCallback } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -87,7 +87,7 @@ export default function App() {
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Datos de Bóveda D1
+  // Datos de Bóveda D1 — ARRANQUE ESTRICTO A 0 (Sin datos estáticos/mocks)
   const [evidences, setEvidences] = useState([]);
   const [tenantMetrics, setTenantMetrics] = useState([]);
 
@@ -96,10 +96,13 @@ export default function App() {
     setTimeout(() => setGovernanceStatus(''), 4000);
   }, []);
 
-  // Mapeo higienizado de evidencias D1 (sin datos personales en claro)
+  // Mapeo dinámico 1:1 con la Bóveda D1
   const mapEvidences = useCallback((remoteEvidences) => {
-    const rawList = Array.isArray(remoteEvidences) ? remoteEvidences : (remoteEvidences?.evidences || [remoteEvidences]);
-    if (!Array.isArray(rawList)) return [];
+    const rawList = Array.isArray(remoteEvidences) 
+      ? remoteEvidences 
+      : (remoteEvidences?.evidences || remoteEvidences?.traces || []);
+    
+    if (!Array.isArray(rawList) || rawList.length === 0) return [];
 
     return rawList
       .filter(item => item && typeof item === 'object')
@@ -122,21 +125,16 @@ export default function App() {
           decision: isDeny ? 'DENY' : 'ALLOW',
           anchored: item.anchored !== undefined ? item.anchored : 1,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
-          user: 'operador@' + tenantId.toLowerCase().replace(/[^a-z0-9]/g, '') + '.es',
+          user: item.user || 'operador@' + tenantId.toLowerCase().replace(/[^a-z0-9]/g, '') + '.es',
           tenant: isProductionTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : tenantId,
           merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7',
           latency: item.execution_latency_ms || item.latency || 0.84,
-          rawJson: {
-            trace_id: item.trace_id || item.id,
-            tenant_id: tenantId,
-            decision: isDeny ? 'DENY' : 'ALLOW',
-            ms3v_hash: item.ms3v_hash || item.merkle_root || item.merkleRoot
-          }
+          rawJson: item
         };
       });
   }, [tenantId]);
 
-  // Consulta de Métricas Agregadas Multi-Tenant con aislamiento por rol/tenant
+  // Consulta de Métricas Agregadas Multi-Tenant desde D1
   const fetchTenantMetrics = useCallback(async () => {
     setIsFetchingMetrics(true);
     setMetricsError('');
@@ -159,7 +157,6 @@ export default function App() {
       const json = await res.json();
       const rawRows = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
 
-      // Filtrar registros de prueba/personales y aislar por inquilino si no es administrador autenticado
       const isGlobalAdmin = userRole === 'CISO_ADMIN' && Boolean(authToken);
       const cleanRows = rawRows
         .filter(row => isProductionTenantId(row?.tenant_id))
@@ -173,7 +170,7 @@ export default function App() {
     }
   }, [tenantId, userRole, authToken]);
 
-  // Sincronización con Bóveda D1
+  // Sincronización directa con Bóveda D1 (Si la DB está vacía, evidences = [])
   const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null) => {
     const targetTenant = overrideTenant || tenantId;
     setIsFetchingVault(true);
@@ -185,17 +182,14 @@ export default function App() {
         role: userRole
       });
 
-      if (traces && Array.isArray(traces)) {
-        setEvidences(mapEvidences(traces));
-        triggerGovernance(`Bóveda D1 [${targetTenant}] sincronizada (${traces.length} evidencias).`);
-      } else {
-        setEvidences([]);
-        triggerGovernance(`Bóveda D1 [${targetTenant}] conectada: 0 registros.`);
-      }
+      const mapped = mapEvidences(traces);
+      setEvidences(mapped);
+      triggerGovernance(`Bóveda D1 [${targetTenant}] sincronizada (${mapped.length} registros).`);
 
       await fetchTenantMetrics();
     } catch (e) {
-      triggerGovernance(`⚠️ Error al conectar con la Bóveda D1 de [${targetTenant}].`);
+      setEvidences([]);
+      triggerGovernance(`⚠️ Bóveda D1 [${targetTenant}] sin registros o error de conexión.`);
     } finally {
       setIsFetchingVault(false);
     }
@@ -217,7 +211,6 @@ export default function App() {
     return () => clearInterval(intervalClock);
   }, [fetchTelemetryDirectFromVault]);
 
-  // Descarga directa del paquete de Extensión Proxy L7 (.ZIP)
   const handleDownloadL7Extension = () => {
     const a = document.createElement('a');
     a.href = '/deploy/saare_l7_proxy_extension.zip';
@@ -228,7 +221,6 @@ export default function App() {
     triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId}].`);
   };
 
-  // Descarga de directiva GPO Multi-Tenant para Edge y Chrome (Instalación forzada + Managed Storage)
   const handleDownloadEnterpriseGpoReg = () => {
     const gateway = getApiEndpoint('/v1/chat/completions');
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
@@ -236,14 +228,12 @@ export default function App() {
     const regContent = [
       'Windows Registry Editor Version 5.00',
       '',
-      '; 1. Instalacion silenciosa y bloqueo de desinstalacion (Microsoft Edge & Google Chrome)',
       '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]',
       `"1"="${EXTENSION_ID};https://edge.microsoft.com/extensionwebstorebase/v1/crx"`,
       '',
       '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]',
       `"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"`,
       '',
-      '; 2. Inyeccion de identidad Multi-Tenant y Gateway L7 (chrome.storage.managed)',
       `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\3rdparty\\extensions\\${EXTENSION_ID}\\policy]`,
       `"TenantId"="${tenantId}"`,
       `"ProxyGateway"="${gateway}"`,
@@ -266,10 +256,9 @@ export default function App() {
     a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
     a.click();
     URL.revokeObjectURL(url);
-    triggerGovernance(`Directiva GPO completa (ForceInstall + Tenant) generada para [${tenantId}].`);
+    triggerGovernance(`Directiva GPO generada para [${tenantId}].`);
   };
 
-  // Descarga de Manifiesto Kubernetes corporativo anonimizado
   const handleDownloadK8sManifest = () => {
     const yamlContent = [
       'apiVersion: v1',
@@ -295,7 +284,6 @@ export default function App() {
     triggerGovernance('Manifiesto YAML K8s generado.');
   };
 
-  // Ejecución de prueba Ex-Ante L7
   const handleExecuteTestExAnte = async (customPrompt = null) => {
     const promptToRun = customPrompt || testPrompt;
     if (!promptToRun.trim()) return;
@@ -534,7 +522,7 @@ export default function App() {
                     {evidences.length === 0 ? (
                       <tr>
                         <td colSpan="6" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                          🛡️ Bóveda D1 del tenant <strong>{tenantId}</strong> conectada. Esperando eventos de telemetría L7...
+                          🛡️ Bóveda D1 del tenant <strong>{tenantId}</strong> conectada (0 registros actuales). Esperando telemetría L7...
                         </td>
                       </tr>
                     ) : (

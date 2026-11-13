@@ -1,0 +1,28 @@
+{
+  "name": "i7-proxy-extension",
+  "version": "12.3.0",
+  "description": "Extensión perimetral L7 para S.A.A.R.E. Enterprise Monorepo",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "package:chrome": "node scripts/bundle.js --target=chrome",
+    "package:edge": "node scripts/bundle.js --target=edge",
+    "package:opera": "node scripts/bundle.js --target=opera",
+    "package:brave": "node scripts/bundle.js --target=brave"
+  },
+  "keywords": [
+    "saare",
+    "enterprise",
+    "manifest-v3",
+    "chromium",
+    "proxy",
+    "governance",
+    "ai-act"
+  ],
+  "author": "S.A.A.R.E. Enterprise System",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "archiver": "^6.0.0"
+  }
+}

@@ -1,45 +1,44 @@
 {
   "manifest_version": 3,
-  "name": "S.A.A.R.E. L7 Ex-Ante AI Interceptor",
-  "version": "1.0.0",
-  "permissions": ["storage"],
-  "storage": {
-    "managed_schema": "schema.json"
-  },
+  "name": "S.A.A.R.E. Enterprise L7 Proxy",
+  "version": "12.3.0",
+  "description": "Nodo perimetral L7 de gobernanza determinista, sanitización de PII y sellado de evidencias para LLMs.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms"
+  ],
   "host_permissions": [
-    "https://chatgpt.com/*",
-    "https://chat.openai.com/*",
-    "https://gemini.google.com/*",
-    "https://claude.ai/*",
-    "https://copilot.microsoft.com/*",
-    "https://api.saare.es/*"
+    "https://*.saare.es/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.deepseek.com/*",
+    "http://127.0.0.1:11434/*",
+    "https://*.chatgpt.com/*",
+    "https://*.claude.ai/*",
+    "https://aistudio.google.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/background.js",
+    "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://gemini.google.com/*",
-        "https://claude.ai/*",
-        "https://copilot.microsoft.com/*"
-      ],
-      "js": ["bridge.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://gemini.google.com/*",
-        "https://claude.ai/*",
-        "https://copilot.microsoft.com/*"
-      ],
-      "js": ["interceptor.js"],
-      "world": "MAIN",
-      "run_at": "document_start"
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon.png",
+      "48": "assets/icon.png",
+      "128": "assets/icon.png"
     }
-  ]
+  },
+  "icons": {
+    "16": "assets/icon.png",
+    "48": "assets/icon.png",
+    "128": "assets/icon.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "minimum_chrome_version": "102"
 }

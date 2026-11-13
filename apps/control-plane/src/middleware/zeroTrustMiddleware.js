@@ -1,12 +1,14 @@
 // control-plane/zeroTrustMiddleware.js — Adaptador Cloudflare Access + Motor Determinista MS3V (BLOCK-LOGIC)
+import { engineBlockLogic } from './ms3v-core.js';
 
 export class ZeroTrustMiddleware {
   /**
    * @param {string} teamDomain - ej. "tu-equipo" o "tu-equipo.cloudflareaccess.com"
    * @param {string|string[]} audienceTag - AUD tag(s) de la(s) aplicación(es) en Cloudflare Zero Trust
    * @param {string[]} [approvedParams] - Lista global de comandos/parámetros aprobados para BLOCK-LOGIC
+   * @param {Object} [env] - Entorno de ejecución opcional (Cloudflare Workers env)
    */
-  constructor(teamDomain, audienceTag, approvedParams = []) {
+  constructor(teamDomain, audienceTag, approvedParams = [], env = {}) {
     this.teamDomain = this.normalizeTeamDomain(teamDomain);
     this.audienceTags = Array.isArray(audienceTag)
       ? audienceTag.filter(Boolean)
@@ -14,23 +16,24 @@ export class ZeroTrustMiddleware {
     this.certsUrl = this.teamDomain ? `https://${this.teamDomain}/cdn-cgi/access/certs` : "";
     this.cachedKeys = null;
     this.keysExpiry = 0;
-    
+    this.env = env || {};
+
     // Set de Parámetros de Seguridad Físicos Aprobados (Bloque 2 MS3V)
     this.approvedParams = new Set(
-      Array.isArray(approvedParams) 
-        ? approvedParams.map(p => String(p).trim().toUpperCase())
+      Array.isArray(approvedParams)
+        ? approvedParams.map(p => String(p).trim().toUpperCase()).filter(Boolean)
         : []
     );
   }
 
   /**
    * Normaliza cualquier entrada de dominio al formato estándar de Cloudflare Access
-   * @param {string} domain 
+   * @param {string} domain
    * @returns {string}
    */
   normalizeTeamDomain(domain) {
     if (!domain || typeof domain !== "string") return "";
-    let clean = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    let clean = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
     if (clean && !clean.includes(".")) {
       clean = `${clean}.cloudflareaccess.com`;
     }
@@ -54,7 +57,7 @@ export class ZeroTrustMiddleware {
     }
 
     const jwks = await res.json();
-    this.cachedKeys = jwks.keys || [];
+    this.cachedKeys = Array.isArray(jwks.keys) ? jwks.keys : [];
     // Caché por 1 hora
     this.keysExpiry = now + 3600 * 1000;
     return this.cachedKeys;
@@ -62,25 +65,17 @@ export class ZeroTrustMiddleware {
 
   /**
    * Decodifica una cadena Base64URL soportando caracteres UTF-8 de forma segura
-   * @param {string} str 
+   * @param {string} str
    * @returns {string}
    */
   base64UrlDecode(str) {
-    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-    while (base64.length % 4 !== 0) {
-      base64 += "=";
-    }
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
+    const bytes = this.base64UrlToUint8Array(str);
     return new TextDecoder().decode(bytes);
   }
 
   /**
    * Convierte una cadena Base64URL a un Uint8Array para operaciones criptográficas
-   * @param {string} str 
+   * @param {string} str
    * @returns {Uint8Array}
    */
   base64UrlToUint8Array(str) {
@@ -98,7 +93,7 @@ export class ZeroTrustMiddleware {
 
   /**
    * Importa una clave JWKS RSA en un objeto CryptoKey listo para verificación RS256
-   * @param {object} jwkKey 
+   * @param {object} jwkKey
    * @returns {Promise<CryptoKey>}
    */
   async importRsaKey(jwkKey) {
@@ -117,11 +112,11 @@ export class ZeroTrustMiddleware {
 
   /**
    * Extrae, valida las peticiones y verifica criptográficamente la firma del JWT emitido por Cloudflare Access
-   * @param {Request} request 
+   * @param {Request} request
    * @returns {Promise<{ userEmail: string | null, isZeroTrustVerified: boolean, identityData?: object, error?: string }>}
    */
   async verifyCloudflareAccessHeader(request) {
-    const cfToken = request.headers.get("Cf-Access-Jwt-Assertion");
+    const cfToken = request?.headers?.get("Cf-Access-Jwt-Assertion");
 
     if (!cfToken) {
       return { userEmail: null, isZeroTrustVerified: false, error: "Cabecera Cf-Access-Jwt-Assertion ausente" };
@@ -133,12 +128,15 @@ export class ZeroTrustMiddleware {
         return { userEmail: null, isZeroTrustVerified: false, error: "Formato JWT inválido" };
       }
 
-      const rawHeader = parts[0];
-      const rawPayload = parts[1];
-      const rawSignature = parts[2];
+      const [rawHeader, rawPayload, rawSignature] = parts;
 
       const header = JSON.parse(this.base64UrlDecode(rawHeader));
       const payload = JSON.parse(this.base64UrlDecode(rawPayload));
+
+      // 0. Validación estricta de algoritmo de firma
+      if (header.alg && header.alg !== "RS256") {
+        return { userEmail: null, isZeroTrustVerified: false, error: `Algoritmo JWT no soportado: ${header.alg}` };
+      }
 
       // 1. Verificación de Expiración (exp)
       const now = Math.floor(Date.now() / 1000);
@@ -160,9 +158,12 @@ export class ZeroTrustMiddleware {
         }
       }
 
-      // 4. Verificación de Emisor (iss)
-      if (this.teamDomain && payload.iss && !payload.iss.includes(this.teamDomain)) {
-        return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
+      // 4. Verificación exacta de Emisor (iss)
+      if (this.teamDomain && payload.iss) {
+        const cleanIss = String(payload.iss).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        if (cleanIss !== this.teamDomain) {
+          return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
+        }
       }
 
       // 5. Verificación Criptográfica de la Firma RS256 mediante Web Crypto API
@@ -211,55 +212,23 @@ export class ZeroTrustMiddleware {
 
   /**
    * MOTOR BLOCK-LOGIC (MS3V) — Gobernanza Determinista en Tiempo Real
-   * Intercepta y audita comandos/prompts antes de la ejecución en hardware o consola SAARE.
-   * 
-   * @param {string} rawInstruction - Comando o payload no estructurado
+   * Delega en el núcleo unificado ms3v-core.js para garantizar precisión forense en nanosegundos (BigInt)
+   * y trazabilidad de autoría.
+   *
+   * @param {string|Object} rawInstruction - Comando o payload entrante
    * @param {string[]} [customApprovedParams] - Lista opcional de parámetros aprobados para esta llamada
-   * @returns {Promise<{ EXECUTE?: string, HASH?: string, TS?: number, STATUS?: string, REASON?: string }>}
+   * @returns {Promise<Object>}
    */
   async processBlockLogic(rawInstruction, customApprovedParams = null) {
-    try {
-      // BLOQUE 1: Intercepción y Normalización de Flujo
-      if (!rawInstruction || typeof rawInstruction !== "string") {
-        return { STATUS: "ABORT_SEQUENCE", REASON: "Instrucción de entrada vacía o no válida" };
-      }
-      let normalizedData = rawInstruction.trim().toUpperCase();
-
-      // Cargar catálogo de parámetros válidos
-      const validParams = customApprovedParams 
-        ? new Set(customApprovedParams.map(p => String(p).trim().toUpperCase()))
-        : this.approvedParams;
-
-      // BLOQUE 2: Motor de Validación Determinista (Core Logic)
-      if (validParams.size > 0 && !validParams.has(normalizedData)) {
-        console.warn(`[MS3V BLOCK-LOGIC] Instrucción fuera de protocolo: "${normalizedData}". Degradando a LOGIC_SAFE_STATE.`);
-        normalizedData = "LOGIC_SAFE_STATE";
-      }
-
-      // BLOQUE 3: Módulo de Auditoría y Generación de Huella Digital (SHA-256)
-      const encoder = new TextEncoder();
-      const msgUint8 = encoder.encode(normalizedData);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const integrityHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-      // BLOQUE 4: Gestor de Sincronía y Trazabilidad Forense (Precisión Nanosegundos)
-      const timestampNs = (performance.now() + performance.timeOrigin) * 1e6;
-
-      // BLOQUE 5: Unidad de Ejecución Final (Safe-Release Controller)
-      if (integrityHash && integrityHash.length === 64) {
-        return {
-          EXECUTE: normalizedData,
-          HASH: integrityHash,
-          TS: Math.floor(timestampNs)
-        };
-      } else {
-        return { STATUS: "ABORT_SEQUENCE", REASON: "Error al generar firma criptográfica SHA-256" };
-      }
-    } catch (err) {
-      console.error("[MS3V BLOCK-LOGIC] Excepción en motor determinista:", err);
-      return { STATUS: "ABORT_SEQUENCE", REASON: err.message };
+    if (!rawInstruction || (typeof rawInstruction !== "string" && typeof rawInstruction !== "object")) {
+      return { STATUS: "ABORT_SEQUENCE", REASON: "Instrucción de entrada vacía o no válida" };
     }
+
+    const validParams = Array.isArray(customApprovedParams)
+      ? customApprovedParams
+      : Array.from(this.approvedParams);
+
+    return await engineBlockLogic(rawInstruction, validParams, this.env);
   }
 }
 

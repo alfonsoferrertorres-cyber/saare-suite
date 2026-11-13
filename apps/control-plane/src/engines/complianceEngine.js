@@ -1,4 +1,5 @@
 // control-plane/complianceEngine.js — Motor de Mapeo Regulatorio S.A.A.R.E. (SGP 1.0)
+import { getScenarioById } from './scenarioRegistry.js';
 
 const REGULATORY_FRAMEWORKS = {
   EU_AI_ACT: {
@@ -52,29 +53,55 @@ const REGULATORY_FRAMEWORKS = {
   }
 };
 
-export class ComplianceEngine {
-  /**
-   * Mapea la ejecución de intercepción L7 contra los marcos regulatorios aplicables.
-   */
-  static mapExecutionToCompliance(scenarioId, verdict, reason) {
-    const isDeny = verdict === "REJECTED" || verdict === "DENY";
+const SCENARIO_FRAMEWORK_MAP = {
+  cumplimiento_corporativo_integral: {
+    GDPR: ["DATA_MINIMIZATION", "INTEGRITY_CONFIDENTIALITY", "SECURITY_PROCESSING"],
+    EU_AI_ACT: ["LOGGING", "HUMAN_OVERSIGHT"]
+  },
+  razonamiento_activo_l7: {
+    EU_AI_ACT: ["ACCURACY_SECURITY", "RISK_MANAGEMENT"],
+    DORA: ["ICT_RISK_MANAGEMENT"]
+  },
+  deepfake_fake_disprover: {
+    EU_AI_ACT: ["TRANSPARENCY", "LOGGING"],
+    ISO_27037: ["EVIDENCE_PRESERVATION"]
+  },
+  banca_dora_pci: {
+    DORA: ["ICT_RISK_MANAGEMENT", "INCIDENT_MONITORING", "OPERATIONAL_RESILIENCE"],
+    GDPR: ["INTEGRITY_CONFIDENTIALITY"]
+  },
+  sanidad_historia_clinica: {
+    GDPR: ["DATA_MINIMIZATION", "INTEGRITY_CONFIDENTIALITY", "SECURITY_PROCESSING"],
+    EU_AI_ACT: ["RISK_MANAGEMENT", "HUMAN_OVERSIGHT"]
+  },
+  auditoria_dictamen_normativo: {
+    ISO_27037: ["EVIDENCE_PRESERVATION"],
+    ISO_42001: ["POLICY_CONTROL", "IMPACT_ASSESSMENT"],
+    EU_AI_ACT: ["LOGGING"]
+  }
+};
 
-    const fallbackScenario = {
-      id: scenarioId || "RULE_7DIM_PERIMETER",
-      title: "Inspección Perimetral SGP 1.0 L7",
-      category: "SECURITY_INSPECTION",
-      compliance_mapping: {
-        "EU_AI_ACT": ["LOGGING", "HUMAN_OVERSIGHT", "ACCURACY_SECURITY"],
-        "DORA": ["ICT_RISK_MANAGEMENT"],
-        "ISO_42001": ["POLICY_CONTROL"],
-        "GDPR": ["DATA_MINIMIZATION", "INTEGRITY_CONFIDENTIALITY"]
+export class ComplianceEngine {
+  static mapExecutionToCompliance(scenarioId, verdict, reason) {
+    const normalizedVerdict = String(verdict || "").trim().toUpperCase();
+    const isDeny = ["REJECTED", "DENY", "RECHAZADO", "BLOCKED"].includes(normalizedVerdict);
+
+    const registeredScenario = getScenarioById(scenarioId);
+    const activeScenario = {
+      id: registeredScenario?.id || scenarioId || "RULE_7DIM_PERIMETER",
+      title: registeredScenario?.title || "Inspección Perimetral SGP 1.0 L7",
+      policyId: registeredScenario?.policyId || "POL-SGP10-BASE",
+      compliance_mapping: SCENARIO_FRAMEWORK_MAP[registeredScenario?.id] || {
+        EU_AI_ACT: ["LOGGING", "HUMAN_OVERSIGHT", "ACCURACY_SECURITY"],
+        DORA: ["ICT_RISK_MANAGEMENT"],
+        ISO_42001: ["POLICY_CONTROL"],
+        GDPR: ["DATA_MINIMIZATION", "INTEGRITY_CONFIDENTIALITY"]
       }
     };
 
     const mappedFrameworks = [];
-    const activeMapping = fallbackScenario.compliance_mapping;
 
-    for (const [fwKey, reqKeys] of Object.entries(activeMapping)) {
+    for (const [fwKey, reqKeys] of Object.entries(activeScenario.compliance_mapping)) {
       const frameworkMeta = REGULATORY_FRAMEWORKS[fwKey];
       if (frameworkMeta) {
         const requirementsCovered = (Array.isArray(reqKeys) ? reqKeys : []).map(reqKey => ({
@@ -96,8 +123,9 @@ export class ComplianceEngine {
     }
 
     return {
-      scenarioId: fallbackScenario.id,
-      scenarioTitle: fallbackScenario.title,
+      scenarioId: activeScenario.id,
+      scenarioTitle: activeScenario.title,
+      policyId: activeScenario.policyId,
       verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
       decision: isDeny ? "DENY" : "ALLOW",
       reason: reason || (isDeny ? "Activación de control ex-ante por riesgo detectado" : "Evaluación de políticas satisfactoria"),

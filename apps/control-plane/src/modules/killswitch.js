@@ -2,11 +2,18 @@
  * Interceptor Killswitch para S.A.A.R.E. Control Plane
  */
 export async function verifyKillswitch(env) {
-  // 1. Comprobación rápida en la Bóveda KV (bandera de emergencia global)
-  const isEmergencyLock = await env.SAARE_VAULT_KV.get("EMERGENCY_KILLSWITCH_ACTIVE");
+  let isEmergencyLock = false;
 
-  // 2. Comprobación de variable de entorno
-  if (isEmergencyLock === "true" || env.ALLOW_FALLBACK_VAULT === "LOCKDOWN") {
+  if (env?.SAARE_VAULT_KV) {
+    try {
+      const lockVal = await env.SAARE_VAULT_KV.get("EMERGENCY_KILLSWITCH_ACTIVE");
+      isEmergencyLock = lockVal === "true";
+    } catch (e) {
+      console.warn("[Killswitch KV Warning]:", e.message);
+    }
+  }
+
+  if (isEmergencyLock || String(env?.ALLOW_FALLBACK_VAULT || "").toUpperCase() === "LOCKDOWN") {
     return new Response(
       JSON.stringify({
         status: "BLOCKED",
@@ -21,5 +28,7 @@ export async function verifyKillswitch(env) {
     );
   }
 
-  return null; // Si no hay bloqueo, continúa el tráfico normal
+  return null;
 }
+
+export default verifyKillswitch;

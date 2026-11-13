@@ -8,21 +8,39 @@ export const API_HOST = SAARE_CONFIG?.CONTROL_PLANE_URL || "https://api.saare.es
 export const api = {
   getCurrentUser: () => {
     return {
-      email: localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '',
-      tenantId: localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'ORGANISMO_DEMO_01',
-      role: localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'CISO_ADMIN'
+      email: localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'auditor@saare.es',
+      tenantId: localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE',
+      role: localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'AUDITOR_GUEST'
     };
   }
 };
 
 export const saareFetch = async (endpoint, options = {}) => {
   try {
-    // Delegación segura en el servicio centralizado apiService
-    if (typeof apiService.request === 'function') {
-      return await apiService.request(endpoint, options);
-    }
-    // Fallback de compatibilidad directa si se invoca como endpoint REST
-    const response = await fetch(`${API_HOST}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, options);
+    // Si apiService tiene un método request o delegamos directamente
+    const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
+    const tenant = localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE';
+    const user = localStorage.getItem('saare_user_email') || 'auditor@saare.es';
+    const role = localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST';
+
+    const cleanBase = API_HOST.trim().replace(/\/+$/, '');
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${cleanBase}${cleanEndpoint}`;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-saare-tenant': options.overrideTenant || tenant,
+      'x-saare-user': options.overrideUser || user,
+      'x-saare-role': options.overrideRole || role,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+
     return response;
   } catch (e) {
     console.warn("[SAARE API BRIDGE WARNING]:", e);

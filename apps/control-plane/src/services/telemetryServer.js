@@ -1,4 +1,4 @@
-// control-plane/telemetryServer.js — Servidor SSE Telemetry Stream S.A.A.R.E. (SGP 1.0 / V12.1 Producción)
+// control-plane/telemetryServer.js — Servidor SSE Telemetry Stream S.A.A.R.E. (SGP 1.0 / V12.2 Producción)
 
 export class TelemetryServer {
   constructor(env) {
@@ -10,6 +10,10 @@ export class TelemetryServer {
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
+    const isAdminRole = ["CISO_ADMIN", "CISO_SECOPS_LEVEL_3", "SUPER_ADMIN"].includes(
+      String(activeUserRole || "").toUpperCase()
+    );
+
     const streamTask = async () => {
       try {
         let initialEvidences = [];
@@ -18,61 +22,63 @@ export class TelemetryServer {
           if (this.env.DB) {
             let query = `
               SELECT 
-                t.trace_id,
-                t.evidence_id,
-                t.tenant_id AS tenant,
-                t.user_email AS user,
-                t.final_decision AS decision,
-                t.execution_latency_ms AS latency,
-                t.timestamp,
-                t.prompt,
-                t.sanitized_payload,
-                t.verdict,
-                t.proof_bundle
-              FROM consolidated_traces t
-              WHERE t.tenant_id = ?
+                id,
+                evidence_id,
+                trace_id,
+                verdictId,
+                decision,
+                verdict,
+                user,
+                tenant,
+                prompt,
+                responseOutput,
+                payload_json,
+                created_at
+              FROM runs
+              WHERE tenant = ?
             `;
-            let bindings = [tenantId];
+            const bindings = [tenantId];
 
-            if (currentUser && activeUserRole !== "CISO_ADMIN") {
-              query += " AND t.user_email = ?";
+            if (currentUser && !isAdminRole) {
+              query += " AND user = ?";
               bindings.push(currentUser);
             }
 
-            query += " ORDER BY t.id DESC LIMIT 50";
+            query += " ORDER BY id DESC LIMIT 50";
 
             const { results } = await this.env.DB.prepare(query).bind(...bindings).all();
 
             if (results?.length > 0) {
               initialEvidences = results.map(row => {
-                const isDeny = row.decision === "DENY" || row.verdict === "RECHAZADO";
-                const evId = String(row.evidence_id || row.trace_id || `EV-L7-${Date.now()}`);
-                const cleanId = evId.replace('EV-L7-', '');
-                
-                let parsedBundle = null;
-                if (row.proof_bundle) {
-                  try { parsedBundle = JSON.parse(row.proof_bundle); } catch (e) {}
+                let parsedPayload = {};
+                if (row.payload_json) {
+                  try { parsedPayload = JSON.parse(row.payload_json); } catch (e) {}
                 }
 
+                const isDeny = row.decision === "DENY" || row.verdict === "RECHAZADO";
+                const evId = String(row.evidence_id || row.trace_id || `EV-L7-${row.id}`);
+                const cleanId = evId.replace('EV-L7-', '');
+
                 return {
+                  ...parsedPayload,
                   id: evId,
                   evidence_id: evId,
                   trace_id: row.trace_id || evId,
-                  verdictId: `VRD-2026-${cleanId}`,
+                  verdictId: row.verdictId || `VRD-2026-${cleanId}`,
                   decision: isDeny ? "DENY" : "ALLOW",
                   verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
                   user: row.user || currentUser,
                   tenant: row.tenant || tenantId,
-                  prompt: row.prompt || row.sanitized_payload || "(Payload L7 verificado en RAM)",
-                  sanitizedPayload: row.sanitized_payload || row.prompt || "",
-                  latency: row.latency || 0.84,
-                  rawTimestamp: row.timestamp || new Date().toISOString(),
-                  timestamp: row.timestamp || new Date().toISOString(),
-                  proofBundle: parsedBundle || {
-                    verdictId: `VRD-2026-${cleanId}`,
-                    payloadHash: "7a9f82c41e523b1082a4d093fe812739a1b0293847e201b1a5d62901c89f2134",
-                    ed25519Signature: `ED25519_SIG_${cleanId}`,
-                    rfc3161Timestamp: row.timestamp || new Date().toISOString()
+                  prompt: row.prompt || row.responseOutput || "(Payload L7 verificado en RAM)",
+                  sanitizedPayload: row.responseOutput || row.prompt || "",
+                  latency: parsedPayload.latency || 0.84,
+                  rawTimestamp: row.created_at || new Date().toISOString(),
+                  timestamp: row.created_at || new Date().toISOString(),
+                  proofBundle: parsedPayload.proofBundle || {
+                    verdictId: row.verdictId || `VRD-2026-${cleanId}`,
+                    payloadHash: parsedPayload.ms3v_hash || parsedPayload.payload_hash || "",
+                    ed25519Signature: parsedPayload.cryptoSeal || `ED25519_SIG_${cleanId}`,
+                    rfc3161Timestamp: row.created_at || new Date().toISOString()
                   }
                 };
               });
@@ -87,7 +93,7 @@ export class TelemetryServer {
             const kvData = await this.env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
             if (Array.isArray(kvData) && kvData.length > 0) {
               initialEvidences = kvData
-                .filter(item => item && (!currentUser || activeUserRole === "CISO_ADMIN" || item.user === currentUser))
+                .filter(item => item && (!currentUser || isAdminRole || item.user === currentUser))
                 .map(item => {
                   const isDeny = item.decision === "DENY" || item.verdict === "RECHAZADO";
                   return {
@@ -103,7 +109,7 @@ export class TelemetryServer {
         }
 
         await writer.write(encoder.encode(`retry: 5000\n`));
-        
+
         const initEvent = {
           type: "INIT",
           status: "ONLINE_SSE",
@@ -146,8 +152,8 @@ export class TelemetryServer {
       } catch (e) {
         console.log("[TelemetryStream Connection Closed by Client]");
       } finally {
-        try { 
-          await writer.close(); 
+        try {
+          await writer.close();
         } catch (e) {}
       }
     };

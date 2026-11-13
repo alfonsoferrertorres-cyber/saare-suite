@@ -11,6 +11,11 @@ const NAV_ITEMS = [
   { label: 'Licenciamiento', href: '#pricing' },
 ];
 
+const getCleanApiBase = () => {
+  const raw = String(API_HOST || 'https://api.saare.es').trim().replace(/\/+$/, '');
+  return raw.replace(/\/api\/v1$/i, '').replace(/\/v1$/i, '');
+};
+
 export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigateToLegal }) {
   const [cookiesAccepted, setCookiesAccepted] = useState(false);
 
@@ -38,7 +43,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
   };
 
   const handleDownloadPdf = (pdfFileName) => {
-    const baseUrl = String(API_HOST || '').replace(/\/+$/, '');
+    const baseUrl = getCleanApiBase();
     const pdfUrl = `${baseUrl}/api/v1/report/pdf?file=${encodeURIComponent(pdfFileName)}`;
     window.open(pdfUrl, '_blank', 'noopener,noreferrer');
   };
@@ -54,7 +59,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
     setFormStatus('SUBMITTING');
     setFormMessage('');
 
-    const baseUrl = String(API_HOST || '').replace(/\/+$/, '');
+    const baseUrl = getCleanApiBase();
     const requestId = `eval-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     try {
@@ -90,6 +95,8 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       onSelectPlan(plan);
     } else if (typeof onNavigateToLogin === 'function') {
       onNavigateToLogin(plan);
+    } else {
+      window.location.href = `https://console.saare.es/?tenant=DEMO_ENTERPRISE&plan=${encodeURIComponent(plan)}`;
     }
   };
 
@@ -104,7 +111,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               <img 
                 src="/favicon.ico" 
                 alt="S.A.A.R.E. Logo" 
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain" 
               />
             </div>
             <div className="leading-none">
@@ -286,7 +293,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">03. DIFERENCIACIÓN</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es geospatial o documentación. Es control técnico de los flujos de IA.</h2>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es burocracia o documentación. Es control técnico de los flujos de IA.</h2>
               <p className="text-slate-400 mt-3 text-sm">La diferencia está en dónde se aplica el control y cómo se demuestra.</p>
             </div>
 
@@ -492,11 +499,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 08. VALIDACIÓN TÉCNICA */}
-        <section className="border-b border-slate-800/80 py-20 bg-[#060A17]">
+        {/* 08. VALIDACIÓN TÉCNICA Y BIBLIOTECA DE EVIDENCIAS */}
+        <section id="templates" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. VALIDACIÓN TÉCNICA</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. VALIDACIÓN TÉCNICA Y BIBLIOTECA DE EVIDENCIAS</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Las capacidades deben poder demostrarse</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
                 La confianza en una infraestructura de gobernanza no debería depender únicamente de declaraciones comerciales. Por eso, la evaluación técnica de S.A.A.R.E. puede centrarse en aspectos empíricos y verificables.

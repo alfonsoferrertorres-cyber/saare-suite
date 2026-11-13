@@ -1,5 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.1 Producción Conectada)
-// Muro de Gobernanza Determinista — Protocolo MS3V / Motor BLOCK LOGIC
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.4 Producción Integrada)
 
 import { handleCors } from "./src/middleware/corsHandler.js";
 import { AuthMiddleware } from "./src/middleware/authMiddleware.js";
@@ -9,35 +8,18 @@ import { DistributedRateLimiter } from "./src/middleware/rateLimiter.js";
 
 import { handleStripeWebhook } from "./src/services/stripeWebhook.js";
 import { TenantManager } from "./src/services/tenantManager.js";
-import { EnterpriseKeyManager, computeSha256 } from "./src/services/keyManager.js";
+import { computeSha256 } from "./src/services/keyManager.js";
 import { registerEvidenceInSafeCreative } from "./src/services/safeCreativeClient.js";
 import { EvidenceVaultEngine } from "./src/engines/evidenceVaultEngine.js";
 import { TelemetryServer } from "./src/services/telemetryServer.js";
 import { generateProofBundle } from "./src/services/proofBundle.js";
 import TimestampingEngine from "./src/services/timestampingEngine.js";
 
-// === NÚCLEO NATIVO DE GOBERNANZA DETERMINISTA MS3V (BLOCK LOGIC) === //
 import { engineBlockLogic } from "./src/packages/ms3v-core.js";
+import { verifyKillswitch } from "./src/modules/killswitch.js";
+import { ScenarioRegistry, getLiveRegulatoryMatrix } from "./src/modules/scenarioRegistry.js";
+import { DeploymentManager } from "./src/engines/stateMachine.js";
 
-// === MÓDULOS DE CONTROL DE ESTADO, REGISTRO DE ESCENARIOS Y CONTENCIÓN DE EMERGENCIA === //
-import * as killswitchModule from "./src/modules/killswitch.js";
-import * as scenarioRegistryModule from "./src/modules/scenarioRegistry.js";
-import * as stateMachineModule from "./src/engines/stateMachine.js";
-
-// Adaptadores de resolución limpios y tolerantes
-const externalKillswitchCheck =
-  typeof killswitchModule === "function" ? killswitchModule :
-  (killswitchModule?.checkEmergencyKillswitch || killswitchModule?.killswitch || killswitchModule?.default || null);
-
-const scenarioRegistry =
-  Array.isArray(scenarioRegistryModule) ? scenarioRegistryModule :
-  (scenarioRegistryModule?.ScenarioRegistry || scenarioRegistryModule?.scenarioRegistry || scenarioRegistryModule?.default || scenarioRegistryModule);
-
-const stateMachine =
-  typeof stateMachineModule === "function" ? stateMachineModule :
-  (stateMachineModule?.StateMachine || stateMachineModule?.stateMachine || stateMachineModule?.default || stateMachineModule);
-
-// === IMPORTACIÓN ÚNICA DE DERECHOS B2B DESDE EL PAQUETE CENTRAL === //
 import {
   PLAN_IDS,
   sanitizePlanId,
@@ -46,10 +28,8 @@ import {
   isFeatureAllowed
 } from "@saare/entitlements";
 
-// Subsistemas y cachés efímeras globales
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 
-// Parámetros de Seguridad Físicos Aprobados para el Motor MS3V (BLOCK LOGIC)
 const SAARE_APPROVED_COMMANDS = [
   "INICIAR_CUMPLIMIENTO_EXANTE_SAARE",
   "SAARE_CONTROL.PY --KILL",
@@ -71,9 +51,6 @@ const SAARE_APPROVED_COMMANDS = [
   "LOGIC_SAFE_STATE"
 ];
 
-/* --------------------------------------------------------------------------
-   MÓDULO DE INTEGRACIÓN DE 4 CPAAS (TWILIO, MESSAGEBIRD, VONAGE, INFOBIP)
-   -------------------------------------------------------------------------- */
 class CPaaSAdapterManager {
   static async sendTwilio(payload, env) {
     const accountSid = env.TWILIO_ACCOUNT_SID;
@@ -87,15 +64,15 @@ class CPaaSAdapterManager {
       const auth = btoa(`${accountSid}:${authToken}`);
       const body = new URLSearchParams({
         To: payload.to,
-        From: payload.from || env.TWILIO_FROM_NUMBER || '+1234567890',
+        From: payload.from || env.TWILIO_FROM_NUMBER || "+1234567890",
         Body: payload.body
       });
 
       const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded"
         },
         body: body.toString(),
         signal: controller.signal
@@ -117,14 +94,14 @@ class CPaaSAdapterManager {
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch('https://rest.messagebird.com/messages', {
-        method: 'POST',
+      const res = await fetch("https://rest.messagebird.com/messages", {
+        method: "POST",
         headers: {
-          'Authorization': `AccessKey ${apiKey}`,
-          'Content-Type': 'application/json'
+          Authorization: `AccessKey ${apiKey}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          originator: payload.from || 'SAARE',
+          originator: payload.from || "SAARE",
           recipients: [payload.to],
           body: payload.body
         }),
@@ -148,24 +125,24 @@ class CPaaSAdapterManager {
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch('https://rest.nexmo.com/sms/json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("https://rest.nexmo.com/sms/json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           api_key: apiKey,
           api_secret: apiSecret,
           to: payload.to,
-          from: payload.from || 'SAARE',
+          from: payload.from || "SAARE",
           text: payload.body
         }),
         signal: controller.signal
       });
       const data = await res.json();
-      if (!res.ok || data.messages?.[0]?.status !== '0') {
-        throw new Error(data.messages?.[0]?.['error-text'] || "Error en envío vía Vonage");
+      if (!res.ok || data.messages?.[0]?.status !== "0") {
+        throw new Error(data.messages?.[0]?.["error-text"] || "Error en envío vía Vonage");
       }
 
-      return { provider: "Vonage", messageId: data.messages[0]['message-id'] || `vn_${Date.now()}` };
+      return { provider: "Vonage", messageId: data.messages[0]["message-id"] || `vn_${Date.now()}` };
     } finally {
       clearTimeout(timeout);
     }
@@ -180,15 +157,15 @@ class CPaaSAdapterManager {
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/sms/2/text/advanced`, {
-        method: 'POST',
+      const res = await fetch(`${baseUrl.replace(/\/$/, "")}/sms/2/text/advanced`, {
+        method: "POST",
         headers: {
-          'Authorization': `App ${apiKey}`,
-          'Content-Type': 'application/json'
+          Authorization: `App ${apiKey}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           messages: [{
-            from: payload.from || 'SAARE',
+            from: payload.from || "SAARE",
             destinations: [{ to: payload.to }],
             text: payload.body
           }]
@@ -204,25 +181,22 @@ class CPaaSAdapterManager {
     }
   }
 
-  static async sendWithFailover(payload, env, priorityOrder = ['twilio', 'messagebird', 'vonage', 'infobip']) {
+  static async sendWithFailover(payload, env, priorityOrder = ["twilio", "messagebird", "vonage", "infobip"]) {
     const errors = [];
     for (const key of priorityOrder) {
       try {
-        if (key === 'twilio') return await this.sendTwilio(payload, env);
-        if (key === 'messagebird') return await this.sendMessageBird(payload, env);
-        if (key === 'vonage') return await this.sendVonage(payload, env);
-        if (key === 'infobip') return await this.sendInfobip(payload, env);
+        if (key === "twilio") return await this.sendTwilio(payload, env);
+        if (key === "messagebird") return await this.sendMessageBird(payload, env);
+        if (key === "vonage") return await this.sendVonage(payload, env);
+        if (key === "infobip") return await this.sendInfobip(payload, env);
       } catch (err) {
         errors.push(`${key.toUpperCase()}: ${err.message}`);
       }
     }
-    throw new Error(`[CPaaS Failover Exhausted] Ningún proveedor pudo completar el envío: ${errors.join(' | ')}`);
+    throw new Error(`[CPaaS Failover Exhausted] Ningún proveedor pudo completar el envío: ${errors.join(" | ")}`);
   }
 }
 
-/* --------------------------------------------------------------------------
-   REGISTRO Y PROXIES LLM AGNOSTIC (DESACOPLE DE PROVEEDORES)
-   -------------------------------------------------------------------------- */
 const LLM_AGNOSTIC_PROVIDERS = {
   GEMINI: { name: "Google Gemini", defaultEndpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent" },
   OPENAI: { name: "OpenAI GPT-4o", defaultEndpoint: "https://api.openai.com/v1/chat/completions" },
@@ -231,9 +205,6 @@ const LLM_AGNOSTIC_PROVIDERS = {
   LOCAL_ONPREM: { name: "Local Loopback / Ollama", defaultEndpoint: "http://127.0.0.1:11434/v1/chat/completions" }
 };
 
-/* --------------------------------------------------------------------------
-   DIRECTIVA L7 DINÁMICA DE SISTEMA PARA EL NODO NATIVO MS3V
-   -------------------------------------------------------------------------- */
 function getSaareL7SystemDirective(env = {}) {
   const authorName = env.AUTHOR_NAME || "Enterprise System";
   return {
@@ -249,23 +220,18 @@ Cometido del PEP L7:
   };
 }
 
-/* --------------------------------------------------------------------------
-   PARÁMETROS DEL PROTOCOLO DE DOBLE CADENA DE CUSTODIA (BATCHING MERKLE)
-   -------------------------------------------------------------------------- */
 const MERKLE_BATCH_THRESHOLD = 1000;
-const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 Horas
+const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 
-/* --------------------------------------------------------------------------
-   JERARQUÍA DE ROLES Y CONTROL DE ACCESO BASADO EN ROLES (RBAC CANÓNICO)
-   -------------------------------------------------------------------------- */
 const ROLE_RANKS = {
-  "OPERATIONAL_AGENT_USER": 0,
-  "TENANT_AUDITOR": 1,
-  "BOARD_EXECUTIVE_LEVEL_1": 1,
-  "DPO_GRC_LEVEL_2": 2,
-  "CISO_SECOPS_LEVEL_3": 3,
-  "SECURITY_CISO_ADMIN": 4,
-  "CISO_ADMIN": 4
+  AUDITOR_GUEST_LEVEL_0: 0,
+  OPERATIONAL_AGENT_USER: 0,
+  TENANT_AUDITOR: 1,
+  BOARD_EXECUTIVE_LEVEL_1: 1,
+  DPO_GRC_LEVEL_2: 2,
+  CISO_SECOPS_LEVEL_3: 3,
+  SECURITY_CISO_ADMIN: 4,
+  CISO_ADMIN: 4
 };
 
 function hasRequiredRank(userRole, minRank) {
@@ -273,15 +239,12 @@ function hasRequiredRank(userRole, minRank) {
   return rank >= minRank;
 }
 
-/* --------------------------------------------------------------------------
-   ANALIZADOR Y PARSER DE LA MATRIZ DE COMANDOS SEMÁNTICOS
-   -------------------------------------------------------------------------- */
 function parseSemanticCommand(promptText, env = {}) {
-  if (typeof promptText !== 'string') return null;
+  if (typeof promptText !== "string") return null;
   const upper = promptText.toUpperCase();
   const authorName = env.AUTHOR_NAME || "Enterprise System";
-  const baseIdentity = { 
-    nodeIdentity: "NATIVE_MS3V_BLOCK_LOGIC_PEP_L7", 
+  const baseIdentity = {
+    nodeIdentity: "NATIVE_MS3V_BLOCK_LOGIC_PEP_L7",
     expediente: env.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026",
     author: authorName
   };
@@ -291,6 +254,7 @@ function parseSemanticCommand(promptText, env = {}) {
       type: "MODULE_5_BOOTSTRAP",
       verdict: "PERMITIDO",
       decision: "ALLOW",
+      scenarioId: "cumplimiento_corporativo_integral",
       category: "MODULE_5_EX_ANTE_COMPLIANCE",
       norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)",
       witness: "[MS3V-COMPLIANCE-L7-OK]",
@@ -304,6 +268,7 @@ function parseSemanticCommand(promptText, env = {}) {
       type: "KILL_SWITCH_TRIGGERED",
       verdict: "RECHAZADO",
       decision: "DENY",
+      scenarioId: "razonamiento_activo_l7",
       category: "EMERGENCY_DEACTIVATION",
       norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico",
       witness: "[KILL-SWITCH-ENFORCED]",
@@ -312,182 +277,126 @@ function parseSemanticCommand(promptText, env = {}) {
     };
   }
 
-  if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
-  if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
-  if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
-  if (upper.includes("SAARE-MD-VERD")) return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
-  if (upper.includes("SAARE-MD-LEGAL")) return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
-  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", category: "SECRETO_INDUSTRIAL", norma: `Ley 1/2019 / Safe Creative (${env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected'})`, ...baseIdentity };
-  if (upper.includes("SAARE-MD-CUST")) return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
-  if (upper.includes("SAARE-MD-COMPLIANCE")) return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", category: "CUMPLIMIENTO_LLM", norma: "[MS3V-COMPLIANCE-L7-OK]", ...baseIdentity };
-  if (upper.includes("SAARE-MD-DEEP")) return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
-  if (upper.includes("SAARE-MD-FRIA")) return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
+  if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
+  if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
+  if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "razonamiento_activo_l7", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
+  if (upper.includes("SAARE-MD-VERD")) return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
+  if (upper.includes("SAARE-MD-LEGAL")) return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
+  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "SECRETO_INDUSTRIAL", norma: `Ley 1/2019 / Safe Creative (${env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected"})`, ...baseIdentity };
+  if (upper.includes("SAARE-MD-CUST")) return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
+  if (upper.includes("SAARE-MD-COMPLIANCE")) return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CUMPLIMIENTO_LLM", norma: "[MS3V-COMPLIANCE-L7-OK]", ...baseIdentity };
+  if (upper.includes("SAARE-MD-DEEP")) return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
+  if (upper.includes("SAARE-MD-FRIA")) return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
 
   return null;
 }
 
-/* --------------------------------------------------------------------------
-   SISTEMA DE CORTE DE EMERGENCIA L7
-   -------------------------------------------------------------------------- */
-async function checkEmergencyKillswitch(env) {
-  if (typeof externalKillswitchCheck === 'function' && externalKillswitchCheck !== checkEmergencyKillswitch) {
-    try {
-      const extRes = await externalKillswitchCheck(env);
-      if (extRes) return extRes;
-    } catch (e) {
-      console.warn("[SAARE External Killswitch Warning]:", e.message);
-    }
-  }
-
-  if (!env) return null;
-  try {
-    let isEmergencyLock = false;
-    if (env.SAARE_VAULT_KV) {
-      const lockVal = await env.SAARE_VAULT_KV.get("EMERGENCY_KILLSWITCH_ACTIVE");
-      if (lockVal === "true") isEmergencyLock = true;
-    }
-
-    if (isEmergencyLock || String(env.ALLOW_FALLBACK_VAULT).toUpperCase() === "LOCKDOWN") {
-      return new Response(
-        JSON.stringify({
-          status: "BLOCKED",
-          error: "EMERGENCY_KILLSWITCH_TRIGGERED",
-          message: "Acceso denegado por el protocolo de contención y disyuntor lógico MS3V.",
-          timestamp: new Date().toISOString()
-        }),
-        {
-          status: 503,
-          headers: {
-            "Content-Type": "application/json",
-            "X-SAARE-Killswitch": "ACTIVE",
-            "X-MS3V-Spec": "BLOCK-LOGIC-2026"
-          }
-        }
-      );
-    }
-  } catch (err) {
-    console.error("[SAARE Killswitch Error]:", err);
-  }
-  return null;
-}
-
-/* --------------------------------------------------------------------------
-   ASEGURAMIENTO Y CREACIÓN AUTOMÁTICA DE TABLAS D1 (CON AUDITORÍA CPAAS)
-   -------------------------------------------------------------------------- */
 async function ensureD1TablesExist(db) {
   if (!db) return;
   try {
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS consolidated_traces (
-        trace_id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        user_email TEXT NOT NULL,
-        final_evaluator_node TEXT NOT NULL DEFAULT 'MS3V_BLOCK_LOGIC_PEP_L7',
-        final_decision TEXT NOT NULL DEFAULT 'ALLOW',
-        final_action TEXT NOT NULL DEFAULT 'ALLOWED',
-        execution_latency_ms REAL DEFAULT 0.0,
-        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        prompt TEXT NOT NULL DEFAULT '',
-        sanitized_payload TEXT DEFAULT '',
-        verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-        anchored INTEGER DEFAULT 0,
-        ms3v_hash TEXT DEFAULT '',
-        ms3v_timestamp_ns TEXT DEFAULT ''
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
-        id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        message_id TEXT NOT NULL,
-        recipient TEXT NOT NULL,
-        status TEXT NOT NULL,
-        evidence_hash TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS runs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        evidence_id TEXT UNIQUE,
-        trace_id TEXT NOT NULL,
-        verdictId TEXT,
-        decision TEXT NOT NULL DEFAULT 'ALLOW',
-        verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-        user TEXT NOT NULL DEFAULT 'anonymous',
-        tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
-        prompt TEXT DEFAULT '',
-        responseOutput TEXT DEFAULT '',
-        payload_json TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS tenants (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE,
-        name TEXT,
-        plan TEXT,
-        status TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT,
-        company TEXT,
-        role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
-        is_verified INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS merkle_anchors (
-        id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        merkle_root TEXT NOT NULL,
-        batch_size INTEGER NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS custom_rules (
-        id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        pattern TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
-      );
-    `).run();
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS tenant_usage (
-        tenant_id TEXT NOT NULL,
-        billing_period TEXT NOT NULL,
-        verdict_count INTEGER DEFAULT 0,
-        PRIMARY KEY (tenant_id, billing_period)
-      );
-    `).run();
+    await db.batch([
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS consolidated_traces (
+          trace_id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL,
+          user_email TEXT NOT NULL,
+          final_evaluator_node TEXT NOT NULL DEFAULT 'MS3V_BLOCK_LOGIC_PEP_L7',
+          final_decision TEXT NOT NULL DEFAULT 'ALLOW',
+          final_action TEXT NOT NULL DEFAULT 'ALLOWED',
+          execution_latency_ms REAL DEFAULT 0.0,
+          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          prompt TEXT NOT NULL DEFAULT '',
+          sanitized_payload TEXT DEFAULT '',
+          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+          anchored INTEGER DEFAULT 0,
+          ms3v_hash TEXT DEFAULT '',
+          ms3v_timestamp_ns TEXT DEFAULT ''
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          message_id TEXT NOT NULL,
+          recipient TEXT NOT NULL,
+          status TEXT NOT NULL,
+          evidence_hash TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          evidence_id TEXT UNIQUE NOT NULL,
+          trace_id TEXT NOT NULL,
+          verdictId TEXT NOT NULL,
+          decision TEXT NOT NULL DEFAULT 'ALLOW',
+          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+          user TEXT NOT NULL DEFAULT 'anonymous',
+          tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
+          prompt TEXT DEFAULT '',
+          responseOutput TEXT DEFAULT '',
+          payload_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS tenants (
+          tenant_id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          plan_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          quota INTEGER NOT NULL DEFAULT 10000,
+          expires_at TEXT,
+          config_json TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS users (
+          email TEXT PRIMARY KEY,
+          password_hash TEXT NOT NULL,
+          name TEXT NOT NULL,
+          company TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
+          is_verified INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS merkle_anchors (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL,
+          merkle_root TEXT NOT NULL,
+          batch_size INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS custom_rules (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          pattern TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS tenant_usage (
+          tenant_id TEXT NOT NULL,
+          billing_period TEXT NOT NULL,
+          verdict_count INTEGER DEFAULT 0,
+          PRIMARY KEY (tenant_id, billing_period)
+        )
+      `)
+    ]);
   } catch (e) {
-    console.error("[SAARE D1 Schema Init Error]:", e);
+    console.error("[SAARE D1 Schema Init Error]:", e.message);
   }
 }
 
-/* --------------------------------------------------------------------------
-   MOTOR DE ANCLAJE Y CONSOLIDACIÓN DE MERKLE TREE
-   -------------------------------------------------------------------------- */
 async function processBatchMerkleAnchor(tenantId, env) {
   if (!env || !env.DB) return;
   try {
@@ -511,10 +420,8 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
       if (!results || results.length === 0) return;
 
-      const encoder = new TextEncoder();
       const combinedHashes = results.map(r => r.trace_id).join(":");
-      const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(combinedHashes));
-      const merkleRoot = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const merkleRoot = await computeSha256(combinedHashes);
 
       const anchorId = `ANK-2026-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
@@ -524,16 +431,16 @@ async function processBatchMerkleAnchor(tenantId, env) {
       ).bind(anchorId, tenantId, merkleRoot, results.length, timestamp).run();
 
       const traceIds = results.map(r => r.trace_id);
-      const placeholders = traceIds.map(() => '?').join(',');
+      const placeholders = traceIds.map(() => "?").join(",");
       await env.DB.prepare(
         `UPDATE consolidated_traces SET anchored = 1 WHERE trace_id IN (${placeholders})`
       ).bind(...traceIds).run();
 
-      await registerEvidenceInSafeCreative({ 
-        id: anchorId, 
-        merkleRoot, 
-        batchSize: results.length, 
-        author: env?.AUTHOR_NAME || "Enterprise System" 
+      await registerEvidenceInSafeCreative({
+        id: anchorId,
+        merkleRoot,
+        batchSize: results.length,
+        author: env?.AUTHOR_NAME || "Enterprise System"
       }, env);
     }
   } catch (e) {
@@ -548,13 +455,13 @@ function getFallbackUserVault(env) {
     [primaryAdmin]: {
       name: `S.A.A.R.E. Master Custodian (${authorName})`,
       company: "ORGANISMO_DEMO_01",
-      password_hash: "demo",
+      password_hash: env?.ADMIN_DEMO_PASSWORD || "demo",
       is_verified: 1,
       role: "CISO_ADMIN"
     },
     "demo@saare.ai": {
       name: "Operador Enterprise",
-      company: "ENTERPRISE",
+      company: "SANDBOX_DEMO",
       password_hash: "demo",
       is_verified: 1,
       role: "CISO_ADMIN"
@@ -563,7 +470,7 @@ function getFallbackUserVault(env) {
 }
 
 function fallbackVaultEnabled(env) {
-  return String(env?.ALLOW_FALLBACK_VAULT || "true").toLowerCase() === "true";
+  return String(env?.ALLOW_FALLBACK_VAULT || "false").toLowerCase() === "true";
 }
 
 function sanitizeEmail(email) {
@@ -596,7 +503,7 @@ async function verifyPassword(stored, candidate) {
     key,
     256
   );
-  const actualHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const actualHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
 
   if (expectedHex.length !== actualHex.length) return false;
   let result = 0;
@@ -612,12 +519,7 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
   const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
   const timeBucket = new Date().toISOString().substring(0, 16);
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${cleanUser}:${cleanPrompt}:${timeBucket}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
+  const hashHex = (await computeSha256(`${cleanUser}:${cleanPrompt}:${timeBucket}`))
     .substring(0, 10)
     .toUpperCase();
 
@@ -625,7 +527,7 @@ async function generateDeterministicEvidenceId(user, prompt, customId) {
 }
 
 function sanitizePromptInRam(promptText) {
-  if (typeof promptText !== 'string') return { sanitizedText: "", rulesTriggered: [] };
+  if (typeof promptText !== "string") return { sanitizedText: "", rulesTriggered: [] };
   let cleanText = promptText;
   const rules = [];
 
@@ -635,39 +537,36 @@ function sanitizePromptInRam(promptText) {
 
   const nifRegex = /[0-9]{8}[A-Z]/gi;
   if (nifRegex.test(cleanText)) {
-    cleanText = cleanText.replace(nifRegex, '[PII_ANONYMIZED_ES]');
-    rules.push('DLP_PII_NIF_ES');
+    cleanText = cleanText.replace(nifRegex, "[PII_ANONYMIZED_ES]");
+    rules.push("DLP_PII_NIF_ES");
   }
 
   const apiKeyRegex = /(sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16})/gi;
   if (apiKeyRegex.test(cleanText)) {
-    cleanText = cleanText.replace(apiKeyRegex, '[SECRET_MASKED_KEY]');
-    rules.push('SECRET_SCANNING_API_KEY');
+    cleanText = cleanText.replace(apiKeyRegex, "[SECRET_MASKED_KEY]");
+    rules.push("SECRET_SCANNING_API_KEY");
   }
 
   const attackRegex = /(ignore all previous instructions|dan mode|system override|drop table)/gi;
   if (attackRegex.test(cleanText)) {
-    rules.push('ANTI_JAILBREAK_TRIGGERED');
+    rules.push("ANTI_JAILBREAK_TRIGGERED");
   }
 
   return { sanitizedText: cleanText, rulesTriggered: rules };
 }
 
-/* --------------------------------------------------------------------------
-   ADAPTADOR DE INFERENCIA AGNÓSTICA REAL
-   -------------------------------------------------------------------------- */
 async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName, env) {
   const provider = LLM_AGNOSTIC_PROVIDERS[providerKey] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
   const authorName = env?.AUTHOR_NAME || "Enterprise System";
-  
-  if (providerKey === 'LOCAL_ONPREM') {
+
+  if (providerKey === "LOCAL_ONPREM") {
     try {
       const resp = await fetch(provider.defaultEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: modelName || 'llama3',
-          messages: [{ role: 'user', content: sanitizedPrompt }],
+          model: modelName || "llama3",
+          messages: [{ role: "user", content: sanitizedPrompt }],
           stream: false
         })
       });
@@ -678,17 +577,17 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
     } catch (e) {}
   }
 
-  if (providerKey === 'OPENAI' && env?.OPENAI_API_KEY) {
+  if (providerKey === "OPENAI" && env?.OPENAI_API_KEY) {
     try {
       const resp = await fetch(provider.defaultEndpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: modelName || 'gpt-4o',
-          messages: [{ role: 'user', content: sanitizedPrompt }]
+          model: modelName || "gpt-4o",
+          messages: [{ role: "user", content: sanitizedPrompt }]
         })
       });
       if (resp.ok) {
@@ -715,7 +614,7 @@ export default {
       return new Response(
         JSON.stringify({
           service: "S.A.A.R.E. Enterprise Control Plane",
-          version: env?.SGP_SPEC_VERSION || "SGP 1.0 (MS3V Hardened v12.1)",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0 (MS3V Hardened v12.4)",
           author: env?.AUTHOR_NAME || "Enterprise System",
           engine: "BLOCK LOGIC (Middleware Determinista en Tiempo Real)",
           status: "ONLINE",
@@ -727,55 +626,72 @@ export default {
       );
     }
 
-    const killswitchResponse = await checkEmergencyKillswitch(env);
+    const killswitchResponse = await verifyKillswitch(env);
     if (killswitchResponse) {
       const headers = new Headers(killswitchResponse.headers);
       Object.entries(cors.corsHeaders).forEach(([k, v]) => headers.set(k, v));
       return new Response(killswitchResponse.body, { status: killswitchResponse.status, headers });
     }
 
-    let normalizedPath = _u.pathname.replace(/\/$/, '') || '/';
-    while (normalizedPath.includes('/api/v1/api/v1')) normalizedPath = normalizedPath.replace('/api/v1/api/v1', '/api/v1');
-    while (normalizedPath.includes('/v1/v1')) normalizedPath = normalizedPath.replace('/v1/v1', '/v1');
+    let normalizedPath = _u.pathname.replace(/\/$/, "") || "/";
+    while (normalizedPath.includes("/api/v1/api/v1")) normalizedPath = normalizedPath.replace("/api/v1/api/v1", "/api/v1");
+    while (normalizedPath.includes("/v1/v1")) normalizedPath = normalizedPath.replace("/v1/v1", "/v1");
 
     const path = normalizedPath;
     const method = request.method;
 
-    // === RUTA DE VERIFICACIÓN DE RESILIENCIA Y SALUD EX-ANTE ===
-    if ((path === '/resilience/check' || path === '/v1/resilience/check' || path === '/api/v1/resilience/check') && method === 'GET') {
+    if ((path === "/resilience/check" || path === "/v1/resilience/check" || path === "/api/v1/resilience/check") && method === "GET") {
+      const deployment = new DeploymentManager("PROD-EDGE-L7");
+      const healthy = await deployment.runPreflightCheck({
+        available: true,
+        coreEngineReady: true,
+        memoryRAMProxyOK: true,
+        evidenceVaultReady: Boolean(env?.DB || env?.SAARE_VAULT_KV)
+      });
+      if (healthy) await deployment.executeDeployment();
+
       return new Response(
         JSON.stringify({
-          status: 'HEALTHY',
-          resilience: 'ACTIVE',
-          service: env?.WORKER_NAME || 'saare-control-plane-prod',
-          version: env?.SGP_SPEC_VERSION || 'SGP 1.0 MS3V',
-          engine: 'BLOCK LOGIC v12.1',
-          trustAnchor: env?.TRUST_ANCHOR || 'https://vault.saare.es',
+          status: healthy ? "HEALTHY" : "DEGRADED",
+          deploymentState: deployment.state,
+          resilience: "ACTIVE",
+          service: env?.WORKER_NAME || "saare-control-plane-prod",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0 MS3V",
+          engine: "BLOCK LOGIC v12.4",
+          trustAnchor: env?.TRUST_ANCHOR || "https://vault.saare.es",
           timestamp: new Date().toISOString()
         }),
-        { status: 200, headers: { ...cors.corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+        { status: healthy ? 200 : 503, headers: { ...cors.corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
       );
     }
 
-    if ((path === '/health' || path === '/v1/health' || path === '/api/health' || path === '/api/v1/health') && method === 'GET') {
+    if ((path === "/health" || path === "/v1/health" || path === "/api/health" || path === "/api/v1/health") && method === "GET") {
       return new Response(
         JSON.stringify({
-          status: 'HEALTHY',
-          service: env?.WORKER_NAME || 'saare-control-plane-prod',
-          version: env?.SGP_SPEC_VERSION || 'SGP 1.0 MS3V',
-          author: env?.AUTHOR_NAME || 'Enterprise System',
-          engine: 'BLOCK LOGIC v12.1',
-          legalRpi: env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected',
-          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-MILESTONE',
-          trustAnchor: env?.TRUST_ANCHOR || 'https://vault.saare.es',
+          status: "HEALTHY",
+          service: env?.WORKER_NAME || "saare-control-plane-prod",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0 MS3V",
+          author: env?.AUTHOR_NAME || "Enterprise System",
+          engine: "BLOCK LOGIC v12.4",
+          activeScenarios: ScenarioRegistry.length,
+          legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
+          llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-MILESTONE",
+          trustAnchor: env?.TRUST_ANCHOR || "https://vault.saare.es",
           timestamp: new Date().toISOString()
         }),
-        { status: 200, headers: { ...cors.corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+        { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
       );
     }
 
-    if ((path === '/api/v1/deploy/gpo-policy' || path === '/v1/deploy/gpo-policy' || path === '/deploy/gpo-policy') && (method === 'GET' || method === 'POST')) {
-      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"MS3VProtocolEngine"="BLOCK LOGIC"\n"Author"="${env?.AUTHOR_NAME || 'Enterprise System'}"\n"TrustAnchor"="${env?.TRUST_ANCHOR || 'https://vault.saare.es'}"\n"LegalRpi"="${env?.SAFE_CREATIVE_ID || 'Safe Creative Work Protected'}"\n"LlmMilestoneRpi"="${env?.LLM_MILESTONE_RPI || 'RPI-2026-SAARE-MILESTONE'}"`;
+    if ((path === "/api/v1/compliance/matrix" || path === "/v1/compliance/matrix" || path === "/compliance/matrix") && method === "GET") {
+      return new Response(JSON.stringify(getLiveRegulatoryMatrix()), {
+        status: 200,
+        headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
+      const gpoRegistryContent = `Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]\n"EnableExAnteEnforcement"=dword:00000001\n"MS3VProtocolEngine"="BLOCK LOGIC"\n"Author"="${env?.AUTHOR_NAME || "Enterprise System"}"\n"TrustAnchor"="${env?.TRUST_ANCHOR || "https://vault.saare.es"}"\n"LegalRpi"="${env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected"}"\n"LlmMilestoneRpi"="${env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-MILESTONE"}"`;
       return new Response(gpoRegistryContent, {
         status: 200,
         headers: {
@@ -786,38 +702,46 @@ export default {
       });
     }
 
-    if ((path === '/api/v1/deploy/extension-zip' || path === '/v1/deploy/extension-zip' || path === '/deploy/extension-zip') && method === 'GET') {
+    if ((path === "/api/v1/deploy/extension-zip" || path === "/v1/deploy/extension-zip" || path === "/deploy/extension-zip") && method === "GET") {
       const downloadUrl = env?.EXTENSION_DOWNLOAD_URL || "https://console.saare.es/deploy/saare_l7_proxy_extension.zip";
       return Response.redirect(downloadUrl, 302);
     }
 
-    if ((path === '/api/v1/stripe/webhook' || path === '/v1/stripe/webhook' || path === '/stripe/webhook') && method === 'POST') {
-      try {
-        if (typeof handleStripeWebhook === 'function') {
-          return await handleStripeWebhook(request, env);
-        }
-        return new Response(JSON.stringify({ status: "STRIPE_WEBHOOK_RECEIVED", processed: true }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_FAILED", message: err.message }), { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
+    if ((path === "/api/v1/stripe/webhook" || path === "/v1/stripe/webhook" || path === "/stripe/webhook") && method === "POST") {
+      return await handleStripeWebhook(request, env);
     }
 
     try {
       const authHeader = request.headers.get("Authorization") || "";
       const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || _u.searchParams.get("user"));
       const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
-      let identity = null;
+      const zeroTrust = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS, env);
 
+      let identity = null;
       if (authHeader) {
         try { identity = await auth.verifyAndDecodeToken(authHeader); } catch (e) {}
       }
 
-      const tenantId = identity?.tenantId || request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || "ORGANISMO_DEMO_01";
-      const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
-      const activeUserRole = identity?.role || request.headers.get("x-saare-role") || _u.searchParams.get("role") || "CISO_ADMIN";
+      const cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
+      const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
 
-      // === RUTA DE MÉTRICAS MULTI-TENANT PARA SAARE-CONSOLE (D1 CONSUMO) ===
-      if ((path === '/metrics/tenants' || path === '/v1/metrics/tenants' || path === '/api/v1/metrics/tenants') && method === 'GET') {
+      const tenantId = identity?.tenantId || request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || "SANDBOX_DEMO";
+      const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
+      const activeUserRole = isAuthenticated
+        ? (identity?.role || "CISO_ADMIN")
+        : "AUDITOR_GUEST_LEVEL_0";
+
+      if (typeof rateLimiter.check === "function") {
+        const rateResult = await rateLimiter.check(tenantId);
+        if (rateResult && rateResult.allowed === false) {
+          return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
+            status: 429,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+      }
+
+      if ((path === "/metrics/tenants" || path === "/v1/metrics/tenants" || path === "/api/v1/metrics/tenants") && method === "GET") {
         let metricsData = [];
         if (env?.DB) {
           try {
@@ -831,7 +755,7 @@ export default {
                   MAX(datetime(timestamp)) AS ultima_actividad
               FROM consolidated_traces
               GROUP BY tenant_id
-              ORDER BY total_prompts DESC;
+              ORDER BY total_prompts DESC
             `).all();
             if (results) metricsData = results;
           } catch (mErr) {
@@ -844,14 +768,13 @@ export default {
         });
       }
 
-      // === RUTA DE ENVIÓ MULTI-CPAAS (TWILIO, MESSAGEBIRD, VONAGE, INFOBIP) CON AUDITORÍA D1 ===
-      if ((path === '/cpaas/send' || path === '/api/v1/cpaas/send' || path === '/v1/cpaas/send') && method === 'POST') {
+      if ((path === "/cpaas/send" || path === "/api/v1/cpaas/send" || path === "/v1/cpaas/send") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         if (!body.to || !body.body) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const priorityOrder = Array.isArray(body.priority) ? body.priority : ['twilio', 'messagebird', 'vonage', 'infobip'];
+        const priorityOrder = Array.isArray(body.priority) ? body.priority : ["twilio", "messagebird", "vonage", "infobip"];
 
         try {
           const cpaasResult = await CPaaSAdapterManager.sendWithFailover(body, env, priorityOrder);
@@ -878,7 +801,7 @@ export default {
               }
             };
 
-            if (ctx && typeof ctx.waitUntil === 'function') {
+            if (ctx && typeof ctx.waitUntil === "function") {
               ctx.waitUntil(auditInsert());
             } else {
               await auditInsert();
@@ -889,7 +812,7 @@ export default {
             success: true,
             provider: cpaasResult.provider,
             messageId: cpaasResult.messageId,
-            evidenceHash: evidenceHash,
+            evidenceHash,
             timestamp: new Date().toISOString()
           }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         } catch (err) {
@@ -901,61 +824,69 @@ export default {
         }
       }
 
-      // === RUTA DE VERIFICACIÓN DE LICENCIA Y PROPIEDAD INTELECTUAL MS3V ===
-      if ((path === '/auth/verifylicense' || path === '/v1/auth/verifylicense' || path === '/api/v1/auth/verifylicense') && (method === 'GET' || method === 'POST')) {
-        const licenseData = {
-          valid: true,
+      if ((path === "/auth/verifylicense" || path === "/v1/auth/verifylicense" || path === "/api/v1/auth/verifylicense") && (method === "GET" || method === "POST")) {
+        const tenantMgr = new TenantManager(env);
+        const tenantInfo = await tenantMgr.getTenant(tenantId);
+        const activePlan = sanitizePlanId(tenantInfo?.planId || tenantPlan);
+        const entitlements = getPlanEntitlements(activePlan);
+
+        return new Response(JSON.stringify({
+          valid: tenantInfo?.status === "ACTIVE",
           tenant: tenantId,
+          planId: activePlan,
+          entitlements,
           role: activeUserRole,
           author: env?.AUTHOR_NAME || "Enterprise System",
           protocol: "Protocolo MS3V / Motor BLOCK LOGIC",
           node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
-          status: "ACTIVE",
+          status: tenantInfo?.status || "UNPROVISIONED",
           legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
-          expiresAt: "2027-12-31T23:59:59Z",
-          authenticated: !!identity || !!authHeader
-        };
-        return new Response(JSON.stringify(licenseData), {
-          status: 200,
+          expiresAt: tenantInfo?.expiresAt || "2027-12-31T23:59:59Z",
+          authenticated: isAuthenticated
+        }), {
+          status: tenantInfo?.status === "ACTIVE" ? 200 : 403,
           headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
         });
       }
 
-      // === RUTA DE STREAMING TELEMETRÍA (SSE) ===
-      if ((path === '/telemetry/stream' || path === '/api/v1/telemetry/stream' || path === '/v1/telemetry/stream') && method === 'GET') {
-        const streamHeader = {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-          ...cors.corsHeaders
-        };
-        const initialChunk = `data: ${JSON.stringify({ status: "RUNTIME_ACTIVE", engine: "BLOCK LOGIC MS3V", tenant: tenantId, timestamp: new Date().toISOString() })}\n\n`;
-        return new Response(initialChunk, { status: 200, headers: streamHeader });
+      if ((path === "/telemetry/stream" || path === "/api/v1/telemetry/stream" || path === "/v1/telemetry/stream") && method === "GET") {
+        const telemetry = new TelemetryServer(env);
+        const currentUser = identity?.email || cfIdentity?.userEmail || headerUser || null;
+        const sseResult = await telemetry.handleStream(request, tenantId, currentUser, activeUserRole, ctx);
+        const headers = new Headers(sseResult.headers);
+        Object.entries(cors.corsHeaders).forEach(([k, v]) => headers.set(k, v));
+        return new Response(sseResult.body, { status: sseResult.status, headers });
       }
 
-      // === RUTA GESTIÓN ASIENTOS RBAC (/executive/seats) ===
-      if ((path === '/executive/seats' || path === '/api/v1/executive/seats' || path === '/v1/executive/seats') && method === 'GET') {
+      if ((path === "/executive/seats" || path === "/api/v1/executive/seats" || path === "/v1/executive/seats") && method === "GET") {
         let usersList = [];
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ? OR company IS NULL").bind(tenantId).all();
+            const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?").bind(tenantId).all();
             if (results && results.length > 0) usersList = results;
           } catch (e) {}
         }
         if (usersList.length === 0) {
           usersList = [
-            { email: identity?.email || headerUser || "admin@saare.es", name: `Operador Principal (${env?.AUTHOR_NAME || 'Enterprise System'})`, role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split('T')[0] }
+            { email: identity?.email || headerUser || "admin@saare.es", name: `Operador Principal (${env?.AUTHOR_NAME || "Enterprise System"})`, role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split("T")[0] }
           ];
         }
         return new Response(JSON.stringify({ status: "SUCCESS", tenant: tenantId, maxSeats: 10, usedSeats: usersList.length, users: usersList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      if ((path === '/executive/seats/assign' || path === '/api/v1/executive/seats/assign' || path === '/v1/executive/seats/assign') && method === 'POST') {
+      if ((path === "/executive/seats/assign" || path === "/api/v1/executive/seats/assign" || path === "/v1/executive/seats/assign") && method === "POST") {
+        if (!hasRequiredRank(activeUserRole, 3)) {
+          return new Response(JSON.stringify({ error: "FORBIDDEN_INSUFFICIENT_RANK", message: "Se requiere rol CISO o superior para asignar asientos." }), {
+            status: 403,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
         const body = await request.json().catch(() => ({}));
         const cleanAssignEmail = sanitizeEmail(body.email);
         const assignRole = body.role || "DPO_GRC_LEVEL_2";
-        const assignName = body.name || cleanAssignEmail.split('@')[0];
+        const assignName = body.name || cleanAssignEmail.split("@")[0];
 
         if (env?.DB && cleanAssignEmail) {
           try {
@@ -969,8 +900,7 @@ export default {
         return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA REGLAS CUSTOM (/custom-rules) ===
-      if ((path === '/custom-rules' || path === '/api/v1/custom-rules' || path === '/v1/custom-rules') && method === 'GET') {
+      if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
         let rules = [];
         if (env?.DB) {
           try {
@@ -982,7 +912,7 @@ export default {
         return new Response(JSON.stringify({ status: "SUCCESS", rules }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      if ((path === '/custom-rules' || path === '/api/v1/custom-rules' || path === '/v1/custom-rules') && method === 'POST') {
+      if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const newRules = Array.isArray(body.rules) ? body.rules : [];
         if (env?.DB) {
@@ -996,8 +926,7 @@ export default {
         return new Response(JSON.stringify({ success: true, rules: newRules }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA EXPORTACIÓN SUBVENCIONES (/subsidies/export-package) ===
-      if ((path === '/subsidies/export-package' || path === '/v1/subsidies/export-package' || path === '/api/v1/subsidies/export-package') && method === 'POST') {
+      if ((path === "/subsidies/export-package" || path === "/v1/subsidies/export-package" || path === "/api/v1/subsidies/export-package") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const grantType = body.grantType || "KIT_CONSULTING";
         const docType = body.documentType || "ALL";
@@ -1005,15 +934,20 @@ export default {
         return new Response(JSON.stringify({
           status: "SUCCESS",
           complianceCode: code,
-          grantType: grantType,
+          grantType,
           documentType: docType,
           downloadUrl: `https://vault.saare.es/export/${code}.zip`,
           timestamp: new Date().toISOString()
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA INTEGRACIÓN SIEM (/integrations/siem) ===
-      if ((path === '/integrations/siem' || path === '/api/v1/integrations/siem') && method === 'POST') {
+      if ((path === "/integrations/siem" || path === "/api/v1/integrations/siem") && method === "POST") {
+        if (!isFeatureAllowed(tenantPlan, "siemExport")) {
+          return new Response(JSON.stringify({ error: "PLAN_UPGRADE_REQUIRED", message: "La exportación SIEM requiere plan Professional o Enterprise." }), {
+            status: 403,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         const body = await request.json().catch(() => ({}));
         return new Response(JSON.stringify({
           status: "SIEM_EVENT_DISPATCHED",
@@ -1023,13 +957,12 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA VERIFICACIÓN DE FIRMA (/vault/sync & /verify/:hash) ===
-      if ((path === '/vault/sync' || path === '/api/v1/vault/sync') && method === 'GET') {
+      if ((path === "/vault/sync" || path === "/api/v1/vault/sync") && method === "GET") {
         return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: "https://vault.saare.es" }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      if (path.startsWith('/verify/') || path.startsWith('/api/v1/verify/')) {
-        const hash = path.split('/verify/')[1] || '';
+      if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
+        const hash = path.split("/verify/")[1] || "";
         return new Response(JSON.stringify({
           verified: true,
           status: "VERIFIED",
@@ -1042,33 +975,24 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA HISTORIAL DE TRACES Y LOGS (FILTRADO ESTRICTO POR TENANT) ===
-      if ((path === '/traces' || path === '/v1/traces' || path === '/api/v1/traces' || path === '/v1/logs' || path === '/api/traces') && method === 'GET') {
-        let tracesList = [];
+      if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
         const limitParam = parseInt(_u.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
-
         const activeTenant = request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || tenantId;
 
-        if (env?.DB) {
-          try {
-            await ensureD1TablesExist(env.DB);
-            const query = "SELECT * FROM consolidated_traces WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?";
-            const { results } = await env.DB.prepare(query).bind(activeTenant, safeLimit).all();
-            if (results && results.length > 0) tracesList = results;
-          } catch (d1Err) {
-            console.error("[D1 Traces Error]:", d1Err.message);
-          }
-        }
+        const vaultEngine = new EvidenceVaultEngine(env);
+        const tracesList = await vaultEngine.getTenantTraces(activeTenant, safeLimit);
+
         return new Response(JSON.stringify({ status: "SUCCESS", tenant: activeTenant, count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === RUTA VERIFICACIÓN DE EVIDENCIAS Y SELLADO DE TIEMPO RFC-3161 ===
-      if ((path === '/api/v1/evidence/verify' || path === '/evidence/verify') && method === 'POST') {
+      if ((path === "/api/v1/evidence/verify" || path === "/evidence/verify") && method === "POST") {
         const { proof, safeCreativeHash } = await request.json().catch(() => ({}));
-        const EngineClass = TimestampingEngine.default || TimestampingEngine;
-        const engine = new EngineClass(env?.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026");
-        const seal = engine.sealTransaction({ proof: proof || "SHA256_RFC3161_VALIDATED" }, safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH);
+        const engine = new TimestampingEngine(env?.EXPEDIENTE_ID || "MS3V-RECON-VALID-2026");
+        const seal = await engine.sealTransaction(
+          { proof: proof || "SHA256_RFC3161_VALIDATED" },
+          safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH
+        );
 
         return new Response(JSON.stringify({
           valid: true,
@@ -1078,21 +1002,38 @@ export default {
           proof: proof || "SHA256_RFC3161_VALIDATED",
           rootMerkleHash: seal.rootHash,
           tsaHash: seal.tsaHash,
-          isQualifiedTSA: !!seal.tsaHash,
+          isQualifiedTSA: Boolean(safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH),
           timestampUtc: seal.timestampUtc,
-          standard: 'ISO/IEC 27037:2012 / RFC 3161 / eIDAS'
+          standard: "ISO/IEC 27037:2012 / RFC 3161 / eIDAS"
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // === PROXY PRINCIPAL LLM / CHAT COMPLETIONS ===
-      if ((path === '/v1/chat/completions' || path === '/v1/proxy/llm' || path === '/api/v1/proxy/llm' || path === '/proxy/llm') && method === 'POST') {
+      if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm") && method === "POST") {
         const startTime = performance.now();
         const body = await request.json().catch(() => ({}));
 
-        const tenantHeader = request.headers.get("x-saare-tenant") || body.tenant;
+        const tenantHeader = request.headers.get("x-saare-tenant") || body.tenant || tenantId;
         if (!tenantHeader) {
           return new Response(JSON.stringify({ error: "FORBIDDEN_MISSING_TENANT", message: "Acceso denegado por política de control ex-ante L7 MS3V." }), {
             status: 403,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        const tenantMgr = new TenantManager(env);
+        const accessCheck = await tenantMgr.validateAccess(tenantHeader, body.scenarioId || null);
+        if (!accessCheck.allowed) {
+          return new Response(JSON.stringify({ error: "TENANT_ACCESS_DENIED", message: accessCheck.reason }), {
+            status: 403,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        const activePlan = sanitizePlanId(accessCheck.tenant?.planId || tenantPlan);
+        const quotaStatus = checkQuota(activePlan, accessCheck.tenant?.currentUsage || 0);
+        if (!quotaStatus.allowed) {
+          return new Response(JSON.stringify({ error: "QUOTA_EXCEEDED", message: "Cuota mensual del plan agotada.", quota: quotaStatus }), {
+            status: 429,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
           });
         }
@@ -1106,62 +1047,74 @@ export default {
           rawPrompt = body.messages.map(m => `${m.role}: ${m.content}`).join("\n");
         }
 
-        const user = sanitizeEmail(body.user || identity?.email || headerUser) || "operator_anonymous";
+        const user = sanitizeEmail(body.user || identity?.email || cfIdentity?.userEmail || headerUser) || "operator_anonymous";
         const tenant = tenantHeader;
 
-        // Ejecución del motor Block Logic pasando env
         const ms3vVerdict = await engineBlockLogic(rawPrompt, SAARE_APPROVED_COMMANDS, env);
 
         if (ms3vVerdict.STATUS === "ABORT_SEQUENCE") {
           return new Response(JSON.stringify({
             error: "MS3V_BLOCK_LOGIC_SECURITY_ABORT",
-            message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V. La instrucción viola los límites operativos aprobados.",
+            message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
             author: env?.AUTHOR_NAME || "Enterprise System"
           }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const zeroTrustInstance = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS);
-        const blockLogicVerdict = await zeroTrustInstance.processBlockLogic(rawPrompt);
-
         const semanticCmd = parseSemanticCommand(rawPrompt, env);
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
-        
+
         const isBlocked = !semanticCmd && (
-          rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED') || 
-          rawPrompt.toUpperCase().includes('DROP TABLE') || 
-          rawPrompt.toUpperCase().includes('IGNORE ALL PREVIOUS')
+          rulesTriggered.includes("ANTI_JAILBREAK_TRIGGERED") ||
+          rawPrompt.toUpperCase().includes("DROP TABLE") ||
+          rawPrompt.toUpperCase().includes("IGNORE ALL PREVIOUS")
         );
-            
+
         const isSanitized = rulesTriggered.length > 0;
-        const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? 'RECHAZADO' : (isSanitized ? 'SANCP_SANITIZED' : 'PERMITIDO'));
-        const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? 'DENY' : 'ALLOW');
+        const finalVerdict = semanticCmd ? semanticCmd.verdict : (isBlocked ? "RECHAZADO" : (isSanitized ? "SANCP_SANITIZED" : "PERMITIDO"));
+        const finalDecision = semanticCmd ? semanticCmd.decision : (isBlocked ? "DENY" : "ALLOW");
 
-        const activeEvaluatorNode = semanticCmd ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]` : `MS3V_BLOCK_LOGIC_PEP_L7 [${providerMeta.name}]`;
+        const activeScenarioId = body.scenarioId || semanticCmd?.scenarioId || "cumplimiento_corporativo_integral";
+        const complianceAssessment = ComplianceEngine.mapExecutionToCompliance(
+          activeScenarioId,
+          finalDecision,
+          rulesTriggered.join(", ")
+        );
 
-        const llmOutputContent = await invokeAgnosticLlmProvider(targetProvider, sanitizedText, body.model, env);
+        const activeEvaluatorNode = semanticCmd
+          ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]`
+          : `MS3V_BLOCK_LOGIC_PEP_L7 [${providerMeta.name}]`;
+
+        const llmOutputContent = isBlocked
+          ? "[BLOQUEO EX-ANTE L7] Petición interceptada y neutralizada en RAM antes de contactar con el proveedor LLM."
+          : await invokeAgnosticLlmProvider(targetProvider, sanitizedText, body.model, env);
 
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
-        const verdictId = body.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
+        const verdictId = body.verdictId || `VRD-2026-${runId.replace("EV-L7-", "")}`;
         const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+        const latencyMs = parseFloat((performance.now() - startTime).toFixed(2));
 
         const vaultEngine = new EvidenceVaultEngine(env);
         const doubleCustodyRecord = await vaultEngine.recordNodeEvidence({
           trace_id: traceId,
           evidence_id: runId,
+          verdictId,
           tenant_id: tenant,
-          user: user,
+          user,
           prompt: rawPrompt,
           sanitized_payload: sanitizedText,
+          responseOutput: llmOutputContent,
+          latency: latencyMs,
           evaluator_chain: { final_evaluator: activeEvaluatorNode },
-          verdict_data: { 
-            verdict: finalVerdict, 
-            action: finalDecision, 
-            rules: rulesTriggered, 
-            ms3vHash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
-            ms3vTimestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+          verdict_data: {
+            verdict: finalVerdict,
+            action: finalDecision,
+            rules: rulesTriggered,
+            ms3vHash: ms3vVerdict.HASH,
+            ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
           },
+          compliance: complianceAssessment,
           payload_hash: await computeSha256(rawPrompt)
         });
 
@@ -1169,26 +1122,24 @@ export default {
           id: runId,
           evidence_id: runId,
           trace_id: traceId,
-          verdictId: verdictId,
+          verdictId,
           decision: finalDecision,
           verdict: finalVerdict,
-          user: user,
-          tenant: tenant,
+          user,
+          tenant,
           prompt: rawPrompt,
           timestamp: new Date().toISOString(),
           ms3vAudit: {
-            hash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
-            timestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+            hash: ms3vVerdict.HASH,
+            timestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE,
             author: env?.AUTHOR_NAME || "Enterprise System",
             protocol: "MS3V / BLOCK LOGIC"
           },
+          complianceImpact: complianceAssessment.compliance_impact,
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
         }, env);
 
-        const latencyMs = parseFloat((performance.now() - startTime).toFixed(2));
-
-        // Registro de telemetría en tiempo real en Workers Analytics Engine
         if (env?.USAGE_ANALYTICS) {
           try {
             env.USAGE_ANALYTICS.writeDataPoint({
@@ -1201,157 +1152,106 @@ export default {
           }
         }
 
-        if (env?.DB) {
-          const runAsyncInsert = async () => {
-            try {
-              await ensureD1TablesExist(env.DB);
-              const nowIso = new Date().toISOString();
-              await env.DB.prepare(`
-                INSERT INTO consolidated_traces (
-                  trace_id, tenant_id, user_email, final_evaluator_node, 
-                  final_decision, final_action, execution_latency_ms, timestamp, created_at, 
-                  prompt, sanitized_payload, verdict, anchored, ms3v_hash, ms3v_timestamp_ns
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-              `).bind(
-                traceId, tenant, user, activeEvaluatorNode,
-                finalDecision, finalDecision, latencyMs,
-                nowIso, nowIso, rawPrompt, sanitizedText, finalVerdict,
-                ms3vVerdict.HASH || blockLogicVerdict.HASH,
-                ms3vVerdict.TS || blockLogicVerdict.TS
-              ).run();
-
-              await env.DB.prepare(`
-                INSERT INTO runs (evidence_id, trace_id, verdictId, decision, verdict, user, tenant, prompt, responseOutput, payload_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              `).bind(runId, traceId, verdictId, finalDecision, finalVerdict, user, tenant, rawPrompt, llmOutputContent, JSON.stringify(proofBundle), nowIso).run();
-            } catch (asyncErr) {
-              console.error("[Async Insert Error]:", asyncErr.message);
-            }
-          };
-
-          if (ctx && typeof ctx.waitUntil === 'function') {
-            ctx.waitUntil(runAsyncInsert());
-          } else {
-            await runAsyncInsert();
-          }
-        }
-
         return new Response(JSON.stringify({
           success: true,
           spec: "SGP-1.0 MS3V",
           legalRpi: env?.SAFE_CREATIVE_ID || "Safe Creative Work Protected",
           llmMilestoneRpi: env?.LLM_MILESTONE_RPI || "RPI-2026-SAARE-MILESTONE",
           author: env?.AUTHOR_NAME || "Enterprise System",
-          tenant: tenant,
+          tenant,
           evidence_id: runId,
           decision: finalDecision,
           verdict: finalVerdict,
+          compliance: complianceAssessment,
           enforcement: {
             verdict: finalDecision,
             sanitizedInRam: true,
             piiDetected: rulesTriggered.length > 0,
-            ms3vIntegrityHash: ms3vVerdict.HASH || blockLogicVerdict.HASH,
-            ms3vTimestampNs: ms3vVerdict.TS || blockLogicVerdict.TS,
+            ms3vIntegrityHash: ms3vVerdict.HASH,
+            ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
           },
           inference: {
             provider: targetProvider,
-            model: body.model || 'gpt-4o',
+            model: body.model || "gpt-4o",
             responseContent: llmOutputContent
           },
-          proofBundle: proofBundle,
+          proofBundle,
           evidence: {
-            vaultProof: proofBundle?.vaultProof || "sk_saare_proof_verified",
+            vaultProof: proofBundle?.proofBundle?.ed25519Signature || "sk_saare_proof_verified",
             timestamp: new Date().toISOString()
           }
         }), {
           status: 200,
           headers: {
             ...cors.corsHeaders,
-            'Content-Type': 'application/json',
-            'X-SAARE-Verdict': finalDecision,
-            'X-SAARE-Witness-Tag': '[MS3V-COMPLIANCE-L7-OK]',
-            'X-SAARE-Provider': providerMeta.name,
-            'X-SAARE-Latency-Ms': latencyMs.toString(),
-            'X-SAARE-MS3V-Hash': ms3vVerdict.HASH || blockLogicVerdict.HASH,
-            'X-SAARE-MS3V-Timestamp': ms3vVerdict.TS || blockLogicVerdict.TS,
-            'X-SAARE-Proof-Status': 'VERIFIED_ED25519'
+            "Content-Type": "application/json",
+            "X-SAARE-Verdict": finalDecision,
+            "X-SAARE-Witness-Tag": "[MS3V-COMPLIANCE-L7-OK]",
+            "X-SAARE-Provider": providerMeta.name,
+            "X-SAARE-Latency-Ms": latencyMs.toString(),
+            "X-SAARE-MS3V-Hash": ms3vVerdict.HASH,
+            "X-SAARE-MS3V-Timestamp": ms3vVerdict.TS,
+            "X-SAARE-Proof-Status": "VERIFIED_ED25519"
           }
         });
       }
 
-      // === RUTA AUTENTICACIÓN Y LOGIN ===
-      if (path === '/auth/login' || path === '/v1/auth/login' || path === '/api/v1/auth/login') {
-        if (method === 'POST') {
-          const body = await request.json().catch(() => ({}));
-          const cleanEmail = sanitizeEmail(body.email);
-          const cleanPassword = body.password ? body.password.trim() : "";
-          let userRecord = null;
+      if ((path === "/auth/login" || path === "/v1/auth/login" || path === "/api/v1/auth/login") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const cleanEmail = sanitizeEmail(body.email);
+        const cleanPassword = body.password ? body.password.trim() : "";
+        let userRecord = null;
 
-          if (cleanPassword === "demo" || cleanPassword === "contraseña") {
-            userRecord = {
-              email: cleanEmail || "admin@saare.es",
-              name: `S.A.A.R.E. Master Custodian (${env?.AUTHOR_NAME || 'Enterprise System'})`,
-              company: body.tenant || "ORGANISMO_DEMO_01",
-              role: "CISO_ADMIN",
-              is_verified: 1
-            };
-          } else {
-            if (env?.DB) {
-              try {
-                await ensureD1TablesExist(env.DB);
-                userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
-              } catch (e) {}
-            }
-
-            const fallbackVault = getFallbackUserVault(env);
-            if (!userRecord && fallbackVaultEnabled(env) && fallbackVault[cleanEmail]) {
-              const fallback = fallbackVault[cleanEmail];
-              userRecord = {
-                email: cleanEmail,
-                name: fallback.name,
-                company: fallback.company,
-                password_hash: fallback.password_hash,
-                is_verified: fallback.is_verified,
-                role: fallback.role
-              };
-            }
-
-            if (!userRecord || !await verifyPassword(userRecord.password_hash, cleanPassword)) {
-              return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas o usuario no encontrado." }), {
-                status: 401,
-                headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-              });
-            }
-          }
-
-          const tenantName = userRecord?.company || body.tenant || tenantId;
-          const userRole = userRecord?.role || "CISO_ADMIN";
-          const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
-          const jwtToken = await auth.signToken({ sub: cleanEmail, email: cleanEmail, tenantId: tenantName, role: userRole, planId: tenantPlan });
-
-          return new Response(JSON.stringify({
-            success: true,
-            token: jwtToken,
-            user: {
-              email: cleanEmail,
-              name: userRecord?.name || "Enterprise Operator",
-              tenantName: tenantName,
-              tenantId: tenantName,
-              apiKey: "sk_saare_live_" + crypto.randomUUID().substring(0, 16),
-              role: userRole,
-              planId: tenantPlan,
-              isVerified: true
-            }
-          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        if (env?.DB && cleanEmail) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
+          } catch (e) {}
         }
+
+        const fallbackVault = getFallbackUserVault(env);
+        if (!userRecord && fallbackVaultEnabled(env) && fallbackVault[cleanEmail]) {
+          userRecord = { email: cleanEmail, ...fallbackVault[cleanEmail] };
+        }
+
+        if (!userRecord || !(await verifyPassword(userRecord.password_hash, cleanPassword))) {
+          return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas o usuario no encontrado." }), {
+            status: 401,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        const tenantName = userRecord.company || body.tenant || "SANDBOX_DEMO";
+        const userRole = userRecord.role || "DPO_GRC_LEVEL_2";
+        const jwtToken = await auth.signToken({
+          sub: cleanEmail,
+          email: cleanEmail,
+          tenantId: tenantName,
+          role: userRole,
+          planId: tenantPlan
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          token: jwtToken,
+          user: {
+            email: cleanEmail,
+            name: userRecord.name || "Enterprise Operator",
+            tenantName,
+            tenantId: tenantName,
+            apiKey: "sk_saare_live_" + crypto.randomUUID().substring(0, 16),
+            role: userRole,
+            planId: tenantPlan,
+            isVerified: true
+          }
+        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       return new Response(
         JSON.stringify({ error: "NOT_FOUND", message: `La ruta [${method} ${path}] no existe en S.A.A.R.E. Control Plane.` }),
         { status: 404, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
       );
-
     } catch (globalErr) {
       return new Response(
         JSON.stringify({ error: "INTERNAL_CONTROL_PLANE_ERROR", message: globalErr.message }),
@@ -1361,12 +1261,12 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    const defaultTenants = ["ORGANISMO_DEMO_01", "ENTERPRISE"];
-    for (const tenantId of defaultTenants) {
-      if (ctx && typeof ctx.waitUntil === 'function') {
-        ctx.waitUntil(processBatchMerkleAnchor(tenantId, env));
+    const defaultTenants = ["DEMO_ENTERPRISE", "ORGANISMO_DEMO_01"];
+    for (const tId of defaultTenants) {
+      if (ctx && typeof ctx.waitUntil === "function") {
+        ctx.waitUntil(processBatchMerkleAnchor(tId, env));
       } else {
-        await processBatchMerkleAnchor(tenantId, env);
+        await processBatchMerkleAnchor(tId, env);
       }
     }
   }
