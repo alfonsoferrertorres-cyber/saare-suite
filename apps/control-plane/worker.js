@@ -1,4 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Monetización Multi-Tenant)
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Monetización Multi-Tenant + Sandbox 2 Seats)
 
 import { handleCors } from "./src/middleware/corsHandler.js";
 import { AuthMiddleware } from "./src/middleware/authMiddleware.js";
@@ -587,6 +587,21 @@ function getTitularNif(env) {
   return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L.";
 }
 
+async function hashPasswordPbkdf2(password) {
+  const iterations = 100000;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, "0")).join("");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    key,
+    256
+  );
+  const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
+}
+
 async function verifyPassword(stored, candidate) {
   if (!stored || !candidate) return false;
   if (!stored.startsWith("pbkdf2$")) return stored === candidate;
@@ -731,6 +746,7 @@ export default {
           engine: "BLOCK LOGIC (Middleware Determinista en Tiempo Real)",
           status: "ONLINE",
           billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
+          sandboxMode: "SANDBOX_FREE_2_SEATS_ENABLED",
           legalRpi: env?.SAFE_CREATIVE_ID || "2607076315021",
           p2026Registration: env?.P2026_REGISTRATION || "P202630603",
           trustAnchor: env?.TRUST_ANCHOR || "https://vault.saare.es"
@@ -900,7 +916,9 @@ export default {
       const cleanTenant = `TNT_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20)}_${Date.now().toString(36).toUpperCase()}`;
       const priceMap = {
         STARTER_199: env?.STRIPE_PRICE_STARTER,
+        COMPLIANCE_249: env?.STRIPE_PRICE_STARTER,
         PROFESSIONAL_649: env?.STRIPE_PRICE_PRO,
+        ENTERPRISE_1500: env?.STRIPE_PRICE_ENTERPRISE,
         ENTERPRISE_1990: env?.STRIPE_PRICE_ENTERPRISE
       };
       const stripePriceId = body.priceId || priceMap[planId] || env?.STRIPE_PRICE_PRO;
@@ -960,6 +978,87 @@ export default {
       }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ALTA INSTANTÁNEA SANDBOX GRATUITA (2 ASIENTOS · SIN TARJETA · ACCESO COMPLETO A CONSOLA)
+    if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const email = sanitizeEmail(body.email);
+      const companyName = String(body.companyName || body.company || "").trim();
+      const fullName = String(body.name || email.split("@")[0] || "Evaluador Sandbox").trim();
+      const rawPassword = String(body.password || "").trim();
+
+      if (!email || !companyName || rawPassword.length < 6) {
+        return new Response(JSON.stringify({
+          error: "BAD_REQUEST",
+          message: "Indica 'email', 'companyName' y una contraseña de al menos 6 caracteres."
+        }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (!env?.DB) {
+        return new Response(JSON.stringify({ error: "DB_UNAVAILABLE", message: "Base de datos D1 no enlazada." }), {
+          status: 503,
+          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      await ensureD1TablesExist(env.DB);
+
+      const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
+      if (existingUser) {
+        return new Response(JSON.stringify({
+          error: "EMAIL_ALREADY_REGISTERED",
+          message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
+        }), { status: 409, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
+      const maxSeats = sandboxEntitlements?.maxSeats || 2;
+      const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
+      const trialDays = sandboxEntitlements?.trial_days || 14;
+
+      const sandboxTenantId = `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`;
+      const expiresAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
+      const passwordHash = await hashPasswordPbkdf2(rawPassword);
+      const sandboxConfig = JSON.stringify({ isSandbox: true, maxSeats, trialDays });
+
+      await env.DB.batch([
+        env.DB.prepare(
+          "INSERT INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json) VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)"
+        ).bind(sandboxTenantId, `${companyName} (Sandbox)`, PLAN_IDS.SANDBOX_FREE, monthlyQuota, expiresAt, sandboxConfig),
+        env.DB.prepare(
+          "INSERT INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
+        ).bind(email, passwordHash, fullName, sandboxTenantId)
+      ]);
+
+      const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
+      const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
+      const jwtToken = await auth.signToken({
+        sub: email,
+        email,
+        tenantId: sandboxTenantId,
+        role: "CISO_ADMIN",
+        planId: PLAN_IDS.SANDBOX_FREE
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "SANDBOX_FREE_2_SEATS",
+        token: jwtToken,
+        expiresAt,
+        maxSeats,
+        monthlyQuota,
+        user: {
+          email,
+          name: fullName,
+          tenantName: sandboxTenantId,
+          tenantId: sandboxTenantId,
+          apiKey,
+          role: "CISO_ADMIN",
+          planId: PLAN_IDS.SANDBOX_FREE,
+          isVerified: true
+        }
+      }), { status: 201, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+    }
+
     try {
       const authHeader = request.headers.get("Authorization") || "";
       const rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -1014,6 +1113,7 @@ export default {
           tenantId,
           companyName: tenantRow?.name || tenantId,
           planId: activePlan,
+          maxSeats: entitlements?.maxSeats || entitlements?.max_users || 2,
           subscriptionStatus: tenantRow?.status || "ACTIVE",
           billingPeriod: getCurrentBillingPeriod(),
           usage: {
@@ -1330,21 +1430,36 @@ export default {
         return new Response(sseResult.body, { status: sseResult.status, headers });
       }
 
+      // GESTIÓN DE ASIENTOS (DINÁMICO POR PLAN: 2 ASIENTOS EN SANDBOX_FREE)
       if ((path === "/executive/seats" || path === "/api/v1/executive/seats" || path === "/v1/executive/seats") && method === "GET") {
         let usersList = [];
+        let activePlan = tenantPlan;
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
+            const tenantRow = await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantId).first();
+            if (tenantRow?.plan_id) activePlan = sanitizePlanId(tenantRow.plan_id);
             const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?").bind(tenantId).all();
             if (results && results.length > 0) usersList = results;
           } catch (e) {}
         }
+        const entitlements = getPlanEntitlements(activePlan);
+        const maxSeats = entitlements?.maxSeats || entitlements?.max_users || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
+
         if (usersList.length === 0) {
           usersList = [
             { email: identity?.email || headerUser || "admin@saare.es", name: `Operador Principal (${env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L."})`, role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split("T")[0] }
           ];
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", tenant: tenantId, maxSeats: 10, usedSeats: usersList.length, users: usersList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          status: "SUCCESS",
+          tenant: tenantId,
+          planId: activePlan,
+          maxSeats,
+          usedSeats: usersList.length,
+          remainingSeats: Math.max(0, maxSeats - usersList.length),
+          users: usersList
+        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/executive/seats/assign" || path === "/api/v1/executive/seats/assign" || path === "/v1/executive/seats/assign") && method === "POST") {
@@ -1359,14 +1474,48 @@ export default {
         const cleanAssignEmail = sanitizeEmail(body.email);
         const assignRole = body.role || "DPO_GRC_LEVEL_2";
         const assignName = body.name || cleanAssignEmail.split("@")[0];
+        const rawAssignPassword = String(body.password || "").trim();
 
-        if (env?.DB && cleanAssignEmail) {
+        if (!cleanAssignEmail) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio." }), {
+            status: 400,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
+            const tenantRow = await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantId).first();
+            const activePlan = sanitizePlanId(tenantRow?.plan_id || tenantPlan);
+            const entitlements = getPlanEntitlements(activePlan);
+            const maxSeats = entitlements?.maxSeats || entitlements?.max_users || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
+
+            const { results: currentUsers } = await env.DB.prepare("SELECT email FROM users WHERE company = ?").bind(tenantId).all();
+            const existingEmails = new Set((currentUsers || []).map(u => u.email));
+
+            if (!existingEmails.has(cleanAssignEmail) && existingEmails.size >= maxSeats) {
+              return new Response(JSON.stringify({
+                error: "SEAT_LIMIT_REACHED",
+                message: `Tu plan (${activePlan}) permite un máximo de ${maxSeats} asientos. Actualiza tu suscripción para añadir más operadores.`,
+                maxSeats,
+                usedSeats: existingEmails.size
+              }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+            }
+
+            const passwordHash = rawAssignPassword.length >= 6
+              ? await hashPasswordPbkdf2(rawAssignPassword)
+              : "pbkdf2$100000$assigned$local";
+
             await env.DB.prepare(
               "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, ?, 1)"
-            ).bind(cleanAssignEmail, "pbkdf2$100000$assigned$local", assignName, tenantId, assignRole).run();
-          } catch (e) {}
+            ).bind(cleanAssignEmail, passwordHash, assignName, tenantId, assignRole).run();
+          } catch (e) {
+            return new Response(JSON.stringify({ error: "SEAT_ASSIGN_ERROR", message: e.message }), {
+              status: 500,
+              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            });
+          }
         }
 
         return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
