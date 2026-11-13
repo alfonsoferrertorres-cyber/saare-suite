@@ -1,5 +1,5 @@
-// control-plane/complianceEngine.js — Motor de Mapeo Regulatorio S.A.A.R.E. (SGP 1.0)
-import { getScenarioById } from './scenarioRegistry.js';
+// control-plane/src/engines/complianceEngine.js — Motor de Mapeo Regulatorio S.A.A.R.E. (SGP 1.0)
+import { getScenarioById } from '../modules/scenarioRegistry.js';
 
 const REGULATORY_FRAMEWORKS = {
   EU_AI_ACT: {

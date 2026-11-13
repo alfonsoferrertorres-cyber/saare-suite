@@ -1,5 +1,5 @@
-// control-plane/zeroTrustMiddleware.js — Adaptador Cloudflare Access + Motor Determinista MS3V (BLOCK-LOGIC)
-import { engineBlockLogic } from './ms3v-core.js';
+// control-plane/src/middleware/zeroTrustMiddleware.js — Adaptador Cloudflare Access + Motor Determinista MS3V (BLOCK-LOGIC)
+import { engineBlockLogic } from '../packages/ms3v-core.js';
 
 export class ZeroTrustMiddleware {
   /**
