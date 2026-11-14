@@ -1,9 +1,9 @@
 {
   "name": "i7-proxy-extension",
-  "version": "12.3.0",
+  "version": "12.5.0",
   "description": "Extensión perimetral L7 para S.A.A.R.E. Enterprise Monorepo",
   "type": "module",
   "scripts": {
-    "build": "node -e \"console.log('Extension build skipped or handled statically.')\""
+    "build": "node -e \"console.log('Extension build ready v12.5.0.')\""
   }
 }

@@ -1,6 +1,6 @@
 // apps/control-plane/src/services/stripeWebhook.js
 import { computeSha256 } from "./keyManager.js";
-import { sanitizePlanId, getPlanEntitlements } from "@saare/entitlements";
+import { sanitizePlanId, getPlanEntitlements } from "../packages/entitlements.js";
 
 async function verifyStripeSignature(payload, sigHeader, secret) {
   if (!secret || !sigHeader) return false;
@@ -42,15 +42,21 @@ export async function provisionTenantFromBilling({
 }) {
   const cleanPlan = sanitizePlanId(planId);
   const entitlements = getPlanEntitlements(cleanPlan);
-  const monthlyQuota = entitlements?.monthlyVerdicts || 25000;
+  const monthlyQuota = entitlements?.monthlyVerdicts || 50000;
+  const maxSeats = entitlements?.maxSeats || 25;
   const cleanTenant = tenantId
     .toUpperCase()
     .replace(/[^A-Z0-9_-]/g, "_")
     .slice(0, 32);
 
-  const licenseKey = `sk_saare_live_${(
-    await computeSha256(`${cleanTenant}:${adminEmail}:${env?.JWT_SECRET || "saare"}`)
-  ).slice(0, 28)}`;
+  const kv = env?.SAARE_KV_VAULT || env?.SAARE_VAULT_KV || null;
+  let licenseKey = kv ? await kv.get(`license:${cleanTenant}`) : null;
+
+  if (!licenseKey) {
+    licenseKey = `sk_saare_live_${(
+      await computeSha256(`${cleanTenant}:${adminEmail}:${env?.JWT_SECRET || "saare"}`)
+    ).slice(0, 28)}`;
+  }
 
   const tempPassword = `Saare${(
     await computeSha256(`${adminEmail}:${Date.now()}`)
@@ -75,6 +81,8 @@ export async function provisionTenantFromBilling({
         JSON.stringify({
           stripeCustomerId: stripeCustomerId || null,
           stripeSubscriptionId: stripeSubscriptionId || null,
+          maxSeats,
+          isSandbox: false,
           sgpVersion: "SGP-1.0"
         })
       ),
@@ -94,17 +102,18 @@ export async function provisionTenantFromBilling({
     ]);
   }
 
-  if (env?.SAARE_VAULT_KV) {
-    await env.SAARE_VAULT_KV.put(`license:${cleanTenant}`, licenseKey);
-    await env.SAARE_VAULT_KV.put(`token_tenant:${licenseKey}`, cleanTenant);
-    await env.SAARE_VAULT_KV.put(
+  if (kv) {
+    await kv.put(`license:${cleanTenant}`, licenseKey);
+    await kv.put(`token_tenant:${licenseKey}`, cleanTenant);
+    await kv.put(
       `tenant_meta:${cleanTenant}`,
       JSON.stringify({
         tenantId: cleanTenant,
         planId: cleanPlan,
         quota: monthlyQuota,
+        maxSeats,
         status: "ACTIVE",
-        stripeCustomerId
+        stripeCustomerId: stripeCustomerId || null
       })
     );
   }
@@ -113,6 +122,7 @@ export async function provisionTenantFromBilling({
     tenantId: cleanTenant,
     planId: cleanPlan,
     quota: monthlyQuota,
+    maxSeats,
     licenseKey,
     adminEmail: adminEmail.trim().toLowerCase(),
     tempPassword

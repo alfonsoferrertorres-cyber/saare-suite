@@ -1,4 +1,4 @@
-// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.5.4
+// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.6.0
 import React, { useState, useEffect } from 'react';
 import PricingSection from './components/PricingSection';
 import { API_HOST } from './api/api';
@@ -89,29 +89,31 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
     }
   };
 
-  // ACCESO DIRECTO SIN FRICCIÓN HACIA LA CONSOLA
-  const handleAction = (plan = 'DISCOVER_FREE') => {
+  // ACCESO DIRECTO SIN FRICCIÓN HACIA LA CONSOLA O SANDBOX 2 ASIENTOS
+  const handleAction = (plan = 'SANDBOX_FREE') => {
     if (typeof onSelectPlan === 'function') {
       onSelectPlan(plan);
     } else if (typeof onNavigateToLogin === 'function') {
       onNavigateToLogin(plan);
+    } else if (plan === 'SANDBOX_FREE') {
+      window.location.href = 'https://console.saare.es/?mode=sandbox&plan=SANDBOX_FREE&source=saare_suite';
     } else {
-      window.location.href = `https://console.saare.es/?tenant=DEMO_ENTERPRISE&plan=${encodeURIComponent(plan)}`;
+      window.location.href = 'https://console.saare.es/';
     }
   };
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans antialiased selection:bg-[#38BDDB] selection:text-slate-950">
-      
+
       {/* NAVEGACIÓN PRINCIPAL */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#030712]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#top" className="flex items-center gap-3 group">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 border border-slate-800 p-1.5 shadow-md transition-transform group-hover:scale-105">
-              <img 
-                src="/favicon.ico" 
-                alt="S.A.A.R.E. Logo" 
-                className="h-full w-full object-contain" 
+              <img
+                src="/favicon.ico"
+                alt="S.A.A.R.E. Logo"
+                className="h-full w-full object-contain"
               />
             </div>
             <div className="leading-none">
@@ -128,20 +130,21 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             ))}
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => handleAction('DISCOVER_FREE')}
-              className="rounded-lg px-4 py-2 text-xs font-bold text-slate-300 transition-colors hover:text-white cursor-pointer"
+              onClick={() => handleAction('LOGIN')}
+              className="rounded-lg px-3.5 py-2 text-xs font-bold text-slate-300 transition-colors hover:text-white cursor-pointer"
             >
               Acceso Consola
             </button>
-            <a
-              href="#evaluation"
-              className="inline-flex items-center rounded-lg bg-[#38BDDB] px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition-all hover:bg-cyan-400"
+            <button
+              type="button"
+              onClick={() => handleAction('SANDBOX_FREE')}
+              className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 cursor-pointer"
             >
-              Solicitar Auditoría Ex Ante
-            </a>
+              Sandbox Gratis (2 Asientos)
+            </button>
           </div>
         </div>
       </header>
@@ -165,6 +168,13 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleAction('SANDBOX_FREE')}
+                  className="rounded-xl bg-emerald-500 px-7 py-3.5 text-sm font-extrabold text-slate-950 shadow-xl shadow-emerald-500/20 transition-all hover:bg-emerald-400 inline-block text-center cursor-pointer"
+                >
+                  Probar Sandbox Gratis (2 Asientos)
+                </button>
                 <a
                   href="#evaluation"
                   className="rounded-xl bg-[#38BDDB] px-7 py-3.5 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-500/20 transition-all hover:bg-cyan-400 inline-block text-center"
@@ -463,9 +473,9 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. LICENCIAMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Empieza con el alcance que necesitas. Escala cuando tu operación lo requiera.</h2>
-              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Ahorra un 20% en modalidad anual (Sandbox permanente gratuito).</p>
+              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Incluye Sandbox gratuita de 2 asientos durante 14 días sin tarjeta.</p>
             </div>
-            
+
             <PricingSection onSelectPlan={handleAction} />
           </div>
         </section>
@@ -634,9 +644,9 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     />
                     <label htmlFor="privacyAccepted" className="text-xs text-slate-400 leading-relaxed">
                       He leído y acepto la{' '}
-                      <button 
-                        type="button" 
-                        onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} 
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')}
                         className="text-cyan-400 underline cursor-pointer hover:text-cyan-300"
                       >
                         Política de Privacidad
@@ -659,10 +669,10 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleAction('DISCOVER_FREE')}
-                      className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-6 py-4 text-xs font-bold text-white hover:bg-slate-800 transition-all text-center cursor-pointer"
+                      onClick={() => handleAction('SANDBOX_FREE')}
+                      className="flex-1 rounded-xl bg-emerald-500/10 border border-emerald-500/40 px-6 py-4 text-xs font-extrabold text-emerald-400 hover:bg-emerald-500/20 transition-all text-center cursor-pointer"
                     >
-                      O comenzar con Sandbox gratuito
+                      O activar Sandbox Gratuita (2 Asientos) →
                     </button>
                   </div>
                 </form>
@@ -680,7 +690,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             <p className="text-[11px] text-slate-500">Infraestructura Tecnológica Global | RPI: RPI-2026-SAARE-0914X</p>
             <p className="text-[11px] text-slate-500 mt-2">Gobernanza ex ante. Soberanía tecnológica. Evidencia verificable.</p>
           </div>
-          
+
           <div className="flex flex-wrap justify-center gap-6 text-slate-400 text-xs">
             <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('terms')} className="hover:text-cyan-400 transition-colors cursor-pointer">Aviso Legal</button>
             <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')} className="hover:text-cyan-400 transition-colors cursor-pointer">Privacidad</button>

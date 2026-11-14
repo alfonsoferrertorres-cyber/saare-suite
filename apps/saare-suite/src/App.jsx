@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import LandingPage from './LandingPage';
 import Login from './Login';
 
-// Componente Integrado: Política de Privacidad
 function PrivacyPage({ onBack }) {
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 p-8 font-sans max-w-4xl mx-auto">
-      <button 
+      <button
         type="button"
-        onClick={onBack} 
-        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer">
+        onClick={onBack}
+        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer"
+      >
         ← Volver al Inicio
       </button>
       <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Política de Privacidad</h1>
@@ -21,14 +21,14 @@ function PrivacyPage({ onBack }) {
   );
 }
 
-// Componente Integrado: Términos y Condiciones
 function TermsPage({ onBack }) {
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 p-8 font-sans max-w-4xl mx-auto">
-      <button 
+      <button
         type="button"
-        onClick={onBack} 
-        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer">
+        onClick={onBack}
+        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer"
+      >
         ← Volver al Inicio
       </button>
       <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Términos y Condiciones de Servicio</h1>
@@ -39,14 +39,14 @@ function TermsPage({ onBack }) {
   );
 }
 
-// Componente Integrado: Política de Cookies
 function CookiesPage({ onBack }) {
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 p-8 font-sans max-w-4xl mx-auto">
-      <button 
+      <button
         type="button"
-        onClick={onBack} 
-        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer">
+        onClick={onBack}
+        className="mb-6 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-slate-800 transition-colors cursor-pointer"
+      >
         ← Volver al Inicio
       </button>
       <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Política de Cookies</h1>
@@ -59,37 +59,53 @@ function CookiesPage({ onBack }) {
 
 export default function App() {
   const [currentView, setCurrentView] = useState('LANDING'); // 'LANDING' | 'LOGIN' | 'PRIVACY' | 'TERMS' | 'COOKIES'
-  const [selectedPlan, setSelectedPlan] = useState('DISCOVER_FREE');
+  const [selectedPlan, setSelectedPlan] = useState('SANDBOX_FREE');
 
-  // Redirección directa a la Consola GRC (console.saare.es / saare-console.pages.dev)
-  const handleNavigateToConsole = (planKey = 'DISCOVER_FREE') => {
+  const getConsoleBaseUrl = () => {
     const isLocal = typeof window !== 'undefined' && (
       window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     );
-    
-    const defaultConsoleUrl = isLocal 
-      ? 'http://127.0.0.1:5173' 
-      : (window.location.hostname.includes('pages.dev') 
-          ? 'https://saare-console.pages.dev' 
+
+    const defaultConsoleUrl = isLocal
+      ? 'http://127.0.0.1:5173'
+      : (window.location.hostname.includes('pages.dev')
+          ? 'https://saare-console.pages.dev'
           : 'https://console.saare.es');
-          
-    const consoleUrl = import.meta.env.VITE_CONSOLE_URL || defaultConsoleUrl;
+
+    return (import.meta.env.VITE_CONSOLE_URL || defaultConsoleUrl).replace(/\/$/, '');
+  };
+
+  // Redirección directa a la Consola GRC (console.saare.es)
+  const handleNavigateToConsole = (planKey = 'LOGIN') => {
+    const consoleUrl = getConsoleBaseUrl();
+
+    // Acceso directo para operadores que ya tienen cuenta o licencia
+    if (planKey === 'LOGIN') {
+      window.location.href = `${consoleUrl}/`;
+      return;
+    }
+
+    // Alta instantánea en Sandbox Gratuita de 2 Asientos
+    if (planKey === 'SANDBOX_FREE' || planKey === 'DISCOVER_FREE') {
+      localStorage.setItem('saare_user_plan', 'SANDBOX_FREE');
+      localStorage.setItem('saare_user_role', 'CISO_ADMIN');
+      window.location.href = `${consoleUrl}/?mode=sandbox&plan=SANDBOX_FREE&source=saare_suite`;
+      return;
+    }
 
     const planConfigMap = {
-      'DISCOVER_FREE': { role: 'AUDITOR_GUEST', tenant: 'DEMO_ENTERPRISE' },
-      'COMPLIANCE_249': { role: 'COMPLIANCE_OFFICER', tenant: 'ENTERPRISE_COMPLIANCE' },
-      'PROFESSIONAL_649': { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_PRO' },
-      'ENTERPRISE_1500': { role: 'SUPER_ADMIN', tenant: 'ENTERPRISE_CORE' },
-      'PRIVATE_CUSTOM': { role: 'SYSTEM_AUDITOR', tenant: 'ENTERPRISE_AIRGAP' }
+      STARTER_199: { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_STARTER' },
+      COMPLIANCE_249: { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_COMPLIANCE' },
+      PROFESSIONAL_649: { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_PRO' },
+      ENTERPRISE_1990: { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_CORE' },
+      ENTERPRISE_1500: { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_CORE' }
     };
 
-    const targetConfig = planConfigMap[planKey] || planConfigMap['DISCOVER_FREE'];
-
+    const targetConfig = planConfigMap[planKey] || { role: 'CISO_ADMIN', tenant: 'ENTERPRISE_PRO' };
     const queryParams = new URLSearchParams({
       plan: planKey,
       tenant: targetConfig.tenant,
       role: targetConfig.role,
-      status: 'ACTIVE',
       source: 'saare_suite'
     });
 
@@ -97,10 +113,10 @@ export default function App() {
     localStorage.setItem('saare_user_role', targetConfig.role);
     localStorage.setItem('saare_tenant_domain', targetConfig.tenant);
 
-    window.location.href = `${consoleUrl.replace(/\/$/, '')}/?${queryParams.toString()}`;
+    window.location.href = `${consoleUrl}/?${queryParams.toString()}`;
   };
 
-  const handleOpenLogin = (planKey = 'DISCOVER_FREE') => {
+  const handleOpenLogin = (planKey = 'SANDBOX_FREE') => {
     setSelectedPlan(planKey);
     setCurrentView('LOGIN');
   };
@@ -117,16 +133,17 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Detección automática de retorno desde Stripe Checkout o parámetros de URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const planParam = params.get('plan');
-    const successParam = params.get('success');
+    const modeParam = params.get('mode');
+    const successParam = params.get('success') || params.get('checkout');
     const sessionId = params.get('session_id');
 
-    // Redirección directa a consola tras completar el pago en Stripe
-    if (successParam === 'true' || sessionId) {
-      handleNavigateToConsole(planParam || 'COMPLIANCE_249');
+    if (successParam === 'true' || successParam === 'success' || sessionId) {
+      handleNavigateToConsole(planParam || 'PROFESSIONAL_649');
+    } else if (modeParam === 'sandbox') {
+      handleNavigateToConsole('SANDBOX_FREE');
     } else if (planParam) {
       setSelectedPlan(planParam);
       handleOpenLogin(planParam);
@@ -137,7 +154,7 @@ export default function App() {
     return (
       <Login
         initialPlan={selectedPlan}
-        onLoginSuccess={() => handleNavigateToConsole(selectedPlan)}
+        onLoginSuccess={() => handleNavigateToConsole('LOGIN')}
         onBack={handleBackToLanding}
       />
     );
@@ -156,9 +173,9 @@ export default function App() {
   }
 
   return (
-    <LandingPage 
+    <LandingPage
       selectedPlan={selectedPlan}
-      onNavigateToLogin={handleOpenLogin} 
+      onNavigateToLogin={handleOpenLogin}
       onSelectPlan={handleNavigateToConsole}
       onNavigateToConsole={handleNavigateToConsole}
       onNavigateToLegal={handleOpenLegal}

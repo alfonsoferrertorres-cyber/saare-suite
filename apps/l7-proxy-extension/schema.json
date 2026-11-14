@@ -5,13 +5,25 @@
       "type": "string",
       "title": "Identificador de Inquilino S.A.A.R.E."
     },
+    "LicenseKey": {
+      "type": "string",
+      "title": "API Key / Licencia del Tenant S.A.A.R.E."
+    },
     "ProxyGateway": {
       "type": "string",
       "title": "Endpoint Control Plane L7"
     },
+    "TrustAnchor": {
+      "type": "string",
+      "title": "Ancla de Confianza / Bóveda"
+    },
     "FailClosed": {
       "type": "boolean",
       "title": "Bloquear si el Control Plane no responde"
+    },
+    "EnableExAnteEnforcement": {
+      "type": "boolean",
+      "title": "Activar inspección ex-ante en RAM"
     }
   }
 }

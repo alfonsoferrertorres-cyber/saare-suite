@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl");
   const tenantInput = document.getElementById("tenant");
+  const apiKeyInput = document.getElementById("apiKey");
   const userInput = document.getElementById("user");
+  const failClosedInput = document.getElementById("failClosed");
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
@@ -10,7 +12,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (saareConfig) {
       if (saareConfig.apiUrl) apiUrlInput.value = saareConfig.apiUrl;
       if (saareConfig.tenantId) tenantInput.value = saareConfig.tenantId;
+      if (saareConfig.apiKey) apiKeyInput.value = saareConfig.apiKey;
       if (saareConfig.userEmail) userInput.value = saareConfig.userEmail;
+      if (saareConfig.failClosed !== undefined) failClosedInput.checked = Boolean(saareConfig.failClosed);
     }
   } catch (err) {
     console.error("[S.A.A.R.E. Popup Error]:", err);
@@ -25,12 +29,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const tenantId = (tenantInput.value.trim() || tenantInput.placeholder || "DEMO_ENTERPRISE").trim();
-    const userEmail = (userInput.value.trim() || userInput.placeholder || "operador_anonimo@saare.local").trim().toLowerCase();
+    const apiKey = apiKeyInput.value.trim();
+    const userEmail = (userInput.value.trim() || userInput.placeholder || "operador_l7@saare.local").trim().toLowerCase();
+    const failClosed = Boolean(failClosedInput.checked);
 
     const saareConfig = {
       apiUrl: cleanUrl,
       tenantId,
+      apiKey,
       userEmail,
+      failClosed,
       updatedAt: new Date().toISOString()
     };
 

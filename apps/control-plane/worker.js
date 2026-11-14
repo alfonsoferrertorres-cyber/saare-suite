@@ -1,4 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Monetización Multi-Tenant + Sandbox 2 Seats)
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Monetización Multi-Tenant + Sandbox 2 Seats Perpetuo)
 
 import { handleCors } from "./src/middleware/corsHandler.js";
 import { AuthMiddleware } from "./src/middleware/authMiddleware.js";
@@ -26,7 +26,7 @@ import {
   getPlanEntitlements,
   checkQuota,
   isFeatureAllowed
-} from "@saare/entitlements";
+} from "./src/packages/entitlements.js";
 
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 
@@ -488,16 +488,20 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
   }
 }
 
+// Soporte robusto para KV bindings (SAARE_KV_VAULT o SAARE_VAULT_KV)
+function getKvBinding(env) {
+  return env?.SAARE_KV_VAULT || env?.SAARE_VAULT_KV || null;
+}
+
 async function getOrCreateTenantLicenseKey(tenantId, env) {
-  let licenseKey = env?.SAARE_VAULT_KV
-    ? await env.SAARE_VAULT_KV.get(`license:${tenantId}`)
-    : null;
+  const kv = getKvBinding(env);
+  let licenseKey = kv ? await kv.get(`license:${tenantId}`) : null;
 
   if (!licenseKey) {
     licenseKey = `sk_saare_live_${(await computeSha256(`${tenantId}:${env?.JWT_SECRET || "saare"}`)).slice(0, 28)}`;
-    if (env?.SAARE_VAULT_KV) {
-      await env.SAARE_VAULT_KV.put(`license:${tenantId}`, licenseKey);
-      await env.SAARE_VAULT_KV.put(`token_tenant:${licenseKey}`, tenantId);
+    if (kv) {
+      await kv.put(`license:${tenantId}`, licenseKey);
+      await kv.put(`token_tenant:${licenseKey}`, tenantId);
     }
   }
   return licenseKey;
@@ -746,7 +750,7 @@ export default {
           engine: "BLOCK LOGIC (Middleware Determinista en Tiempo Real)",
           status: "ONLINE",
           billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
-          sandboxMode: "SANDBOX_FREE_2_SEATS_ENABLED",
+          sandboxMode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
           legalRpi: env?.SAFE_CREATIVE_ID || "2607076315021",
           p2026Registration: env?.P2026_REGISTRATION || "P202630603",
           trustAnchor: env?.TRUST_ANCHOR || "https://vault.saare.es"
@@ -801,7 +805,7 @@ export default {
         available: true,
         coreEngineReady: true,
         memoryRAMProxyOK: true,
-        evidenceVaultReady: Boolean(env?.DB || env?.SAARE_VAULT_KV)
+        evidenceVaultReady: Boolean(env?.DB || getKvBinding(env))
       });
       if (healthy) await deployment.executeDeployment();
 
@@ -978,7 +982,7 @@ export default {
       }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ALTA INSTANTÁNEA SANDBOX GRATUITA (2 ASIENTOS · SIN TARJETA · ACCESO COMPLETO A CONSOLA)
+    // ALTA INSTANTÁNEA SANDBOX GRATUITA PERPETUA (2 ASIENTOS · SIN TARJETA · SIN LÍMITE DE DÍAS)
     if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
       const body = await request.json().catch(() => ({}));
       const email = sanitizeEmail(body.email);
@@ -1013,12 +1017,11 @@ export default {
       const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
       const maxSeats = sandboxEntitlements?.maxSeats || 2;
       const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
-      const trialDays = sandboxEntitlements?.trial_days || 14;
 
       const sandboxTenantId = `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`;
-      const expiresAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = null;
       const passwordHash = await hashPasswordPbkdf2(rawPassword);
-      const sandboxConfig = JSON.stringify({ isSandbox: true, maxSeats, trialDays });
+      const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
 
       await env.DB.batch([
         env.DB.prepare(
@@ -1041,9 +1044,9 @@ export default {
 
       return new Response(JSON.stringify({
         success: true,
-        mode: "SANDBOX_FREE_2_SEATS",
+        mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
         token: jwtToken,
-        expiresAt,
+        expiresAt: null,
         maxSeats,
         monthlyQuota,
         user: {
@@ -1075,8 +1078,9 @@ export default {
       const cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
       const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
 
-      const kvLicenseTenant = (rawBearerToken && env?.SAARE_VAULT_KV)
-        ? (await env.SAARE_VAULT_KV.get(`token_tenant:${rawBearerToken}`))
+      const kv = getKvBinding(env);
+      const kvLicenseTenant = (rawBearerToken && kv)
+        ? (await kv.get(`token_tenant:${rawBearerToken}`))
         : null;
 
       const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || "SANDBOX_DEMO";
@@ -1129,7 +1133,7 @@ export default {
             gpoEndpoint: `https://api.saare.es/api/v1/deploy/gpo-policy?tenant=${tenantId}`,
             bootstrapEndpoint: `https://api.saare.es/api/v1/agent/bootstrap?tenant=${tenantId}`
           },
-          expiresAt: tenantRow?.expires_at || null
+          expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? null : (tenantRow?.expires_at || null)
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -1413,7 +1417,7 @@ export default {
           node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
           status: tenantInfo?.status || "UNPROVISIONED",
           legalRpi: env?.SAFE_CREATIVE_ID || "2607076315021",
-          expiresAt: tenantInfo?.expiresAt || "2027-12-31T23:59:59Z",
+          expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? "PERPETUAL" : (tenantInfo?.expiresAt || null),
           authenticated: isAuthenticated
         }), {
           status: tenantInfo?.status === "ACTIVE" ? 200 : 403,

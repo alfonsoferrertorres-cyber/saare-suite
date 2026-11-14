@@ -1,8 +1,12 @@
-// control-plane/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0 (D1 + KV + Fail-Closed Billing)
+// control-plane/src/services/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0 (D1 + KV + Fail-Closed Billing)
 export class TenantManager {
   constructor(env) {
     this.env = env;
     this.cache = new Map();
+  }
+
+  _getKv() {
+    return this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV || null;
   }
 
   _normalizeId(tenantId) {
@@ -10,9 +14,19 @@ export class TenantManager {
     return String(tenantId).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_");
   }
 
+  _isSandboxTenant(cleanId, planId) {
+    return (
+      planId === "SANDBOX_FREE" ||
+      cleanId === "SANDBOX" ||
+      cleanId.startsWith("SANDBOX_") ||
+      cleanId.startsWith("SBX_") ||
+      cleanId.startsWith("DEMO_")
+    );
+  }
+
   _buildTenantObject(cleanId, name, config = {}) {
     const planId = config.planId || config.plan_id || config.plan || "SANDBOX_FREE";
-    const isSandbox = cleanId === "SANDBOX" || cleanId.startsWith("SANDBOX_") || cleanId.startsWith("DEMO_");
+    const isSandbox = this._isSandboxTenant(cleanId, planId);
 
     return {
       tenantId: cleanId,
@@ -22,11 +36,13 @@ export class TenantManager {
       planId: planId,
       tier: isSandbox ? "SANDBOX" : (config.tier || "ENTERPRISE"),
       priceEur: isSandbox ? 0 : (config.priceEur ?? 649),
-      expiresAt: config.expiresAt || config.expires_at || null,
+      // Sandbox perpetuo: nunca caduca por fecha
+      expiresAt: isSandbox ? null : (config.expiresAt || config.expires_at || null),
       status: config.status || "ACTIVE",
       createdAt: config.createdAt || config.created_at || new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
-      quota: isSandbox ? 100 : (config.quota || 10000),
+      quota: config.quota ?? (isSandbox ? 1000 : 10000),
+      maxSeats: config.maxSeats ?? (isSandbox ? 2 : 10),
       activeScenarios: config.activeScenarios || config.scenarios || ["*"]
     };
   }
@@ -72,9 +88,10 @@ export class TenantManager {
     }
 
     // 2. Caché distribuida en KV
-    if (this.env?.SAARE_VAULT_KV) {
+    const kv = this._getKv();
+    if (kv) {
       try {
-        await this.env.SAARE_VAULT_KV.put(`tenant:${cleanId}`, JSON.stringify(tenantData));
+        await kv.put(`tenant:${cleanId}`, JSON.stringify(tenantData));
       } catch (e) {
         console.warn("[TenantManager] Error guardando tenant en KV:", e.message);
       }
@@ -117,9 +134,10 @@ export class TenantManager {
     }
 
     // 3. Nivel 3: Bóveda Cloudflare KV
-    if (this.env?.SAARE_VAULT_KV) {
+    const kv = this._getKv();
+    if (kv) {
       try {
-        const storedTenant = await this.env.SAARE_VAULT_KV.get(`tenant:${cleanId}`, "json");
+        const storedTenant = await kv.get(`tenant:${cleanId}`, "json");
         if (storedTenant) {
           const normalized = this._buildTenantObject(cleanId, storedTenant.name, storedTenant);
           this.cache.set(cleanId, normalized);
@@ -130,14 +148,15 @@ export class TenantManager {
       }
     }
 
-    // 4. Nivel 4: Solo permitir auto-creación en modo SANDBOX / DEMO
-    const isSandbox = cleanId === "SANDBOX" || cleanId.startsWith("SANDBOX_") || cleanId.startsWith("DEMO_");
-    if (isSandbox) {
+    // 4. Nivel 4: Auto-creación perpetua en modo SANDBOX / DEMO
+    if (this._isSandboxTenant(cleanId, "SANDBOX_FREE")) {
       const sandboxTenant = this._buildTenantObject(cleanId, null, {
         planId: "SANDBOX_FREE",
         tier: "SANDBOX",
         priceEur: 0,
-        quota: 100
+        expiresAt: null,
+        quota: 1000,
+        maxSeats: 2
       });
       this.cache.set(cleanId, sandboxTenant);
       return sandboxTenant;
@@ -171,7 +190,9 @@ export class TenantManager {
         };
       }
 
-      if (tenant.expiresAt) {
+      // Los entornos SANDBOX_FREE no tienen caducidad temporal
+      const isSandbox = this._isSandboxTenant(tenant.tenantId, tenant.planId);
+      if (!isSandbox && tenant.expiresAt) {
         const expirationDate = new Date(tenant.expiresAt);
         if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
           return {

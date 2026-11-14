@@ -4,6 +4,7 @@
   console.log("[S.A.A.R.E. L7 Proxy] Agente de Inspección Resiliente Activo.");
 
   let isProcessing = false;
+  let bypassNextEnter = false;
 
   function isExtensionContextValid() {
     try {
@@ -14,6 +15,11 @@
   }
 
   async function handleKeyDown(event) {
+    if (bypassNextEnter) {
+      bypassNextEnter = false;
+      return;
+    }
+
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
     if (isProcessing) return;
 
@@ -39,7 +45,8 @@
 
       const response = await chrome.runtime.sendMessage({
         action: "INSPECT_PROMPT_EX_ANTE",
-        payload: rawPrompt
+        payload: rawPrompt,
+        origin: window.location.hostname
       });
 
       if (response && response.success && response.verdict) {
@@ -52,8 +59,8 @@
         ) {
           alert(
             `[S.A.A.R.E. SECURITY BLOCK]\nAcceso Bloqueado por Política Ex-Ante L7.\n\nEvidencia: ${
-              verdictData.evidence_id || verdictData.id || "N/A"
-            }\nDetalle: ${verdictData.error || verdictData.category || "Infracción de Política"}`
+              verdictData.evidence_id || verdictData.trace_id || verdictData.id || "N/A"
+            }\nDetalle: ${verdictData.error || verdictData.reason || verdictData.category || "Infracción de Política"}`
           );
           isProcessing = false;
           return;
@@ -65,7 +72,7 @@
           verdictData.enforcement?.sanitizedPrompt;
 
         const isAuditStamp = sanitizedPrompt && (
-          sanitizedPrompt.includes("[S.A.A.R.E.") || 
+          sanitizedPrompt.includes("[S.A.A.R.E.") ||
           sanitizedPrompt.includes("MS3V BLOCK LOGIC")
         );
 
@@ -83,12 +90,19 @@
         }, 50);
 
       } else {
+        const shouldBlock = response?.failClosed !== false;
+        if (shouldBlock) {
+          alert("[S.A.A.R.E. FAIL-CLOSED]\nBloqueado por seguridad: el Control Plane L7 no devolvió un veredicto válido.");
+          isProcessing = false;
+          return;
+        }
         console.warn("[S.A.A.R.E.] Sin respuesta válida del Service Worker. Fail-Open activado.");
         bypassAndSubmit(inputEl);
       }
     } catch (err) {
       console.error("[S.A.A.R.E. Proxy Error]:", err);
-      bypassAndSubmit(inputEl);
+      isProcessing = false;
+      alert("[S.A.A.R.E. FAIL-CLOSED]\nBloqueado por error de comunicación con el agente de gobernanza L7.");
     }
   }
 
@@ -155,6 +169,7 @@
       return;
     }
 
+    bypassNextEnter = true;
     const enterEvent = new KeyboardEvent("keydown", {
       key: "Enter",
       code: "Enter",

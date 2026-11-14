@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "S.A.A.R.E. Enterprise L7 Proxy",
-  "version": "12.3.0",
+  "version": "12.5.0",
   "description": "Nodo perimetral L7 de gobernanza determinista, sanitización de PII y sellado de evidencias para LLMs.",
   "permissions": [
     "storage",
@@ -17,10 +17,16 @@
     "https://api.deepseek.com/*",
     "http://127.0.0.1:11434/*",
     "http://127.0.0.1:8080/*",
+    "https://chatgpt.com/*",
     "https://*.chatgpt.com/*",
+    "https://claude.ai/*",
     "https://*.claude.ai/*",
-    "https://aistudio.google.com/*"
+    "https://aistudio.google.com/*",
+    "https://gemini.google.com/*"
   ],
+  "storage": {
+    "managed_schema": "schema.json"
+  },
   "background": {
     "service_worker": "src/background/background.js",
     "type": "module"
