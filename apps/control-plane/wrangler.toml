@@ -11,7 +11,7 @@ routes = [
 
 [vars]
 AUTHOR_NAME = "GABINETE MS3V · S.A.A.R.E. S.L."
-ADMIN_EMAIL = "ops@saare.es"
+ADMIN_EMAIL = "ops@email.es"
 ALLOW_FALLBACK_VAULT = "false"
 CHROME_EXTENSION_ID = "jmlakofckaafjpjnfbihgchkeiglamme"
 SAFE_CREATIVE_TSA_HASH = "SC-REG-2026-1791667481"
@@ -26,7 +26,7 @@ WORKER_NAME = "saare-control-plane-prod"
 TRUST_ANCHOR = "https://vault.saare.es"
 PUBLIC_API_URL = "https://api.saare.es/api/v1/proxy/llm"
 CPAAS_DEFAULT_PROVIDER = "twilio"
-TWILIO_FROM_NUMBER = "+1234567890"
+TWILIO_FROM_NUMBER = "+34633886506"
 INFOBIP_BASE_URL = "https://api.infobip.com"
 
 [[d1_databases]]
