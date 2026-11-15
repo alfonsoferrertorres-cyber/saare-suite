@@ -984,82 +984,91 @@ export default {
 
     // ALTA INSTANTÁNEA SANDBOX GRATUITA PERPETUA (2 ASIENTOS · SIN TARJETA · SIN LÍMITE DE DÍAS)
     if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
-      const body = await request.json().catch(() => ({}));
-      const email = sanitizeEmail(body.email);
-      const companyName = String(body.companyName || body.company || "").trim();
-      const fullName = String(body.name || email.split("@")[0] || "Evaluador Sandbox").trim();
-      const rawPassword = String(body.password || "").trim();
+      try {
+        const body = await request.json().catch(() => ({}));
+        const email = sanitizeEmail(body.email);
+        const companyName = String(body.companyName || body.company || "").trim();
+        const fullName = String(body.name || email.split("@")[0] || "Evaluador Sandbox").trim();
+        const rawPassword = String(body.password || "").trim();
 
-      if (!email || !companyName || rawPassword.length < 6) {
-        return new Response(JSON.stringify({
-          error: "BAD_REQUEST",
-          message: "Indica 'email', 'companyName' y una contraseña de al menos 6 caracteres."
-        }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      if (!env?.DB) {
-        return new Response(JSON.stringify({ error: "DB_UNAVAILABLE", message: "Base de datos D1 no enlazada." }), {
-          status: 503,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      await ensureD1TablesExist(env.DB);
-
-      const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
-      if (existingUser) {
-        return new Response(JSON.stringify({
-          error: "EMAIL_ALREADY_REGISTERED",
-          message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
-        }), { status: 409, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
-      const maxSeats = sandboxEntitlements?.maxSeats || 2;
-      const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
-
-      const sandboxTenantId = `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`;
-      const expiresAt = null;
-      const passwordHash = await hashPasswordPbkdf2(rawPassword);
-      const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
-
-      await env.DB.batch([
-        env.DB.prepare(
-          "INSERT INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json) VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)"
-        ).bind(sandboxTenantId, `${companyName} (Sandbox)`, PLAN_IDS.SANDBOX_FREE, monthlyQuota, expiresAt, sandboxConfig),
-        env.DB.prepare(
-          "INSERT INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
-        ).bind(email, passwordHash, fullName, sandboxTenantId)
-      ]);
-
-      const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
-      const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
-      const jwtToken = await auth.signToken({
-        sub: email,
-        email,
-        tenantId: sandboxTenantId,
-        role: "CISO_ADMIN",
-        planId: PLAN_IDS.SANDBOX_FREE
-      });
-
-      return new Response(JSON.stringify({
-        success: true,
-        mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
-        token: jwtToken,
-        expiresAt: null,
-        maxSeats,
-        monthlyQuota,
-        user: {
-          email,
-          name: fullName,
-          tenantName: sandboxTenantId,
-          tenantId: sandboxTenantId,
-          apiKey,
-          role: "CISO_ADMIN",
-          planId: PLAN_IDS.SANDBOX_FREE,
-          isVerified: true
+        if (!email || !companyName || rawPassword.length < 6) {
+          return new Response(JSON.stringify({
+            error: "BAD_REQUEST",
+            message: "Indica 'email', 'companyName' y una contraseña de al menos 6 caracteres."
+          }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
-      }), { status: 201, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+
+        if (!env?.DB) {
+          return new Response(JSON.stringify({ error: "DB_UNAVAILABLE", message: "Base de datos D1 no enlazada." }), {
+            status: 503,
+            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        await ensureD1TablesExist(env.DB);
+
+        const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
+        if (existingUser) {
+          return new Response(JSON.stringify({
+            error: "EMAIL_ALREADY_REGISTERED",
+            message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
+          }), { status: 409, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
+        const maxSeats = sandboxEntitlements?.maxSeats || 2;
+        const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
+
+        const sandboxTenantId = `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`;
+        const expiresAt = null;
+        const passwordHash = await hashPasswordPbkdf2(rawPassword);
+        const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
+
+        await env.DB.batch([
+          env.DB.prepare(
+            "INSERT INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json) VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)"
+          ).bind(sandboxTenantId, `${companyName} (Sandbox)`, PLAN_IDS.SANDBOX_FREE, monthlyQuota, expiresAt, sandboxConfig),
+          env.DB.prepare(
+            "INSERT INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
+          ).bind(email, passwordHash, fullName, sandboxTenantId)
+        ]);
+
+        const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
+        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
+        const jwtToken = await auth.signToken({
+          sub: email,
+          email,
+          tenantId: sandboxTenantId,
+          role: "CISO_ADMIN",
+          planId: PLAN_IDS.SANDBOX_FREE
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
+          token: jwtToken,
+          expiresAt: null,
+          maxSeats,
+          monthlyQuota,
+          user: {
+            email,
+            name: fullName,
+            tenantName: sandboxTenantId,
+            tenantId: sandboxTenantId,
+            apiKey,
+            role: "CISO_ADMIN",
+            planId: PLAN_IDS.SANDBOX_FREE,
+            isVerified: true
+          }
+        }), { status: 201, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+
+      } catch (provisionErr) {
+        console.error("[Sandbox Provision Exception]:", provisionErr);
+        return new Response(JSON.stringify({
+          error: "SANDBOX_PROVISION_EXCEPTION",
+          message: provisionErr.message || "Error interno al aprovisionar el sandbox."
+        }), { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     try {
@@ -1394,7 +1403,7 @@ export default {
             success: false,
             error: "CPAAS_DISPATCH_FAILED",
             message: err.message
-          }), { status: 502, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 502, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
       }
 
@@ -1505,7 +1514,7 @@ export default {
                 maxSeats,
                 usedSeats: existingEmails.size
               }), { status: 403, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-            }
+          }
 
             const passwordHash = rawAssignPassword.length >= 6
               ? await hashPasswordPbkdf2(rawAssignPassword)
@@ -1518,11 +1527,11 @@ export default {
             return new Response(JSON.stringify({ error: "SEAT_ASSIGN_ERROR", message: e.message }), {
               status: 500,
               headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-            });
-          }
+          });
         }
+      }
 
-        return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
@@ -1666,10 +1675,10 @@ export default {
             error: "QUOTA_EXCEEDED",
             message: "Cuota mensual del plan agotada. Amplíe su suscripción en console.saare.es.",
             quota: quotaStatus
-          }), {
+        }), {
             status: 429,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-          });
+        });
         }
 
         const targetProvider = (body.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
@@ -1692,7 +1701,7 @@ export default {
             message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
             author: env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L."
-          }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
 
         const semanticCmd = parseSemanticCommand(rawPrompt, env);
@@ -1760,7 +1769,7 @@ export default {
             ms3vHash: ms3vVerdict.HASH,
             ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
-          },
+        },
           compliance: complianceAssessment,
           payload_hash: await computeSha256(rawPrompt)
         });
@@ -1784,10 +1793,10 @@ export default {
             executedCommand: ms3vVerdict.EXECUTE,
             author: env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L.",
             protocol: "SGP 1.0 / MS3V / BLOCK LOGIC"
-          },
+        },
           complianceImpact: complianceAssessment.compliance_impact,
           doubleChainOfCustody: doubleCustodyRecord.doubleChainOfCustody
-        }, env);
+      }, env);
 
         const sgp1ProofContract = buildSgp1ProofContract({
           nodeId: "AFT-2026-AUTH-X9",
@@ -1805,7 +1814,7 @@ export default {
           structural_delta: sgp7Dims.structural_delta,
           evidence_id: runId,
           tenant
-        }));
+      }));
 
         if (env?.USAGE_ANALYTICS) {
           try {
@@ -1813,7 +1822,7 @@ export default {
               blobs: [tenant, finalDecision, targetProvider],
               doubles: [latencyMs, rawPrompt.length],
               indexes: [tenant]
-            });
+          });
           } catch (analyticsErr) {
             console.warn("[Analytics Engine Error]:", analyticsErr.message);
           }
@@ -1840,18 +1849,18 @@ export default {
             ms3vIntegrityHash: ms3vVerdict.HASH,
             ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
-          },
+        },
           inference: {
             provider: targetProvider,
             model: body.model || "gpt-4o",
             responseContent: llmOutputContent
-          },
+        },
           proofBundle,
           evidence: {
             vaultProof: sgp1ProofContract.proof_chain.ed25519_sig,
             timestamp: new Date().toISOString()
-          }
-        }), {
+        }
+      }), {
           status: 200,
           headers: {
             ...cors.corsHeaders,
@@ -1864,11 +1873,11 @@ export default {
             "X-SAARE-MS3V-Hash": ms3vVerdict.HASH,
             "X-SAARE-MS3V-Timestamp": ms3vVerdict.TS,
             "X-SAARE-Proof-Status": "VERIFIED_ED25519"
-          }
-        });
-      }
+        }
+      });
+    }
 
-      if ((path === "/auth/login" || path === "/v1/auth/login" || path === "/api/v1/auth/login") && method === "POST") {
+    if ((path === "/auth/login" || path === "/v1/auth/login" || path === "/api/v1/auth/login") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const cleanEmail = sanitizeEmail(body.email);
         const cleanPassword = body.password ? body.password.trim() : "";
@@ -1890,14 +1899,14 @@ export default {
           return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas o usuario no encontrado." }), {
             status: 401,
             headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
-          });
+        });
         }
 
         const tenantName = userRecord.company || body.tenant || "SANDBOX_DEMO";
         const userRole = userRecord.role || "DPO_GRC_LEVEL_2";
         const tenantRow = env?.DB
           ? await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantName).first().catch(() => null)
-          : null;
+        : null;
         const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || tenantPlan);
         const realApiKey = await getOrCreateTenantLicenseKey(tenantName, env);
 
@@ -1921,20 +1930,20 @@ export default {
             role: userRole,
             planId: resolvedPlan,
             isVerified: true
-          }
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
-      }
+        }
+      }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+    }
 
-      return new Response(
+    return new Response(
         JSON.stringify({ error: "NOT_FOUND", message: `La ruta [${method} ${path}] no existe en S.A.A.R.E. Control Plane.` }),
         { status: 404, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
-      );
-    } catch (globalErr) {
-      return new Response(
+    );
+  } catch (globalErr) {
+    return new Response(
         JSON.stringify({ error: "INTERNAL_CONTROL_PLANE_ERROR", message: globalErr.message }),
         { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    );
+  }
   },
 
   async scheduled(event, env, ctx) {
