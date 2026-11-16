@@ -1,5 +1,6 @@
 -- ==============================================================================
 -- S.A.A.R.E. Enterprise — Esquema de Base de Datos WORM / D1 (SGP 1.0)
+-- 100% Sincronizado con worker.js (Corregido: tenant_id, plan_id, users.email)
 -- ==============================================================================
 
 CREATE TABLE IF NOT EXISTS consolidated_traces (
@@ -22,38 +23,38 @@ CREATE TABLE IF NOT EXISTS consolidated_traces (
 
 CREATE TABLE IF NOT EXISTS runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  evidence_id TEXT UNIQUE,
+  evidence_id TEXT UNIQUE NOT NULL,
   trace_id TEXT NOT NULL,
-  verdictId TEXT,
+  verdictId TEXT NOT NULL,
   decision TEXT NOT NULL DEFAULT 'ALLOW',
   verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
   user TEXT NOT NULL DEFAULT 'anonymous',
   tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
   prompt TEXT DEFAULT '',
   responseOutput TEXT DEFAULT '',
-  payload_json TEXT,
+  payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS tenants (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE,
-  name TEXT,
-  plan TEXT,
-  status TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  tenant_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  plan_id TEXT NOT NULL DEFAULT 'PROFESSIONAL_649',
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  quota INTEGER NOT NULL DEFAULT 25000,
+  expires_at TEXT,
+  config_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT UNIQUE NOT NULL,
+  email TEXT PRIMARY KEY,
   password_hash TEXT NOT NULL,
-  name TEXT,
-  company TEXT,
+  name TEXT NOT NULL,
+  company TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
-  is_verified INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  is_verified INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS merkle_anchors (
@@ -77,4 +78,15 @@ CREATE TABLE IF NOT EXISTS tenant_usage (
   billing_period TEXT NOT NULL,
   verdict_count INTEGER DEFAULT 0,
   PRIMARY KEY (tenant_id, billing_period)
+);
+
+CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  recipient TEXT NOT NULL,
+  status TEXT NOT NULL,
+  evidence_hash TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
