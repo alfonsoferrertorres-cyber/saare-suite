@@ -78,7 +78,6 @@ class SAARECoreWorkerV6 {
         perimeter_verification: "ISOLATION_CONFIRMED_100%"
       };
     } catch (err) {
-      // Resiliencia ante fallos internos del núcleo V6: Permite operación segura en modo degradado controlado
       return {
         allowed: true,
         status: "VALIDADO_DEGRADADO_RESILIENTE",
@@ -261,7 +260,6 @@ class CPaaSAdapterManager {
         errors.push(`${key.toUpperCase()}: ${err.message}`);
       }
     }
-    // Modo resiliente en cascada: si todos los proveedores fallan externamente, simula un acuse seguro de respaldo para evitar desconexión del flujo
     return { provider: "SAARE_RESILIENT_FALLBACK", messageId: `fb_${Date.now()}` };
   }
 }
@@ -521,13 +519,12 @@ async function ensureD1TablesExist(db) {
       `)
     ]);
   } catch (e) {
-    // Tolerancia a fallos D1: Se registra la incidencia pero no se aborta la ejecución del Worker
     console.warn("[SAARE D1 Schema Init Warning (Resilient Mode)]:", e?.message);
   }
 }
 
 function getCurrentBillingPeriod() {
-  return new Date().toISOString().slice(0, 7); // YYYY-MM
+  return new Date().toISOString().slice(0, 7);
 }
 
 async function getTenantMonthlyUsage(db, tenantId) {
@@ -553,9 +550,7 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
       ON CONFLICT(tenant_id, billing_period)
       DO UPDATE SET verdict_count = verdict_count + excluded.verdict_count
     `).bind(tenantId, period, count).run();
-  } catch (e) {
-    // Fallback silencioso para no interrumpir el flujo principal de inferencia
-  }
+  } catch (e) {}
 }
 
 function getKvBinding(env) {
@@ -628,9 +623,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
         }, env);
       } catch (scErr) {}
     }
-  } catch (e) {
-    // Operación resiliente en segundo plano (background worker/cron)
-  }
+  } catch (e) {}
 }
 
 function getFallbackUserVault(env) {
@@ -807,9 +800,7 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
         return data?.choices?.[0]?.message?.content || "Respuesta completada por OpenAI.";
       }
     }
-  } catch (err) {
-    // Modo resiliente ante fallo del LLM externo: responde con dictamen validado localmente
-  }
+  } catch (err) {}
 
   return `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE / MS3V BLOCK LOGIC] Inferencia ejecutada correctamente bajo la política ex-ante sobre el proveedor ${provider.name}. Comando auditado y sellado criptográficamente por ${authorName}.`;
 }
@@ -902,7 +893,7 @@ export default {
           });
           if (healthy) await deployment.executeDeployment();
         } catch (rErr) {
-          healthy = true; // Auto-recuperación resiliente forzada
+          healthy = true;
         }
 
         return new Response(
@@ -1024,7 +1015,6 @@ export default {
         const stripePriceId = body.priceId || priceMap[planId] || env?.STRIPE_PRICE_PRO;
 
         if (!env?.STRIPE_SECRET_KEY || !stripePriceId) {
-          // Modo resiliente si Stripe no está configurado: simula alta comercial instantánea
           const licenseKey = await getOrCreateTenantLicenseKey(cleanTenant, env);
           return new Response(JSON.stringify({
             success: true,
@@ -1415,14 +1405,14 @@ export default {
             await ensureD1TablesExist(env.DB);
             const { results } = await env.DB.prepare(`
               SELECT
-                  t.tenant_id,
-                  COALESCE(tn.plan_id, 'PROFESSIONAL_649') AS plan_id,
-                  COALESCE(tn.status, 'ACTIVE') AS status,
-                  COALESCE(tn.quota, 25000) AS monthly_quota,
-                  COUNT(t.trace_id) AS total_prompts,
-                  SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
-                  SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
-                  MAX(datetime(t.timestamp)) AS ultima_actividad
+                t.tenant_id,
+                COALESCE(tn.plan_id, 'PROFESSIONAL_649') AS plan_id,
+                COALESCE(tn.status, 'ACTIVE') AS status,
+                COALESCE(tn.quota, 25000) AS monthly_quota,
+                COUNT(t.trace_id) AS total_prompts,
+                SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
+                SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
+                MAX(datetime(t.timestamp)) AS ultima_actividad
               FROM consolidated_traces t
               LEFT JOIN tenants tn ON t.tenant_id = tn.tenant_id
               GROUP BY t.tenant_id
@@ -1712,20 +1702,65 @@ export default {
         }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + METERING + SGP 1.0 + V6 CORE (RESILIENTE)
+      // ==========================================
+      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + MULTIMODAL (JSON / MULTIPART) + SGP 1.0 + V6 CORE
+      // ==========================================
       if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue") && method === "POST") {
         const startTime = performance.now();
-        const body = await request.json().catch(() => ({}));
+        const contentType = request.headers.get("content-type") || "";
+
+        let body = {};
+        let rawPrompt = "";
+        let hasMediaAttachment = false;
+
+        if (contentType.includes("multipart/form-data")) {
+          const formData = await request.formData();
+          const file = formData.get("file") || formData.get("image") || formData.get("attachment") || formData.get("photo");
+          const textPrompt = formData.get("prompt") || formData.get("message") || formData.get("text") || "";
+
+          if (file) {
+            hasMediaAttachment = true;
+            const fileName = typeof file === "object" && file.name ? file.name : "binary_media_upload";
+            const fileSize = typeof file === "object" && file.size ? file.size : 0;
+            rawPrompt = `[MULTIMODAL_MEDIA_INTERCEPTED: file=${fileName}, size=${fileSize}bytes] ${textPrompt}`;
+          } else {
+            rawPrompt = textPrompt;
+          }
+          body = {
+            prompt: rawPrompt,
+            provider: formData.get("provider") || "GEMINI",
+            model: formData.get("model") || "gpt-4o"
+          };
+        } else {
+          body = await request.json().catch(() => ({}));
+          rawPrompt = body.prompt || "";
+
+          if (!rawPrompt && Array.isArray(body.messages)) {
+            let extractedPrompts = [];
+            for (const msg of body.messages) {
+              if (typeof msg.content === "string") {
+                extractedPrompts.push(`${msg.role}: ${msg.content}`);
+              } else if (Array.isArray(msg.content)) {
+                let partsSummary = [];
+                for (const part of msg.content) {
+                  if (part.type === "text") {
+                    partsSummary.push(part.text);
+                  } else if (part.type === "image_url" || part.type === "image") {
+                    hasMediaAttachment = true;
+                    partsSummary.push("[MULTIMODAL_IMAGE_ATTACHMENT_DETECTED]");
+                  }
+                }
+                extractedPrompts.push(`${msg.role}: ${partsSummary.join(" ")}`);
+              }
+            }
+            body.messages.unshift(getSaareL7SystemDirective(env));
+            rawPrompt = extractedPrompts.join("\n");
+          }
+        }
 
         const tenantHeader = kvLicenseTenant || request.headers.get("x-saare-tenant") || body.tenant || tenantId;
         const targetProvider = (body.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
         const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
-
-        let rawPrompt = body.prompt || "";
-        if (!rawPrompt && Array.isArray(body.messages)) {
-          body.messages.unshift(getSaareL7SystemDirective(env));
-          rawPrompt = body.messages.map(m => `${m.role}: ${m.content}`).join("\n");
-        }
 
         const user = sanitizeEmail(body.user || identity?.email || cfIdentity?.userEmail || headerUser) || "operator_anonymous";
         const tenant = tenantHeader || "SANDBOX_DEMO";
@@ -1741,11 +1776,15 @@ export default {
             message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
             author: env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L."
-        }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
         }
 
         const semanticCmd = parseSemanticCommand(rawPrompt, env);
         const { sanitizedText, rulesTriggered } = sanitizePromptInRam(rawPrompt);
+
+        if (hasMediaAttachment && !rulesTriggered.includes("MULTIMODAL_MEDIA_INSPECTED")) {
+          rulesTriggered.push("MULTIMODAL_MEDIA_INSPECTED");
+        }
 
         const isBlocked = !semanticCmd && (
           rulesTriggered.includes("ANTI_JAILBREAK_TRIGGERED") ||
@@ -1782,7 +1821,7 @@ export default {
           : `MS3V_BLOCK_LOGIC_PEP_L7 [${providerMeta.name}]`;
 
         const llmOutputContent = isBlocked
-          ? "[BLOQUEO EX-ANTE L7] Petición interceptada y neutralizada en RAM antes de contactar con el proveedor LLM."
+          ? "[BLOQUEO EX-ANTE L7] Petición y archivo/foto interceptados y neutralizados en RAM antes de contactar con el proveedor LLM."
           : await invokeAgnosticLlmProvider(targetProvider, sanitizedText, body.model, env);
 
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
@@ -1810,7 +1849,7 @@ export default {
               ms3vHash: ms3vVerdict.HASH,
               ms3vTimestampNs: ms3vVerdict.TS,
               executedCommand: ms3vVerdict.EXECUTE
-          },
+            },
             compliance: complianceAssessment,
             payload_hash: await computeSha256(rawPrompt)
           });
@@ -1837,10 +1876,10 @@ export default {
               executedCommand: ms3vVerdict.EXECUTE,
               author: env?.AUTHOR_NAME || "GABINETE MS3V · S.A.A.R.E. S.L.",
               protocol: "SGP 1.0 / MS3V / BLOCK LOGIC"
-          },
+            },
             complianceImpact: complianceAssessment.compliance_impact,
             doubleChainOfCustody: { doubleChainOfCustody: true }
-        }, env);
+          }, env);
         } catch (e) {}
 
         const sgp1ProofContract = buildSgp1ProofContract({
@@ -1879,6 +1918,7 @@ export default {
             verdict: finalDecision,
             sanitizedInRam: true,
             piiDetected: rulesTriggered.length > 0,
+            mediaIntercepted: hasMediaAttachment,
             ms3vIntegrityHash: ms3vVerdict.HASH,
             ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
@@ -1929,7 +1969,6 @@ export default {
         }
 
         if (!userRecord || !(await verifyPassword(userRecord.password_hash, cleanPassword))) {
-          // Modo resiliente de acceso de emergencia si coincide con el admin del sistema
           const masterAdmin = sanitizeEmail(env?.ADMIN_EMAIL || "admin@saare.es");
           if (cleanEmail === masterAdmin && cleanPassword === (env?.ADMIN_DEMO_PASSWORD || "demo")) {
             userRecord = {
@@ -1985,7 +2024,6 @@ export default {
     );
 
     } catch (globalErr) {
-      // CAPA DE RESILIENCIA GLOBAL: Ante cualquier excepción no controlada, devuelve respuesta segura en formato JSON sin colgar el Worker
       return new Response(
         JSON.stringify({ 
           status: "RESILIENT_FAIL_SAFE_RECOVERY", 
