@@ -7,14 +7,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
+  // Elementos opcionales para mostrar el bloque de estado Detox en el popup (si existen en tu HTML)
+  const detoxStatusBox = document.getElementById("detoxStatusBox");
+  const detoxEngineLabel = document.getElementById("detoxEngine");
+  const detoxStateLabel = document.getElementById("detoxState");
+  const detoxRulesList = document.getElementById("detoxRules");
+
   try {
-    const { saareConfig } = await chrome.storage.local.get("saareConfig");
+    const { saareConfig, lastDetoxStatus } = await chrome.storage.local.get(["saareConfig", "lastDetoxStatus"]);
+    
     if (saareConfig) {
       if (saareConfig.apiUrl) apiUrlInput.value = saareConfig.apiUrl;
       if (saareConfig.tenantId) tenantInput.value = saareConfig.tenantId;
       if (saareConfig.apiKey) apiKeyInput.value = saareConfig.apiKey;
       if (saareConfig.userEmail) userInput.value = saareConfig.userEmail;
       if (saareConfig.failClosed !== undefined) failClosedInput.checked = Boolean(saareConfig.failClosed);
+    }
+
+    // Renderizar estado del último bloque Detox si la interfaz cuenta con el contenedor
+    if (lastDetoxStatus && detoxStatusBox) {
+      detoxStatusBox.style.display = "block";
+      if (detoxEngineLabel) detoxEngineLabel.textContent = lastDetoxStatus.engine || "v1.1-DETOX-RAM-EDGE";
+      if (detoxStateLabel) {
+        detoxStateLabel.textContent = lastDetoxStatus.status || "CLEAN";
+        detoxStateLabel.style.color = lastDetoxStatus.status === "SANITIZED" ? "#fbbf24" : "#34d399";
+      }
+      if (detoxRulesList && Array.isArray(lastDetoxStatus.rulesTriggered)) {
+        detoxRulesList.textContent = lastDetoxStatus.rulesTriggered.length > 0 
+          ? lastDetoxStatus.rulesTriggered.join(", ") 
+          : "Ninguna (Tráfico limpio)";
+      }
     }
   } catch (err) {
     console.error("[S.A.A.R.E. Popup Error]:", err);

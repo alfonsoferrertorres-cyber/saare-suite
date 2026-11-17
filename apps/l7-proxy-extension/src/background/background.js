@@ -1,4 +1,4 @@
-// S.A.A.R.E. Enterprise L7 Service Worker (SGP 1.0 Production)
+// S.A.A.R.E. Enterprise L7 Service Worker (SGP 1.0 Production + Semantic Detox Telemetry)
 
 const DEFAULT_GATEWAY = "https://api.saare.es/v1/chat/completions";
 
@@ -50,7 +50,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({
           success: true,
           failClosed: config.failClosed,
-          verdict: { decision: "ALLOW", sanitizedPrompt: rawPrompt }
+          verdict: {
+            decision: "ALLOW",
+            verdict: "PERMITIDO",
+            sanitizedPrompt: rawPrompt,
+            detox: { status: "DISABLED", rulesTriggered: [], engine: "v1.1-DETOX-RAM-EDGE" }
+          }
         });
         return;
       }
@@ -92,13 +97,46 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           throw new Error(data.error || data.message || `HTTP ${res.status} en Control Plane L7`);
         }
 
+        const detoxInfo = data.detox || { status: res.ok ? "CLEAN" : "ERROR", rulesTriggered: [], engine: "v1.1-DETOX-RAM-EDGE" };
+
+        // Persistir el último estado de desintoxicación para que el Popup lo muestre
+        try {
+          await chrome.storage.local.set({
+            lastDetoxStatus: {
+              ...detoxInfo,
+              timestamp: new Date().toISOString(),
+              targetHost: originHost
+            }
+          });
+        } catch (storageErr) {}
+
+        const normalizedVerdict = {
+          ...data,
+          decision: data.decision || (res.ok ? "ALLOW" : "DENY"),
+          verdict: data.verdict || (res.ok ? "PERMITIDO" : "RECHAZADO"),
+          sanitizedPrompt: detoxInfo.sanitizedPayload || data.sanitizedPrompt || rawPrompt,
+          detox: detoxInfo
+        };
+
         sendResponse({
           success: true,
           failClosed: config.failClosed,
-          verdict: data
+          verdict: normalizedVerdict
         });
+
       } catch (err) {
         console.error("[S.A.A.R.E. L7 Service Worker Error]:", err);
+        
+        const errorDetox = {
+          engine: "v1.1-DETOX-RAM-EDGE",
+          status: "ERROR_UNREACHABLE",
+          rulesTriggered: ["NETWORK_FAIL_SAFE"]
+        };
+
+        try {
+          await chrome.storage.local.set({ lastDetoxStatus: errorDetox });
+        } catch (e) {}
+
         sendResponse({
           success: true,
           failClosed: config.failClosed,
@@ -106,6 +144,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             decision: config.failClosed ? "DENY" : "ALLOW",
             verdict: config.failClosed ? "FAIL_CLOSED_BLOCKED" : "FAIL_OPEN_ALLOWED",
             category: "CONTROL_PLANE_UNREACHABLE",
+            sanitizedPrompt: rawPrompt,
+            detox: errorDetox,
             error: err.message || "Control Plane L7 inalcanzable"
           }
         });
