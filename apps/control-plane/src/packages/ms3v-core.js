@@ -1,11 +1,7 @@
 /**
  * --------------------------------------------------------------------------
- * ÍNDICE MAESTRO DE PROPIEDAD INTELECTUAL — PROTOCOLO DE AUDITORÍA VAL-AUD & S.A.A.R.E. L7
- * Titular / Inventor: Alfonso Ferrer Torres (NIF: 48553065L)
- * Fecha de Consolidación: Mayo 2026
- * Registro B2B: MS3V-SGP1.0-SOFTWARE-2026 | Registro RPI: RPI-2026-SAARE-0914X
+ * ÍNDICE MAESTRO DE PROPIEDAD INTELECTUAL — PROTOCOLO DE AUDITORÍA & S.A.A.R.E. L7
  * Aislamiento Tecnológico: Zero-Disk RAM (mlock)
- * Huella Raíz (SHA-256): 9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7
  * --------------------------------------------------------------------------
  * PROTOCOLO DE AUDITORÍA DETERMINISTA MS3V
  * MOTOR DE GOBERNANZA: BLOCK LOGIC (Middleware Determinista en Tiempo Real)
@@ -13,11 +9,11 @@
  */
 
 export const IP_MANIFEST = {
-  AUTHOR: "Alfonso Ferrer Torres",
-  NIF: "48553065L",
-  REGISTRO_B2B: "MS3V-SGP1.0-SOFTWARE-2026",
-  REGISTRO_RPI: "RPI-2026-SAARE-0914X",
-  MANIFEST_SHA256: "9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7"
+  AUTHOR: "S.A.A.R.E. Enterprise Control Plane",
+  NIF: "",
+  REGISTRO_B2B: "MS3V-SGP1.0-SOFTWARE",
+  REGISTRO_RPI: "",
+  MANIFEST_SHA256: ""
 };
 
 /**
@@ -45,7 +41,7 @@ function getTimestampNs() {
 /**
  * IMPLEMENTACIÓN ALGORÍTMICA DEL MOTOR BLOCK LOGIC
  * Intercepta, valida, audita y condiciona la ejecución de comandos en el runtime.
- * 
+ *
  * @param {string|Object} instruction - Instrucción o prompt entrante
  * @param {Array<string>} approvedParams - Set de Parámetros de Seguridad Físicos Aprobados
  * @param {Object} env - Entorno de ejecución (Cloudflare Environment / Variables)
@@ -62,26 +58,31 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
     } else if (instruction && typeof instruction === "object") {
       rawString = instruction.prompt || instruction.instruction || JSON.stringify(instruction);
     }
-    
-    let data = rawString.trim().toUpperCase();
+
+    const trimmedRaw = rawString.trim();
+    const upperData = trimmedRaw.toUpperCase();
 
     // ----------------------------------------------------------------------
     // BLOQUE 2: Motor de Validación Determinista (Core Logic)
     // ----------------------------------------------------------------------
-    const normalizedApproved = Array.isArray(approvedParams) 
-      ? approvedParams.map(p => String(p).trim().toUpperCase()) 
+    const normalizedApproved = Array.isArray(approvedParams)
+      ? approvedParams.map(p => String(p).trim().toUpperCase())
       : [];
-      
-    const isApproved = normalizedApproved.some(param => data === param || data.includes(param));
 
-    if (!isApproved && data !== "") {
-      data = "LOGIC_SAFE_STATE";
-    }
+    const isApproved = normalizedApproved.some(
+      param => upperData === param || upperData.includes(param)
+    );
+
+    const executedCommand = isApproved
+      ? upperData
+      : (trimmedRaw !== "" ? "LOGIC_SAFE_STATE" : "");
+
+    const hashTarget = isApproved ? upperData : trimmedRaw;
 
     // ----------------------------------------------------------------------
     // BLOQUE 3: Módulo de Auditoría y Generación de Huella (Integrity-Hash)
     // ----------------------------------------------------------------------
-    const integrityHash = await generateSha256Hex(data);
+    const integrityHash = await generateSha256Hex(hashTarget);
 
     // ----------------------------------------------------------------------
     // BLOQUE 4: Gestor de Sincronía y Trazabilidad Forense (RFC-3161)
@@ -91,29 +92,30 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
     // ----------------------------------------------------------------------
     // BLOQUE 5: Unidad de Ejecución Final (Safe-Release Controller)
     // ----------------------------------------------------------------------
-    if (integrityHash && data !== "") {
+    if (integrityHash && trimmedRaw !== "") {
       return {
-        EXECUTE: data,
+        STATUS: "ALLOW",
+        EXECUTE: executedCommand,
         HASH: integrityHash,
         TS: timestamp,
         AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR,
-        TITULAR_NIF: env?.TITULAR_NIF || IP_MANIFEST.NIF,
+        TITULAR_NIF: env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || IP_MANIFEST.NIF,
         PROTOCOL: env?.PROTOCOL_VERSION || "MS3V_BLOCK_LOGIC_V12.1",
-        RPI_REGISTRATION: IP_MANIFEST.REGISTRO_RPI,
-        MANIFEST_ROOT_HASH: IP_MANIFEST.MANIFEST_SHA256
-      };
-    } else {
-      return { 
-        STATUS: "ABORT_SEQUENCE",
-        REASON: "SAFETY_DISJUNCTOR_ENGAGED",
-        AUTHOR: IP_MANIFEST.AUTHOR
+        RPI_REGISTRATION: env?.SAFE_CREATIVE_ID || IP_MANIFEST.REGISTRO_RPI,
+        MANIFEST_ROOT_HASH: env?.MANIFEST_ROOT_HASH || IP_MANIFEST.MANIFEST_SHA256
       };
     }
+
+    return {
+      STATUS: "ABORT_SEQUENCE",
+      REASON: "SAFETY_DISJUNCTOR_ENGAGED",
+      AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR
+    };
   } catch (error) {
-    return { 
+    return {
       STATUS: "ABORT_SEQUENCE",
       REASON: `RUNTIME_ERROR: ${error.message}`,
-      AUTHOR: IP_MANIFEST.AUTHOR
+      AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR
     };
   }
 }

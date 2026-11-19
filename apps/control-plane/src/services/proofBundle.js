@@ -46,17 +46,16 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
   const payloadHash = await computeSha256(payloadString);
   const claimLevel = isDeny ? 'VERIFIED' : 'TESTED';
   const timestamp = rawEvidence.timestamp || rawEvidence.created_at || new Date().toISOString();
+  const year = new Date(timestamp).getUTCFullYear();
   const runId = rawEvidence.id || rawEvidence.evidence_id || `EV-L7-${payloadHash.substring(0, 10).toUpperCase()}`;
-  const verdictId = rawEvidence.verdictId || `VRD-2026-${runId.replace('EV-L7-', '')}`;
+  const verdictId = rawEvidence.verdictId || `VRD-${year}-${runId.replace('EV-L7-', '')}`;
   const traceId = rawEvidence.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
 
-  // Firma real Ed25519 (con fallback determinista si no hay clave PEM en entorno)
   const keyManager = new EnterpriseKeyManager(env);
   const canonicalSignPayload = `${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
   const ed25519Signature = rawEvidence.cryptoSeal || await keyManager.deriveEd25519Signature(canonicalSignPayload);
 
-  // Sello temporal RFC-3161
-  const tsaEngine = new TimestampingEngine(env?.SAFE_CREATIVE_EXPEDIENTE_ID || "MS3V-RECON-VALID-2026");
+  const tsaEngine = new TimestampingEngine(env?.EXPEDIENTE_ID || env?.SAFE_CREATIVE_EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE");
   const tsaSeal = await tsaEngine.sealTransaction({ verdictId, payloadHash, ed25519Signature });
 
   return {

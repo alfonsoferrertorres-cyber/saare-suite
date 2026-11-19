@@ -1,4 +1,4 @@
-// S.A.A.R.E. Content Script — Interceptor Universal Resiliente (SGP 1.0 Production)
+// S.A.A.R.E. Content Script — Interceptor Universal Resiliente (SGP 1.0 Production + ISO 42001 Alarms)
 
 (function () {
   console.log("[S.A.A.R.E. L7 Proxy] Agente de Inspección Resiliente Activo.");
@@ -12,6 +12,50 @@
     } catch (e) {
       return false;
     }
+  }
+
+  function extractSanitizedPrompt(verdictData, rawPrompt) {
+    const candidate =
+      verdictData?.sanitizedPrompt ||
+      verdictData?.sanitized_payload ||
+      verdictData?.detox?.sanitizedPayload ||
+      verdictData?.enforcement?.sanitizedPrompt;
+
+    if (!candidate || typeof candidate !== "string" || candidate === rawPrompt) {
+      return null;
+    }
+
+    const isAuditStamp =
+      candidate.includes("[S.A.A.R.E.") ||
+      candidate.includes("MS3V BLOCK LOGIC");
+
+    return isAuditStamp ? null : candidate;
+  }
+
+  function formatAlarmSummary(verdictData) {
+    const alarm = verdictData?.alarm || {};
+    const rules = Array.isArray(alarm.rulesTriggered) && alarm.rulesTriggered.length > 0
+      ? alarm.rulesTriggered.join(", ")
+      : (Array.isArray(verdictData?.detox?.rulesTriggered) ? verdictData.detox.rulesTriggered.join(", ") : "POLÍTICA L7");
+
+    const controls = Array.isArray(alarm.iso42001_controls) && alarm.iso42001_controls.length > 0
+      ? alarm.iso42001_controls.join(", ")
+      : "A.5.4 / A.6.2 / A.7.4";
+
+    const severity = alarm.severity || "HIGH";
+    const evidenceId = verdictData?.evidence_id || verdictData?.trace_id || verdictData?.id || "N/A";
+    const detail = verdictData?.error || verdictData?.reason || verdictData?.category || "Infracción de Política ISO 42001";
+
+    return { alarm, rules, controls, severity, evidenceId, detail };
+  }
+
+  async function inspectWithControlPlane(rawPrompt, userAction = "DEFAULT_POLICY") {
+    return await chrome.runtime.sendMessage({
+      action: "INSPECT_PROMPT_EX_ANTE",
+      payload: rawPrompt,
+      userAction,
+      origin: window.location.hostname
+    });
   }
 
   async function handleKeyDown(event) {
@@ -43,45 +87,65 @@
         return;
       }
 
-      const response = await chrome.runtime.sendMessage({
-        action: "INSPECT_PROMPT_EX_ANTE",
-        payload: rawPrompt,
-        origin: window.location.hostname
-      });
+      let response = await inspectWithControlPlane(rawPrompt, "DEFAULT_POLICY");
 
       if (response && response.success && response.verdict) {
-        const verdictData = response.verdict;
+        let verdictData = response.verdict;
+        let sanitizedPrompt = extractSanitizedPrompt(verdictData, rawPrompt);
 
-        if (
+        const isBlocked =
           verdictData.decision === "DENY" ||
           verdictData.verdict === "RECHAZADO" ||
-          verdictData.verdict === "FAIL_CLOSED_BLOCKED"
-        ) {
-          alert(
-            `[S.A.A.R.E. SECURITY BLOCK]\nAcceso Bloqueado por Política Ex-Ante L7.\n\nEvidencia: ${
-              verdictData.evidence_id || verdictData.trace_id || verdictData.id || "N/A"
-            }\nDetalle: ${verdictData.error || verdictData.reason || verdictData.category || "Infracción de Política"}`
-          );
-          isProcessing = false;
-          return;
+          verdictData.verdict === "FAIL_CLOSED_BLOCKED";
+
+        if (isBlocked) {
+          const { alarm, rules, controls, severity, evidenceId, detail } = formatAlarmSummary(verdictData);
+          const canSanitizeAndSend =
+            Boolean(alarm?.requiresUserDecision) &&
+            Array.isArray(alarm?.allowedActions) &&
+            alarm.allowedActions.includes("SANITIZE_AND_SEND") &&
+            Boolean(sanitizedPrompt);
+
+          if (canSanitizeAndSend) {
+            const preview = sanitizedPrompt.slice(0, 220) + (sanitizedPrompt.length > 220 ? "..." : "");
+            const confirmed = window.confirm(
+              `[ALARMA S.A.A.R.E. · ISO/IEC 42001 (${severity})]\n` +
+              `Controles: ${controls}\n` +
+              `Reglas detectadas: ${rules}\n` +
+              `Evidencia: ${evidenceId}\n\n` +
+              `Texto sanitizado propuesto:\n"${preview}"\n\n` +
+              `¿Deseas enviar el texto ya sanitizado? (Cancelar bloquea el envío)`
+            );
+
+            if (!confirmed) {
+              isProcessing = false;
+              return;
+            }
+
+            const retryResponse = await inspectWithControlPlane(rawPrompt, "SANITIZE_AND_SEND");
+            if (!retryResponse || !retryResponse.success || !retryResponse.verdict || retryResponse.verdict.decision === "DENY") {
+              alert("[S.A.A.R.E. SECURITY BLOCK]\nEl envío sanitizado no fue autorizado por el Control Plane.");
+              isProcessing = false;
+              return;
+            }
+
+            verdictData = retryResponse.verdict;
+            sanitizedPrompt = extractSanitizedPrompt(verdictData, rawPrompt) || sanitizedPrompt;
+          } else {
+            alert(
+              `[ALARMA CRÍTICA S.A.A.R.E. · ISO/IEC 42001 (${severity})]\n` +
+              `Acceso Bloqueado por Política Ex-Ante L7.\n\n` +
+              `Controles: ${controls}\n` +
+              `Reglas: ${rules}\n` +
+              `Evidencia: ${evidenceId}\n` +
+              `Detalle: ${detail}`
+            );
+            isProcessing = false;
+            return;
+          }
         }
 
-        const sanitizedPrompt =
-          verdictData.sanitizedPrompt ||
-          verdictData.sanitized_payload ||
-          verdictData.enforcement?.sanitizedPrompt;
-
-        const isAuditStamp = sanitizedPrompt && (
-          sanitizedPrompt.includes("[S.A.A.R.E.") ||
-          sanitizedPrompt.includes("MS3V BLOCK LOGIC")
-        );
-
-        if (
-          sanitizedPrompt &&
-          typeof sanitizedPrompt === "string" &&
-          sanitizedPrompt !== rawPrompt &&
-          !isAuditStamp
-        ) {
+        if (sanitizedPrompt && typeof sanitizedPrompt === "string" && sanitizedPrompt !== rawPrompt) {
           setInputValue(inputEl, sanitizedPrompt);
         }
 

@@ -1,46 +1,47 @@
-name = "saare-control-plane-prod"
+name = "saare-control-plane"
 main = "worker.js"
 compatibility_date = "2026-11-06"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 
-routes = [
-  { pattern = "api.saare.es", custom_domain = true }
-]
+# Configurar dominio personalizado por cliente/entorno:
+# routes = [
+#   { pattern = "api.ejemplo-cliente.com", custom_domain = true }
+# ]
 
 [vars]
-AUTHOR_NAME = "GABINETE MS3V · S.A.A.R.E. S.L."
-ADMIN_EMAIL = "ops@email.es"
+AUTHOR_NAME = "S.A.A.R.E. Enterprise Control Plane"
+ADMIN_EMAIL = ""
 ALLOW_FALLBACK_VAULT = "false"
-CHROME_EXTENSION_ID = "jmlakofckaafjpjnfbihgchkeiglamme"
-SAFE_CREATIVE_TSA_HASH = "SC-REG-2026-1791667481"
-SAFE_CREATIVE_CORE_ID = "2607076314949"
-SAFE_CREATIVE_DICTAMEN_ID = "2607076315021"
-SAFE_CREATIVE_ID = "RPI-2026-SAARE-0914X"
-AUDIT_TOKEN = "IA-2026-VAL-AUD-8842-XF"
-P2026_REGISTRATION = "P20260603"
-EXPEDIENTE_ID = "MS3V-RECON-VALID-2026-ALF-0521"
+CHROME_EXTENSION_ID = ""
+SAFE_CREATIVE_TSA_HASH = ""
+SAFE_CREATIVE_CORE_ID = ""
+SAFE_CREATIVE_DICTAMEN_ID = ""
+SAFE_CREATIVE_ID = ""
+AUDIT_TOKEN = ""
+P2026_REGISTRATION = ""
+EXPEDIENTE_ID = ""
 SGP_SPEC_VERSION = "SGP 1.0"
-WORKER_NAME = "saare-control-plane-prod"
-TRUST_ANCHOR = "https://vault.saare.es"
-PUBLIC_API_URL = "https://api.saare.es/api/v1/proxy/llm"
+WORKER_NAME = "saare-control-plane"
+TRUST_ANCHOR = ""
+PUBLIC_API_URL = ""
 CPAAS_DEFAULT_PROVIDER = "twilio"
-TWILIO_FROM_NUMBER = "+34633886506"
+TWILIO_FROM_NUMBER = ""
 INFOBIP_BASE_URL = "https://api.infobip.com"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "saare-vault-d1"
-database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "saare-vault-d1"
+# database_id = "REPLACE_WITH_CLIENT_D1_ID"
 
-[[kv_namespaces]]
-binding = "SAARE_VAULT_KV"
-id = "8dbfe21019834fc1bdefd9b66e4e810b"
+# [[kv_namespaces]]
+# binding = "SAARE_VAULT_KV"
+# id = "REPLACE_WITH_CLIENT_KV_ID"
 
-[[analytics_engine_datasets]]
-binding = "USAGE_ANALYTICS"
-dataset = "saare_tenant_usage"
+# [[analytics_engine_datasets]]
+# binding = "USAGE_ANALYTICS"
+# dataset = "saare_tenant_usage"
 
 [observability]
 enabled = true

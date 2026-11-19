@@ -7,15 +7,68 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("saveBtn");
   const statusDiv = document.getElementById("status");
 
-  // Elementos opcionales para mostrar el bloque de estado Detox en el popup (si existen en tu HTML)
   const detoxStatusBox = document.getElementById("detoxStatusBox");
   const detoxEngineLabel = document.getElementById("detoxEngine");
   const detoxStateLabel = document.getElementById("detoxState");
   const detoxRulesList = document.getElementById("detoxRules");
+  const alarmTenantLabel = document.getElementById("alarmTenant");
+  const alarmControlsLabel = document.getElementById("alarmControls");
+  const alarmBanner = document.getElementById("alarmBanner");
+
+  function renderDetoxAndAlarm(statusObj, fallbackTenant) {
+    if (!statusObj || !detoxStatusBox) return;
+
+    detoxStatusBox.style.display = "block";
+    if (detoxEngineLabel) {
+      detoxEngineLabel.textContent = statusObj.engine || "v1.3-DETOX-RAM-ISO42001-FULL";
+    }
+
+    const state = statusObj.status || "CLEAN";
+    if (detoxStateLabel) {
+      detoxStateLabel.textContent = state;
+      detoxStateLabel.style.color =
+        state === "SANITIZED" ? "#fbbf24" :
+        (state.includes("ERROR") || state.includes("BLOCK") ? "#f87171" : "#34d399");
+    }
+
+    const alarm = statusObj.alarm || {};
+    const rules = Array.isArray(alarm.rulesTriggered) && alarm.rulesTriggered.length > 0
+      ? alarm.rulesTriggered
+      : (Array.isArray(statusObj.rulesTriggered) ? statusObj.rulesTriggered : []);
+
+    if (detoxRulesList) {
+      detoxRulesList.textContent = rules.length > 0 ? rules.join(", ") : "Ninguna (Tráfico limpio)";
+    }
+
+    const activeTenant = alarm.tenant || fallbackTenant || "DEMO_ENTERPRISE";
+    if (alarmTenantLabel) {
+      alarmTenantLabel.textContent = activeTenant;
+    }
+
+    const controls = Array.isArray(alarm.iso42001_controls) ? alarm.iso42001_controls : [];
+    if (alarmControlsLabel) {
+      alarmControlsLabel.textContent = controls.length > 0 ? controls.join(", ") : "Sin controles disparados";
+    }
+
+    if (alarmBanner) {
+      if (alarm.triggered) {
+        const sev = alarm.severity || "HIGH";
+        const isCrit = sev === "CRITICAL" || statusObj.decision === "DENY";
+        alarmBanner.style.display = "block";
+        alarmBanner.style.background = isCrit ? "rgba(239, 68, 68, 0.16)" : "rgba(251, 191, 36, 0.16)";
+        alarmBanner.style.border = isCrit ? "1px solid rgba(239, 68, 68, 0.45)" : "1px solid rgba(251, 191, 36, 0.45)";
+        alarmBanner.style.color = isCrit ? "#fca5a5" : "#fde68a";
+        alarmBanner.textContent = `⚠️ Alarma ${sev} activa en ${activeTenant} (${statusObj.verdict || statusObj.decision || "ALERTA"})`;
+      } else {
+        alarmBanner.style.display = "none";
+        alarmBanner.textContent = "";
+      }
+    }
+  }
 
   try {
     const { saareConfig, lastDetoxStatus } = await chrome.storage.local.get(["saareConfig", "lastDetoxStatus"]);
-    
+
     if (saareConfig) {
       if (saareConfig.apiUrl) apiUrlInput.value = saareConfig.apiUrl;
       if (saareConfig.tenantId) tenantInput.value = saareConfig.tenantId;
@@ -24,20 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (saareConfig.failClosed !== undefined) failClosedInput.checked = Boolean(saareConfig.failClosed);
     }
 
-    // Renderizar estado del último bloque Detox si la interfaz cuenta con el contenedor
-    if (lastDetoxStatus && detoxStatusBox) {
-      detoxStatusBox.style.display = "block";
-      if (detoxEngineLabel) detoxEngineLabel.textContent = lastDetoxStatus.engine || "v1.1-DETOX-RAM-EDGE";
-      if (detoxStateLabel) {
-        detoxStateLabel.textContent = lastDetoxStatus.status || "CLEAN";
-        detoxStateLabel.style.color = lastDetoxStatus.status === "SANITIZED" ? "#fbbf24" : "#34d399";
-      }
-      if (detoxRulesList && Array.isArray(lastDetoxStatus.rulesTriggered)) {
-        detoxRulesList.textContent = lastDetoxStatus.rulesTriggered.length > 0 
-          ? lastDetoxStatus.rulesTriggered.join(", ") 
-          : "Ninguna (Tráfico limpio)";
-      }
-    }
+    renderDetoxAndAlarm(lastDetoxStatus, saareConfig?.tenantId);
   } catch (err) {
     console.error("[S.A.A.R.E. Popup Error]:", err);
   }
@@ -70,6 +110,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       apiUrlInput.value = cleanUrl;
       tenantInput.value = tenantId;
       userInput.value = userEmail;
+
+      if (alarmTenantLabel && detoxStatusBox?.style.display === "block") {
+        alarmTenantLabel.textContent = tenantId;
+      }
 
       statusDiv.style.color = "#34d399";
       statusDiv.textContent = `✅ Nodo L7 Vinculado (${tenantId})`;

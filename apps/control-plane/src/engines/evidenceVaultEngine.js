@@ -6,7 +6,8 @@
 export class EvidenceVaultEngine {
   constructor(env) {
     this.env = env;
-    this.trustAnchor = "SAARE-MD-IPRES-2026";
+    this.trustAnchor = env?.TRUST_ANCHOR || "UNCONFIGURED_TRUST_ANCHOR";
+    this.primaryNodeId = env?.SAFE_CREATIVE_DICTAMEN_ID || env?.SAFE_CREATIVE_ID || "NODE_L7_PRIMARY";
   }
 
   /**
@@ -30,20 +31,22 @@ export class EvidenceVaultEngine {
           prompt TEXT NOT NULL DEFAULT '',
           sanitized_payload TEXT DEFAULT '',
           verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-          anchored INTEGER DEFAULT 0
+          anchored INTEGER DEFAULT 0,
+          ms3v_hash TEXT DEFAULT '',
+          ms3v_timestamp_ns TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS runs (
-          id TEXT PRIMARY KEY,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           evidence_id TEXT UNIQUE NOT NULL,
           trace_id TEXT NOT NULL,
           verdictId TEXT NOT NULL,
-          decision TEXT NOT NULL,
-          user TEXT NOT NULL,
-          tenant TEXT NOT NULL,
-          verdict TEXT NOT NULL,
-          prompt TEXT,
-          responseOutput TEXT,
+          decision TEXT NOT NULL DEFAULT 'ALLOW',
+          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+          user TEXT NOT NULL DEFAULT 'anonymous',
+          tenant TEXT NOT NULL DEFAULT 'DEFAULT_TENANT',
+          prompt TEXT DEFAULT '',
+          responseOutput TEXT DEFAULT '',
           payload_json TEXT NOT NULL,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -59,15 +62,18 @@ export class EvidenceVaultEngine {
    */
   async recordNodeEvidence(tracePayload) {
     const timestamp = tracePayload.timestamp || new Date().toISOString();
+    const year = new Date(timestamp).getUTCFullYear();
     const traceId = tracePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
     const evidenceId = tracePayload.evidence_id || `EV-L7-${Date.now()}`;
-    const verdictId = tracePayload.verdictId || `VRD-2026-${evidenceId.replace('EV-L7-', '')}`;
-    const tenantId = tracePayload.tenant_id || tracePayload.tenant || "ENTERPRISE";
+    const verdictId = tracePayload.verdictId || `VRD-${year}-${evidenceId.replace('EV-L7-', '')}`;
+    const tenantId = tracePayload.tenant_id || tracePayload.tenant || "DEFAULT_TENANT";
     const user = tracePayload.user || "anonymous";
 
     const payloadHash = tracePayload.payload_hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    
-    const finalEvaluatorNode = typeof tracePayload.evaluator_chain === 'object' 
+    const ms3vHash = tracePayload.verdict_data?.ms3vHash || payloadHash;
+    const ms3vTimestampNs = tracePayload.verdict_data?.ms3vTimestampNs || `${Date.now()}000000`;
+
+    const finalEvaluatorNode = typeof tracePayload.evaluator_chain === 'object'
       ? (tracePayload.evaluator_chain?.final_evaluator || 'EDGE_WORKER_PEP_L7')
       : String(tracePayload.evaluator_chain || 'EDGE_WORKER_PEP_L7');
 
@@ -97,38 +103,43 @@ export class EvidenceVaultEngine {
 
         await this.env.DB.prepare(`
           INSERT OR REPLACE INTO consolidated_traces (
-            trace_id, tenant_id, user_email, final_evaluator_node, 
-            final_decision, final_action, execution_latency_ms, 
-            timestamp, created_at, prompt, sanitized_payload, verdict, anchored
+            trace_id, tenant_id, user_email, final_evaluator_node,
+            final_decision, final_action, execution_latency_ms,
+            timestamp, created_at, prompt, sanitized_payload, verdict, anchored,
+            ms3v_hash, ms3v_timestamp_ns
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         `).bind(
-          traceId, 
-          tenantId, 
-          user, 
-          finalEvaluatorNode, 
-          decision, 
+          traceId,
+          tenantId,
+          user,
+          finalEvaluatorNode,
+          decision,
           decision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
           latencyMs,
           timestamp,
           timestamp,
           tracePayload.prompt || "",
-          tracePayload.responseOutput || tracePayload.sanitized_payload || "",
-          verdict
+          tracePayload.sanitized_payload || tracePayload.responseOutput || "",
+          verdict,
+          ms3vHash,
+          ms3vTimestampNs
         ).run();
 
         await this.env.DB.prepare(`
-          INSERT OR REPLACE INTO runs (id, evidence_id, trace_id, verdictId, decision, user, tenant, verdict, prompt, responseOutput, payload_json, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO runs (
+            evidence_id, trace_id, verdictId, decision, verdict,
+            user, tenant, prompt, responseOutput, payload_json, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          evidenceId,
           evidenceId,
           traceId,
           verdictId,
           decision,
+          verdict,
           user,
           tenantId,
-          verdict,
           tracePayload.prompt || "",
           tracePayload.responseOutput || tracePayload.sanitized_payload || "",
           JSON.stringify(fullRecord),
@@ -139,16 +150,17 @@ export class EvidenceVaultEngine {
       }
     }
 
-    // 2. Persistencia en KV (Registro Individual + Array 'runs_${tenantId}' para la Consola)
-    if (this.env && this.env.SAARE_VAULT_KV) {
+    // 2. Persistencia en KV
+    const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
+    if (kv) {
       try {
         const kvKey = `trace:${tenantId}:${traceId}`;
-        await this.env.SAARE_VAULT_KV.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
+        await kv.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
 
         const runsKey = `runs_${tenantId}`;
-        const existingKv = (await this.env.SAARE_VAULT_KV.get(runsKey, 'json')) || [];
+        const existingKv = (await kv.get(runsKey, 'json')) || [];
         const updatedKv = [fullRecord, ...(Array.isArray(existingKv) ? existingKv : [])].slice(0, 100);
-        await this.env.SAARE_VAULT_KV.put(runsKey, JSON.stringify(updatedKv));
+        await kv.put(runsKey, JSON.stringify(updatedKv));
       } catch (err) {
         console.error("[Vault Engine] Error guardando en KV:", err.message);
       }
@@ -158,7 +170,7 @@ export class EvidenceVaultEngine {
     const localNodeSeal = `ed25519:${payloadHash.substring(0, 32)}`;
     const custodyRecord = {
       primaryNode: {
-        nodeId: "2607076315021",
+        nodeId: this.primaryNodeId,
         seal: localNodeSeal,
         timestamp
       },
@@ -195,10 +207,10 @@ export class EvidenceVaultEngine {
       }
     }
 
-    // Fallback a Bóveda KV
-    if (this.env && this.env.SAARE_VAULT_KV) {
+    const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
+    if (kv) {
       try {
-        const kvData = await this.env.SAARE_VAULT_KV.get(`runs_${tenantId}`, 'json');
+        const kvData = await kv.get(`runs_${tenantId}`, 'json');
         if (Array.isArray(kvData)) return kvData.slice(0, limit);
       } catch (e) {}
     }
@@ -207,7 +219,6 @@ export class EvidenceVaultEngine {
   }
 }
 
-// Banderín global para caché de inicialización de esquema
 EvidenceVaultEngine.schemaInitialized = false;
 
 export default EvidenceVaultEngine;
