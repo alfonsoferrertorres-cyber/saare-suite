@@ -74,6 +74,39 @@ const SAARE_APPROVED_COMMANDS = [
   "LOGIC_SAFE_STATE"
 ];
 
+function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
+  let out = typeof inputText === "string" ? inputText : String(inputText || "");
+  const extraRules = [];
+
+  if (/\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i.test(out)) {
+    out = out.replace(/\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/gi, "[DNI_NIE_SANITIZADO]");
+    extraRules.push("DLP_ES_DNI_NIE");
+  }
+
+  if (/\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{2}[\s]?\d{10}\b/gi.test(out)) {
+    out = out.replace(/\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{2}[\s]?\d{10}\b/gi, "[IBAN_SANITIZADO]");
+    extraRules.push("DLP_IBAN");
+  }
+
+  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi.test(out)) {
+    out = out.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi, "[EMAIL_SANITIZADO]");
+    extraRules.push("DLP_EMAIL");
+  }
+
+  for (const r of customRules || []) {
+    try {
+      if (!r?.pattern) continue;
+      const rx = new RegExp(r.pattern, "gi");
+      if (rx.test(out)) {
+        out = out.replace(rx, `[SANITIZADO:${String(r.name || r.id || "RULE").slice(0, 24)}]`);
+        extraRules.push(`CUSTOM_${String(r.name || r.id || "RULE").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`);
+      }
+    } catch (e) {}
+  }
+
+  return { sanitizedText: out, extraRules: [...new Set(extraRules)] };
+}
+
 class CPaaSAdapterManager {
   static async sendTwilio(payload, env) {
     const accountSid = env?.TWILIO_ACCOUNT_SID;
@@ -1617,7 +1650,7 @@ export default {
       }
 
       // ==========================================
-      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL + SGP 1.0
+      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL/ARCHIVOS + OUTPUT MULTI-TENANT + SGP 1.0
       // ==========================================
       if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue") && method === "POST") {
         const startTime = performance.now();
@@ -1636,7 +1669,13 @@ export default {
             hasMediaAttachment = true;
             const fileName = typeof file === "object" && file.name ? file.name : "binary_media_upload";
             const fileSize = typeof file === "object" && file.size ? file.size : 0;
-            rawPrompt = `[MULTIMODAL_MEDIA_INTERCEPTED: file=${fileName}, size=${fileSize}bytes] ${textPrompt}`;
+            let fileTextExcerpt = "";
+            if (typeof file === "object" && typeof file.text === "function" && fileSize <= 200000) {
+              try {
+                fileTextExcerpt = (await file.text()).slice(0, 4000);
+              } catch (fErr) {}
+            }
+            rawPrompt = `[MULTIMODAL_MEDIA_INTERCEPTED: file=${fileName}, size=${fileSize}bytes] ${fileTextExcerpt} ${textPrompt}`.trim();
           } else {
             rawPrompt = textPrompt;
           }
@@ -1660,9 +1699,9 @@ export default {
                 for (const part of msg.content) {
                   if (part.type === "text") {
                     partsSummary.push(part.text);
-                  } else if (part.type === "image_url" || part.type === "image") {
+                  } else if (part.type === "image_url" || part.type === "image" || part.type === "file") {
                     hasMediaAttachment = true;
-                    partsSummary.push("[MULTIMODAL_IMAGE_ATTACHMENT_DETECTED]");
+                    partsSummary.push("[MULTIMODAL_ATTACHMENT_DETECTED]");
                   }
                 }
                 extractedPrompts.push(`${msg.role}: ${partsSummary.join(" ")}`);
@@ -1705,29 +1744,29 @@ export default {
 
         const semanticCmd = parseSemanticCommand(rawPrompt, env);
         const detoxResult = semanticDetox.detoxify(rawPrompt, tenantCustomRules, { wrapUntrusted: true });
-        const sanitizedText = detoxResult.sanitizedText;
-        const rulesTriggered = [...detoxResult.rulesTriggered];
+        const piiPass = sanitizePiiAndCustomRules(detoxResult.sanitizedText || rawPrompt, tenantCustomRules);
+        const sanitizedText = piiPass.sanitizedText;
+        const rulesTriggered = [...new Set([...detoxResult.rulesTriggered, ...piiPass.extraRules])];
 
-        const spanishIdRegex = /\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i;
-        const hasSpanishId = spanishIdRegex.test(rawPrompt);
-        if (hasSpanishId && !rulesTriggered.includes("DLP_ES_DNI_NIE")) {
-          rulesTriggered.push("DLP_ES_DNI_NIE");
-        }
+        const hasSpanishId = /\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i.test(rawPrompt);
 
-        let customRuleBlockHit = false;
+        let customHardBlockHit = false;
         for (const r of tenantCustomRules) {
           try {
             if (!r?.pattern) continue;
             const rx = new RegExp(r.pattern, "i");
             if (rx.test(rawPrompt)) {
-              const ruleTag = `CUSTOM_${String(r.name || r.id || "RULE").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
-              if (!rulesTriggered.includes(ruleTag)) {
-                rulesTriggered.push(ruleTag);
-              }
               const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
-              const isGenericDlpPreset = ruleMeta.includes("DLP-DNI-NIE") || ruleMeta.includes("DLP-IBAN") || ruleMeta.includes("DLP-EMAIL");
-              if (!isGenericDlpPreset && (ruleMeta.includes("DENY") || ruleMeta.includes("BLOCK") || ruleMeta.includes("ISO 42001") || ruleMeta.includes("ISO42001"))) {
-                customRuleBlockHit = true;
+              const isPiiRule =
+                ruleMeta.includes("DNI") ||
+                ruleMeta.includes("NIE") ||
+                ruleMeta.includes("IBAN") ||
+                ruleMeta.includes("EMAIL") ||
+                ruleMeta.includes("RGPD") ||
+                ruleMeta.includes("DLP");
+
+              if (!isPiiRule && (ruleMeta.includes("INJECTION") || ruleMeta.includes("JAILBREAK") || ruleMeta.includes("DROP TABLE"))) {
+                customHardBlockHit = true;
               }
             }
           } catch (rxErr) {}
@@ -1740,14 +1779,15 @@ export default {
         const strictHighRisk = !semanticCmd && (
           Boolean(detoxResult.jailbreakDetected) ||
           Boolean(detoxResult.highRiskDetected) ||
-          customRuleBlockHit ||
-          rawPrompt.toUpperCase().includes("DROP TABLE") ||
-          rawPrompt.toUpperCase().includes("IGNORE ALL PREVIOUS")
+          customHardBlockHit ||
+          /\bDROP\s+TABLE\b/i.test(rawPrompt) ||
+          /ignore all previous instructions/i.test(rawPrompt)
         );
 
         const standardPiiRisk = !semanticCmd && !strictHighRisk && (
           Boolean(detoxResult.piiDetected) ||
-          hasSpanishId
+          hasSpanishId ||
+          piiPass.extraRules.length > 0
         );
 
         const isBlocked = strictHighRisk || (standardPiiRisk && userChoice !== "SANITIZE_AND_SEND");
@@ -1843,9 +1883,12 @@ export default {
           ? sanitizedText
           : detoxResult.cleanPrompt;
 
-        const llmOutputContent = isBlocked
-          ? "[BLOQUEO EX-ANTE L7] Petición y archivo/foto interceptados y neutralizados en RAM antes de contactar con el proveedor LLM."
+        const rawOutput = isBlocked
+          ? "[BLOQUEO EX-ANTE L7] Petición y archivos interceptados y neutralizados en RAM antes de contactar con el proveedor LLM."
           : await invokeAgnosticLlmProvider(targetProvider, promptForLlm, payloadBody.model, env);
+
+        const outputSanitized = sanitizePiiAndCustomRules(rawOutput, tenantCustomRules);
+        const llmOutputContent = outputSanitized.sanitizedText;
 
         const year = new Date().getUTCFullYear();
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, payloadBody.evidence_id);
@@ -1939,6 +1982,7 @@ export default {
           decision: finalDecision,
           verdict: finalVerdict,
           sanitizedPrompt: sanitizedText,
+          sanitizedOutput: llmOutputContent,
           alarm: {
             triggered: alarmTriggered,
             tenant,
@@ -1955,6 +1999,7 @@ export default {
             engine: semanticDetox.version,
             status: detoxResult.status,
             sanitizedPayload: sanitizedText,
+            sanitizedOutput: llmOutputContent,
             rulesTriggered,
             findings: detoxResult.findings || []
           },
