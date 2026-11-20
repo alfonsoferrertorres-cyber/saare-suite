@@ -5,6 +5,8 @@
 
   let isProcessing = false;
   let bypassNextAction = false;
+  let lastSubmittedSignature = "";
+  let lastSubmittedAt = 0;
 
   function isExtensionContextValid() {
     try {
@@ -89,7 +91,13 @@
 
   async function evaluateAndProcess(event, inputEl) {
     const rawPrompt = getInputValue(inputEl);
-    if (!rawPrompt || !rawPrompt.trim()) return;
+    const trimmedPrompt = rawPrompt ? rawPrompt.trim() : "";
+    if (!trimmedPrompt) return;
+
+    const now = Date.now();
+    if (trimmedPrompt === lastSubmittedSignature && (now - lastSubmittedAt) < 2500) {
+      return;
+    }
 
     event.preventDefault();
     event.stopPropagation();
@@ -102,7 +110,7 @@
     try {
       if (!isExtensionContextValid()) {
         console.warn("[S.A.A.R.E.] Contexto de extensión invalidado. Passthrough activado.");
-        bypassAndSubmit(inputEl);
+        markAndSubmit(inputEl, trimmedPrompt);
         return;
       }
 
@@ -161,12 +169,17 @@
           }
         }
 
-        if (sanitizedPrompt && typeof sanitizedPrompt === "string" && sanitizedPrompt !== rawPrompt) {
-          setInputValue(inputEl, sanitizedPrompt);
+        const finalText = (sanitizedPrompt && typeof sanitizedPrompt === "string" && sanitizedPrompt !== rawPrompt)
+          ? sanitizedPrompt
+          : rawPrompt;
+
+        if (finalText !== rawPrompt) {
+          setInputValue(inputEl, finalText);
         }
 
+        const sigToMark = getInputValue(inputEl).trim() || trimmedPrompt;
         setTimeout(() => {
-          bypassAndSubmit(inputEl);
+          markAndSubmit(inputEl, sigToMark);
         }, 60);
 
       } else {
@@ -176,7 +189,7 @@
           return;
         }
         console.warn("[S.A.A.R.E.] Sin respuesta válida del Service Worker. Fail-Open activado.");
-        bypassAndSubmit(inputEl);
+        markAndSubmit(inputEl, trimmedPrompt);
       }
     } catch (err) {
       console.error("[S.A.A.R.E. Proxy Error]:", err);
@@ -186,9 +199,18 @@
     }
   }
 
+  function markAndSubmit(el, signature) {
+    lastSubmittedSignature = signature;
+    lastSubmittedAt = Date.now();
+    bypassNextAction = true;
+    dispatchOriginalSubmit(el);
+    setTimeout(() => {
+      bypassNextAction = false;
+    }, 300);
+  }
+
   async function handleKeyDown(event) {
     if (bypassNextAction) {
-      bypassNextAction = false;
       return;
     }
 
@@ -202,7 +224,6 @@
 
   async function handleClick(event) {
     if (bypassNextAction) {
-      bypassNextAction = false;
       return;
     }
 
@@ -212,11 +233,6 @@
     if (!inputEl) return;
 
     await evaluateAndProcess(event, inputEl);
-  }
-
-  function bypassAndSubmit(el) {
-    isProcessing = false;
-    dispatchOriginalSubmit(el);
   }
 
   function isAiInputField(el) {
@@ -273,12 +289,10 @@
     );
 
     if (sendButton && !sendButton.hasAttribute("disabled")) {
-      bypassNextAction = true;
       sendButton.click();
       return;
     }
 
-    bypassNextAction = true;
     const enterEvent = new KeyboardEvent("keydown", {
       key: "Enter",
       code: "Enter",
