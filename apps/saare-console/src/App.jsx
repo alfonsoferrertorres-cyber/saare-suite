@@ -1,5 +1,5 @@
 // saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.5 / SGP 1.0 (Multi-Tenant + Sandbox 2 Seats + Stripe Billing)
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
 import { SubsidiesHub } from './components/SubsidiesHub';
@@ -40,6 +40,15 @@ const getApiEndpoint = (path = '') => {
   const cleanBase = baseUrl.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${cleanBase}${cleanPath}`;
+};
+
+const isSafeRedirectUrl = (url = '') => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 };
 
 const redactSensitiveText = (value = '') => {
@@ -136,9 +145,24 @@ export default function App() {
   const [evidences, setEvidences] = useState([]);
   const [tenantMetrics, setTenantMetrics] = useState([]);
 
+  const toastTimerRef = useRef(null);
+
   const triggerGovernance = useCallback((msg) => {
     setGovernanceStatus(msg);
-    setTimeout(() => setGovernanceStatus(''), 4500);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setGovernanceStatus('');
+    }, 4500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   // Consulta de suscripción, cuota y API Key real del tenant
@@ -152,22 +176,30 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setBillingInfo(data);
+      } else {
+        setBillingInfo(null);
       }
-    } catch (e) {}
+    } catch {
+      setBillingInfo(null);
+    }
   }, [tenantId, authToken]);
 
   // Consulta de reglas personalizadas
-  const fetchCustomRules = useCallback(async () => {
+  const fetchCustomRules = useCallback(async (overrideTenant = null, overrideToken = null) => {
+    const targetTenant = overrideTenant || tenantId;
+    const activeTok = overrideToken !== null ? overrideToken : authToken;
     setIsRulesLoading(true);
     try {
-      const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      const headers = { 'x-saare-tenant': targetTenant, 'Content-Type': 'application/json' };
+      if (activeTok) headers['Authorization'] = `Bearer ${activeTok}`;
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), { headers });
       if (res.ok) {
         const data = await res.json();
-        setCustomRules(data.rules || []);
+        setCustomRules(Array.isArray(data?.rules) ? data.rules : []);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
       }
-    } catch (e) {
+    } catch {
       triggerGovernance('⚠️ Error al cargar reglas personalizadas desde D1.');
     } finally {
       setIsRulesLoading(false);
@@ -176,6 +208,13 @@ export default function App() {
 
   const handleApplyIso42001Governance = async () => {
     setIsRulesLoading(true);
+    const mergedById = new Map();
+    [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
+      const key = r.id || `ISO42001-${i}`;
+      mergedById.set(key, r);
+    });
+    const finalRules = Array.from(mergedById.values());
+
     try {
       const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
@@ -183,28 +222,19 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ preset: 'ISO_42001', rules: ISO_42001_PRESET_RULES })
+        body: JSON.stringify({ preset: 'ISO_42001', rules: finalRules })
       });
 
-      const mergedById = new Map();
-      [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
-        const key = r.id || `ISO42001-${i}`;
-        mergedById.set(key, r);
-      });
-      const finalRules = Array.from(mergedById.values());
+      const data = res.ok ? await res.json().catch(() => null) : null;
+      setCustomRules(Array.isArray(data?.rules) ? data.rules : finalRules);
 
-      setCustomRules(finalRules);
       if (res.ok) {
         triggerGovernance(`🛡️ Gobernanza ISO 42001 aplicada y sincronizada para [${tenantId}].`);
       } else {
         triggerGovernance(`🛡️ Gobernanza ISO 42001 cargada en sesión para [${tenantId}].`);
       }
-    } catch (e) {
-      const mergedById = new Map();
-      [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
-        mergedById.set(r.id || `ISO42001-${i}`, r);
-      });
-      setCustomRules(Array.from(mergedById.values()));
+    } catch {
+      setCustomRules(finalRules);
       triggerGovernance('🛡️ Gobernanza ISO 42001 cargada en modo local.');
     } finally {
       setIsRulesLoading(false);
@@ -213,13 +243,21 @@ export default function App() {
 
   const handleSaveCustomRule = async (e) => {
     e.preventDefault();
-    if (!ruleForm.name || !ruleForm.pattern) return;
+    const trimmedName = ruleForm.name.trim();
+    const trimmedPattern = ruleForm.pattern.trim();
+    if (!trimmedName || !trimmedPattern) return;
+
+    try {
+      new RegExp(trimmedPattern);
+    } catch {
+      triggerGovernance('⚠️ Expresión regular inválida en el patrón de la regla.');
+      return;
+    }
+
     setIsRulesLoading(true);
     try {
-      const updatedRules = [
-        ...customRules,
-        { id: `RULE-${Date.now()}`, name: ruleForm.name, pattern: ruleForm.pattern }
-      ];
+      const newRule = { id: `RULE-${Date.now()}`, name: trimmedName, pattern: trimmedPattern };
+      const updatedRules = [...customRules, newRule];
       const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
@@ -229,14 +267,15 @@ export default function App() {
         body: JSON.stringify({ rules: updatedRules })
       });
 
-      if (res.ok) {
-        setCustomRules(updatedRules);
-        setRuleForm({ name: '', pattern: '' });
-        triggerGovernance('✅ Regla DLP personalizada guardada y sincronizada.');
-      } else {
+      if (!res.ok) {
         throw new Error('Error al sincronizar regla en Bóveda D1');
       }
-    } catch (e) {
+
+      const data = await res.json().catch(() => null);
+      setCustomRules(Array.isArray(data?.rules) ? data.rules : updatedRules);
+      setRuleForm({ name: '', pattern: '' });
+      triggerGovernance('✅ Regla DLP personalizada guardada y sincronizada.');
+    } catch {
       triggerGovernance('⚠️ Error al guardar la regla personalizada.');
     } finally {
       setIsRulesLoading(false);
@@ -244,12 +283,14 @@ export default function App() {
   };
 
   // Mapeo dinámico 1:1 con la Bóveda D1
-  const mapEvidences = useCallback((remoteEvidences) => {
+  const mapEvidences = useCallback((remoteEvidences, activeTenantId) => {
     const rawList = Array.isArray(remoteEvidences)
       ? remoteEvidences
       : (remoteEvidences?.evidences || remoteEvidences?.traces || []);
 
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
+
+    const safeDomainSuffix = String(activeTenantId || 'tenant').toLowerCase().replace(/[^a-z0-9]/g, '') || 'tenant';
 
     return rawList
       .filter(item => item && typeof item === 'object')
@@ -272,27 +313,31 @@ export default function App() {
           decision: isDeny ? 'DENY' : 'ALLOW',
           anchored: item.anchored !== undefined ? item.anchored : 1,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
-          user: item.user || 'operador@' + tenantId.toLowerCase().replace(/[^a-z0-9]/g, '') + '.es',
-          tenant: isProductionTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : tenantId,
+          user: item.user || `operador@${safeDomainSuffix}.es`,
+          tenant: isProductionTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : activeTenantId,
           merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7',
           latency: item.execution_latency_ms || item.latency || 0.84,
           rawJson: item
         };
       });
-  }, [tenantId]);
+  }, []);
 
-  const fetchTenantMetrics = useCallback(async () => {
+  const fetchTenantMetrics = useCallback(async (overrideTenant = null, overrideToken = null, overrideRole = null) => {
+    const targetTenant = overrideTenant || tenantId;
+    const activeTok = overrideToken !== null ? overrideToken : authToken;
+    const activeRole = overrideRole || userRole;
+
     setIsFetchingMetrics(true);
     setMetricsError('');
     try {
       const endpoint = getApiEndpoint('/v1/metrics/tenants');
       const headers = {
-        'x-saare-tenant': tenantId,
-        'x-saare-role': userRole,
+        'x-saare-tenant': targetTenant,
+        'x-saare-role': activeRole,
         'Content-Type': 'application/json'
       };
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
+      if (activeTok) {
+        headers['Authorization'] = `Bearer ${activeTok}`;
       }
 
       const res = await fetch(endpoint, { method: 'GET', headers });
@@ -303,10 +348,10 @@ export default function App() {
       const json = await res.json();
       const rawRows = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
 
-      const isGlobalAdmin = userRole === 'CISO_ADMIN' && Boolean(authToken);
+      const isGlobalAdmin = activeRole === 'CISO_ADMIN' && Boolean(activeTok);
       const cleanRows = rawRows
         .filter(row => isProductionTenantId(row?.tenant_id))
-        .filter(row => isGlobalAdmin || row.tenant_id === tenantId);
+        .filter(row => isGlobalAdmin || row.tenant_id === targetTenant);
 
       setTenantMetrics(cleanRows);
     } catch (e) {
@@ -328,12 +373,15 @@ export default function App() {
         role: userRole
       });
 
-      const mapped = mapEvidences(traces);
+      const mapped = mapEvidences(traces, targetTenant);
       setEvidences(mapped);
       triggerGovernance(`Bóveda D1 [${targetTenant}] sincronizada (${mapped.length} registros).`);
 
-      await Promise.all([fetchTenantMetrics(), fetchBillingUsage(targetTenant, activeTok)]);
-    } catch (e) {
+      await Promise.all([
+        fetchTenantMetrics(targetTenant, activeTok, userRole),
+        fetchBillingUsage(targetTenant, activeTok)
+      ]);
+    } catch {
       setEvidences([]);
       triggerGovernance(`⚠️ Bóveda D1 [${targetTenant}] sin registros o error de conexión.`);
     } finally {
@@ -344,8 +392,12 @@ export default function App() {
   const handleTenantChange = (newTenant) => {
     setTenantId(newTenant);
     setTestResult(null);
+    setCustomRules([]);
     localStorage.setItem('saare_tenant_domain', newTenant);
     fetchTelemetryDirectFromVault(newTenant);
+    if (activeTab === 'RULES') {
+      fetchCustomRules(newTenant);
+    }
   };
 
   const handleLogout = () => {
@@ -362,6 +414,8 @@ export default function App() {
     setUserEmail('auditor@saare.es');
     setUserRole('AUDITOR_GUEST');
     setBillingInfo(null);
+    setCustomRules([]);
+    setTestResult(null);
     triggerGovernance('🔒 Sesión cerrada. Modo lectura DEMO_ENTERPRISE activo.');
     fetchTelemetryDirectFromVault('DEMO_ENTERPRISE', '');
   };
@@ -378,9 +432,11 @@ export default function App() {
     const updateClock = () => setTimeStr(new Date().toTimeString().split(' ')[0]);
     updateClock();
     const intervalClock = setInterval(updateClock, 1000);
-    fetchTelemetryDirectFromVault();
-
     return () => clearInterval(intervalClock);
+  }, []);
+
+  useEffect(() => {
+    fetchTelemetryDirectFromVault();
   }, [fetchTelemetryDirectFromVault]);
 
   const handleAuthSubmit = async (e) => {
@@ -415,9 +471,9 @@ export default function App() {
         throw new Error(data?.message || data?.error || 'No se pudo completar la autenticación.');
       }
 
-      const newTenant = data.user.tenantId || data.user.tenantName;
-      const newEmail = data.user.email;
-      const newRole = data.user.role || 'CISO_ADMIN';
+      const newTenant = data.user?.tenantId || data.user?.tenantName || 'DEMO_ENTERPRISE';
+      const newEmail = data.user?.email || authForm.email;
+      const newRole = data.user?.role || 'CISO_ADMIN';
 
       localStorage.setItem('saare_token', data.token);
       localStorage.setItem('saare_auth_token', data.token);
@@ -469,11 +525,14 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok && data?.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
+        if (isSafeRedirectUrl(data.checkoutUrl)) {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+        throw new Error('URL de checkout no segura');
       }
       triggerGovernance(`⚠️ ${data?.message || 'No se pudo abrir Stripe Checkout.'}`);
-    } catch (e) {
+    } catch {
       triggerGovernance('⚠️ Error de red conectando con Stripe Billing.');
     } finally {
       setIsBillingLoading(false);
@@ -488,11 +547,14 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/billing/portal'), { method: 'POST', headers });
       const data = await res.json();
       if (res.ok && data?.url) {
-        window.location.href = data.url;
-        return;
+        if (isSafeRedirectUrl(data.url)) {
+          window.location.href = data.url;
+          return;
+        }
+        throw new Error('URL de portal no segura');
       }
       triggerGovernance(`ℹ️ ${data?.message || 'Este tenant está en plan Sandbox gratuito sin suscripción Stripe activa.'}`);
-    } catch (e) {
+    } catch {
       triggerGovernance('⚠️ Error abriendo el portal de facturación.');
     } finally {
       setIsBillingLoading(false);
@@ -519,12 +581,14 @@ export default function App() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
         triggerGovernance(`Directiva GPO con LicenseKey inyectada generada para [${tenantId}].`);
         return;
       }
-    } catch (e) {}
+    } catch {}
 
     const gateway = getApiEndpoint('/v1/chat/completions');
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
@@ -553,7 +617,9 @@ export default function App() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     triggerGovernance(`Directiva GPO generada para [${tenantId}].`);
   };
@@ -576,7 +642,9 @@ export default function App() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `01-ip-manifest-${tenantId.toLowerCase()}.yaml`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     triggerGovernance('Manifiesto YAML K8s generado.');
   };
@@ -612,7 +680,7 @@ export default function App() {
       setTestResult(evalResult);
       triggerGovernance(`⚡ Prompt interceptado (${evalResult.decision}) y sellado en D1.`);
       await fetchTelemetryDirectFromVault();
-    } catch (err) {
+    } catch {
       triggerGovernance('Error al evaluar el prompt en el gateway L7.');
     } finally {
       setIsEvaluating(false);
@@ -651,52 +719,62 @@ export default function App() {
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
+              type="button"
               onClick={() => setViewMode('GRC_AUDIT')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'GRC_AUDIT' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🟩 GRC & AUDIT
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('EXECUTIVE')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'EXECUTIVE' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🟦 EJECUTIVO
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('SUBSIDIES')}
               style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'SUBSIDIES' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📙 SUBVENCIONES
             </button>
             <button
+              type="button"
               onClick={() => setShowSeatsModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               👥 ROLES/ASIENTOS ({billingInfo?.maxSeats || 2})
             </button>
             <button
+              type="button"
               onClick={() => setShowFriaModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               📋 AUDITORÍA FRIA
             </button>
             <button
+              type="button"
               onClick={handleDownloadL7Extension}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🧩 EXTENSIÓN L7 (.ZIP)
             </button>
             <button
+              type="button"
               onClick={handleDownloadEnterpriseGpoReg}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #10b981', background: '#064e3b', color: '#34d399', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               ⚙️ POLÍTICA GPO (.REG)
             </button>
             <button
+              type="button"
               onClick={handleDownloadK8sManifest}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #8b5cf6', background: '#4c1d95', color: '#c084fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               ☸️ MANIFIESTO K8S
             </button>
             <button
+              type="button"
               onClick={() => setShowAuthModal(true)}
               style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #f59e0b', background: '#78350f', color: '#fde68a', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               🔑 {authToken ? 'CUENTA / SANDBOX' : 'ACTIVAR SANDBOX GRATIS'}
             </button>
             {authToken && (
               <button
+                type="button"
                 onClick={handleLogout}
                 style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #ef4444', background: '#450a0a', color: '#fca5a5', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
                 🚪 SALIR
@@ -762,12 +840,14 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
                   <button
+                    type="button"
                     onClick={() => handleStartStripeUpgrade('PROFESSIONAL_649')}
                     disabled={isBillingLoading}
                     style={{ padding: '4px 8px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}>
                     ⚡ Upgrade Pro
                   </button>
                   <button
+                    type="button"
                     onClick={handleOpenStripePortal}
                     disabled={isBillingLoading}
                     style={{ padding: '4px 8px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', cursor: 'pointer' }}>
@@ -788,11 +868,13 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('GLOBAL')}
                   style={{ padding: '10px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   EVIDENCIAS Y TRAZAS D1
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveTab('METRICS');
                     fetchTenantMetrics();
@@ -801,11 +883,13 @@ export default function App() {
                   📊 CONSUMO MULTI-TENANT
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('RUNLIVE')}
                   style={{ padding: '10px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   ⚡ EVALUADOR EX-ANTE EN RAM
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveTab('RULES');
                     fetchCustomRules();
@@ -816,6 +900,7 @@ export default function App() {
               </div>
 
               <button
+                type="button"
                 onClick={() => fetchTelemetryDirectFromVault()}
                 disabled={isFetchingVault}
                 style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
@@ -858,6 +943,7 @@ export default function App() {
                           <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>{ev.merkleRoot.substring(0, 20)}...</td>
                           <td style={{ padding: '12px', textAlign: 'center' }}>
                             <button
+                              type="button"
                               onClick={() => handleOpenPdfReport(ev)}
                               style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
                               📄 IMPRIMIR PDF
@@ -879,7 +965,8 @@ export default function App() {
                     📊 Métricas Agregadas de Consumo por Inquilino (D1 Vault)
                   </h3>
                   <button
-                    onClick={fetchTenantMetrics}
+                    type="button"
+                    onClick={() => fetchTenantMetrics()}
                     disabled={isFetchingMetrics}
                     style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}>
                     {isFetchingMetrics ? 'Actualizando...' : '↻ Refrescar Métricas'}
@@ -944,6 +1031,7 @@ export default function App() {
                   style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontFamily: 'monospace', boxSizing: 'border-box' }}
                 />
                 <button
+                  type="button"
                   onClick={() => handleExecuteTestExAnte()}
                   disabled={isEvaluating}
                   style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
@@ -1045,7 +1133,7 @@ export default function App() {
               <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.05rem', fontWeight: '900' }}>
                 🛡️ Acceso Multi-Tenant S.A.A.R.E.
               </h3>
-              <button onClick={() => setShowAuthModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              <button type="button" onClick={() => setShowAuthModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>

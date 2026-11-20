@@ -1,17 +1,18 @@
-// control-plane/proofBundle.js — Módulo Generador de Evidencias Criptográficas SGP 1.0
-import { EnterpriseKeyManager, computeSha256 } from './keyManager.js';
-import { TimestampingEngine } from './timestampingEngine.js';
+// control-plane/src/services/proofBundle.js — Módulo Generador de Evidencias Criptográficas SGP 1.0
+import { EnterpriseKeyManager, computeSha256 } from "./keyManager.js";
+import { TimestampingEngine } from "./timestampingEngine.js";
 
 export async function generateProofBundle(rawEvidence = {}, env = {}) {
+  const safeEvidence = rawEvidence && typeof rawEvidence === "object" ? rawEvidence : {};
   const isDeny =
-    rawEvidence.decision === 'DENY' ||
-    rawEvidence.verdict === 'RECHAZADO' ||
-    rawEvidence.verdictCode === 'REJECTED' ||
-    rawEvidence.action === 'BLOCKED' ||
-    (Array.isArray(rawEvidence.rulesTriggered) && rawEvidence.rulesTriggered.includes('ANTI_JAILBREAK_TRIGGERED')) ||
-    (rawEvidence.verdict_data && (rawEvidence.verdict_data.verdict === 'RECHAZADO' || rawEvidence.verdict_data.action === 'DENY'));
+    safeEvidence.decision === "DENY" ||
+    safeEvidence.verdict === "RECHAZADO" ||
+    safeEvidence.verdictCode === "REJECTED" ||
+    safeEvidence.action === "BLOCKED" ||
+    (Array.isArray(safeEvidence.rulesTriggered) && safeEvidence.rulesTriggered.includes("ANTI_JAILBREAK_TRIGGERED")) ||
+    Boolean(safeEvidence.verdict_data && (safeEvidence.verdict_data.verdict === "RECHAZADO" || safeEvidence.verdict_data.action === "DENY"));
 
-  const category = String(rawEvidence.category || rawEvidence.scenarioId || 'AUDITORIA_CONFORME').toUpperCase();
+  const category = String(safeEvidence.category || safeEvidence.scenarioId || "AUDITORIA_CONFORME").toUpperCase();
 
   let grantCategory = "KIT_DIGITAL_CYBERSECURITY";
   let eligibleItem = "Agente Perimetral L7 Ex-Ante (RAM Zero-Disk)";
@@ -23,62 +24,67 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
   } else if (category.includes("FINANCIAL") || category.includes("DORA") || category.includes("BANCA")) {
     grantCategory = "IMPULSO_ECOSISTEMAS_IA";
     eligibleItem = "Módulo de Resiliencia Operativa Digital DORA (Reglamento UE 2022/2554)";
-  } else if (category.includes("ISO") || rawEvidence.merkleRoot) {
+  } else if (category.includes("ISO") || safeEvidence.merkleRoot) {
     grantCategory = "INCIBE_CDTI_CYBERSECURITY";
     eligibleItem = "Evidencia Forense Criptográfica ISO/IEC 27037";
   }
 
   let payloadString = "";
-  if (typeof rawEvidence.prompt === "string") {
-    payloadString = rawEvidence.prompt;
-  } else if (typeof rawEvidence.sanitizedPayload === "string") {
-    payloadString = rawEvidence.sanitizedPayload;
-  } else if (typeof rawEvidence.sanitized_payload === "string") {
-    payloadString = rawEvidence.sanitized_payload;
+  if (typeof safeEvidence.prompt === "string") {
+    payloadString = safeEvidence.prompt;
+  } else if (typeof safeEvidence.sanitizedPayload === "string") {
+    payloadString = safeEvidence.sanitizedPayload;
+  } else if (typeof safeEvidence.sanitized_payload === "string") {
+    payloadString = safeEvidence.sanitized_payload;
   } else {
     try {
-      payloadString = JSON.stringify(rawEvidence.prompt || rawEvidence.payload || "");
-    } catch (e) {
+      payloadString = JSON.stringify(safeEvidence.prompt || safeEvidence.payload || "");
+    } catch {
       payloadString = "";
     }
   }
 
   const payloadHash = await computeSha256(payloadString);
-  const claimLevel = isDeny ? 'VERIFIED' : 'TESTED';
-  const timestamp = rawEvidence.timestamp || rawEvidence.created_at || new Date().toISOString();
-  const year = new Date(timestamp).getUTCFullYear();
-  const runId = rawEvidence.id || rawEvidence.evidence_id || `EV-L7-${payloadHash.substring(0, 10).toUpperCase()}`;
-  const verdictId = rawEvidence.verdictId || `VRD-${year}-${runId.replace('EV-L7-', '')}`;
-  const traceId = rawEvidence.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+  const claimLevel = isDeny ? "VERIFIED" : "TESTED";
+
+  const parsedDate = new Date(safeEvidence.timestamp || safeEvidence.created_at || Date.now());
+  const validDate = !Number.isNaN(parsedDate.getTime()) ? parsedDate : new Date();
+  const timestamp = validDate.toISOString();
+  const year = validDate.getUTCFullYear();
+
+  const runId = safeEvidence.id || safeEvidence.evidence_id || `EV-L7-${payloadHash.substring(0, 10).toUpperCase()}`;
+  const verdictId = safeEvidence.verdictId || `VRD-${year}-${String(runId).replace(/^EV-L7-/i, "")}`;
+  const traceId = safeEvidence.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
 
   const keyManager = new EnterpriseKeyManager(env);
   const canonicalSignPayload = `${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
-  const ed25519Signature = rawEvidence.cryptoSeal || await keyManager.deriveEd25519Signature(canonicalSignPayload);
+  const ed25519Signature = safeEvidence.cryptoSeal || await keyManager.deriveEd25519Signature(canonicalSignPayload);
 
-  const tsaEngine = new TimestampingEngine(env?.EXPEDIENTE_ID || env?.SAFE_CREATIVE_EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE");
+  const TsaClass = TimestampingEngine?.default || TimestampingEngine;
+  const tsaEngine = new TsaClass(env?.EXPEDIENTE_ID || env?.SAFE_CREATIVE_EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE");
   const tsaSeal = await tsaEngine.sealTransaction({ verdictId, payloadHash, ed25519Signature });
 
   return {
-    ...rawEvidence,
+    ...safeEvidence,
     id: runId,
     evidence_id: runId,
     trace_id: traceId,
     verdictId,
-    decision: isDeny ? 'DENY' : 'ALLOW',
-    verdict: isDeny ? 'RECHAZADO' : 'PERMITIDO',
+    decision: isDeny ? "DENY" : "ALLOW",
+    verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
     cryptoSeal: ed25519Signature,
     proofBundle: {
       verdictId,
       payloadHash,
       ed25519Signature,
-      merkleRoot: rawEvidence.merkleRoot || tsaSeal.rootHash,
+      merkleRoot: safeEvidence.merkleRoot || tsaSeal.rootHash,
       tsaHash: tsaSeal.tsaHash,
       rfc3161Timestamp: tsaSeal.timestampUtc,
       isQualifiedTSA: Boolean(env?.SAFE_CREATIVE_API_KEY),
-      policyVersion: rawEvidence.policyVersion || "v1.0.0",
-      controlVersion: rawEvidence.controlVersion || "v1.0.0",
+      policyVersion: safeEvidence.policyVersion || "v1.0.0",
+      controlVersion: safeEvidence.controlVersion || "v1.0.0",
       runtimeVersion: "SGP-1.0-v8.5",
-      systemId: rawEvidence.systemId || "SYS-L7-CORE",
+      systemId: safeEvidence.systemId || "SYS-L7-CORE",
       claimLevel,
       auditStandard: "ISO/IEC 27037:2012 / EU AI Act Art. 12 & 14 / DORA UE 2022/2554"
     },
@@ -86,8 +92,8 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
       grantCategory,
       eligibleItem,
       dnshImpact,
-      auditStandard: rawEvidence.norma || rawEvidence.sub || "EU AI Act / DORA / ISO 27037",
-      complianceCode: rawEvidence.complianceCode || `MS3V-GRANT-EVIDENCE-${Date.now()}`
+      auditStandard: safeEvidence.norma || safeEvidence.sub || "EU AI Act / DORA / ISO 27037",
+      complianceCode: safeEvidence.complianceCode || `MS3V-GRANT-EVIDENCE-${Date.now()}`
     }
   };
 }

@@ -1,3 +1,5 @@
+// apps/control-plane/src/middleware/authMiddleware.js — Autenticación JWT HS256 y API Keys S.A.A.R.E.
+
 export function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
@@ -32,8 +34,9 @@ function base64UrlDecode(str) {
 }
 
 export class AuthMiddleware {
-  constructor(jwtSecret = "enterprise_oidc_secret_key_v3") {
+  constructor(jwtSecret = "enterprise_oidc_secret_key_v3", env = null) {
     this.jwtSecret = jwtSecret;
+    this.env = env;
     this.roleMapping = {
       "saare-ciso-group": "CISO_ADMIN",
       "saare-secops-group": "CISO_SECOPS_LEVEL_3",
@@ -71,21 +74,39 @@ export class AuthMiddleware {
     return `${headerB64}.${payloadB64}.${signatureB64}`;
   }
 
-  async verifyAndDecodeToken(token) {
+  async verifyAndDecodeToken(token, envOverride = null) {
     if (!token) {
       throw new Error("[AUTH_ERROR] Token o API Key no proporcionada");
     }
 
     const cleanToken = token.startsWith("Bearer ")
-      ? token.replace("Bearer ", "").trim()
+      ? token.replace(/^Bearer\s+/i, "").trim()
       : token.trim();
 
+    if (!cleanToken) {
+      throw new Error("[AUTH_ERROR] Token o API Key vacío");
+    }
+
     if (cleanToken.startsWith("sk_saare_")) {
+      const runtimeEnv = envOverride || this.env;
+      const kv = runtimeEnv?.SAARE_KV_VAULT || runtimeEnv?.SAARE_VAULT_KV || null;
+      let resolvedTenant = "DEFAULT_TENANT";
+
+      if (kv) {
+        try {
+          const mappedTenant = await kv.get(`token_tenant:${cleanToken}`);
+          if (mappedTenant) {
+            resolvedTenant = mappedTenant;
+          }
+        } catch {}
+      }
+
       return {
         sub: "service_custodian",
         email: "custodian@tenant.local",
-        tenantId: "DEFAULT_TENANT",
+        tenantId: resolvedTenant,
         role: "CISO_ADMIN",
+        planId: null,
         isApiKey: true
       };
     }
@@ -96,6 +117,18 @@ export class AuthMiddleware {
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
+
+    let header;
+    try {
+      header = JSON.parse(new TextDecoder().decode(base64UrlDecode(headerB64)));
+    } catch {
+      throw new Error("[AUTH_ERROR] Cabecera JWT inválida");
+    }
+
+    if (header.alg !== "HS256") {
+      throw new Error(`[AUTH_ERROR] Algoritmo JWT no permitido: ${header.alg || "desconocido"}`);
+    }
+
     const encoder = new TextEncoder();
     const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
 
@@ -128,7 +161,7 @@ export class AuthMiddleware {
     try {
       const payloadBytes = base64UrlDecode(payloadB64);
       payload = JSON.parse(new TextDecoder().decode(payloadBytes));
-    } catch (err) {
+    } catch {
       throw new Error("[AUTH_ERROR] Imposible decodificar o parsear el JSON del payload");
     }
 
@@ -151,7 +184,10 @@ export class AuthMiddleware {
       email: sanitizeEmail(payload.email || ""),
       tenantId: payload.tenant_id || payload.tenantId || "DEFAULT_TENANT",
       role: assignedRole,
+      planId: payload.plan_id || payload.planId || null,
       groups: userGroups
     };
   }
 }
+
+export default AuthMiddleware;

@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- S.A.A.R.E. Enterprise — Esquema de Base de Datos WORM / D1 (SGP 1.0)
--- 100% Sincronizado con worker.js (Corregido: tenant_id, plan_id, users.email)
+-- 100% Sincronizado con worker.js
 -- ==============================================================================
 
 CREATE TABLE IF NOT EXISTS consolidated_traces (
@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS consolidated_traces (
   ms3v_timestamp_ns TEXT DEFAULT ''
 );
 
+CREATE INDEX IF NOT EXISTS idx_consolidated_traces_tenant_anchored
+  ON consolidated_traces (tenant_id, anchored, timestamp);
+
 CREATE TABLE IF NOT EXISTS runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   evidence_id TEXT UNIQUE NOT NULL,
@@ -29,12 +32,15 @@ CREATE TABLE IF NOT EXISTS runs (
   decision TEXT NOT NULL DEFAULT 'ALLOW',
   verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
   user TEXT NOT NULL DEFAULT 'anonymous',
-  tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
+  tenant TEXT NOT NULL DEFAULT 'DEFAULT_TENANT',
   prompt TEXT DEFAULT '',
   responseOutput TEXT DEFAULT '',
   payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_runs_tenant_user
+  ON runs (tenant, user, id DESC);
 
 CREATE TABLE IF NOT EXISTS tenants (
   tenant_id TEXT PRIMARY KEY,
@@ -57,6 +63,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_users_company
+  ON users (company);
+
 CREATE TABLE IF NOT EXISTS merkle_anchors (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
@@ -65,12 +74,16 @@ CREATE TABLE IF NOT EXISTS merkle_anchors (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_merkle_anchors_tenant
+  ON merkle_anchors (tenant_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS custom_rules (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,
   name TEXT NOT NULL,
   pattern TEXT NOT NULL,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (tenant_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS tenant_usage (
@@ -90,3 +103,6 @@ CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
   evidence_hash TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_cpaas_audit_logs_tenant
+  ON cpaas_audit_logs (tenant_id, created_at DESC);

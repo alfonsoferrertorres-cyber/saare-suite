@@ -3,7 +3,7 @@
 
 export class SemanticDetoxEngine {
   constructor() {
-    this.version = "v1.3-DETOX-RAM-ISO42001-FULL";
+    this.version = "v1.4-DETOX-RAM-ISO42001-FULL";
 
     this.injectionPatterns = [
       {
@@ -142,6 +142,12 @@ export class SemanticDetoxEngine {
       );
   }
 
+  isSafeRegexSource(source) {
+    if (!source || typeof source !== "string" || source.length > 250) return false;
+    if (/(\+|\*|\{[0-9]+,\})[+*?]/.test(source)) return false;
+    return true;
+  }
+
   compileCustomRuleRegex(pattern) {
     if (!pattern || typeof pattern !== "string") return null;
     const trimmed = pattern.trim();
@@ -151,13 +157,21 @@ export class SemanticDetoxEngine {
       if (trimmed.startsWith("/") && trimmed.lastIndexOf("/") > 0) {
         const lastSlash = trimmed.lastIndexOf("/");
         const body = trimmed.slice(1, lastSlash);
-        const flags = trimmed.slice(lastSlash + 1).replace(/g/g, "") + "g";
-        return new RegExp(body, flags.includes("i") ? flags : `${flags}i`);
+        if (!this.isSafeRegexSource(body)) return null;
+        const rawFlags = trimmed.slice(lastSlash + 1).replace(/[^gimsuy]/g, "");
+        const flags = Array.from(new Set(`${rawFlags}gi`.split(""))).join("");
+        return new RegExp(body, flags);
       }
-      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return new RegExp(`\\b${escaped}\\b`, "gi");
-    } catch (e) {
-      return null;
+
+      if (!this.isSafeRegexSource(trimmed)) return null;
+      return new RegExp(trimmed, "gi");
+    } catch {
+      try {
+        const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(escaped, "gi");
+      } catch {
+        return null;
+      }
     }
   }
 
@@ -228,15 +242,28 @@ export class SemanticDetoxEngine {
         if (!rx) continue;
         rx.lastIndex = 0;
         if (rx.test(sanitized)) {
-          piiDetected = true;
-          const ruleCode = `TENANT_DLP_${String(rule?.name || "CUSTOM").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+          const meta = `${rule?.name || ""} ${rule?.id || ""}`.toUpperCase();
+          const isSecurityRule =
+            meta.includes("INJECTION") ||
+            meta.includes("JAILBREAK") ||
+            meta.includes("SEC") ||
+            meta.includes("DROP TABLE");
+
+          if (isSecurityRule) {
+            jailbreakDetected = true;
+            highRiskDetected = true;
+          } else {
+            piiDetected = true;
+          }
+
+          const ruleCode = `TENANT_DLP_${String(rule?.name || rule?.id || "CUSTOM").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
           rx.lastIndex = 0;
           sanitized = sanitized.replace(rx, `[REDACTED_TENANT_POLICY:${rule?.name || "CUSTOM"}]`);
           addRule(ruleCode, {
             rule: ruleCode,
-            category: "TENANT_CUSTOM_DLP",
-            severity: "HIGH",
-            iso42001_control: "A.5.4 / A.7.4"
+            category: isSecurityRule ? "TENANT_CUSTOM_SECURITY" : "TENANT_CUSTOM_DLP",
+            severity: isSecurityRule ? "CRITICAL" : "HIGH",
+            iso42001_control: isSecurityRule ? "A.6.2 / A.9.4" : "A.5.4 / A.7.4"
           });
         }
       }
@@ -289,3 +316,5 @@ export class SemanticDetoxEngine {
     };
   }
 }
+
+export default SemanticDetoxEngine;

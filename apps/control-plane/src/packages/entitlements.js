@@ -9,7 +9,7 @@ export const PLAN_IDS = {
   ENTERPRISE_1990: "ENTERPRISE_1990"
 };
 
-const PLAN_CATALOG = {
+export const PLAN_CATALOG = {
   [PLAN_IDS.SANDBOX_FREE]: {
     planId: PLAN_IDS.SANDBOX_FREE,
     name: "Sandbox Gratuito (Perpetuo)",
@@ -105,14 +105,14 @@ const PLAN_CATALOG = {
 export function sanitizePlanId(rawPlan) {
   if (!rawPlan || typeof rawPlan !== "string") return PLAN_IDS.SANDBOX_FREE;
   const upper = rawPlan.trim().toUpperCase();
-  if (PLAN_CATALOG[upper]) return upper;
+  if (Object.prototype.hasOwnProperty.call(PLAN_CATALOG, upper)) return upper;
   if (upper.includes("SANDBOX") || upper.includes("FREE")) return PLAN_IDS.SANDBOX_FREE;
   if (upper.includes("STARTER") || upper.includes("199")) return PLAN_IDS.STARTER_199;
   if (upper.includes("COMPLIANCE") || upper.includes("249")) return PLAN_IDS.COMPLIANCE_249;
   if (upper.includes("PRO") || upper.includes("649")) return PLAN_IDS.PROFESSIONAL_649;
   if (upper.includes("1990")) return PLAN_IDS.ENTERPRISE_1990;
   if (upper.includes("ENTERPRISE") || upper.includes("1500")) return PLAN_IDS.ENTERPRISE_1500;
-  return PLAN_IDS.PROFESSIONAL_649;
+  return PLAN_IDS.SANDBOX_FREE;
 }
 
 export function getPlanEntitlements(planId) {
@@ -123,7 +123,7 @@ export function getPlanEntitlements(planId) {
 export function checkQuota(planId, currentUsage = 0) {
   const entitlements = getPlanEntitlements(planId);
   const limit = entitlements.monthlyVerdicts;
-  const used = Number(currentUsage) || 0;
+  const used = Math.max(0, Number(currentUsage) || 0);
   return {
     allowed: used < limit,
     planId: entitlements.planId,
@@ -134,6 +134,16 @@ export function checkQuota(planId, currentUsage = 0) {
 }
 
 export function isFeatureAllowed(planId, featureKey) {
+  if (!featureKey || typeof featureKey !== "string") return false;
   const entitlements = getPlanEntitlements(planId);
   return Boolean(entitlements.features?.[featureKey]);
 }
+
+export default {
+  PLAN_IDS,
+  PLAN_CATALOG,
+  sanitizePlanId,
+  getPlanEntitlements,
+  checkQuota,
+  isFeatureAllowed
+};

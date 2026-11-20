@@ -1,7 +1,4 @@
-/**
- * S.A.A.R.E. Evidence Vault Engine (SGP 1.0 / v8.4)
- * High-performance double-custody persistence engine across Cloudflare D1, KV, and Volatile RAM.
- */
+// apps/control-plane/src/engines/evidenceVaultEngine.js — S.A.A.R.E. Evidence Vault Engine (SGP 1.0)
 
 export class EvidenceVaultEngine {
   constructor(env) {
@@ -10,9 +7,6 @@ export class EvidenceVaultEngine {
     this.primaryNodeId = env?.SAFE_CREATIVE_DICTAMEN_ID || env?.SAFE_CREATIVE_ID || "NODE_L7_PRIMARY";
   }
 
-  /**
-   * Inicializa la estructura de tablas en D1 si no existen (Ejecución única con caché en memoria).
-   */
   async initializeSchema() {
     if (!this.env || !this.env.DB || EvidenceVaultEngine.schemaInitialized) return;
 
@@ -57,46 +51,47 @@ export class EvidenceVaultEngine {
     }
   }
 
-  /**
-   * Registra una traza de inspección con Doble Cadena de Custodia y Persistencia Dual.
-   */
-  async recordNodeEvidence(tracePayload) {
-    const timestamp = tracePayload.timestamp || new Date().toISOString();
-    const year = new Date(timestamp).getUTCFullYear();
-    const traceId = tracePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
-    const evidenceId = tracePayload.evidence_id || `EV-L7-${Date.now()}`;
-    const verdictId = tracePayload.verdictId || `VRD-${year}-${evidenceId.replace('EV-L7-', '')}`;
-    const tenantId = tracePayload.tenant_id || tracePayload.tenant || "DEFAULT_TENANT";
-    const user = tracePayload.user || "anonymous";
+  async recordNodeEvidence(tracePayload = {}) {
+    const safePayload = tracePayload && typeof tracePayload === "object" ? tracePayload : {};
+    const timestamp = safePayload.timestamp || new Date().toISOString();
+    const parsedDate = new Date(timestamp);
+    const year = !Number.isNaN(parsedDate.getTime()) ? parsedDate.getUTCFullYear() : new Date().getUTCFullYear();
 
-    const payloadHash = tracePayload.payload_hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    const ms3vHash = tracePayload.verdict_data?.ms3vHash || payloadHash;
-    const ms3vTimestampNs = tracePayload.verdict_data?.ms3vTimestampNs || `${Date.now()}000000`;
+    const traceId = safePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+    const evidenceId = safePayload.evidence_id || `EV-L7-${Date.now()}`;
+    const verdictId = safePayload.verdictId || `VRD-${year}-${String(evidenceId).replace(/^EV-L7-/i, "")}`;
+    const tenantId = safePayload.tenant_id || safePayload.tenant || "DEFAULT_TENANT";
+    const user = safePayload.user || "anonymous";
 
-    const finalEvaluatorNode = typeof tracePayload.evaluator_chain === 'object'
-      ? (tracePayload.evaluator_chain?.final_evaluator || 'EDGE_WORKER_PEP_L7')
-      : String(tracePayload.evaluator_chain || 'EDGE_WORKER_PEP_L7');
+    const payloadHash = safePayload.payload_hash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const ms3vHash = safePayload.verdict_data?.ms3vHash || payloadHash;
+    const ms3vTimestampNs = safePayload.verdict_data?.ms3vTimestampNs || `${Date.now()}000000`;
 
-    const decision = tracePayload.decision || (tracePayload.verdict_data?.action === 'BLOCKED' ? 'DENY' : 'ALLOW');
-    const verdict = tracePayload.verdict || tracePayload.verdict_data?.verdict || (decision === 'DENY' ? 'RECHAZADO' : 'PERMITIDO');
-    const latencyMs = parseFloat(tracePayload.latency || tracePayload.metrics?.latency_ms || 1.12);
+    const finalEvaluatorNode = typeof safePayload.evaluator_chain === "object"
+      ? (safePayload.evaluator_chain?.final_evaluator || "EDGE_WORKER_PEP_L7")
+      : String(safePayload.evaluator_chain || "EDGE_WORKER_PEP_L7");
+
+    const decision = safePayload.decision || (safePayload.verdict_data?.action === "BLOCKED" ? "DENY" : "ALLOW");
+    const verdict = safePayload.verdict || safePayload.verdict_data?.verdict || (decision === "DENY" ? "RECHAZADO" : "PERMITIDO");
+    const latencyMs = Number.isFinite(Number(safePayload.latency ?? safePayload.metrics?.latency_ms))
+      ? parseFloat(safePayload.latency ?? safePayload.metrics?.latency_ms)
+      : 1.12;
 
     const fullRecord = {
+      ...safePayload,
       id: evidenceId,
       evidence_id: evidenceId,
       trace_id: traceId,
-      verdictId: verdictId,
+      verdictId,
       tenant: tenantId,
-      user: user,
-      prompt: tracePayload.prompt || "",
-      responseOutput: tracePayload.responseOutput || tracePayload.sanitized_payload || "",
-      decision: decision,
-      verdict: verdict,
-      timestamp: timestamp,
-      ...tracePayload
+      user,
+      prompt: safePayload.prompt || "",
+      responseOutput: safePayload.responseOutput || safePayload.sanitized_payload || "",
+      decision,
+      verdict,
+      timestamp
     };
 
-    // 1. Persistencia Resiliente en Cloudflare D1
     if (this.env && this.env.DB) {
       try {
         await this.initializeSchema();
@@ -115,12 +110,12 @@ export class EvidenceVaultEngine {
           user,
           finalEvaluatorNode,
           decision,
-          decision === 'DENY' ? 'BLOCKED' : 'ALLOWED',
+          decision === "DENY" ? "BLOCKED" : "ALLOWED",
           latencyMs,
           timestamp,
           timestamp,
-          tracePayload.prompt || "",
-          tracePayload.sanitized_payload || tracePayload.responseOutput || "",
+          safePayload.prompt || "",
+          safePayload.sanitized_payload || safePayload.responseOutput || "",
           verdict,
           ms3vHash,
           ms3vTimestampNs
@@ -140,8 +135,8 @@ export class EvidenceVaultEngine {
           verdict,
           user,
           tenantId,
-          tracePayload.prompt || "",
-          tracePayload.responseOutput || tracePayload.sanitized_payload || "",
+          safePayload.prompt || "",
+          safePayload.responseOutput || safePayload.sanitized_payload || "",
           JSON.stringify(fullRecord),
           timestamp
         ).run();
@@ -150,7 +145,6 @@ export class EvidenceVaultEngine {
       }
     }
 
-    // 2. Persistencia en KV
     const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
     if (kv) {
       try {
@@ -158,7 +152,7 @@ export class EvidenceVaultEngine {
         await kv.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
 
         const runsKey = `runs_${tenantId}`;
-        const existingKv = (await kv.get(runsKey, 'json')) || [];
+        const existingKv = (await kv.get(runsKey, "json")) || [];
         const updatedKv = [fullRecord, ...(Array.isArray(existingKv) ? existingKv : [])].slice(0, 100);
         await kv.put(runsKey, JSON.stringify(updatedKv));
       } catch (err) {
@@ -166,7 +160,6 @@ export class EvidenceVaultEngine {
       }
     }
 
-    // 3. Generación del Objeto de Doble Cadena de Custodia
     const localNodeSeal = `ed25519:${payloadHash.substring(0, 32)}`;
     const custodyRecord = {
       primaryNode: {
@@ -190,16 +183,15 @@ export class EvidenceVaultEngine {
     };
   }
 
-  /**
-   * Recupera las evidencias registradas para un tenant concreto (D1 con Fallback KV).
-   */
   async getTenantTraces(tenantId, limit = 50) {
+    const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 500);
+
     if (this.env && this.env.DB) {
       try {
         await this.initializeSchema();
         const { results } = await this.env.DB.prepare(`
-          SELECT * FROM runs WHERE tenant = ? ORDER BY created_at DESC LIMIT ?
-        `).bind(tenantId, limit).all();
+          SELECT * FROM runs WHERE tenant = ? ORDER BY id DESC LIMIT ?
+        `).bind(tenantId, safeLimit).all();
 
         if (results && results.length > 0) return results;
       } catch (err) {
@@ -210,9 +202,9 @@ export class EvidenceVaultEngine {
     const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
     if (kv) {
       try {
-        const kvData = await kv.get(`runs_${tenantId}`, 'json');
-        if (Array.isArray(kvData)) return kvData.slice(0, limit);
-      } catch (e) {}
+        const kvData = await kv.get(`runs_${tenantId}`, "json");
+        if (Array.isArray(kvData)) return kvData.slice(0, safeLimit);
+      } catch {}
     }
 
     return [];

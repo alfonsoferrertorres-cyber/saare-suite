@@ -1,4 +1,6 @@
 // control-plane/src/services/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0 (D1 + KV + Fail-Closed Billing)
+import { PLAN_IDS, sanitizePlanId, getPlanEntitlements } from "../packages/entitlements.js";
+
 export class TenantManager {
   constructor(env) {
     this.env = env;
@@ -11,12 +13,12 @@ export class TenantManager {
 
   _normalizeId(tenantId) {
     if (!tenantId) return "SANDBOX_PUBLIC";
-    return String(tenantId).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_");
+    return String(tenantId).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_").slice(0, 32) || "SANDBOX_PUBLIC";
   }
 
   _isSandboxTenant(cleanId, planId) {
     return (
-      planId === "SANDBOX_FREE" ||
+      planId === PLAN_IDS.SANDBOX_FREE ||
       cleanId === "SANDBOX" ||
       cleanId.startsWith("SANDBOX_") ||
       cleanId.startsWith("SBX_") ||
@@ -25,7 +27,9 @@ export class TenantManager {
   }
 
   _buildTenantObject(cleanId, name, config = {}) {
-    const planId = config.planId || config.plan_id || config.plan || "SANDBOX_FREE";
+    const safeCfg = config && typeof config === "object" ? config : {};
+    const planId = sanitizePlanId(safeCfg.planId || safeCfg.plan_id || safeCfg.plan || PLAN_IDS.SANDBOX_FREE);
+    const entitlements = getPlanEntitlements(planId);
     const isSandbox = this._isSandboxTenant(cleanId, planId);
 
     return {
@@ -33,17 +37,18 @@ export class TenantManager {
       tenant_id: cleanId,
       name: name || (isSandbox ? `Entorno Sandbox (${cleanId})` : `Organización (${cleanId})`),
       plan_id: planId,
-      planId: planId,
-      tier: isSandbox ? "SANDBOX" : (config.tier || "ENTERPRISE"),
-      priceEur: isSandbox ? 0 : (config.priceEur ?? 649),
-      // Sandbox perpetuo: nunca caduca por fecha
-      expiresAt: isSandbox ? null : (config.expiresAt || config.expires_at || null),
-      status: config.status || "ACTIVE",
-      createdAt: config.createdAt || config.created_at || new Date().toISOString(),
+      planId,
+      tier: isSandbox ? "SANDBOX" : (safeCfg.tier || "ENTERPRISE"),
+      priceEur: isSandbox ? 0 : (safeCfg.priceEur ?? 649),
+      expiresAt: isSandbox ? null : (safeCfg.expiresAt || safeCfg.expires_at || null),
+      status: safeCfg.status || "ACTIVE",
+      createdAt: safeCfg.createdAt || safeCfg.created_at || new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
-      quota: config.quota ?? (isSandbox ? 1000 : 10000),
-      maxSeats: config.maxSeats ?? (isSandbox ? 2 : 10),
-      activeScenarios: config.activeScenarios || config.scenarios || ["*"]
+      quota: safeCfg.quota ?? entitlements.monthlyVerdicts,
+      maxSeats: safeCfg.maxSeats ?? entitlements.maxSeats,
+      activeScenarios: Array.isArray(safeCfg.activeScenarios)
+        ? safeCfg.activeScenarios
+        : (Array.isArray(safeCfg.scenarios) ? safeCfg.scenarios : ["*"])
     };
   }
 
@@ -53,7 +58,6 @@ export class TenantManager {
 
     this.cache.set(cleanId, tenantData);
 
-    // 1. Persistencia primaria en D1
     if (this.env?.DB) {
       try {
         await this.env.DB.prepare(`
@@ -62,7 +66,7 @@ export class TenantManager {
             name TEXT NOT NULL,
             plan_id TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'ACTIVE',
-            quota INTEGER NOT NULL DEFAULT 10000,
+            quota INTEGER NOT NULL DEFAULT 1000,
             expires_at TEXT,
             config_json TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -87,7 +91,6 @@ export class TenantManager {
       }
     }
 
-    // 2. Caché distribuida en KV
     const kv = this._getKv();
     if (kv) {
       try {
@@ -103,20 +106,25 @@ export class TenantManager {
   async getTenant(tenantId) {
     const cleanId = this._normalizeId(tenantId);
 
-    // 1. Nivel 1: RAM efímera
     if (this.cache.has(cleanId)) {
       return this.cache.get(cleanId);
     }
 
-    // 2. Nivel 2: Base de datos SQL D1 (Fuente de verdad de facturación)
     if (this.env?.DB) {
       try {
         const row = await this.env.DB.prepare(
-          `SELECT * FROM tenants WHERE tenant_id = ? LIMIT 1`
+          "SELECT * FROM tenants WHERE tenant_id = ? LIMIT 1"
         ).bind(cleanId).first();
 
         if (row) {
-          const parsedConfig = row.config_json ? JSON.parse(row.config_json) : {};
+          let parsedConfig = {};
+          if (row.config_json) {
+            try {
+              parsedConfig = JSON.parse(row.config_json);
+            } catch {
+              parsedConfig = {};
+            }
+          }
           const normalized = this._buildTenantObject(cleanId, row.name, {
             ...parsedConfig,
             planId: row.plan_id,
@@ -133,7 +141,6 @@ export class TenantManager {
       }
     }
 
-    // 3. Nivel 3: Bóveda Cloudflare KV
     const kv = this._getKv();
     if (kv) {
       try {
@@ -148,21 +155,20 @@ export class TenantManager {
       }
     }
 
-    // 4. Nivel 4: Auto-creación perpetua en modo SANDBOX / DEMO
-    if (this._isSandboxTenant(cleanId, "SANDBOX_FREE")) {
+    if (this._isSandboxTenant(cleanId, PLAN_IDS.SANDBOX_FREE)) {
+      const sandboxEnt = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
       const sandboxTenant = this._buildTenantObject(cleanId, null, {
-        planId: "SANDBOX_FREE",
+        planId: PLAN_IDS.SANDBOX_FREE,
         tier: "SANDBOX",
         priceEur: 0,
         expiresAt: null,
-        quota: 1000,
-        maxSeats: 2
+        quota: sandboxEnt.monthlyVerdicts,
+        maxSeats: sandboxEnt.maxSeats
       });
       this.cache.set(cleanId, sandboxTenant);
       return sandboxTenant;
     }
 
-    // Bloqueo Fail-Closed para tenants no registrados en la pasarela
     return {
       tenantId: cleanId,
       tenant_id: cleanId,
@@ -190,7 +196,6 @@ export class TenantManager {
         };
       }
 
-      // Los entornos SANDBOX_FREE no tienen caducidad temporal
       const isSandbox = this._isSandboxTenant(tenant.tenantId, tenant.planId);
       if (!isSandbox && tenant.expiresAt) {
         const expirationDate = new Date(tenant.expiresAt);

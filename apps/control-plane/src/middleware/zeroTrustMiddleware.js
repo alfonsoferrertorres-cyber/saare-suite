@@ -1,5 +1,7 @@
 // control-plane/src/middleware/zeroTrustMiddleware.js — Adaptador Cloudflare Access + Motor Determinista MS3V (BLOCK-LOGIC)
-import { engineBlockLogic } from '../packages/ms3v-core.js';
+import { engineBlockLogic } from "../packages/ms3v-core.js";
+
+const JWKS_MODULE_CACHE = new Map();
 
 export class ZeroTrustMiddleware {
   /**
@@ -14,11 +16,8 @@ export class ZeroTrustMiddleware {
       ? audienceTag.filter(Boolean)
       : audienceTag ? [audienceTag] : [];
     this.certsUrl = this.teamDomain ? `https://${this.teamDomain}/cdn-cgi/access/certs` : "";
-    this.cachedKeys = null;
-    this.keysExpiry = 0;
     this.env = env || {};
 
-    // Set de Parámetros de Seguridad Físicos Aprobados (Bloque 2 MS3V)
     this.approvedParams = new Set(
       Array.isArray(approvedParams)
         ? approvedParams.map(p => String(p).trim().toUpperCase()).filter(Boolean)
@@ -26,11 +25,6 @@ export class ZeroTrustMiddleware {
     );
   }
 
-  /**
-   * Normaliza cualquier entrada de dominio al formato estándar de Cloudflare Access
-   * @param {string} domain
-   * @returns {string}
-   */
   normalizeTeamDomain(domain) {
     if (!domain || typeof domain !== "string") return "";
     let clean = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
@@ -40,15 +34,13 @@ export class ZeroTrustMiddleware {
     return clean;
   }
 
-  /**
-   * Obtiene y almacena en caché las claves públicas (JWKS) de Cloudflare Access
-   */
   async getPublicKeys() {
     if (!this.certsUrl) return [];
 
     const now = Date.now();
-    if (this.cachedKeys && now < this.keysExpiry) {
-      return this.cachedKeys;
+    const cached = JWKS_MODULE_CACHE.get(this.certsUrl);
+    if (cached && now < cached.expiry) {
+      return cached.keys;
     }
 
     const res = await fetch(this.certsUrl);
@@ -57,27 +49,19 @@ export class ZeroTrustMiddleware {
     }
 
     const jwks = await res.json();
-    this.cachedKeys = Array.isArray(jwks.keys) ? jwks.keys : [];
-    // Caché por 1 hora
-    this.keysExpiry = now + 3600 * 1000;
-    return this.cachedKeys;
+    const keys = Array.isArray(jwks.keys) ? jwks.keys : [];
+    JWKS_MODULE_CACHE.set(this.certsUrl, {
+      keys,
+      expiry: now + 3600 * 1000
+    });
+    return keys;
   }
 
-  /**
-   * Decodifica una cadena Base64URL soportando caracteres UTF-8 de forma segura
-   * @param {string} str
-   * @returns {string}
-   */
   base64UrlDecode(str) {
     const bytes = this.base64UrlToUint8Array(str);
     return new TextDecoder().decode(bytes);
   }
 
-  /**
-   * Convierte una cadena Base64URL a un Uint8Array para operaciones criptográficas
-   * @param {string} str
-   * @returns {Uint8Array}
-   */
   base64UrlToUint8Array(str) {
     let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
     while (base64.length % 4 !== 0) {
@@ -91,11 +75,6 @@ export class ZeroTrustMiddleware {
     return bytes;
   }
 
-  /**
-   * Importa una clave JWKS RSA en un objeto CryptoKey listo para verificación RS256
-   * @param {object} jwkKey
-   * @returns {Promise<CryptoKey>}
-   */
   async importRsaKey(jwkKey) {
     const keyData = { ...jwkKey, alg: jwkKey.alg || "RS256" };
     return await crypto.subtle.importKey(
@@ -110,16 +89,19 @@ export class ZeroTrustMiddleware {
     );
   }
 
-  /**
-   * Extrae, valida las peticiones y verifica criptográficamente la firma del JWT emitido por Cloudflare Access
-   * @param {Request} request
-   * @returns {Promise<{ userEmail: string | null, isZeroTrustVerified: boolean, identityData?: object, error?: string }>}
-   */
   async verifyCloudflareAccessHeader(request) {
     const cfToken = request?.headers?.get("Cf-Access-Jwt-Assertion");
 
     if (!cfToken) {
       return { userEmail: null, isZeroTrustVerified: false, error: "Cabecera Cf-Access-Jwt-Assertion ausente" };
+    }
+
+    if (!this.teamDomain) {
+      return {
+        userEmail: null,
+        isZeroTrustVerified: false,
+        error: "CF_TEAM_DOMAIN no configurado; verificación Zero Trust deshabilitada en modo Fail-Closed"
+      };
     }
 
     try {
@@ -133,23 +115,19 @@ export class ZeroTrustMiddleware {
       const header = JSON.parse(this.base64UrlDecode(rawHeader));
       const payload = JSON.parse(this.base64UrlDecode(rawPayload));
 
-      // 0. Validación estricta de algoritmo de firma
-      if (header.alg && header.alg !== "RS256") {
-        return { userEmail: null, isZeroTrustVerified: false, error: `Algoritmo JWT no soportado: ${header.alg}` };
+      if (header.alg !== "RS256") {
+        return { userEmail: null, isZeroTrustVerified: false, error: `Algoritmo JWT no soportado: ${header.alg || "ausente"}` };
       }
 
-      // 1. Verificación de Expiración (exp)
       const now = Math.floor(Date.now() / 1000);
       if (payload.exp && now >= payload.exp) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Token expirado" };
       }
 
-      // 2. Verificación de Not Before (nbf)
       if (payload.nbf && now < payload.nbf) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Token aún no es válido" };
       }
 
-      // 3. Verificación de AUD (Soporta múltiples audience tags)
       if (this.audienceTags.length > 0) {
         const tokenAud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
         const hasValidAud = this.audienceTags.some(tag => tokenAud.includes(tag));
@@ -158,41 +136,36 @@ export class ZeroTrustMiddleware {
         }
       }
 
-      // 4. Verificación exacta de Emisor (iss)
-      if (this.teamDomain && payload.iss) {
+      if (payload.iss) {
         const cleanIss = String(payload.iss).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
         if (cleanIss !== this.teamDomain) {
           return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
         }
       }
 
-      // 5. Verificación Criptográfica de la Firma RS256 mediante Web Crypto API
-      if (this.teamDomain) {
-        const publicKeys = await this.getPublicKeys();
-        const matchingJwk = publicKeys.find(key => key.kid === header.kid);
+      const publicKeys = await this.getPublicKeys();
+      const matchingJwk = publicKeys.find(key => key.kid === header.kid);
 
-        if (!matchingJwk) {
-          return { userEmail: null, isZeroTrustVerified: false, error: "Clave pública (kid) no encontrada en JWKS de Cloudflare" };
-        }
-
-        const cryptoKey = await this.importRsaKey(matchingJwk);
-        const encoder = new TextEncoder();
-        const dataToVerify = encoder.encode(`${rawHeader}.${rawPayload}`);
-        const signatureBytes = this.base64UrlToUint8Array(rawSignature);
-
-        const isValidSignature = await crypto.subtle.verify(
-          "RSASSA-PKCS1-v1_5",
-          cryptoKey,
-          signatureBytes,
-          dataToVerify
-        );
-
-        if (!isValidSignature) {
-          return { userEmail: null, isZeroTrustVerified: false, error: "Firma criptográfica RS256 inválida" };
-        }
+      if (!matchingJwk) {
+        return { userEmail: null, isZeroTrustVerified: false, error: "Clave pública (kid) no encontrada en JWKS de Cloudflare" };
       }
 
-      // Identificación unívoca del usuario sin colisiones
+      const cryptoKey = await this.importRsaKey(matchingJwk);
+      const encoder = new TextEncoder();
+      const dataToVerify = encoder.encode(`${rawHeader}.${rawPayload}`);
+      const signatureBytes = this.base64UrlToUint8Array(rawSignature);
+
+      const isValidSignature = await crypto.subtle.verify(
+        "RSASSA-PKCS1-v1_5",
+        cryptoKey,
+        signatureBytes,
+        dataToVerify
+      );
+
+      if (!isValidSignature) {
+        return { userEmail: null, isZeroTrustVerified: false, error: "Firma criptográfica RS256 inválida" };
+      }
+
       const userEmail = payload.email || payload.common_name || payload.sub || null;
 
       if (!userEmail) {
@@ -210,15 +183,6 @@ export class ZeroTrustMiddleware {
     }
   }
 
-  /**
-   * MOTOR BLOCK-LOGIC (MS3V) — Gobernanza Determinista en Tiempo Real
-   * Delega en el núcleo unificado ms3v-core.js para garantizar precisión forense en nanosegundos (BigInt)
-   * y trazabilidad de autoría.
-   *
-   * @param {string|Object} rawInstruction - Comando o payload entrante
-   * @param {string[]} [customApprovedParams] - Lista opcional de parámetros aprobados para esta llamada
-   * @returns {Promise<Object>}
-   */
   async processBlockLogic(rawInstruction, customApprovedParams = null) {
     if (!rawInstruction || (typeof rawInstruction !== "string" && typeof rawInstruction !== "object")) {
       return { STATUS: "ABORT_SEQUENCE", REASON: "Instrucción de entrada vacía o no válida" };

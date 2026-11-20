@@ -25,7 +25,10 @@ async function generateSha256Hex(message) {
 
 function getTimestampNs() {
   const ms = BigInt(Date.now());
-  const nsOffset = BigInt(Math.floor((performance.now() % 1) * 1e6));
+  const perfVal = typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : 0;
+  const nsOffset = BigInt(Math.max(0, Math.floor((perfVal % 1) * 1e6)));
   return (ms * 1000000n + nsOffset).toString();
 }
 
@@ -39,25 +42,29 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
     }
 
     const trimmedRaw = rawString.trim();
-    const upperData = trimmedRaw.toUpperCase();
+    if (!trimmedRaw) {
+      return {
+        STATUS: "ABORT_SEQUENCE",
+        REASON: "SAFETY_DISJUNCTOR_ENGAGED",
+        AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR
+      };
+    }
 
+    const upperData = trimmedRaw.toUpperCase();
     const normalizedApproved = Array.isArray(approvedParams)
-      ? approvedParams.map(p => String(p).trim().toUpperCase())
+      ? approvedParams.map(p => String(p).trim().toUpperCase()).filter(Boolean)
       : [];
 
     const isApproved = normalizedApproved.some(
       param => upperData === param || upperData.includes(param)
     );
 
-    const executedCommand = isApproved
-      ? upperData
-      : (trimmedRaw !== "" ? "LOGIC_SAFE_STATE" : "");
-
+    const executedCommand = isApproved ? upperData : "LOGIC_SAFE_STATE";
     const hashTarget = isApproved ? upperData : trimmedRaw;
     const integrityHash = await generateSha256Hex(hashTarget);
     const timestamp = getTimestampNs();
 
-    if (integrityHash && trimmedRaw !== "") {
+    if (integrityHash) {
       return {
         STATUS: "ALLOW",
         EXECUTE: executedCommand,
@@ -79,7 +86,7 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
   } catch (error) {
     return {
       STATUS: "ABORT_SEQUENCE",
-      REASON: `RUNTIME_ERROR: ${error.message}`,
+      REASON: `RUNTIME_ERROR: ${error?.message || "UNKNOWN_ERROR"}`,
       AUTHOR: env?.AUTHOR_NAME || IP_MANIFEST.AUTHOR
     };
   }
