@@ -12,6 +12,29 @@ import apiService from './services/apiService';
 
 const EXTENSION_ID = 'jmlakofckaafjpjnfbihgchkeiglamme';
 
+const ISO_42001_PRESET_RULES = [
+  {
+    id: 'ISO42001-DLP-DNI-NIE',
+    name: '[ISO 42001 / RGPD] Bloqueo DNI y NIE (DENY)',
+    pattern: '\\b(?:\\d{8}|[XYZ]\\d{7})[- ]?[A-Za-z]\\b'
+  },
+  {
+    id: 'ISO42001-DLP-IBAN',
+    name: '[ISO 42001 / DORA] Bloqueo IBAN (DENY)',
+    pattern: '\\b[A-Z]{2}\\d{2}[\\s]?\\d{4}[\\s]?\\d{4}[\\s]?\\d{2}[\\s]?\\d{2}[\\s]?\\d{10}\\b'
+  },
+  {
+    id: 'ISO42001-DLP-EMAIL',
+    name: '[ISO 42001 / RGPD] Bloqueo Correo Electrónico (DENY)',
+    pattern: '\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b'
+  },
+  {
+    id: 'ISO42001-SEC-INJECTION',
+    name: '[ISO 42001 / AIMS] Bloqueo Prompt Injection (DENY)',
+    pattern: '(ignore all previous instructions|system prompt|drop table|jailbreak)'
+  }
+];
+
 const getApiEndpoint = (path = '') => {
   const baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
   const cleanBase = baseUrl.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
@@ -21,8 +44,8 @@ const getApiEndpoint = (path = '') => {
 
 const redactSensitiveText = (value = '') => {
   return String(value || '')
-    .replace(/\b\d{8}[A-HJ-NP-TV-Z]\b/gi, '[DNI_REDACTED]')
-    .replace(/\b[XYZ]\d{7}[A-HJ-NP-TV-Z]\b/gi, '[NIE_REDACTED]')
+    .replace(/\b\d{8}[- ]?[A-Za-z]\b/g, '[DNI_REDACTED]')
+    .replace(/\b[XYZ]\d{7}[- ]?[A-Za-z]\b/gi, '[NIE_REDACTED]')
     .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, '[IBAN_REDACTED]')
     .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]')
     .replace(/\b(?:\d[ -]*?){13,16}\b/g, '[CARD_REDACTED]');
@@ -32,7 +55,7 @@ const isProductionTenantId = (id = '') => {
   const normalized = String(id || '').trim();
   if (!normalized || normalized.length < 4) return false;
   if (normalized.includes('@')) return false;
-  if (/alfonso|ficticio|test_node|^sdf$/i.test(normalized)) return false;
+  if (/ficticio|test_node|^sdf$/i.test(normalized)) return false;
   return true;
 };
 
@@ -100,7 +123,7 @@ export default function App() {
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
   // Evaluador Ex-Ante en RAM
-  const [testPrompt, setTestPrompt] = useState('Auditar cumplimiento normativo ex-ante bajo RPI-2026-SAARE-0914X.');
+  const [testPrompt, setTestPrompt] = useState('Auditar cumplimiento normativo ex-ante bajo ISO/IEC 42001 y SGP 1.0.');
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
@@ -150,6 +173,43 @@ export default function App() {
       setIsRulesLoading(false);
     }
   }, [tenantId, authToken, triggerGovernance]);
+
+  const handleApplyIso42001Governance = async () => {
+    setIsRulesLoading(true);
+    try {
+      const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ preset: 'ISO_42001', rules: ISO_42001_PRESET_RULES })
+      });
+
+      const mergedById = new Map();
+      [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
+        const key = r.id || `ISO42001-${i}`;
+        mergedById.set(key, r);
+      });
+      const finalRules = Array.from(mergedById.values());
+
+      setCustomRules(finalRules);
+      if (res.ok) {
+        triggerGovernance(`🛡️ Gobernanza ISO 42001 aplicada y sincronizada para [${tenantId}].`);
+      } else {
+        triggerGovernance(`🛡️ Gobernanza ISO 42001 cargada en sesión para [${tenantId}].`);
+      }
+    } catch (e) {
+      const mergedById = new Map();
+      [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
+        mergedById.set(r.id || `ISO42001-${i}`, r);
+      });
+      setCustomRules(Array.from(mergedById.values()));
+      triggerGovernance('🛡️ Gobernanza ISO 42001 cargada en modo local.');
+    } finally {
+      setIsRulesLoading(false);
+    }
+  };
 
   const handleSaveCustomRule = async (e) => {
     e.preventDefault();
@@ -506,9 +566,7 @@ export default function App() {
       '  name: saare-ip-manifest',
       '  namespace: saare-system',
       'data:',
-      '  TITULAR_CORPORATIVO: "GABINETE MS3V · S.A.A.R.E. S.L."',
-      '  REGISTRO_SAFE_CREATIVE: "2607076315021"',
-      '  REGISTRO_P2026: "P202630603"',
+      '  TITULAR_CORPORATIVO: "S.A.A.R.E. Enterprise Control Plane"',
       `  TENANT_ID: "${tenantId}"`,
       `  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"`
     ].join('\n') + '\n';
@@ -905,15 +963,24 @@ export default function App() {
             {/* TAB 4: REGLAS DLP / CUSTOM */}
             {activeTab === 'RULES' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                <h3 style={{ margin: '0 0 16px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
-                  ⚙️ Gestión de Reglas y Patrones DLP Personalizados (Bóveda D1)
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
+                    ⚙️ Gestión de Reglas y Patrones DLP Personalizados (Bóveda D1)
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleApplyIso42001Governance}
+                    disabled={isRulesLoading}
+                    style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}>
+                    🛡️ Gobernanza ISO 42001
+                  </button>
+                </div>
 
                 <form onSubmit={handleSaveCustomRule} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
                   <input
                     type="text"
                     required
-                    placeholder="Nombre de la regla (ej. SECRETO_INTERNO)"
+                    placeholder="Nombre de la regla (ej. [ISO 42001] SECRETO_INTERNO - DENY)"
                     value={ruleForm.name}
                     onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })}
                     style={{ padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem' }}
@@ -947,7 +1014,7 @@ export default function App() {
                       {customRules.length === 0 ? (
                         <tr>
                           <td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                            No hay reglas personalizadas definidas para este tenant en la Bóveda D1.
+                            No hay reglas personalizadas definidas para este tenant en la Bóveda D1. Pulsa "Gobernanza ISO 42001" para cargar el pack base.
                           </td>
                         </tr>
                       ) : (
@@ -1089,7 +1156,6 @@ export default function App() {
           onClose={() => setShowFriaModal(false)}
         />
       )}
-
     </div>
   );
 }

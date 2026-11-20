@@ -42,9 +42,6 @@ export class AuthMiddleware {
     };
   }
 
-  /**
-   * Genera y firma un Token JWT HMAC-SHA256 para la sesión.
-   */
   async signToken(payload, expiresInSeconds = 86400) {
     const header = { alg: "HS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
@@ -74,9 +71,6 @@ export class AuthMiddleware {
     return `${headerB64}.${payloadB64}.${signatureB64}`;
   }
 
-  /**
-   * Verifica la validez y la firma de un token JWT o API Key entrante.
-   */
   async verifyAndDecodeToken(token) {
     if (!token) {
       throw new Error("[AUTH_ERROR] Token o API Key no proporcionada");
@@ -86,18 +80,16 @@ export class AuthMiddleware {
       ? token.replace("Bearer ", "").trim()
       : token.trim();
 
-    // 1. Validar API Keys maestras o de servicio (S.A.A.R.E. Master Tokens)
     if (cleanToken.startsWith("sk_saare_")) {
       return {
-        sub: "master_custodian",
-        email: "alfonsoferrertorres@gmail.com",
-        tenantId: "ENTERPRISE",
+        sub: "service_custodian",
+        email: "custodian@tenant.local",
+        tenantId: "DEFAULT_TENANT",
         role: "CISO_ADMIN",
         isApiKey: true
       };
     }
 
-    // 2. Validar JWT OIDC
     const parts = cleanToken.split(".");
     if (parts.length !== 3) {
       throw new Error("[AUTH_ERROR] Estructura JWT no válida");
@@ -140,7 +132,6 @@ export class AuthMiddleware {
       throw new Error("[AUTH_ERROR] Imposible decodificar o parsear el JSON del payload");
     }
 
-    // Comprobación de expiración (con margen de tolerancia de 5 segundos para desincronizaciones de reloj)
     if (payload.exp && (Date.now() / 1000) >= (payload.exp + 5)) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
     }
@@ -158,7 +149,7 @@ export class AuthMiddleware {
     return {
       sub: payload.sub || "user_anonymous",
       email: sanitizeEmail(payload.email || ""),
-      tenantId: payload.tenant_id || payload.tenantId || "ENTERPRISE",
+      tenantId: payload.tenant_id || payload.tenantId || "DEFAULT_TENANT",
       role: assignedRole,
       groups: userGroups
     };

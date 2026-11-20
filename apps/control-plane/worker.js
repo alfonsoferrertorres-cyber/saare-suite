@@ -32,6 +32,29 @@ import {
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const semanticDetox = new SemanticDetoxEngine();
 
+const ISO_42001_PRESET_RULES = [
+  {
+    id: "ISO42001-DLP-DNI-NIE",
+    name: "[ISO 42001 / RGPD] Bloqueo DNI y NIE (DENY)",
+    pattern: "\\b(?:\\d{8}|[XYZ]\\d{7})[- ]?[A-Za-z]\\b"
+  },
+  {
+    id: "ISO42001-DLP-IBAN",
+    name: "[ISO 42001 / DORA] Bloqueo IBAN (DENY)",
+    pattern: "\\b[A-Z]{2}\\d{2}[\\s]?\\d{4}[\\s]?\\d{4}[\\s]?\\d{2}[\\s]?\\d{2}[\\s]?\\d{10}\\b"
+  },
+  {
+    id: "ISO42001-DLP-EMAIL",
+    name: "[ISO 42001 / RGPD] Bloqueo Correo Electrónico (DENY)",
+    pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b"
+  },
+  {
+    id: "ISO42001-SEC-INJECTION",
+    name: "[ISO 42001 / AIMS] Bloqueo Prompt Injection (DENY)",
+    pattern: "(ignore all previous instructions|system prompt|drop table|jailbreak)"
+  }
+];
+
 // ==========================================
 // NÚCLEO DE BLINDAJE PERIMETRAL SAARE V6 (RESILIENTE)
 // ==========================================
@@ -220,7 +243,7 @@ class CPaaSAdapterManager {
   static async sendInfobip(payload, env) {
     const baseUrl = env?.INFOBIP_BASE_URL || "https://api.infobip.com";
     const apiKey = env?.INFOBIP_API_KEY;
-    if (!apiKey) throw new Error("Faltan credenciales de Infobip.");
+    if (!apiKey) throw new Error("Falta API Key de Infobip.");
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -1585,16 +1608,25 @@ export default {
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const newRules = Array.isArray(body.rules) ? body.rules : [];
+        const newRules = body?.preset === "ISO_42001"
+          ? ISO_42001_PRESET_RULES
+          : (Array.isArray(body.rules) ? body.rules : []);
+
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
             for (const r of newRules) {
-              await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)").bind(r.id || `RULE-${Date.now()}`, tenantId, r.name, r.pattern).run();
+              await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
+                .bind(r.id || `RULE-${Date.now()}`, tenantId, r.name, r.pattern)
+                .run();
             }
           } catch (e) {}
         }
-        return new Response(JSON.stringify({ success: true, rules: newRules }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          success: true,
+          presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
+          rules: newRules
+        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/subsidies/export-package" || path === "/v1/subsidies/export-package" || path === "/api/v1/subsidies/export-package") && method === "POST") {
@@ -1775,6 +1807,30 @@ export default {
         const sanitizedText = detoxResult.sanitizedText;
         const rulesTriggered = [...detoxResult.rulesTriggered];
 
+        const spanishIdRegex = /\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i;
+        const hasSpanishId = spanishIdRegex.test(rawPrompt);
+        if (hasSpanishId && !rulesTriggered.includes("DLP_ES_DNI_NIE")) {
+          rulesTriggered.push("DLP_ES_DNI_NIE");
+        }
+
+        let customRuleBlockHit = false;
+        for (const r of tenantCustomRules) {
+          try {
+            if (!r?.pattern) continue;
+            const rx = new RegExp(r.pattern, "i");
+            if (rx.test(rawPrompt)) {
+              const ruleTag = `CUSTOM_${String(r.name || r.id || "RULE").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+              if (!rulesTriggered.includes(ruleTag)) {
+                rulesTriggered.push(ruleTag);
+              }
+              const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
+              if (ruleMeta.includes("DENY") || ruleMeta.includes("BLOCK") || ruleMeta.includes("ISO 42001") || ruleMeta.includes("ISO42001")) {
+                customRuleBlockHit = true;
+              }
+            }
+          } catch (rxErr) {}
+        }
+
         if (hasMediaAttachment && !rulesTriggered.includes("AIMS_MULTIMODAL_MEDIA_INSPECTED")) {
           rulesTriggered.push("AIMS_MULTIMODAL_MEDIA_INSPECTED");
         }
@@ -1782,6 +1838,8 @@ export default {
         const strictHighRisk = !semanticCmd && (
           Boolean(detoxResult.jailbreakDetected) ||
           Boolean(detoxResult.highRiskDetected) ||
+          hasSpanishId ||
+          customRuleBlockHit ||
           rawPrompt.toUpperCase().includes("DROP TABLE") ||
           rawPrompt.toUpperCase().includes("IGNORE ALL PREVIOUS")
         );

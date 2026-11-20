@@ -1,5 +1,5 @@
 // apps/control-plane/src/modules/statStatelessL7.js
-// Componente: STAT_STATELESS_L7 | Ref: MS3V RECON VALID 2026 ALF 0521
+// Componente: STAT_STATELESS_L7 | Validación Estructural AST en RAM (SGP 1.0)
 
 const ALLOWED_TOOL_GRAMMAR = /^[a-zA-Z0-9_.:-]{1,64}$/;
 
@@ -89,11 +89,9 @@ export async function evaluateStatStatelessL7(payload, options = {}) {
   encoder.encodeInto(serialized, volatileBuffer);
 
   try {
-    // 1 & 2. Tokenización y parseo estructural desde el buffer volátil
     const decoder = new TextDecoder();
     const parsedFrame = JSON.parse(decoder.decode(volatileBuffer));
 
-    // 3 & 4. Construcción del AST y validación contra gramáticas regulares / libres de contexto
     const astRoot = buildAstNodes({
       prompt: parsedFrame.prompt || "",
       messages: parsedFrame.messages || [],
@@ -124,7 +122,7 @@ export async function evaluateStatStatelessL7(payload, options = {}) {
 
     return {
       component: "STAT_STATELESS_L7",
-      reference: "MS3V RECON VALID 2026 ALF 0521",
+      reference: "STAT_STATELESS_L7_AST_GUARD",
       executionMode: "LOCAL_LOOPBACK_BIND_RAM",
       verdict: isDenied ? "DENY" : "ALLOW",
       status: isDenied ? "RECHAZADO" : "APROBADO",
@@ -138,7 +136,6 @@ export async function evaluateStatStatelessL7(payload, options = {}) {
       latencyMs
     };
   } finally {
-    // 5. Cero persistencia: sobrescritura posicional completa a nivel de bits (0x00)
     volatileBuffer.fill(0x00);
   }
 }

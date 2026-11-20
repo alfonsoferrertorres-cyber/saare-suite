@@ -99,7 +99,7 @@ export class SemanticDetoxEngine {
 
     this.standardPiiPatterns = [
       {
-        regex: /\b([0-9]{8}|[XYZ][0-9]{7})[-\s]?[A-HJ-NP-TV-Z]\b/gi,
+        regex: /\b([0-9]{8}|[XYZ][0-9]{7})[-\s]?[A-Za-z]\b/gi,
         mask: "[PII_ANONYMIZED_ES]",
         rule: "DLP_PII_NIF_ES",
         category: "PERSONAL_IDENTIFIER_ES",
@@ -135,7 +135,6 @@ export class SemanticDetoxEngine {
 
   normalizeText(text) {
     if (typeof text !== "string") return "";
-    // Normalización NFC y limpieza de caracteres de control invisibles en RAM
     return text
       .normalize("NFC")
       .replace(/[\u0000-\u001F\u007F-\u009F]/g, (ch) =>

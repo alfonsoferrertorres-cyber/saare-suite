@@ -9,16 +9,14 @@ export class DistributedRateLimiter {
   isAllowed(tenantId, maxRequests = this.defaultMaxRequests) {
     const now = Date.now();
     const cleanTenant = tenantId ? String(tenantId).trim() : "DEFAULT";
-    
+
     if (!this.requests.has(cleanTenant)) {
       this.requests.set(cleanTenant, []);
     }
-    
+
     let timestamps = this.requests.get(cleanTenant);
-    
-    // Filtrado de la ventana deslizante para evitar consumo excesivo de memoria
     timestamps = timestamps.filter(t => now - t < this.windowMs);
-    
+
     if (timestamps.length >= maxRequests) {
       this.requests.set(cleanTenant, timestamps);
       return {
@@ -28,14 +26,18 @@ export class DistributedRateLimiter {
         reason: "429 Too Many Requests: Cuota de Tenant excedida (Noisy Neighbor Protection)"
       };
     }
-    
+
     timestamps.push(now);
     this.requests.set(cleanTenant, timestamps);
-    
+
     return {
       allowed: true,
       remaining: maxRequests - timestamps.length,
       resetInMs: this.windowMs
     };
+  }
+
+  check(tenantId, maxRequests = this.defaultMaxRequests) {
+    return this.isAllowed(tenantId, maxRequests);
   }
 }

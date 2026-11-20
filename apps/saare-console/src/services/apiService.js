@@ -136,7 +136,7 @@ export const apiService = {
       if (res && res.ok) {
         const data = await res.json();
         return {
-          nodeId: data.node || data.service || 'RPI-2607076315021',
+          nodeId: data.node || data.service || 'SAARE-NODE-L7-01',
           tenantId: tenant,
           mode: 'FAIL-CLOSED',
           latencyP99Ms: Number(data.latencyP99Ms ?? 0.84),
@@ -149,7 +149,7 @@ export const apiService = {
     } catch (e) {}
 
     return {
-      nodeId: 'RPI-2607076315021',
+      nodeId: 'SAARE-NODE-L7-01',
       tenantId: tenant,
       mode: 'FAIL-CLOSED',
       latencyP99Ms: 0.84,
