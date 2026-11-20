@@ -67,22 +67,37 @@ const isValidTenantId = (id = '') => {
   return true;
 };
 
+const triggerBlobDownload = (content, filename, mimeType = 'application/json;charset=utf-8') => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export default function App() {
   const queryParams = new URLSearchParams(window.location.search);
   const urlTenant = queryParams.get('tenant') ? queryParams.get('tenant').trim() : null;
   const urlRole = queryParams.get('role') ? queryParams.get('role').trim() : null;
   const checkoutStatus = queryParams.get('checkout');
 
+  // Arranque 100% virgen: sin DEFAULT_USER, DEFAULT_TENANT ni DEFAULT_ROLE preinyectados
   const [userEmail, setUserEmail] = useState(() => {
-    return (localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '').trim().toLowerCase();
+    return (localStorage.getItem('saare_user_email') || '').trim().toLowerCase();
   });
 
   const [tenantId, setTenantId] = useState(() => {
-    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || '').trim();
+    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
     return isValidTenantId(candidate) ? candidate : '';
   });
 
-  const [userRole, setUserRole] = useState(() => (urlRole || localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || '').trim());
+  const [userRole, setUserRole] = useState(() => {
+    return (urlRole || localStorage.getItem('saare_user_role') || '').trim();
+  });
 
   const [authToken, setAuthToken] = useState(
     () => localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token') || ''
@@ -90,7 +105,7 @@ export default function App() {
 
   const [availableTenants, setAvailableTenants] = useState(() => {
     const initial = [];
-    const current = (urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || '').trim();
+    const current = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
     if (current && isValidTenantId(current)) {
       initial.push({ id: current, name: current });
     }
@@ -109,8 +124,15 @@ export default function App() {
   const [isBillingLoading, setIsBillingLoading] = useState(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authTab, setAuthTab] = useState('SANDBOX');
-  const [authForm, setAuthForm] = useState({ email: '', companyName: '', name: '', password: '' });
+  const [authTab, setAuthTab] = useState('TOKEN');
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    companyName: '',
+    name: '',
+    password: '',
+    token: '',
+    tenantId: ''
+  });
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState('');
 
@@ -151,6 +173,53 @@ export default function App() {
     };
   }, []);
 
+  const persistSessionData = useCallback(({ token, tenant, email, role, planId, apiKey, companyName }) => {
+    const cleanToken = String(token || '').replace(/^Bearer\s+/i, '').trim();
+    const cleanTenant = String(tenant || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanRole = String(role || '').trim();
+
+    if (cleanToken) {
+      localStorage.setItem('saare_token', cleanToken);
+      localStorage.setItem('saare_auth_token', cleanToken);
+      sessionStorage.setItem('saare_auth_token', cleanToken);
+      setAuthToken(cleanToken);
+    }
+
+    if (cleanTenant && isValidTenantId(cleanTenant)) {
+      localStorage.setItem('saare_tenant_domain', cleanTenant);
+      sessionStorage.setItem('saare_tenant_domain', cleanTenant);
+      setTenantId(cleanTenant);
+      setAvailableTenants((prev) =>
+        prev.some((t) => t.id === cleanTenant)
+          ? prev
+          : [{ id: cleanTenant, name: companyName ? `${companyName} (${cleanTenant})` : cleanTenant }, ...prev]
+      );
+    }
+
+    if (cleanEmail) {
+      localStorage.setItem('saare_user_email', cleanEmail);
+      sessionStorage.setItem('saare_user_email', cleanEmail);
+      setUserEmail(cleanEmail);
+    }
+
+    if (cleanRole) {
+      localStorage.setItem('saare_user_role', cleanRole);
+      sessionStorage.setItem('saare_user_role', cleanRole);
+      setUserRole(cleanRole);
+    }
+
+    if (planId) {
+      localStorage.setItem('saare_plan_id', planId);
+    }
+
+    if (apiKey) {
+      localStorage.setItem('saare_api_key', apiKey);
+    }
+
+    return { cleanToken, cleanTenant, cleanEmail, cleanRole };
+  }, []);
+
   const fetchBillingUsage = useCallback(async (overrideTenant = null, overrideToken = null) => {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
@@ -176,7 +245,10 @@ export default function App() {
   const fetchCustomRules = useCallback(async (overrideTenant = null, overrideToken = null) => {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
-    if (!targetTenant) return;
+    if (!targetTenant) {
+      setCustomRules([]);
+      return;
+    }
     setIsRulesLoading(true);
     try {
       const headers = { 'x-saare-tenant': targetTenant, 'Content-Type': 'application/json' };
@@ -196,7 +268,10 @@ export default function App() {
   }, [tenantId, authToken, triggerGovernance]);
 
   const handleApplyIso42001Governance = async () => {
-    if (!tenantId) return;
+    if (!tenantId) {
+      triggerGovernance('Carga tu token y Tenant ID antes de aplicar políticas.');
+      return;
+    }
     setIsRulesLoading(true);
     const mergedById = new Map();
     [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
@@ -233,7 +308,10 @@ export default function App() {
 
   const handleSaveCustomRule = async (e) => {
     e.preventDefault();
-    if (!tenantId) return;
+    if (!tenantId) {
+      triggerGovernance('Configura tu Tenant ID antes de guardar reglas.');
+      return;
+    }
     const trimmedName = ruleForm.name.trim();
     const trimmedPattern = ruleForm.pattern.trim();
     if (!trimmedName || !trimmedPattern) return;
@@ -314,7 +392,10 @@ export default function App() {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     const activeRole = overrideRole || userRole;
-    if (!targetTenant) return;
+    if (!targetTenant) {
+      setTenantMetrics([]);
+      return;
+    }
 
     setIsFetchingMetrics(true);
     setMetricsError('');
@@ -355,6 +436,8 @@ export default function App() {
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     if (!targetTenant) {
       setEvidences([]);
+      setTenantMetrics([]);
+      setBillingInfo(null);
       return;
     }
 
@@ -410,16 +493,23 @@ export default function App() {
     localStorage.removeItem('saare_user_role');
     localStorage.removeItem('saare_session');
 
+    sessionStorage.removeItem('saare_token');
+    sessionStorage.removeItem('saare_auth_token');
+    sessionStorage.removeItem('saare_tenant_domain');
+    sessionStorage.removeItem('saare_user_email');
+    sessionStorage.removeItem('saare_user_role');
+
     setAuthToken('');
     setTenantId('');
     setUserEmail('');
     setUserRole('');
+    setAvailableTenants([]);
     setEvidences([]);
     setTenantMetrics([]);
     setBillingInfo(null);
     setCustomRules([]);
     setTestResult(null);
-    triggerGovernance('Sesión cerrada.');
+    triggerGovernance('Sesión cerrada. Consola restablecida en estado virgen.');
   };
 
   useEffect(() => {
@@ -438,14 +528,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchTelemetryDirectFromVault();
-  }, [fetchTelemetryDirectFromVault]);
+    if (tenantId) {
+      fetchTelemetryDirectFromVault();
+    }
+  }, [tenantId, fetchTelemetryDirectFromVault]);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthSubmitting(true);
     setAuthError('');
+
     try {
+      if (authTab === 'TOKEN') {
+        const cleanToken = String(authForm.token || '').replace(/^Bearer\s+/i, '').trim();
+        const targetTenant = String(authForm.tenantId || tenantId || '').trim();
+
+        if (!cleanToken) {
+          throw new Error('Introduce un Token Bearer o API Key válido.');
+        }
+
+        if (!targetTenant || !isValidTenantId(targetTenant)) {
+          throw new Error('Indica el Tenant ID de tu organización.');
+        }
+
+        const { cleanTenant } = persistSessionData({
+          token: cleanToken,
+          tenant: targetTenant,
+          email: authForm.email || userEmail,
+          role: userRole || 'TENANT_ADMIN'
+        });
+
+        setShowAuthModal(false);
+        setAuthForm({ email: '', companyName: '', name: '', password: '', token: '', tenantId: '' });
+        triggerGovernance(`Token cargado para [${cleanTenant}].`);
+        await fetchTelemetryDirectFromVault(cleanTenant, cleanToken);
+        return;
+      }
+
       const endpoint = authTab === 'SANDBOX'
         ? getApiEndpoint('/api/v1/sandbox/provision')
         : getApiEndpoint('/api/v1/auth/login');
@@ -473,33 +592,22 @@ export default function App() {
         throw new Error(data?.message || data?.error || 'No se pudo completar la autenticación.');
       }
 
-      const newTenant = data.user?.tenantId || data.user?.tenantName || '';
+      const newTenant = data.user?.tenantId || data.user?.tenantName || authForm.tenantId || '';
       const newEmail = data.user?.email || authForm.email;
-      const newRole = data.user?.role || 'CISO_ADMIN';
+      const newRole = data.user?.role || 'TENANT_ADMIN';
 
-      localStorage.setItem('saare_token', data.token);
-      localStorage.setItem('saare_auth_token', data.token);
-      if (newTenant) localStorage.setItem('saare_tenant_domain', newTenant);
-      if (newEmail) localStorage.setItem('saare_user_email', newEmail);
-      if (newRole) localStorage.setItem('saare_user_role', newRole);
-      if (data.user?.planId) localStorage.setItem('saare_plan_id', data.user.planId);
-      if (data.user?.apiKey) localStorage.setItem('saare_api_key', data.user.apiKey);
-
-      setAuthToken(data.token);
-      setTenantId(newTenant);
-      setUserEmail(newEmail);
-      setUserRole(newRole);
-
-      if (newTenant) {
-        setAvailableTenants((prev) =>
-          prev.some((t) => t.id === newTenant)
-            ? prev
-            : [{ id: newTenant, name: `${authForm.companyName || newTenant} (${newTenant})` }, ...prev]
-        );
-      }
+      persistSessionData({
+        token: data.token,
+        tenant: newTenant,
+        email: newEmail,
+        role: newRole,
+        planId: data.user?.planId,
+        apiKey: data.user?.apiKey,
+        companyName: authForm.companyName
+      });
 
       setShowAuthModal(false);
-      setAuthForm({ email: '', companyName: '', name: '', password: '' });
+      setAuthForm({ email: '', companyName: '', name: '', password: '', token: '', tenantId: '' });
       triggerGovernance(`Sesión iniciada${newTenant ? ` en [${newTenant}]` : ''}.`);
       await fetchTelemetryDirectFromVault(newTenant, data.token);
     } catch (err) {
@@ -562,11 +670,21 @@ export default function App() {
   const handleDownloadL7Extension = () => {
     const a = document.createElement('a');
     a.href = '/deploy/saare_l7_proxy_extension.zip';
-    a.download = `saare_l7_proxy_extension_${tenantId || 'tenant'}.zip`;
+    a.download = `saare_l7_proxy_extension_${tenantId || 'cliente'}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId || 'tenant'}].`);
+    triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId || 'cliente'}].`);
+  };
+
+  const handleDownloadSidecarPackage = () => {
+    const a = document.createElement('a');
+    a.href = '/deploy/saare_native_sidecar.zip';
+    a.download = `saare_native_sidecar_${tenantId || 'cliente'}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    triggerGovernance(`Paquete Sidecar L7 (.ZIP) descargado para [${tenantId || 'cliente'}].`);
   };
 
   const handleDownloadEnterpriseGpoReg = async () => {
@@ -575,23 +693,15 @@ export default function App() {
       const res = await fetch(getApiEndpoint(`/api/v1/deploy/gpo-policy${query}`));
       if (res.ok) {
         const regText = await res.text();
-        const blob = new Blob([regText], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `SAARE_L7_POLICY_${tenantId || 'tenant'}.reg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        triggerGovernance(`Directiva GPO generada para [${tenantId || 'tenant'}].`);
+        triggerBlobDownload(regText, `SAARE_L7_POLICY_${tenantId || 'cliente'}.reg`, 'text/plain;charset=utf-8');
+        triggerGovernance(`Directiva GPO generada para [${tenantId || 'cliente'}].`);
         return;
       }
     } catch {}
 
     const gateway = getApiEndpoint('/v1/chat/completions');
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || '';
-    const licenseKey = billingInfo?.credentials?.licenseKey || localStorage.getItem('saare_api_key') || '';
+    const licenseKey = billingInfo?.credentials?.licenseKey || authToken || localStorage.getItem('saare_api_key') || '';
 
     const regContent = [
       'Windows Registry Editor Version 5.00',
@@ -611,16 +721,8 @@ export default function App() {
       '"EnableExAnteEnforcement"=dword:00000001'
     ].join('\r\n') + '\r\n';
 
-    const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `SAARE_L7_POLICY_${tenantId || 'tenant'}.reg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    triggerGovernance(`Directiva GPO generada para [${tenantId || 'tenant'}].`);
+    triggerBlobDownload(regContent, `SAARE_L7_POLICY_${tenantId || 'cliente'}.reg`, 'text/plain;charset=utf-8');
+    triggerGovernance(`Directiva GPO generada para [${tenantId || 'cliente'}].`);
   };
 
   const handleDownloadK8sManifest = () => {
@@ -631,21 +733,124 @@ export default function App() {
       '  name: saare-ip-manifest',
       '  namespace: saare-system',
       'data:',
-      `  TITULAR_CORPORATIVO: "${SAARE_CONFIG?.COMPANY_NAME || ''}"`,
       `  TENANT_ID: "${tenantId}"`,
       `  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"`
     ].join('\n') + '\n';
 
-    const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `01-ip-manifest-${(tenantId || 'tenant').toLowerCase()}.yaml`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(yamlContent, `01-ip-manifest-${(tenantId || 'cliente').toLowerCase()}.yaml`, 'text/yaml;charset=utf-8');
     triggerGovernance('Manifiesto YAML K8s generado.');
+  };
+
+  const handleDownloadIso42001Dossier = () => {
+    const inspections = evidences.length;
+    const denied = evidences.filter((e) => e.decision === 'DENY').length;
+    const allowed = inspections - denied;
+    const blockRate = inspections > 0 ? ((denied / inspections) * 100).toFixed(1) : '0.0';
+
+    const dossier = {
+      reportType: 'SAARE_ISO_42001_RGPD_COMPLIANCE_DOSSIER',
+      generatedAt: new Date().toISOString(),
+      tenantId: tenantId || 'UNASSIGNED',
+      planId: billingInfo?.planId || localStorage.getItem('saare_plan_id') || 'N/A',
+      metrics: {
+        totalInspections: inspections,
+        allowedCount: allowed,
+        deniedCount: denied,
+        blockRatePercent: blockRate
+      },
+      activeCustomRulesCount: customRules.length,
+      customRules,
+      iso42001BaselineControls: ISO_42001_PRESET_RULES.map((r) => r.id),
+      recentEvidenceHashes: evidences.slice(0, 25).map((e) => ({
+        id: e.id,
+        timestamp: e.rawTimestamp,
+        decision: e.decision,
+        merkleRoot: e.merkleRoot || null
+      }))
+    };
+
+    triggerBlobDownload(
+      JSON.stringify(dossier, null, 2),
+      `dossier-iso42001-${(tenantId || 'cliente').toLowerCase()}-${Date.now()}.json`,
+      'application/json;charset=utf-8'
+    );
+    triggerGovernance(`Dossier ISO 42001 / RGPD descargado para [${tenantId || 'cliente'}].`);
+  };
+
+  const handleExportTracesJson = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      tenantId: tenantId || 'UNASSIGNED',
+      totalRecords: evidences.length,
+      traces: evidences.map((ev) => ({
+        id: ev.id,
+        timestamp: ev.rawTimestamp,
+        decision: ev.decision,
+        verdict: ev.verdict,
+        category: ev.cat,
+        promptSanitized: ev.prompt,
+        merkleRoot: ev.merkleRoot,
+        latencyMs: ev.latency
+      }))
+    };
+
+    triggerBlobDownload(
+      JSON.stringify(payload, null, 2),
+      `trazas-l7-${(tenantId || 'cliente').toLowerCase()}-${Date.now()}.json`,
+      'application/json;charset=utf-8'
+    );
+    triggerGovernance(`Exportadas ${evidences.length} trazas en JSON para [${tenantId || 'cliente'}].`);
+  };
+
+  const handleOpenPdfReport = useCallback((evidence) => {
+    setSelectedEvidenceForPdf(evidence);
+    setShowOfficialReportModal(true);
+  }, []);
+
+  const handleGenerateAuditToken = () => {
+    const auditTokenPreview = `AUD-${(tenantId || 'TENANT').toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    triggerBlobDownload(
+      JSON.stringify({
+        issuedAt: new Date().toISOString(),
+        tenantId: tenantId || 'UNASSIGNED',
+        requestedBy: userEmail || 'anonymous',
+        auditToken: auditTokenPreview,
+        ttlMinutes: 60
+      }, null, 2),
+      `audit-token-${(tenantId || 'cliente').toLowerCase()}.json`
+    );
+    triggerGovernance(`Token de auditoría generado (${auditTokenPreview}).`);
+  };
+
+  const handleDownloadTechnicalTeaser = () => {
+    triggerBlobDownload(
+      JSON.stringify({
+        product: 'S.A.A.R.E. Console GRC & Ex-Ante L7 Runtime',
+        compliance: ['EU AI Act', 'RGPD', 'DORA', 'NIS2', 'ISO 27001', 'ISO 42001', 'ISO 27037', 'Art. 326 LEC'],
+        generatedAt: new Date().toISOString()
+      }, null, 2),
+      'saare-technical-teaser.json'
+    );
+    triggerGovernance('Teaser técnico descargado.');
+  };
+
+  const handleExportLecActa = () => {
+    triggerBlobDownload(
+      JSON.stringify({
+        documentType: 'ACTA_EVIDENCIA_DIGITAL_ART_326_LEC_ISO_27037',
+        generatedAt: new Date().toISOString(),
+        tenantId: tenantId || 'UNASSIGNED',
+        totalEvidences: evidences.length,
+        chainSample: evidences.slice(0, 15).map((e) => ({
+          id: e.id,
+          timestamp: e.rawTimestamp,
+          decision: e.decision,
+          merkleRoot: e.merkleRoot || null
+        }))
+      }, null, 2),
+      `acta-lec-iso27037-${(tenantId || 'cliente').toLowerCase()}-${Date.now()}.json`
+    );
+    triggerGovernance('Acta probatoria Art. 326 LEC / ISO 27037 generada.');
   };
 
   const handleExecuteTestExAnte = async (customPrompt = null) => {
@@ -686,15 +891,11 @@ export default function App() {
     }
   };
 
-  const handleOpenPdfReport = (evidence) => {
-    setSelectedEvidenceForPdf(evidence);
-    setShowOfficialReportModal(true);
-  };
-
   const totalInspecciones = evidences.length;
   const totalDeny = evidences.filter((e) => e.decision === 'DENY').length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
   const resolvedApiKey = billingInfo?.credentials?.licenseKey || localStorage.getItem('saare_api_key') || '';
+  const isUnconfiguredClient = !authToken && !tenantId;
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
@@ -706,8 +907,20 @@ export default function App() {
 
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
+            <span style={{
+              background: authToken ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+              color: authToken ? '#34d399' : '#fbbf24',
+              border: `1px solid ${authToken ? '#10b981' : '#f59e0b'}`,
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '0.68rem',
+              fontWeight: '800',
+              fontFamily: 'monospace'
+            }}>
+              {authToken ? 'TOKEN ACTIVO' : 'SIN TOKEN'}
+            </span>
             {(billingInfo?.planId || localStorage.getItem('saare_plan_id')) && (
               <span style={{ background: '#1e293b', color: '#34d399', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
                 {billingInfo?.planId || localStorage.getItem('saare_plan_id')}
@@ -734,16 +947,39 @@ export default function App() {
             <button type="button" onClick={handleDownloadL7Extension} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               EXTENSIÓN L7 (.ZIP)
             </button>
+            <button type="button" onClick={handleDownloadSidecarPackage} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #06b6d4', background: '#164e63', color: '#67e8f9', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              SIDECAR L7 (.ZIP)
+            </button>
             <button type="button" onClick={handleDownloadEnterpriseGpoReg} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #10b981', background: '#064e3b', color: '#34d399', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               POLÍTICA GPO (.REG)
             </button>
             <button type="button" onClick={handleDownloadK8sManifest} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #8b5cf6', background: '#4c1d95', color: '#c084fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               MANIFIESTO K8S
             </button>
-            <button type="button" onClick={() => setShowAuthModal(true)} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #f59e0b', background: '#78350f', color: '#fde68a', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              {authToken ? 'CUENTA / SANDBOX' : 'ACTIVAR SANDBOX'}
+            <button type="button" onClick={handleDownloadIso42001Dossier} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #a855f7', background: '#3b0764', color: '#e9d5ff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              DOSSIER ISO 42001
             </button>
-            {authToken && (
+            <button type="button" onClick={handleExportTracesJson} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #14b8a6', background: '#134e4a', color: '#5eead4', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              EXPORTAR TRAZAS (.JSON)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthError('');
+                setAuthTab('TOKEN');
+                setAuthForm((prev) => ({
+                  ...prev,
+                  token: authToken || '',
+                  tenantId: tenantId || '',
+                  email: userEmail || ''
+                }));
+                setShowAuthModal(true);
+              }}
+              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #f59e0b', background: '#78350f', color: '#fde68a', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}
+            >
+              {authToken ? 'GESTIONAR TOKEN' : 'CARGAR TOKEN'}
+            </button>
+            {(authToken || tenantId) && (
               <button type="button" onClick={handleLogout} style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #ef4444', background: '#450a0a', color: '#fca5a5', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
                 SALIR
               </button>
@@ -753,6 +989,30 @@ export default function App() {
       </header>
 
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
+        {isUnconfiguredClient && (
+          <div style={{ marginBottom: '20px', padding: '16px 20px', background: '#0f172a', border: '1px solid #f59e0b', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ fontWeight: '900', color: '#fbbf24', fontSize: '0.9rem' }}>
+                Entorno listo para configurar — Sin token ni tenant vinculado
+              </div>
+              <div style={{ color: '#cbd5e1', fontSize: '0.78rem', marginTop: '4px' }}>
+                Introduce tu Token Bearer / API Key y tu Tenant ID para conectar la consola con tu bóveda de auditoría.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthError('');
+                setAuthTab('TOKEN');
+                setShowAuthModal(true);
+              }}
+              style={{ padding: '9px 16px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', fontSize: '0.78rem', cursor: 'pointer' }}
+            >
+              CARGAR TOKEN DE CLIENTE
+            </button>
+          </div>
+        )}
+
         {viewMode === 'SUBSIDIES' && (
           <SubsidiesHub tenantId={tenantId} onBack={() => setViewMode('GRC_AUDIT')} />
         )}
@@ -764,9 +1024,23 @@ export default function App() {
         {viewMode === 'GRC_AUDIT' && (
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
             <GovernanceToolbar
-              tenantId={tenantId}
-              userEmail={userEmail}
-              userRole={userRole}
+              targetHash={evidences[0]?.merkleRoot || ''}
+              onVerifySignature={(h) => triggerGovernance(`Hash ${h.slice(0, 14)}... enviado a verificación Ed25519.`)}
+              onExportCustody={handleExportTracesJson}
+              onExportGrantDossier={handleDownloadIso42001Dossier}
+              onExecuteEnforcementCheck={() => setActiveTab('RUNLIVE')}
+              onOpenFriaModal={() => setShowFriaModal(true)}
+              onExportGovernancePackage={handleDownloadIso42001Dossier}
+              onOpenReportModal={() => {
+                if (evidences[0]) {
+                  handleOpenPdfReport(evidences[0]);
+                } else {
+                  triggerGovernance('No hay evidencias cargadas para generar el informe PDF.');
+                }
+              }}
+              onGenerateToken={handleGenerateAuditToken}
+              onDownloadTeaser={handleDownloadTechnicalTeaser}
+              onExportLecActa={handleExportLecActa}
               onExportClick={() => setShowExportModal(true)}
             />
 
@@ -787,7 +1061,7 @@ export default function App() {
                   )}
                 </select>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '6px' }}>
-                  API Key: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{resolvedApiKey ? `${resolvedApiKey.slice(0, 18)}...` : 'No configurada'}</span>
+                  Token / Key: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{(authToken || resolvedApiKey) ? `${String(authToken || resolvedApiKey).slice(0, 18)}...` : 'No configurado'}</span>
                 </div>
               </div>
 
@@ -838,7 +1112,7 @@ export default function App() {
                 </button>
               </div>
 
-              <button type="button" onClick={() => fetchTelemetryDirectFromVault()} disabled={isFetchingVault} style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+              <button type="button" onClick={() => fetchTelemetryDirectFromVault()} disabled={isFetchingVault || !tenantId} style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: tenantId ? 'pointer' : 'not-allowed', opacity: tenantId ? 1 : 0.5 }}>
                 {isFetchingVault ? 'Consultando Bóveda...' : `Sincronizar Bóveda (${tenantId || 'N/A'})`}
               </button>
             </div>
@@ -896,7 +1170,7 @@ export default function App() {
                   <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
                     Métricas Agregadas de Consumo por Inquilino
                   </h3>
-                  <button type="button" onClick={() => fetchTenantMetrics()} disabled={isFetchingMetrics} style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => fetchTenantMetrics()} disabled={isFetchingMetrics || !tenantId} style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: tenantId ? 'pointer' : 'not-allowed' }}>
                     {isFetchingMetrics ? 'Actualizando...' : 'Refrescar Métricas'}
                   </button>
                 </div>
@@ -1032,24 +1306,55 @@ export default function App() {
 
       {showAuthModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
-          <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '12px', maxWidth: '440px', width: '100%', padding: '24px' }}>
+          <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '12px', maxWidth: '460px', width: '100%', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.05rem', fontWeight: '900' }}>
-                Acceso Multi-Tenant S.A.A.R.E.
+                Acceso y Carga de Token — S.A.A.R.E.
               </h3>
               <button type="button" onClick={() => setShowAuthModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <button type="button" onClick={() => { setAuthTab('SANDBOX'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'SANDBOX' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-                Alta Sandbox
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+              <button type="button" onClick={() => { setAuthTab('TOKEN'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'TOKEN' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.72rem', cursor: 'pointer' }}>
+                Cargar Token
               </button>
-              <button type="button" onClick={() => { setAuthTab('LOGIN'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'LOGIN' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => { setAuthTab('LOGIN'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'LOGIN' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.72rem', cursor: 'pointer' }}>
                 Iniciar Sesión
+              </button>
+              <button type="button" onClick={() => { setAuthTab('SANDBOX'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'SANDBOX' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.72rem', cursor: 'pointer' }}>
+                Alta Sandbox
               </button>
             </div>
 
             <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {authTab === 'TOKEN' && (
+                <>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Pega aquí tu Token Bearer o API Key..."
+                    value={authForm.token}
+                    onChange={(e) => setAuthForm({ ...authForm, token: e.target.value })}
+                    style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#38bdf8', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.78rem', resize: 'vertical' }}
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Tenant ID de tu organización (ej: mi-empresa)"
+                    value={authForm.tenantId}
+                    onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
+                    style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem' }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Correo del operador (opcional)"
+                    value={authForm.email}
+                    onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                    style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem' }}
+                  />
+                </>
+              )}
+
               {authTab === 'SANDBOX' && (
                 <>
                   <input type="text" required placeholder="Nombre de la empresa u organismo" value={authForm.companyName} onChange={(e) => setAuthForm({ ...authForm, companyName: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
@@ -1057,8 +1362,12 @@ export default function App() {
                 </>
               )}
 
-              <input type="email" required placeholder="Correo corporativo" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
-              <input type="password" required minLength={6} placeholder="Contraseña (mínimo 6 caracteres)" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
+              {authTab !== 'TOKEN' && (
+                <>
+                  <input type="email" required placeholder="Correo corporativo" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
+                  <input type="password" required minLength={6} placeholder="Contraseña (mínimo 6 caracteres)" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
+                </>
+              )}
 
               {authError && (
                 <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '6px', color: '#fca5a5', fontSize: '0.78rem' }}>
@@ -1066,8 +1375,26 @@ export default function App() {
                 </div>
               )}
 
-              <button type="submit" disabled={authSubmitting} style={{ padding: '11px', background: authTab === 'SANDBOX' ? '#059669' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
-                {authSubmitting ? 'Procesando...' : authTab === 'SANDBOX' ? 'CREAR ENTORNO SANDBOX' : 'ENTRAR A LA CONSOLA'}
+              <button
+                type="submit"
+                disabled={authSubmitting}
+                style={{
+                  padding: '11px',
+                  background: authTab === 'TOKEN' ? '#d97706' : authTab === 'SANDBOX' ? '#059669' : '#0284c7',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '900',
+                  cursor: 'pointer'
+                }}
+              >
+                {authSubmitting
+                  ? 'Procesando...'
+                  : authTab === 'TOKEN'
+                    ? 'GUARDAR Y APLICAR TOKEN'
+                    : authTab === 'SANDBOX'
+                      ? 'CREAR ENTORNO SANDBOX'
+                      : 'ENTRAR A LA CONSOLA'}
               </button>
             </form>
           </div>
@@ -1077,6 +1404,8 @@ export default function App() {
       {showOfficialReportModal && selectedEvidenceForPdf && (
         <OfficialReportModal
           evidence={selectedEvidenceForPdf}
+          tenantId={tenantId}
+          userEmail={userEmail}
           onClose={() => {
             setShowOfficialReportModal(false);
             setSelectedEvidenceForPdf(null);

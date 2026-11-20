@@ -1,6 +1,7 @@
 // saare-console/src/components/GovernanceToolbar.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_HOST } from '../utils/api';
+import { SAARE_CONFIG } from '../config/saareState';
 
 export default function GovernanceToolbar({
   targetHash = '',
@@ -12,50 +13,79 @@ export default function GovernanceToolbar({
   onOpenFriaModal,
   onExecuteEnforcementCheck,
   onOpenReportModal,
-  onExportGovernancePackage
+  onExportGovernancePackage,
+  onExportLecActa
 }) {
   const [status, setStatus] = useState('');
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const getBaseUrl = () => {
-    return (
+    const raw =
       (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+      SAARE_CONFIG?.API_BASE_URL ||
       API_HOST ||
       (typeof window !== 'undefined' && window.location?.origin) ||
-      ''
-    );
+      '';
+    return String(raw).trim().replace(/\/+$/, '').replace(/\/api\/v1$/i, '');
   };
 
   const triggerAction = (msg, callback) => {
     setStatus(msg);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      setStatus('');
+    }, 4500);
+
     if (typeof callback === 'function') {
       callback();
     }
-    setTimeout(() => setStatus(''), 4000);
   };
 
   const handleVerify = (customHash) => {
     const hashToVerify = typeof customHash === 'string' && customHash.trim()
       ? customHash.trim()
-      : targetHash.trim();
+      : String(targetHash || '').trim();
 
     if (!hashToVerify) {
-      triggerAction('No hay ningún hash de evidencia seleccionado para verificar.');
+      triggerAction('No hay ningún hash de evidencia disponible para verificar.');
       return;
     }
 
-    const baseUrl = String(getBaseUrl()).replace(/\/$/, '');
+    const baseUrl = getBaseUrl();
     if (baseUrl && typeof window !== 'undefined') {
-      window.open(`${baseUrl}/api/v1/verify/${encodeURIComponent(hashToVerify)}`, '_blank', 'noopener,noreferrer');
+      window.open(
+        `${baseUrl}/api/v1/verify/${encodeURIComponent(hashToVerify)}`,
+        '_blank',
+        'noopener,noreferrer'
+      );
     }
 
     triggerAction(
-      `Verificación solicitada para el hash ${hashToVerify.substring(0, 12)}...`,
+      `Verificación Ed25519 solicitada para el hash ${hashToVerify.substring(0, 14)}...`,
       () => {
         if (typeof onVerifySignature === 'function') {
           onVerifySignature(hashToVerify);
         }
       }
     );
+  };
+
+  const btnBase = {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '800',
+    cursor: 'pointer'
   };
 
   return (
@@ -68,7 +98,7 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => handleVerify()}
-          style={{ padding: '8px 12px', background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#0284c7', color: '#ffffff', border: 'none' }}
         >
           Verificar Firma (Ed25519)
         </button>
@@ -76,7 +106,7 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Exportando cadena de custodia del tenant...', onExportCustody)}
-          style={{ padding: '8px 12px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155' }}
         >
           Exportar Custodia
         </button>
@@ -84,7 +114,7 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Generando expediente de justificación...', onExportGrantDossier)}
-          style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', border: 'none' }}
         >
           Dossier Subvenciones
         </button>
@@ -92,7 +122,7 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Ejecutando verificación de cumplimiento...', onExecuteEnforcementCheck)}
-          style={{ padding: '8px 12px', background: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#d97706', color: '#ffffff', border: 'none' }}
         >
           Auditoría Ex-Ante (L7)
         </button>
@@ -100,25 +130,23 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Abriendo evaluación de impacto FRIA...', onOpenFriaModal)}
-          style={{ padding: '8px 12px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#059669', color: '#ffffff', border: 'none' }}
         >
           Evaluación FRIA (Art. 27)
         </button>
 
-        {typeof onExportGovernancePackage === 'function' && (
-          <button
-            type="button"
-            onClick={() => triggerAction('Generando paquete de gobernanza...', onExportGovernancePackage)}
-            style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
-          >
-            4 Plantillas GRC
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => triggerAction('Generando paquete de 4 plantillas GRC...', onExportGovernancePackage)}
+          style={{ ...btnBase, background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', color: '#ffffff', border: 'none' }}
+        >
+          4 Plantillas GRC
+        </button>
 
         <button
           type="button"
           onClick={() => triggerAction('Abriendo gestor de informes oficiales...', onOpenReportModal)}
-          style={{ padding: '8px 12px', background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#0284c7', color: '#ffffff', border: 'none' }}
         >
           Informes Oficiales (PDF)
         </button>
@@ -126,7 +154,7 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Solicitando token temporal de auditoría...', onGenerateToken)}
-          style={{ padding: '8px 12px', background: '#1e293b', border: '1px solid #059669', color: '#34d399', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#1e293b', border: '1px solid #059669', color: '#34d399' }}
         >
           Token de Auditoría
         </button>
@@ -134,9 +162,17 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Descargando documentación técnica...', onDownloadTeaser)}
-          style={{ padding: '8px 12px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+          style={{ ...btnBase, background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}
         >
           Teaser Técnico
+        </button>
+
+        <button
+          type="button"
+          onClick={() => triggerAction('Generando acta probatoria Art. 326 LEC / ISO 27037...', onExportLecActa)}
+          style={{ ...btnBase, background: '#312e81', color: '#e0e7ff', border: '1px solid #6366f1' }}
+        >
+          Acta LEC / ISO 27037
         </button>
       </div>
 

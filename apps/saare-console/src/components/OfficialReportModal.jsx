@@ -2,19 +2,34 @@
 import React, { useEffect } from 'react';
 import pdfGeneratorService, { generatePdfFromElement } from '../services/pdfGeneratorService';
 
-export default function OfficialReportModal({ onClose, reportData }) {
-  // Parsing seguro de localStorage con fallbacks
+export default function OfficialReportModal({
+  onClose,
+  reportData,
+  evidence,
+  tenantId: propTenantId,
+  userEmail: propUserEmail
+}) {
   let sessionUser = {};
   try {
     sessionUser = JSON.parse(localStorage.getItem('saare_session_user') || '{}');
-  } catch (e) {
+  } catch {
     sessionUser = {};
   }
 
-  const userEmail = sessionUser.email || localStorage.getItem('saare_user_email') || 'legal@saare.es';
-  const tenantDomain = sessionUser.tenantName || localStorage.getItem('saare_tenant_domain') || 'ENTERPRISE';
+  const userEmail =
+    propUserEmail ||
+    sessionUser.email ||
+    localStorage.getItem('saare_user_email') ||
+    'legal@saare.es';
 
-  // Manejo de cierre mediante tecla Escape
+  const tenantDomain =
+    propTenantId ||
+    reportData?.tenantId ||
+    evidence?.tenant ||
+    sessionUser.tenantName ||
+    localStorage.getItem('saare_tenant_domain') ||
+    'ENTERPRISE';
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && typeof onClose === 'function') {
@@ -26,7 +41,8 @@ export default function OfficialReportModal({ onClose, reportData }) {
   }, [onClose]);
 
   const handleDownloadPdf = async () => {
-    const filename = `SAARE_INFORME_OFICIAL_${tenantDomain.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+    const safeTenant = String(tenantDomain || 'TENANT').replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `SAARE_INFORME_OFICIAL_${safeTenant}_${Date.now()}`;
 
     try {
       if (pdfGeneratorService && typeof pdfGeneratorService.generateFromElement === 'function') {
@@ -42,26 +58,45 @@ export default function OfficialReportModal({ onClose, reportData }) {
     }
   };
 
-  // Lista de evidencias pasadas vía props o lista por defecto
-  const auditEvidences = Array.isArray(reportData?.evidences) && reportData.evidences.length > 0
-    ? reportData.evidences
-    : [
-        {
-          id: 'EV-OWASP-101',
-          timestamp: 'En vivo (RAM)',
-          classification: 'LLM01:2025 - Prompt Injection',
-          verdict: 'RECHAZADO (DENY)'
-        },
-        {
-          id: 'EV-OWASP-102',
-          timestamp: 'En vivo (RAM)',
-          classification: 'LLM02:2025 - Sensitive Data Disclosure',
-          verdict: 'RECHAZADO (DENY)'
-        }
-      ];
+  const auditEvidences =
+    Array.isArray(reportData?.evidences) && reportData.evidences.length > 0
+      ? reportData.evidences
+      : evidence
+        ? [
+            {
+              id: evidence.id || 'EV-L7-001',
+              timestamp: evidence.rawTimestamp || evidence.time || 'En vivo (RAM)',
+              classification: evidence.cat || evidence.type || 'OWASP LLM / NIST CSF 2.0',
+              verdict: evidence.verdict || (evidence.decision === 'DENY' ? 'RECHAZADO (DENY)' : 'PERMITIDO (ALLOW)'),
+              decision: evidence.decision
+            }
+          ]
+        : [
+            {
+              id: 'EV-OWASP-101',
+              timestamp: 'En vivo (RAM)',
+              classification: 'LLM01:2025 - Prompt Injection',
+              verdict: 'RECHAZADO (DENY)'
+            },
+            {
+              id: 'EV-OWASP-102',
+              timestamp: 'En vivo (RAM)',
+              classification: 'LLM02:2025 - Sensitive Data Disclosure',
+              verdict: 'RECHAZADO (DENY)'
+            }
+          ];
+
+  const merkleRoot =
+    reportData?.merkleRoot ||
+    evidence?.merkleRoot ||
+    '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+
+  const signature =
+    reportData?.signature ||
+    '3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41d7e35b71946399120785cba028e3b4821a8b0c619472e61a84b6f89004';
 
   return (
-    <div 
+    <div
       onClick={(e) => e.target === e.currentTarget && typeof onClose === 'function' && onClose()}
       style={{
         position: 'fixed',
@@ -78,8 +113,7 @@ export default function OfficialReportModal({ onClose, reportData }) {
         padding: '16px'
       }}
     >
-      {/* Contenedor tipo Hoja Oficial con Membrete */}
-      <div 
+      <div
         id="official-report-document"
         style={{
           backgroundColor: '#ffffff',
@@ -96,7 +130,6 @@ export default function OfficialReportModal({ onClose, reportData }) {
           border: '1px solid #e2e8f0'
         }}
       >
-        {/* Encabezado / Membrete Oficial */}
         <div style={{ borderBottom: '2px solid #0284c7', paddingBottom: '20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '900', color: '#020617', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -106,7 +139,7 @@ export default function OfficialReportModal({ onClose, reportData }) {
               </span>
             </h1>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
-              Sovereign AI Authorization & Runtime Enforcement • Grado Financiero SGP 1.0
+              Sovereign AI Authorization &amp; Runtime Enforcement • Grado Financiero SGP 1.0
             </p>
           </div>
           <div style={{ textAlign: 'left', fontSize: '0.72rem', fontFamily: 'monospace', color: '#475569', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', lineHeight: '1.5' }}>
@@ -117,7 +150,6 @@ export default function OfficialReportModal({ onClose, reportData }) {
           </div>
         </div>
 
-        {/* Cuerpo del Informe */}
         <div style={{ fontSize: '0.8rem', lineHeight: '1.6', color: '#334155', display: 'grid', gap: '24px' }}>
           <section>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', fontWeight: '800', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
@@ -166,14 +198,13 @@ export default function OfficialReportModal({ onClose, reportData }) {
               3. Validación Criptográfica y Cadena de Custodia (ISO/IEC 27037)
             </h2>
             <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.7rem', wordBreak: 'break-all', display: 'grid', gap: '6px' }}>
-              <div><strong style={{ color: '#0f172a' }}>Merkle Root Hash:</strong> {reportData?.merkleRoot || '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842'}</div>
-              <div><strong style={{ color: '#0f172a' }}>Ed25519 Signature:</strong> {reportData?.signature || '3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210e9cf41d7e35b71946399120785cba028e3b4821a8b0c619472e61a84b6f89004'}</div>
+              <div><strong style={{ color: '#0f172a' }}>Merkle Root Hash:</strong> {merkleRoot}</div>
+              <div><strong style={{ color: '#0f172a' }}>Ed25519 Signature:</strong> {signature}</div>
               <div style={{ color: '#047857', fontWeight: '800', paddingTop: '4px' }}>✓ TSA Record: SAARE-QUALIFIED-TSA-2026 • Estado: Inmutable y Verificado en Bóveda D1</div>
             </div>
           </section>
         </div>
 
-        {/* Botones de Acción (Ocultos en impresión PDF) */}
         <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button
             type="button"

@@ -23,6 +23,7 @@ const writeStorage = (key, value) => {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage?.setItem(key, value);
+    window.sessionStorage?.setItem(key, value);
   } catch {
     // Ignorar restricciones de almacenamiento
   }
@@ -47,10 +48,11 @@ export async function saareFetch(endpoint, options = {}) {
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBaseUrl}${cleanEndpoint}`;
-  const activeToken = options.overrideToken ?? token;
-  const activeTenant = options.overrideTenant ?? tenant;
-  const activeUser = options.overrideUser ?? user;
-  const activeRole = options.overrideRole ?? role;
+
+  const activeToken = options.overrideToken !== undefined ? options.overrideToken : token;
+  const activeTenant = options.overrideTenant !== undefined ? options.overrideTenant : tenant;
+  const activeUser = options.overrideUser !== undefined ? options.overrideUser : user;
+  const activeRole = options.overrideRole !== undefined ? options.overrideRole : role;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -81,18 +83,24 @@ export const apiService = {
   },
 
   getRouteMode() {
-    return readStorage([ROUTE_MODE_KEY]) || 'CLOUD_EDGE';
+    const mode = readStorage([ROUTE_MODE_KEY]);
+    return mode === 'LOCAL_SIDECAR' ? 'LOCAL_SIDECAR' : 'CLOUD_EDGE';
   },
 
   async setRouteMode(targetMode) {
+    const { token, tenant } = getAuthContext();
     if (targetMode === 'LOCAL_SIDECAR') {
       const probe = await fetch(LOCAL_SIDECAR_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tenant ? { 'x-saare-tenant': tenant, 'X-SAARE-Tenant': tenant } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ prompt: 'PING_HEALTH_CHECK', scenario: 'HEALTH' })
       });
       if (!probe.ok) {
-        throw new Error('El agente local respondió con error.');
+        throw new Error(`El agente local respondió con estado HTTP ${probe.status}.`);
       }
       writeStorage(ROUTE_MODE_KEY, 'LOCAL_SIDECAR');
       return { mode: 'LOCAL_SIDECAR', endpoint: LOCAL_SIDECAR_URL };
@@ -104,9 +112,16 @@ export const apiService = {
 
   downloadNativeSidecar(overrideTenant) {
     const { tenant, cleanRoot } = getAuthContext();
-    const targetTenant = overrideTenant ?? tenant;
-    if (typeof window === 'undefined') return;
-    window.open('/deploy/saare_native_sidecar.zip', '_blank', 'noopener,noreferrer');
+    const targetTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+    const link = document.createElement('a');
+    link.href = '/deploy/saare_native_sidecar.zip';
+    link.download = `saare_native_sidecar_${targetTenant || 'tenant'}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
     window.open(`${cleanRoot}/api/v1/agent/bootstrap${query}`, '_blank', 'noopener,noreferrer');
   },
@@ -144,9 +159,9 @@ export const apiService = {
   async getTelemetryTraces(params = {}) {
     try {
       const { tenant, user } = getAuthContext();
-      const limit = params.limit || 100;
-      const activeTenant = params.tenant ?? tenant;
-      const activeUser = params.user ?? user;
+      const limit = Number(params.limit) > 0 ? Number(params.limit) : 100;
+      const activeTenant = params.tenant !== undefined ? params.tenant : tenant;
+      const activeUser = params.user !== undefined ? params.user : user;
 
       const searchParams = new URLSearchParams({ limit: String(limit) });
       if (activeTenant) searchParams.set('tenant', activeTenant);
@@ -165,7 +180,7 @@ export const apiService = {
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
       }
       if (res && res.status === 429) {
-        console.warn('Rate limit alcanzado.');
+        console.warn('[SAARE API] Rate limit alcanzado.');
         return [];
       }
     } catch (e) {
@@ -208,16 +223,16 @@ export const apiService = {
   },
 
   async interceptPrompt(payloadOrPrompt, context = {}) {
-    const { tenant, user, role } = getAuthContext();
+    const { tenant, user, role, token } = getAuthContext();
     const routeMode = this.getRouteMode();
 
     let bodyData = {};
     if (typeof payloadOrPrompt === 'string') {
       bodyData = {
         prompt: payloadOrPrompt,
-        tenant: context.tenant ?? tenant,
-        user: context.user ?? user,
-        role: context.role ?? role,
+        tenant: context.tenant !== undefined ? context.tenant : tenant,
+        user: context.user !== undefined ? context.user : user,
+        role: context.role !== undefined ? context.role : role,
         ...context
       };
     } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
@@ -230,42 +245,46 @@ export const apiService = {
       };
     }
 
+    const activeToken = bodyData.token !== undefined ? bodyData.token : token;
+    const { token: _omitToken, ...cleanBody } = bodyData;
+
     if (routeMode === 'LOCAL_SIDECAR') {
       try {
         const localRes = await fetch(LOCAL_SIDECAR_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(bodyData.tenant ? { 'X-SAARE-Tenant': bodyData.tenant } : {})
+            ...(cleanBody.tenant ? { 'x-saare-tenant': cleanBody.tenant, 'X-SAARE-Tenant': cleanBody.tenant } : {}),
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
           },
           body: JSON.stringify({
-            prompt: bodyData.prompt || '',
-            scenario: bodyData.scenarioId || bodyData.scenario || 'DEFAULT',
-            tenant_id: bodyData.tenant || ''
+            prompt: cleanBody.prompt || '',
+            scenario: cleanBody.scenarioId || cleanBody.scenario || 'DEFAULT',
+            tenant_id: cleanBody.tenant || ''
           })
         });
 
-        const localData = await localRes.json();
-        const isDeny = localData.verdict === 'DENY' || localRes.status === 403;
+        const localData = await localRes.json().catch(() => ({}));
+        const isDeny = localData?.verdict === 'DENY' || localRes.status === 403 || !localRes.ok;
 
         return {
           success: !isDeny,
           route: 'LOCAL_SIDECAR_RAM',
-          tenant: localData.tenant_id || bodyData.tenant || '',
-          evidence_id: localData.evidence_hash ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}` : '',
+          tenant: localData?.tenant_id || cleanBody.tenant || '',
+          evidence_id: localData?.evidence_hash ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}` : '',
           decision: isDeny ? 'DENY' : 'ALLOW',
-          verdict: isDeny ? 'RECHAZADO' : (localData.detox_status === 'SANITIZED' ? 'SANITIZED' : 'PERMITIDO'),
+          verdict: isDeny ? 'RECHAZADO' : (localData?.detox_status === 'SANITIZED' ? 'SANITIZED' : 'PERMITIDO'),
           enforcement: {
             verdict: isDeny ? 'DENY' : 'ALLOW',
             sanitizedInRam: true,
-            piiDetected: Boolean(localData.threat_detected),
-            ms3vIntegrityHash: localData.evidence_hash,
-            latencyMs: localData.latency_ms,
-            d1VaultSynced: Boolean(localData.d1_vault_synced)
+            piiDetected: Boolean(localData?.threat_detected),
+            ms3vIntegrityHash: localData?.evidence_hash || '',
+            latencyMs: localData?.latency_ms ?? 0,
+            d1VaultSynced: Boolean(localData?.d1_vault_synced)
           },
           inference: {
             provider: 'LOCAL_SIDECAR',
-            responseContent: isDeny ? '' : localData.clean_prompt
+            responseContent: isDeny ? '' : (localData?.clean_prompt || '')
           }
         };
       } catch (e) {
@@ -280,11 +299,11 @@ export const apiService = {
     try {
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
-        overrideTenant: bodyData.tenant,
-        overrideUser: bodyData.user,
-        overrideRole: bodyData.role,
-        overrideToken: bodyData.token,
-        body: JSON.stringify(bodyData)
+        overrideTenant: cleanBody.tenant,
+        overrideUser: cleanBody.user,
+        overrideRole: cleanBody.role,
+        overrideToken: activeToken,
+        body: JSON.stringify(cleanBody)
       });
 
       if (res && res.ok) {
