@@ -76,6 +76,10 @@ const SAARE_APPROVED_COMMANDS = [
   "LOGIC_SAFE_STATE"
 ];
 
+function sanitizeEmail(email) {
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
 function sanitizeProfileTag(rawValue, fallback = "DEFAULT_PROFILE") {
   if (!rawValue || typeof rawValue !== "string") return fallback;
   const cleaned = rawValue.trim().replace(/[^\w.@:-]+/g, "_").slice(0, 80);
@@ -84,12 +88,14 @@ function sanitizeProfileTag(rawValue, fallback = "DEFAULT_PROFILE") {
 
 function resolveClientProfileContext(request, payloadBody = {}, identity = null, cfIdentity = null) {
   const urlObj = new URL(request.url);
+  const body = payloadBody && typeof payloadBody === "object" ? payloadBody : {};
+
   const browserProfile = sanitizeProfileTag(
     request.headers.get("x-saare-browser-profile") ||
       request.headers.get("x-saare-profile") ||
       urlObj.searchParams.get("browserProfile") ||
-      payloadBody.browserProfile ||
-      payloadBody.browser_profile ||
+      body.browserProfile ||
+      body.browser_profile ||
       identity?.browserProfile,
     "BROWSER_PROFILE_UNSPECIFIED"
   );
@@ -97,8 +103,8 @@ function resolveClientProfileContext(request, payloadBody = {}, identity = null,
   const clientProfile = sanitizeProfileTag(
     request.headers.get("x-saare-client-profile") ||
       urlObj.searchParams.get("clientProfile") ||
-      payloadBody.clientProfile ||
-      payloadBody.client_profile ||
+      body.clientProfile ||
+      body.client_profile ||
       identity?.clientProfile,
     "CLIENT_PROFILE_STANDARD"
   );
@@ -106,8 +112,8 @@ function resolveClientProfileContext(request, payloadBody = {}, identity = null,
   const profileEmail = sanitizeEmail(
     request.headers.get("x-saare-profile-email") ||
       request.headers.get("x-saare-user") ||
-      payloadBody.profileEmail ||
-      payloadBody.user ||
+      body.profileEmail ||
+      body.user ||
       identity?.email ||
       cfIdentity?.userEmail ||
       urlObj.searchParams.get("user") ||
@@ -116,13 +122,13 @@ function resolveClientProfileContext(request, payloadBody = {}, identity = null,
 
   const credentialProof = String(
     request.headers.get("x-saare-credential-proof") ||
-      payloadBody.credentialProof ||
+      body.credentialProof ||
       ""
   ).trim().slice(0, 128);
 
   const nodeId = sanitizeProfileTag(
     request.headers.get("x-saare-node-id") ||
-      payloadBody.nodeId ||
+      body.nodeId ||
       "NODE-L7-AUTH-01",
     "NODE-L7-AUTH-01"
   );
@@ -143,29 +149,36 @@ function resolveClientProfileContext(request, payloadBody = {}, identity = null,
 }
 
 function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
-  let out = typeof inputText === "string" ? inputText : String(inputText || "");
+  let out = typeof inputText === "string" ? inputText : String(inputText ?? "");
   const extraRules = [];
 
-  if (/\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i.test(out)) {
-    out = out.replace(/\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/gi, "[DNI_NIE_SANITIZADO]");
+  const dniNieRegex = /\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/gi;
+  if (dniNieRegex.test(out)) {
+    dniNieRegex.lastIndex = 0;
+    out = out.replace(dniNieRegex, "[DNI_NIE_SANITIZADO]");
     extraRules.push("DLP_ES_DNI_NIE");
   }
 
-  if (/\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{2}[\s]?\d{10}\b/gi.test(out)) {
-    out = out.replace(/\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{2}[\s]?\d{10}\b/gi, "[IBAN_SANITIZADO]");
+  const ibanRegex = /\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{2}[\s]?\d{10}\b/gi;
+  if (ibanRegex.test(out)) {
+    ibanRegex.lastIndex = 0;
+    out = out.replace(ibanRegex, "[IBAN_SANITIZADO]");
     extraRules.push("DLP_IBAN");
   }
 
-  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi.test(out)) {
-    out = out.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi, "[EMAIL_SANITIZADO]");
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi;
+  if (emailRegex.test(out)) {
+    emailRegex.lastIndex = 0;
+    out = out.replace(emailRegex, "[EMAIL_SANITIZADO]");
     extraRules.push("DLP_EMAIL");
   }
 
-  for (const r of customRules || []) {
+  for (const r of Array.isArray(customRules) ? customRules : []) {
     try {
       if (!r?.pattern) continue;
       const rx = new RegExp(r.pattern, "gi");
       if (rx.test(out)) {
+        rx.lastIndex = 0;
         out = out.replace(rx, `[SANITIZADO:${String(r.name || r.id || "RULE").slice(0, 24)}]`);
         extraRules.push(`CUSTOM_${String(r.name || r.id || "RULE").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`);
       }
@@ -423,22 +436,6 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
 
 const MERKLE_BATCH_THRESHOLD = 1000;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
-
-const ROLE_RANKS = {
-  AUDITOR_GUEST_LEVEL_0: 0,
-  OPERATIONAL_AGENT_USER: 0,
-  TENANT_AUDITOR: 1,
-  BOARD_EXECUTIVE_LEVEL_1: 1,
-  DPO_GRC_LEVEL_2: 2,
-  CISO_SECOPS_LEVEL_3: 3,
-  SECURITY_CISO_ADMIN: 4,
-  CISO_ADMIN: 4
-};
-
-function hasRequiredRank(userRole, minRank) {
-  const rank = ROLE_RANKS[userRole] !== undefined ? ROLE_RANKS[userRole] : 0;
-  return rank >= minRank;
-}
 
 function parseSemanticCommand(promptText, env = {}) {
   if (typeof promptText !== "string") return null;
@@ -703,10 +700,6 @@ function getFallbackUserVault(env) {
 
 function fallbackVaultEnabled(env) {
   return String(env?.ALLOW_FALLBACK_VAULT || "false").toLowerCase() === "true";
-}
-
-function sanitizeEmail(email) {
-  return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
 function getTitularNif(env) {
@@ -2322,7 +2315,7 @@ export default {
     }
   },
 
-  async scheduled(event, env, ctx) {
+  async scheduled(_event, env, ctx) {
     let targetTenants = [];
     try {
       if (env?.DB) {

@@ -1,28 +1,28 @@
 {
   "name": "control-plane",
   "version": "1.5.0",
-  "private": true,
-  "type": "module",
+  "description": "S.A.A.R.E. Enterprise Control Plane - SGP 1.0 / MS3V (BLOCK LOGIC + SEMANTIC DETOX RAM)",
   "main": "worker.js",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "wrangler dev worker.js",
+    "deploy": "wrangler deploy worker.js",
     "types": "wrangler types",
-    "start": "node telemetryServer.js",
+    "telemetry": "node telemetryServer.js",
     "despacho": "node generar_despacho.js",
     "resilience": "node resilienceRunner.js"
   },
-  "dependencies": {
-    "@saare/entitlements": "workspace:*",
-    "dotenv": "^16.4.7",
-    "jszip": "^3.10.1",
-    "kysely": "^0.27.5",
-    "pg": "^8.13.1"
-  },
+  "keywords": [
+    "cloudflare-worker",
+    "sgp",
+    "ms3v",
+    "saare",
+    "control-plane",
+    "d1"
+  ],
+  "author": "S.A.A.R.E. Engineering",
+  "license": "PROPRIETARY",
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261031.1",
-    "@types/node": "^22.10.2",
-    "@types/pg": "^8.11.10",
-    "wrangler": "^4.156.0"
+    "@cloudflare/workers-types": "^4.20260304.0",
+    "wrangler": "^3.114.0"
   }
 }
