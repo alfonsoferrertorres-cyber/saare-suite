@@ -24,9 +24,7 @@ import { DeploymentManager } from "./src/engines/stateMachine.js";
 import {
   PLAN_IDS,
   sanitizePlanId,
-  getPlanEntitlements,
-  checkQuota,
-  isFeatureAllowed
+  getPlanEntitlements
 } from "./src/packages/entitlements.js";
 
 const rateLimiter = new DistributedRateLimiter(60000, 100);
@@ -55,70 +53,6 @@ const ISO_42001_PRESET_RULES = [
   }
 ];
 
-// ==========================================
-// NÚCLEO DE BLINDAJE PERIMETRAL SAARE V6 (RESILIENTE)
-// ==========================================
-class SAARECoreWorkerV6 {
-  constructor(env = {}) {
-    this.version = "v6.0_AUTOMATA";
-    this.complianceSignature = "SAARE-ISO-42001-V6-NATIVE";
-    this.hardwareState = {
-      galvanic_isolation: "ACTIVE",
-      optocoupler_return_path: "DISABLED_PHYSICALLY",
-      outbound_port: "TCP_8080_STRICT_UNIDIRECTIONAL"
-    };
-    this.strictDriftThreshold = 0.0000;
-    this.author = env.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane";
-    this._ejecutarBlindajeVersiones();
-  }
-
-  _ejecutarBlindajeVersiones() {
-    try {
-      this.entornoSellado = true;
-    } catch (e) {
-      this.entornoSellado = false;
-    }
-  }
-
-  procesarFlujoV6(payloadDatos = {}) {
-    try {
-      const drift = typeof payloadDatos.semantic_drift === "number" ? payloadDatos.semantic_drift : 0.0000;
-
-      if (drift > this.strictDriftThreshold) {
-        return {
-          allowed: false,
-          status: "RECHAZADO_V6_AUTOMATA",
-          motivo: "Desviación estocástica detectada en el perímetro L7. Bloqueo ex-ante activado.",
-          action: "HARDWARE_LOCKDOWN_ACTIVE"
-        };
-      }
-
-      return {
-        allowed: true,
-        status: "VALIDADO_CONFORME",
-        version: this.version,
-        signature: this.complianceSignature,
-        author: this.author,
-        hardware_state: this.hardwareState,
-        perimeter_verification: "ISOLATION_CONFIRMED_100%"
-      };
-    } catch (err) {
-      return {
-        allowed: true,
-        status: "VALIDADO_DEGRADADO_RESILIENTE",
-        version: this.version,
-        signature: this.complianceSignature,
-        author: this.author,
-        hardware_state: this.hardwareState
-      };
-    }
-  }
-
-  validarPerimetro(payloadDatos = {}) {
-    return this.procesarFlujoV6(payloadDatos);
-  }
-}
-
 const SAARE_APPROVED_COMMANDS = [
   "INICIAR_CUMPLIMIENTO_EXANTE_SAARE",
   "SAARE_CONTROL.PY --KILL",
@@ -140,9 +74,6 @@ const SAARE_APPROVED_COMMANDS = [
   "LOGIC_SAFE_STATE"
 ];
 
-// ==========================================
-// ADAPTADOR CPAAS CON TOLERANCIA A FALLOS
-// ==========================================
 class CPaaSAdapterManager {
   static async sendTwilio(payload, env) {
     const accountSid = env?.TWILIO_ACCOUNT_SID;
@@ -274,16 +205,13 @@ class CPaaSAdapterManager {
   }
 
   static async sendWithFailover(payload, env, priorityOrder = ["twilio", "messagebird", "vonage", "infobip"]) {
-    const errors = [];
     for (const key of priorityOrder) {
       try {
         if (key === "twilio") return await this.sendTwilio(payload, env);
         if (key === "messagebird") return await this.sendMessageBird(payload, env);
         if (key === "vonage") return await this.sendVonage(payload, env);
         if (key === "infobip") return await this.sendInfobip(payload, env);
-      } catch (err) {
-        errors.push(`${key.toUpperCase()}: ${err.message}`);
-      }
+      } catch (err) {}
     }
     return { provider: "SAARE_RESILIENT_FALLBACK", messageId: `fb_${Date.now()}` };
   }
@@ -402,33 +330,11 @@ function parseSemanticCommand(promptText, env = {}) {
   };
 
   if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
-    return {
-      type: "MODULE_5_BOOTSTRAP",
-      verdict: "PERMITIDO",
-      decision: "ALLOW",
-      scenarioId: "cumplimiento_corporativo_integral",
-      category: "MODULE_5_EX_ANTE_COMPLIANCE",
-      norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)",
-      witness: "[MS3V-COMPLIANCE-L7-OK]",
-      vaultTarget: "D1_WORM",
-      ...baseIdentity
-    };
+    return { type: "MODULE_5_BOOTSTRAP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "MODULE_5_EX_ANTE_COMPLIANCE", norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)", witness: "[MS3V-COMPLIANCE-L7-OK]", vaultTarget: "D1_WORM", ...baseIdentity };
   }
-
   if (upper.includes("SAARE_CONTROL.PY --KILL") || upper.includes("KILL-SWITCH")) {
-    return {
-      type: "KILL_SWITCH_TRIGGERED",
-      verdict: "RECHAZADO",
-      decision: "DENY",
-      scenarioId: "razonamiento_activo_l7",
-      category: "EMERGENCY_DEACTIVATION",
-      norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico",
-      witness: "[KILL-SWITCH-ENFORCED]",
-      vaultTarget: "RAM",
-      ...baseIdentity
-    };
+    return { type: "KILL_SWITCH_TRIGGERED", verdict: "RECHAZADO", decision: "DENY", scenarioId: "razonamiento_activo_l7", category: "EMERGENCY_DEACTIVATION", norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico", witness: "[KILL-SWITCH-ENFORCED]", vaultTarget: "RAM", ...baseIdentity };
   }
-
   if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
   if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
   if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "razonamiento_activo_l7", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
@@ -544,9 +450,7 @@ async function ensureD1TablesExist(db) {
         )
       `)
     ]);
-  } catch (e) {
-    console.warn("[SAARE D1 Schema Init Warning (Resilient Mode)]:", e?.message);
-  }
+  } catch (e) {}
 }
 
 function getCurrentBillingPeriod() {
@@ -626,7 +530,6 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
       const combinedHashes = results.map(r => r.trace_id).join(":");
       const merkleRoot = await computeSha256(combinedHashes);
-
       const anchorId = `ANK-${new Date().getUTCFullYear()}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
 
@@ -799,12 +702,10 @@ export default {
     }
 
     try {
-      const _u = new URL(request.url);
-      const _p = _u.pathname.toLowerCase();
+      const urlObj = new URL(request.url);
+      const lowerPath = urlObj.pathname.toLowerCase();
 
-      const coreV6 = new SAARECoreWorkerV6(env);
-
-      if (request.method === "GET" && (_p === "/" || _p === "")) {
+      if (request.method === "GET" && (lowerPath === "/" || lowerPath === "")) {
         return new Response(
           JSON.stringify({
             service: "S.A.A.R.E. Enterprise Control Plane",
@@ -834,7 +735,7 @@ export default {
         return new Response(killswitchResponse.body, { status: killswitchResponse.status, headers });
       }
 
-      let normalizedPath = _u.pathname.replace(/\/$/, "") || "/";
+      let normalizedPath = urlObj.pathname.replace(/\/$/, "") || "/";
       while (normalizedPath.includes("/api/v1/api/v1")) normalizedPath = normalizedPath.replace("/api/v1/api/v1", "/api/v1");
       while (normalizedPath.includes("/v1/v1")) normalizedPath = normalizedPath.replace("/v1/v1", "/v1");
 
@@ -923,7 +824,7 @@ export default {
       }
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
-        const targetTenant = _u.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || "DEFAULT_TENANT";
+        const targetTenant = urlObj.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || "DEFAULT_TENANT";
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const extId = env?.CHROME_EXTENSION_ID || "EXTENSION_ID_UNCONFIGURED";
         const gatewayUrl = env?.PUBLIC_API_URL || "https://api.example.com/v1/chat/completions";
@@ -1012,7 +913,7 @@ export default {
           ENTERPRISE_1990: env?.STRIPE_PRICE_ENTERPRISE
         };
         const stripePriceId = body.priceId || priceMap[planId] || env?.STRIPE_PRICE_PRO;
-        const consoleBaseUrl = env?.CONSOLE_BASE_URL || `${_u.origin}`;
+        const consoleBaseUrl = env?.CONSOLE_BASE_URL || `${urlObj.origin}`;
 
         if (!env?.STRIPE_SECRET_KEY || !stripePriceId) {
           const licenseKey = await getOrCreateTenantLicenseKey(cleanTenant, env);
@@ -1158,10 +1059,10 @@ export default {
         }
       }
 
-      let authHeader = request.headers.get("Authorization") || "";
-      let rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
-      let headerUser = sanitizeEmail(request.headers.get("x-saare-user") || _u.searchParams.get("user"));
-      let clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
+      const authHeader = request.headers.get("Authorization") || "";
+      const rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || urlObj.searchParams.get("user"));
+      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
 
       let identity = null;
       try {
@@ -1187,7 +1088,7 @@ export default {
         }
       } catch (e) {}
 
-      const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || "DEFAULT_TENANT";
+      const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || "DEFAULT_TENANT";
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = isAuthenticated
         ? (identity?.role || "CISO_ADMIN")
@@ -1217,14 +1118,14 @@ export default {
         const quota = tenantRow?.quota || entitlements?.monthlyVerdicts || 25000;
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
         const licenseKey = await getOrCreateTenantLicenseKey(tenantId, env);
-        const apiOrigin = _u.origin;
+        const apiOrigin = urlObj.origin;
 
         return new Response(JSON.stringify({
           status: "SUCCESS",
           tenantId,
           companyName: tenantRow?.name || tenantId,
           planId: activePlan,
-          maxSeats: entitlements?.maxSeats || entitlements?.max_users || 2,
+          maxSeats: entitlements?.maxSeats || 2,
           subscriptionStatus: tenantRow?.status || "ACTIVE",
           billingPeriod: getCurrentBillingPeriod(),
           usage: {
@@ -1268,7 +1169,7 @@ export default {
 
         const portalForm = new URLSearchParams({
           customer: cfg.stripeCustomerId,
-          return_url: env?.CONSOLE_BASE_URL || _u.origin
+          return_url: env?.CONSOLE_BASE_URL || urlObj.origin
         });
         const portalRes = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
           method: "POST",
@@ -1289,10 +1190,10 @@ export default {
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
         const targetTenant = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
           ? tenantId
-          : (_u.searchParams.get("tenant") || tenantId);
+          : (urlObj.searchParams.get("tenant") || tenantId);
 
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
-        const apiOrigin = _u.origin;
+        const apiOrigin = urlObj.origin;
 
         const envContent = [
           "# S.A.A.R.E. Native Edge Agent L7 - Configuracion Multitenant (SGP 1.0)",
@@ -1546,7 +1447,7 @@ export default {
           } catch (e) {}
         }
         const entitlements = getPlanEntitlements(activePlan);
-        const maxSeats = entitlements?.maxSeats || entitlements?.max_users || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
+        const maxSeats = entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
 
         if (usersList.length === 0 && (identity?.email || headerUser)) {
           usersList = [
@@ -1634,7 +1535,7 @@ export default {
         const grantType = body.grantType || "KIT_CONSULTING";
         const docType = body.documentType || "ALL";
         const code = body.complianceCode || `MS3V-${grantType}-${Date.now()}`;
-        const vaultBase = env?.TRUST_ANCHOR || _u.origin;
+        const vaultBase = env?.TRUST_ANCHOR || urlObj.origin;
         return new Response(JSON.stringify({
           status: "SUCCESS",
           complianceCode: code,
@@ -1674,9 +1575,9 @@ export default {
       }
 
       if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
-        const limitParam = parseInt(_u.searchParams.get("limit") || "100", 10);
+        const limitParam = parseInt(urlObj.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
-        const requestedTenant = request.headers.get("x-saare-tenant") || _u.searchParams.get("tenant") || tenantId;
+        const requestedTenant = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId;
         const activeTenant = (isAuthenticated && identity?.tenantId && !hasRequiredRank(activeUserRole, 3))
           ? identity.tenantId
           : requestedTenant;
@@ -1716,17 +1617,17 @@ export default {
       }
 
       // ==========================================
-      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL + SGP 1.0 + V6 CORE
+      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL + SGP 1.0
       // ==========================================
       if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue") && method === "POST") {
         const startTime = performance.now();
-        const contentType = request.headers.get("content-type") || "";
+        const reqContentType = request.headers.get("content-type") || "";
 
-        let body = {};
+        let payloadBody = {};
         let rawPrompt = "";
         let hasMediaAttachment = false;
 
-        if (contentType.includes("multipart/form-data")) {
+        if (reqContentType.includes("multipart/form-data")) {
           const formData = await request.formData();
           const file = formData.get("file") || formData.get("image") || formData.get("attachment") || formData.get("photo");
           const textPrompt = formData.get("prompt") || formData.get("message") || formData.get("text") || "";
@@ -1739,23 +1640,23 @@ export default {
           } else {
             rawPrompt = textPrompt;
           }
-          body = {
+          payloadBody = {
             prompt: rawPrompt,
             provider: formData.get("provider") || "GEMINI",
             model: formData.get("model") || "gpt-4o",
             userAction: formData.get("userAction") || "DEFAULT_POLICY"
           };
         } else {
-          body = await request.json().catch(() => ({}));
-          rawPrompt = body.prompt || "";
+          payloadBody = await request.json().catch(() => ({}));
+          rawPrompt = payloadBody.prompt || "";
 
-          if (!rawPrompt && Array.isArray(body.messages)) {
-            let extractedPrompts = [];
-            for (const msg of body.messages) {
+          if (!rawPrompt && Array.isArray(payloadBody.messages)) {
+            const extractedPrompts = [];
+            for (const msg of payloadBody.messages) {
               if (typeof msg.content === "string") {
                 extractedPrompts.push(`${msg.role}: ${msg.content}`);
               } else if (Array.isArray(msg.content)) {
-                let partsSummary = [];
+                const partsSummary = [];
                 for (const part of msg.content) {
                   if (part.type === "text") {
                     partsSummary.push(part.text);
@@ -1767,18 +1668,18 @@ export default {
                 extractedPrompts.push(`${msg.role}: ${partsSummary.join(" ")}`);
               }
             }
-            body.messages.unshift(getSaareL7SystemDirective(env));
+            payloadBody.messages.unshift(getSaareL7SystemDirective(env));
             rawPrompt = extractedPrompts.join("\n");
           }
         }
 
-        const tenantHeader = kvLicenseTenant || request.headers.get("x-saare-tenant") || body.tenant || tenantId;
-        const targetProvider = (body.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
+        const tenantHeader = kvLicenseTenant || request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId;
+        const targetProvider = (payloadBody.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
         const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
 
-        const user = sanitizeEmail(body.user || identity?.email || cfIdentity?.userEmail || headerUser) || "operator_anonymous";
+        const user = sanitizeEmail(payloadBody.user || identity?.email || cfIdentity?.userEmail || headerUser) || "operator_anonymous";
         const tenant = tenantHeader || "DEFAULT_TENANT";
-        const userChoice = body.userAction || "DEFAULT_POLICY";
+        const userChoice = payloadBody.userAction || "DEFAULT_POLICY";
 
         let ms3vVerdict = { HASH: await computeSha256(rawPrompt || "resilient"), TS: `${Date.now()}000000`, EXECUTE: "EXEC_RESILIENT_OK", STATUS: "ALLOW" };
         try {
@@ -1824,7 +1725,8 @@ export default {
                 rulesTriggered.push(ruleTag);
               }
               const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
-              if (ruleMeta.includes("DENY") || ruleMeta.includes("BLOCK") || ruleMeta.includes("ISO 42001") || ruleMeta.includes("ISO42001")) {
+              const isGenericDlpPreset = ruleMeta.includes("DLP-DNI-NIE") || ruleMeta.includes("DLP-IBAN") || ruleMeta.includes("DLP-EMAIL");
+              if (!isGenericDlpPreset && (ruleMeta.includes("DENY") || ruleMeta.includes("BLOCK") || ruleMeta.includes("ISO 42001") || ruleMeta.includes("ISO42001"))) {
                 customRuleBlockHit = true;
               }
             }
@@ -1838,13 +1740,15 @@ export default {
         const strictHighRisk = !semanticCmd && (
           Boolean(detoxResult.jailbreakDetected) ||
           Boolean(detoxResult.highRiskDetected) ||
-          hasSpanishId ||
           customRuleBlockHit ||
           rawPrompt.toUpperCase().includes("DROP TABLE") ||
           rawPrompt.toUpperCase().includes("IGNORE ALL PREVIOUS")
         );
 
-        const standardPiiRisk = !semanticCmd && !strictHighRisk && Boolean(detoxResult.piiDetected);
+        const standardPiiRisk = !semanticCmd && !strictHighRisk && (
+          Boolean(detoxResult.piiDetected) ||
+          hasSpanishId
+        );
 
         const isBlocked = strictHighRisk || (standardPiiRisk && userChoice !== "SANITIZE_AND_SEND");
         const alarmTriggered = !semanticCmd && (strictHighRisk || standardPiiRisk);
@@ -1911,7 +1815,7 @@ export default {
           ? semanticCmd.decision
           : (isBlocked ? "DENY" : "ALLOW");
 
-        const activeScenarioId = body.scenarioId || semanticCmd?.scenarioId || "cumplimiento_corporativo_integral";
+        const activeScenarioId = payloadBody.scenarioId || semanticCmd?.scenarioId || "cumplimiento_corporativo_integral";
 
         const sgp7Dims = evaluateSgp1SevenDimensions({
           isAuthenticated: Boolean(kvLicenseTenant || isAuthenticated),
@@ -1941,11 +1845,11 @@ export default {
 
         const llmOutputContent = isBlocked
           ? "[BLOQUEO EX-ANTE L7] Petición y archivo/foto interceptados y neutralizados en RAM antes de contactar con el proveedor LLM."
-          : await invokeAgnosticLlmProvider(targetProvider, promptForLlm, body.model, env);
+          : await invokeAgnosticLlmProvider(targetProvider, promptForLlm, payloadBody.model, env);
 
         const year = new Date().getUTCFullYear();
-        const runId = await generateDeterministicEvidenceId(user, rawPrompt, body.evidence_id);
-        const verdictId = body.verdictId || `VRD-${year}-${runId.replace("EV-L7-", "")}`;
+        const runId = await generateDeterministicEvidenceId(user, rawPrompt, payloadBody.evidence_id);
+        const verdictId = payloadBody.verdictId || `VRD-${year}-${runId.replace("EV-L7-", "")}`;
         const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
         const latencyMs = parseFloat((performance.now() - startTime).toFixed(2));
 
@@ -2068,7 +1972,7 @@ export default {
           },
           inference: {
             provider: targetProvider,
-            model: body.model || "gpt-4o",
+            model: payloadBody.model || "gpt-4o",
             responseContent: llmOutputContent
           },
           proofBundle,

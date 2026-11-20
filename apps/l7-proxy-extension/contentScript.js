@@ -4,7 +4,7 @@
   console.log("[S.A.A.R.E. L7 Proxy] Agente de Inspección Resiliente Activo.");
 
   let isProcessing = false;
-  let bypassNextEnter = false;
+  let bypassNextAction = false;
 
   function isExtensionContextValid() {
     try {
@@ -58,18 +58,36 @@
     });
   }
 
-  async function handleKeyDown(event) {
-    if (bypassNextEnter) {
-      bypassNextEnter = false;
-      return;
+  function findActiveAiInput(referenceEl) {
+    if (referenceEl && isAiInputField(referenceEl)) return referenceEl;
+    const active = document.activeElement;
+    if (active && isAiInputField(active)) return active;
+
+    const selectors = [
+      'div[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"]',
+      'textarea#prompt-textarea',
+      'textarea'
+    ];
+    for (const sel of selectors) {
+      const candidates = Array.from(document.querySelectorAll(sel));
+      const withText = candidates.find(el => getInputValue(el).trim().length > 0);
+      if (withText) return withText;
+      if (candidates.length > 0) return candidates[candidates.length - 1];
     }
+    return null;
+  }
 
-    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-    if (isProcessing) return;
+  function isSendButtonTarget(target) {
+    if (!target || typeof target.closest !== "function") return false;
+    return Boolean(
+      target.closest(
+        'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"], div[role="button"][aria-label*="Enviar"], button.send-button'
+      )
+    );
+  }
 
-    const inputEl = event.target;
-    if (!isAiInputField(inputEl)) return;
-
+  async function evaluateAndProcess(event, inputEl) {
     const rawPrompt = getInputValue(inputEl);
     if (!rawPrompt || !rawPrompt.trim()) return;
 
@@ -77,6 +95,7 @@
     event.stopPropagation();
     event.stopImmediatePropagation();
 
+    if (isProcessing) return;
     isProcessing = true;
     console.log("[S.A.A.R.E. L7] Interceptando Prompt Ex-Ante...");
 
@@ -118,14 +137,12 @@
             );
 
             if (!confirmed) {
-              isProcessing = false;
               return;
             }
 
             const retryResponse = await inspectWithControlPlane(rawPrompt, "SANITIZE_AND_SEND");
             if (!retryResponse || !retryResponse.success || !retryResponse.verdict || retryResponse.verdict.decision === "DENY") {
               alert("[S.A.A.R.E. SECURITY BLOCK]\nEl envío sanitizado no fue autorizado por el Control Plane.");
-              isProcessing = false;
               return;
             }
 
@@ -140,7 +157,6 @@
               `Evidencia: ${evidenceId}\n` +
               `Detalle: ${detail}`
             );
-            isProcessing = false;
             return;
           }
         }
@@ -151,13 +167,12 @@
 
         setTimeout(() => {
           bypassAndSubmit(inputEl);
-        }, 50);
+        }, 60);
 
       } else {
         const shouldBlock = response?.failClosed !== false;
         if (shouldBlock) {
           alert("[S.A.A.R.E. FAIL-CLOSED]\nBloqueado por seguridad: el Control Plane L7 no devolvió un veredicto válido.");
-          isProcessing = false;
           return;
         }
         console.warn("[S.A.A.R.E.] Sin respuesta válida del Service Worker. Fail-Open activado.");
@@ -165,9 +180,38 @@
       }
     } catch (err) {
       console.error("[S.A.A.R.E. Proxy Error]:", err);
-      isProcessing = false;
       alert("[S.A.A.R.E. FAIL-CLOSED]\nBloqueado por error de comunicación con el agente de gobernanza L7.");
+    } finally {
+      isProcessing = false;
     }
+  }
+
+  async function handleKeyDown(event) {
+    if (bypassNextAction) {
+      bypassNextAction = false;
+      return;
+    }
+
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+
+    const inputEl = event.target;
+    if (!isAiInputField(inputEl)) return;
+
+    await evaluateAndProcess(event, inputEl);
+  }
+
+  async function handleClick(event) {
+    if (bypassNextAction) {
+      bypassNextAction = false;
+      return;
+    }
+
+    if (!isSendButtonTarget(event.target)) return;
+
+    const inputEl = findActiveAiInput(null);
+    if (!inputEl) return;
+
+    await evaluateAndProcess(event, inputEl);
   }
 
   function bypassAndSubmit(el) {
@@ -225,15 +269,16 @@
   function dispatchOriginalSubmit(el) {
     const container = el.closest("form") || el.closest("div[class*='relative']") || document;
     const sendButton = container.querySelector(
-      'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"]'
+      'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"], div[role="button"][aria-label*="Enviar"]'
     );
 
     if (sendButton && !sendButton.hasAttribute("disabled")) {
+      bypassNextAction = true;
       sendButton.click();
       return;
     }
 
-    bypassNextEnter = true;
+    bypassNextAction = true;
     const enterEvent = new KeyboardEvent("keydown", {
       key: "Enter",
       code: "Enter",
@@ -248,9 +293,13 @@
   function attachListeners() {
     window.removeEventListener("keydown", handleKeyDown, true);
     document.removeEventListener("keydown", handleKeyDown, true);
+    window.removeEventListener("click", handleClick, true);
+    document.removeEventListener("click", handleClick, true);
 
     window.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("click", handleClick, true);
+    document.addEventListener("click", handleClick, true);
   }
 
   attachListeners();
