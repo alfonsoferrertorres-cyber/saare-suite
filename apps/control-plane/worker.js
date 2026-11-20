@@ -29,6 +29,7 @@ import {
 
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const semanticDetox = new SemanticDetoxEngine();
+let d1TablesInitialized = false;
 
 const ISO_42001_PRESET_RULES = [
   {
@@ -384,6 +385,7 @@ function parseSemanticCommand(promptText, env = {}) {
 
 async function ensureD1TablesExist(db) {
   if (!db) return;
+  if (d1TablesInitialized) return;
   try {
     await db.batch([
       db.prepare(`
@@ -483,6 +485,7 @@ async function ensureD1TablesExist(db) {
         )
       `)
     ]);
+    d1TablesInitialized = true;
   } catch (e) {}
 }
 
@@ -729,9 +732,10 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
 
 export default {
   async fetch(request, env, ctx) {
-    const cors = handleCors(request);
+    const cors = handleCors(request) || {};
+    const corsHeaders = cors.corsHeaders || {};
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 200, headers: cors.corsHeaders });
+      return new Response(null, { status: 200, headers: corsHeaders });
     }
 
     try {
@@ -753,7 +757,7 @@ export default {
             p2026Registration: env?.P2026_REGISTRATION || null,
             trustAnchor: env?.TRUST_ANCHOR || null
           }),
-          { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -764,7 +768,7 @@ export default {
 
       if (killswitchResponse) {
         const headers = new Headers(killswitchResponse.headers);
-        Object.entries(cors.corsHeaders).forEach(([k, v]) => headers.set(k, v));
+        Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
         return new Response(killswitchResponse.body, { status: killswitchResponse.status, headers });
       }
 
@@ -798,7 +802,7 @@ export default {
             softwareCatalog: ["LabEngine", "PerimeterShield", "EvidenceVault", "ComplianceSuite", "SAAARECoreV6", "SemanticDetoxEngine"],
             timestamp: new Date().toISOString()
           }),
-          { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
         );
       }
 
@@ -827,7 +831,7 @@ export default {
             trustAnchor: env?.TRUST_ANCHOR || null,
             timestamp: new Date().toISOString()
           }),
-          { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
         );
       }
 
@@ -845,14 +849,14 @@ export default {
             trustAnchor: env?.TRUST_ANCHOR || null,
             timestamp: new Date().toISOString()
           }),
-          { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
         );
       }
 
       if ((path === "/api/v1/compliance/matrix" || path === "/v1/compliance/matrix" || path === "/compliance/matrix") && method === "GET") {
         return new Response(JSON.stringify(getLiveRegulatoryMatrix()), {
           status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
@@ -887,7 +891,7 @@ export default {
         return new Response(gpoRegistryContent, {
           status: 200,
           headers: {
-            ...cors.corsHeaders,
+            ...corsHeaders,
             "Content-Type": "text/plain; charset=utf-8",
             "Content-Disposition": `attachment; filename="saare_gpo_${targetTenant.toLowerCase()}.reg"`
           }
@@ -899,7 +903,7 @@ export default {
         if (!downloadUrl) {
           return new Response(JSON.stringify({ error: "NOT_CONFIGURED", message: "EXTENSION_DOWNLOAD_URL no configurada." }), {
             status: 404,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
         return Response.redirect(downloadUrl, 302);
@@ -910,7 +914,7 @@ export default {
         if (!sidecarUrl) {
           return new Response(JSON.stringify({ error: "NOT_CONFIGURED", message: "SIDECAR_DOWNLOAD_URL no configurada." }), {
             status: 404,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
         return Response.redirect(sidecarUrl, 302);
@@ -920,7 +924,7 @@ export default {
         try {
           return await handleStripeWebhook(request, env);
         } catch (stripeErr) {
-          return new Response(JSON.stringify({ status: "RECEIVED_WITH_RESILIENCE_WARNING", error: stripeErr.message }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ status: "RECEIVED_WITH_RESILIENCE_WARNING", error: stripeErr.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
 
@@ -933,7 +937,7 @@ export default {
         if (!email || !companyName) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'email' y 'companyName' son obligatorios." }), {
             status: 400,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -958,7 +962,7 @@ export default {
             licenseKey,
             checkoutUrl: `${consoleBaseUrl}/?checkout=simulated&tenant=${cleanTenant}`,
             message: "Stripe no configurado en entorno. Alta comercial completada en modo resiliente."
-          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const form = new URLSearchParams({
@@ -993,7 +997,7 @@ export default {
             message: session.error?.message || "No se pudo iniciar la sesión de suscripción."
           }), {
             status: 502,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -1003,7 +1007,7 @@ export default {
           planId,
           checkoutUrl: session.url,
           sessionId: session.id
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
@@ -1018,7 +1022,7 @@ export default {
             return new Response(JSON.stringify({
               error: "BAD_REQUEST",
               message: "Indica 'email', 'companyName' y una contraseña de al menos 6 caracteres."
-            }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
 
           if (env?.DB) {
@@ -1029,7 +1033,7 @@ export default {
                 return new Response(JSON.stringify({
                   error: "EMAIL_ALREADY_REGISTERED",
                   message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
-                }), { status: 409, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+                }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
               }
             } catch (d1Ex) {}
           }
@@ -1082,13 +1086,13 @@ export default {
               planId: PLAN_IDS.SANDBOX_FREE,
               isVerified: true
             }
-          }), { status: 201, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
         } catch (provisionErr) {
           return new Response(JSON.stringify({
             error: "SANDBOX_PROVISION_EXCEPTION",
             message: provisionErr.message || "Error interno al aprovisionar el sandbox."
-          }), { status: 500, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
 
@@ -1122,6 +1126,9 @@ export default {
       } catch (e) {}
 
       const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || "DEFAULT_TENANT";
+      const scopedTenantId = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
+        ? (identity?.tenantId || kvLicenseTenant || tenantId)
+        : tenantId;
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = isAuthenticated
         ? (identity?.role || "CISO_ADMIN")
@@ -1133,7 +1140,7 @@ export default {
           if (rateResult && rateResult.allowed === false) {
             return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
               status: 429,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
           }
         }
@@ -1175,14 +1182,14 @@ export default {
             bootstrapEndpoint: `${apiOrigin}/api/v1/agent/bootstrap?tenant=${tenantId}`
           },
           expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? null : (tenantRow?.expires_at || null)
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/api/v1/billing/portal" || path === "/v1/billing/portal" || path === "/billing/portal") && method === "POST") {
         if (!env?.STRIPE_SECRET_KEY) {
           return new Response(JSON.stringify({ error: "BILLING_NOT_CONFIGURED", message: "STRIPE_SECRET_KEY no configurada." }), {
             status: 503,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -1196,7 +1203,7 @@ export default {
         if (!cfg.stripeCustomerId) {
           return new Response(JSON.stringify({ error: "NO_STRIPE_CUSTOMER", message: "Este tenant aún no tiene un cliente Stripe asociado." }), {
             status: 404,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -1216,7 +1223,7 @@ export default {
 
         return new Response(JSON.stringify({ success: portalRes.ok, url: portalData.url || null }), {
           status: portalRes.ok ? 200 : 502,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
@@ -1239,7 +1246,7 @@ export default {
         return new Response(envContent, {
           status: 200,
           headers: {
-            ...cors.corsHeaders,
+            ...corsHeaders,
             "Content-Type": "text/plain; charset=utf-8",
             "Content-Disposition": `attachment; filename="saare_${targetTenant.toLowerCase()}.env"`
           }
@@ -1254,7 +1261,7 @@ export default {
         if (!evidenceHash) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio." }), {
             status: 400,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -1328,7 +1335,7 @@ export default {
         }), {
           status: 201,
           headers: {
-            ...cors.corsHeaders,
+            ...corsHeaders,
             "Content-Type": "application/json",
             "X-Saare-Permit": btoa(JSON.stringify({ protocol: "SGP-1.0", verdict: decisionNorm, evidence_id: evidenceId }))
           }
@@ -1360,21 +1367,22 @@ export default {
         }
         return new Response(JSON.stringify({ success: true, status: "SUCCESS", data: metricsData }), {
           status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
       if ((path === "/cpaas/send" || path === "/api/v1/cpaas/send" || path === "/v1/cpaas/send") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         if (!body.to || !body.body) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const priorityOrder = Array.isArray(body.priority) ? body.priority : ["twilio", "messagebird", "vonage", "infobip"];
+        const auditTenantId = scopedTenantId;
 
         try {
           const cpaasResult = await CPaaSAdapterManager.sendWithFailover(body, env, priorityOrder);
-          const evidenceHash = await computeSha256(`${tenantId}:${cpaasResult.provider}:${cpaasResult.messageId}:${Date.now()}`);
+          const evidenceHash = await computeSha256(`${auditTenantId}:${cpaasResult.provider}:${cpaasResult.messageId}:${Date.now()}`);
 
           if (env?.DB) {
             const auditInsert = async () => {
@@ -1385,7 +1393,7 @@ export default {
                   VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?, ?)
                 `).bind(
                   `cpaas_${crypto.randomUUID().substring(0, 8)}`,
-                  tenantId,
+                  auditTenantId,
                   cpaasResult.provider,
                   cpaasResult.messageId,
                   body.to,
@@ -1408,7 +1416,7 @@ export default {
             messageId: cpaasResult.messageId,
             evidenceHash,
             timestamp: new Date().toISOString()
-          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         } catch (err) {
           return new Response(JSON.stringify({
             success: true,
@@ -1416,7 +1424,7 @@ export default {
             provider: "SAARE_RESILIENT_FALLBACK",
             messageId: `fb_${Date.now()}`,
             timestamp: new Date().toISOString()
-          }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
 
@@ -1447,7 +1455,7 @@ export default {
           authenticated: isAuthenticated
         }), {
           status: 200,
-          headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
@@ -1457,12 +1465,12 @@ export default {
           const currentUser = identity?.email || cfIdentity?.userEmail || headerUser || null;
           const sseResult = await telemetry.handleStream(request, tenantId, currentUser, activeUserRole, ctx);
           const headers = new Headers(sseResult.headers);
-          Object.entries(cors.corsHeaders).forEach(([k, v]) => headers.set(k, v));
+          Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
           return new Response(sseResult.body, { status: sseResult.status, headers });
         } catch (sseErr) {
           return new Response("data: {\"status\":\"CONNECTED_RESILIENT\"}\n\n", {
             status: 200,
-            headers: { ...cors.corsHeaders, "Content-Type": "text/event-stream" }
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
           });
         }
       }
@@ -1495,7 +1503,7 @@ export default {
           usedSeats: usersList.length,
           remainingSeats: Math.max(0, maxSeats - usersList.length),
           users: usersList
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/executive/seats/assign" || path === "/api/v1/executive/seats/assign" || path === "/v1/executive/seats/assign") && method === "POST") {
@@ -1508,7 +1516,7 @@ export default {
         if (!cleanAssignEmail) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio." }), {
             status: 400,
-            headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
 
@@ -1521,11 +1529,11 @@ export default {
 
             await env.DB.prepare(
               "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, ?, 1)"
-            ).bind(cleanAssignEmail, passwordHash, assignName, tenantId, assignRole).run();
+            ).bind(cleanAssignEmail, passwordHash, assignName, scopedTenantId, assignRole).run();
           } catch (e) {}
         }
 
-        return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
@@ -1533,11 +1541,11 @@ export default {
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(tenantId).all();
+            const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).all();
             if (results) rules = results;
           } catch (e) {}
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", rules }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SUCCESS", rules }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
@@ -1551,7 +1559,7 @@ export default {
             await ensureD1TablesExist(env.DB);
             for (const r of newRules) {
               await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
-                .bind(r.id || `RULE-${Date.now()}`, tenantId, r.name, r.pattern)
+                .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, r.name, r.pattern)
                 .run();
             }
           } catch (e) {}
@@ -1560,7 +1568,7 @@ export default {
           success: true,
           presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
           rules: newRules
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/subsidies/export-package" || path === "/v1/subsidies/export-package" || path === "/api/v1/subsidies/export-package") && method === "POST") {
@@ -1576,7 +1584,7 @@ export default {
           documentType: docType,
           downloadUrl: `${vaultBase}/export/${code}.zip`,
           timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/integrations/siem" || path === "/api/v1/integrations/siem") && method === "POST") {
@@ -1586,11 +1594,11 @@ export default {
           evidenceId: body.evidenceId || "EV-SIEM-RESILIENT",
           syslogAck: true,
           timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/vault/sync" || path === "/api/v1/vault/sync") && method === "GET") {
-        return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
@@ -1604,7 +1612,7 @@ export default {
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC / RFC 3161",
           timestamp: new Date().toISOString(),
           message: "Sello criptográfico e inmutabilidad acreditados contra la Bóveda WORM D1 con trazabilidad MS3V."
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
@@ -1621,7 +1629,7 @@ export default {
           tracesList = await vaultEngine.getTenantTraces(activeTenant, safeLimit);
         } catch (tErr) {}
 
-        return new Response(JSON.stringify({ status: "SUCCESS", tenant: activeTenant, count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SUCCESS", tenant: activeTenant, count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/api/v1/evidence/verify" || path === "/evidence/verify") && method === "POST") {
@@ -1646,7 +1654,7 @@ export default {
           isQualifiedTSA: Boolean(safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH),
           timestampUtc: seal.timestampUtc,
           standard: "ISO/IEC 27037:2012 / RFC 3161 / eIDAS / Art. 326 LEC"
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // ==========================================
@@ -1731,7 +1739,7 @@ export default {
             message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
-          }), { status: 400, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         let tenantCustomRules = [];
@@ -2028,7 +2036,7 @@ export default {
         }), {
           status: 200,
           headers: {
-            ...cors.corsHeaders,
+            ...corsHeaders,
             "Content-Type": "application/json",
             "X-Saare-Permit": xSaarePermitHeader,
             "X-SAARE-Verdict": finalDecision,
@@ -2073,7 +2081,7 @@ export default {
           } else {
             return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas o usuario no encontrado." }), {
               status: 401,
-              headers: { ...cors.corsHeaders, "Content-Type": "application/json" }
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
           }
         }
@@ -2108,12 +2116,12 @@ export default {
             planId: resolvedPlan,
             isVerified: true
           }
-        }), { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       return new Response(
         JSON.stringify({ error: "NOT_FOUND", message: `La ruta [${request.method} ${request.url}] no existe en S.A.A.R.E. Control Plane.` }),
-        { status: 404, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
 
     } catch (globalErr) {
@@ -2124,7 +2132,7 @@ export default {
           message: globalErr?.message || "Error controlado por el núcleo de alta disponibilidad SGP 1.0",
           timestamp: new Date().toISOString()
         }),
-        { status: 200, headers: { ...cors.corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   },
