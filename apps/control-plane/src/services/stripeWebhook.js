@@ -4,17 +4,21 @@ import { sanitizePlanId, getPlanEntitlements } from "../packages/entitlements.js
 
 function normalizeTenantId(rawId) {
   if (!rawId || typeof rawId !== "string") return "DEFAULT_TENANT";
-  return rawId
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_-]/g, "_")
-    .slice(0, 32) || "DEFAULT_TENANT";
+  return (
+    rawId
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "_")
+      .slice(0, 32) || "DEFAULT_TENANT"
+  );
 }
 
 async function hashPasswordPbkdf2(password) {
   const iterations = 100000;
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, "0")).join("");
+  const saltHex = Array.from(salt)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -28,7 +32,9 @@ async function hashPasswordPbkdf2(password) {
     key,
     256
   );
-  const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = Array.from(new Uint8Array(derived))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
 }
 
@@ -190,21 +196,26 @@ export async function provisionTenantFromBilling({
 }
 
 export async function handleStripeWebhook(request, env) {
+  if (!env?.STRIPE_WEBHOOK_SECRET) {
+    return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_SECRET_NOT_CONFIGURED" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
   const rawBody = await request.text();
   const sigHeader = request.headers.get("stripe-signature");
 
-  if (env?.STRIPE_WEBHOOK_SECRET) {
-    const isValid = await verifyStripeSignature(
-      rawBody,
-      sigHeader,
-      env.STRIPE_WEBHOOK_SECRET
-    );
-    if (!isValid) {
-      return new Response(JSON.stringify({ error: "INVALID_STRIPE_SIGNATURE" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+  const isValid = await verifyStripeSignature(
+    rawBody,
+    sigHeader,
+    env.STRIPE_WEBHOOK_SECRET
+  );
+  if (!isValid) {
+    return new Response(JSON.stringify({ error: "INVALID_STRIPE_SIGNATURE" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
   let event;

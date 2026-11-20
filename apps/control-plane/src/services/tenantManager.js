@@ -13,7 +13,13 @@ export class TenantManager {
 
   _normalizeId(tenantId) {
     if (!tenantId) return "SANDBOX_PUBLIC";
-    return String(tenantId).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_").slice(0, 32) || "SANDBOX_PUBLIC";
+    return (
+      String(tenantId)
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, "_")
+        .slice(0, 32) || "SANDBOX_PUBLIC"
+    );
   }
 
   _isSandboxTenant(cleanId, planId) {
@@ -28,19 +34,25 @@ export class TenantManager {
 
   _buildTenantObject(cleanId, name, config = {}) {
     const safeCfg = config && typeof config === "object" ? config : {};
-    const planId = sanitizePlanId(safeCfg.planId || safeCfg.plan_id || safeCfg.plan || PLAN_IDS.SANDBOX_FREE);
+    const planId = sanitizePlanId(
+      safeCfg.planId || safeCfg.plan_id || safeCfg.plan || PLAN_IDS.SANDBOX_FREE
+    );
     const entitlements = getPlanEntitlements(planId);
     const isSandbox = this._isSandboxTenant(cleanId, planId);
 
     return {
       tenantId: cleanId,
       tenant_id: cleanId,
-      name: name || (isSandbox ? `Entorno Sandbox (${cleanId})` : `Organización (${cleanId})`),
+      name:
+        name ||
+        (isSandbox
+          ? `Entorno Sandbox (${cleanId})`
+          : `Organización (${cleanId})`),
       plan_id: planId,
       planId,
-      tier: isSandbox ? "SANDBOX" : (safeCfg.tier || "ENTERPRISE"),
-      priceEur: isSandbox ? 0 : (safeCfg.priceEur ?? 649),
-      expiresAt: isSandbox ? null : (safeCfg.expiresAt || safeCfg.expires_at || null),
+      tier: isSandbox ? "SANDBOX" : safeCfg.tier || "ENTERPRISE",
+      priceEur: isSandbox ? 0 : safeCfg.priceEur ?? 649,
+      expiresAt: isSandbox ? null : safeCfg.expiresAt || safeCfg.expires_at || null,
       status: safeCfg.status || "ACTIVE",
       createdAt: safeCfg.createdAt || safeCfg.created_at || new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
@@ -48,7 +60,9 @@ export class TenantManager {
       maxSeats: safeCfg.maxSeats ?? entitlements.maxSeats,
       activeScenarios: Array.isArray(safeCfg.activeScenarios)
         ? safeCfg.activeScenarios
-        : (Array.isArray(safeCfg.scenarios) ? safeCfg.scenarios : ["*"])
+        : Array.isArray(safeCfg.scenarios)
+        ? safeCfg.scenarios
+        : ["*"]
     };
   }
 
@@ -76,16 +90,18 @@ export class TenantManager {
         await this.env.DB.prepare(`
           INSERT OR REPLACE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          cleanId,
-          tenantData.name,
-          tenantData.planId,
-          tenantData.status,
-          tenantData.quota,
-          tenantData.expiresAt,
-          JSON.stringify(tenantData),
-          tenantData.createdAt
-        ).run();
+        `)
+          .bind(
+            cleanId,
+            tenantData.name,
+            tenantData.planId,
+            tenantData.status,
+            tenantData.quota,
+            tenantData.expiresAt,
+            JSON.stringify(tenantData),
+            tenantData.createdAt
+          )
+          .run();
       } catch (e) {
         console.warn("[TenantManager] Error persistiendo tenant en D1:", e.message);
       }
@@ -114,7 +130,9 @@ export class TenantManager {
       try {
         const row = await this.env.DB.prepare(
           "SELECT * FROM tenants WHERE tenant_id = ? LIMIT 1"
-        ).bind(cleanId).first();
+        )
+          .bind(cleanId)
+          .first();
 
         if (row) {
           let parsedConfig = {};
@@ -146,7 +164,11 @@ export class TenantManager {
       try {
         const storedTenant = await kv.get(`tenant:${cleanId}`, "json");
         if (storedTenant) {
-          const normalized = this._buildTenantObject(cleanId, storedTenant.name, storedTenant);
+          const normalized = this._buildTenantObject(
+            cleanId,
+            storedTenant.name,
+            storedTenant
+          );
           this.cache.set(cleanId, normalized);
           return normalized;
         }
@@ -199,7 +221,7 @@ export class TenantManager {
       const isSandbox = this._isSandboxTenant(tenant.tenantId, tenant.planId);
       if (!isSandbox && tenant.expiresAt) {
         const expirationDate = new Date(tenant.expiresAt);
-        if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
+        if (!Number.isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
           return {
             allowed: false,
             reason: `La suscripción del Tenant ${tenant.tenantId} expiró el ${expirationDate.toISOString()}.`
