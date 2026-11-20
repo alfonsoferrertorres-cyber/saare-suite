@@ -90,7 +90,8 @@ export class AuthMiddleware {
     if (cleanToken.startsWith("sk_saare_")) {
       const runtimeEnv = envOverride || this.env;
       const kv = runtimeEnv?.SAARE_KV_VAULT || runtimeEnv?.SAARE_VAULT_KV || null;
-      let resolvedTenant = "DEFAULT_TENANT";
+      let resolvedTenant = "DEMO_ENTERPRISE";
+      let resolvedProfile = null;
 
       if (kv) {
         try {
@@ -98,15 +99,21 @@ export class AuthMiddleware {
           if (mappedTenant) {
             resolvedTenant = mappedTenant;
           }
+          const mappedProfile = await kv.get(`token_profile:${cleanToken}`);
+          if (mappedProfile) {
+            resolvedProfile = mappedProfile;
+          }
         } catch {}
       }
 
       return {
         sub: "service_custodian",
-        email: "custodian@tenant.local",
+        email: "custodian@demo-enterprise.local",
         tenantId: resolvedTenant,
+        browserProfile: resolvedProfile,
+        clientProfile: resolvedProfile,
         role: "CISO_ADMIN",
-        planId: null,
+        planId: "ENTERPRISE_1990",
         isApiKey: true
       };
     }
@@ -182,7 +189,9 @@ export class AuthMiddleware {
     return {
       sub: payload.sub || "user_anonymous",
       email: sanitizeEmail(payload.email || ""),
-      tenantId: payload.tenant_id || payload.tenantId || "DEFAULT_TENANT",
+      tenantId: payload.tenant_id || payload.tenantId || "DEMO_ENTERPRISE",
+      browserProfile: payload.browser_profile || payload.browserProfile || null,
+      clientProfile: payload.client_profile || payload.clientProfile || null,
       role: assignedRole,
       planId: payload.plan_id || payload.planId || null,
       groups: userGroups

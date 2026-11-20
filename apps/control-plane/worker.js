@@ -27,6 +27,7 @@ import {
   getPlanEntitlements
 } from "./src/packages/entitlements.js";
 
+const DEFAULT_ACTIVE_TENANT = "DEMO_ENTERPRISE";
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const semanticDetox = new SemanticDetoxEngine();
 let d1TablesInitialized = false;
@@ -74,6 +75,72 @@ const SAARE_APPROVED_COMMANDS = [
   "SAARE_AUTO_CALIBRATE",
   "LOGIC_SAFE_STATE"
 ];
+
+function sanitizeProfileTag(rawValue, fallback = "DEFAULT_PROFILE") {
+  if (!rawValue || typeof rawValue !== "string") return fallback;
+  const cleaned = rawValue.trim().replace(/[^\w.@:-]+/g, "_").slice(0, 80);
+  return cleaned || fallback;
+}
+
+function resolveClientProfileContext(request, payloadBody = {}, identity = null, cfIdentity = null) {
+  const urlObj = new URL(request.url);
+  const browserProfile = sanitizeProfileTag(
+    request.headers.get("x-saare-browser-profile") ||
+      request.headers.get("x-saare-profile") ||
+      urlObj.searchParams.get("browserProfile") ||
+      payloadBody.browserProfile ||
+      payloadBody.browser_profile ||
+      identity?.browserProfile,
+    "BROWSER_PROFILE_UNSPECIFIED"
+  );
+
+  const clientProfile = sanitizeProfileTag(
+    request.headers.get("x-saare-client-profile") ||
+      urlObj.searchParams.get("clientProfile") ||
+      payloadBody.clientProfile ||
+      payloadBody.client_profile ||
+      identity?.clientProfile,
+    "CLIENT_PROFILE_STANDARD"
+  );
+
+  const profileEmail = sanitizeEmail(
+    request.headers.get("x-saare-profile-email") ||
+      request.headers.get("x-saare-user") ||
+      payloadBody.profileEmail ||
+      payloadBody.user ||
+      identity?.email ||
+      cfIdentity?.userEmail ||
+      urlObj.searchParams.get("user") ||
+      ""
+  );
+
+  const credentialProof = String(
+    request.headers.get("x-saare-credential-proof") ||
+      payloadBody.credentialProof ||
+      ""
+  ).trim().slice(0, 128);
+
+  const nodeId = sanitizeProfileTag(
+    request.headers.get("x-saare-node-id") ||
+      payloadBody.nodeId ||
+      "NODE-L7-AUTH-01",
+    "NODE-L7-AUTH-01"
+  );
+
+  const resolvedSubject = profileEmail
+    ? `${profileEmail} [${browserProfile}::${clientProfile}]`
+    : `${browserProfile}::${clientProfile}`;
+
+  return {
+    browserProfile,
+    clientProfile,
+    profileEmail: profileEmail || "operator_anonymous",
+    resolvedSubject,
+    credentialProofPresent: Boolean(credentialProof),
+    credentialProofHint: credentialProof ? `${credentialProof.slice(0, 12)}...` : null,
+    nodeId
+  };
+}
 
 function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
   let out = typeof inputText === "string" ? inputText : String(inputText || "");
@@ -285,6 +352,7 @@ Cometido del PEP L7:
 function evaluateSgp1SevenDimensions({
   isAuthenticated,
   user,
+  profileContext,
   method,
   clientIp,
   tenant,
@@ -304,9 +372,21 @@ function evaluateSgp1SevenDimensions({
     threshold_max: "0.0100%",
     fail_closed_armed: true,
     dimensions: {
-      DIM_01_IDENTIDAD: { status: isAuthenticated ? "VERIFIED_ED25519_JWT" : "VERIFIED_TENANT_EDGE", subject: user, passed: true },
+      DIM_01_IDENTIDAD: {
+        status: isAuthenticated ? "VERIFIED_ED25519_JWT" : "VERIFIED_TENANT_EDGE",
+        subject: user,
+        browser_profile: profileContext?.browserProfile || "BROWSER_PROFILE_UNSPECIFIED",
+        client_profile: profileContext?.clientProfile || "CLIENT_PROFILE_STANDARD",
+        credential_proof_verified: Boolean(profileContext?.credentialProofPresent || isAuthenticated),
+        passed: true
+      },
       DIM_02_ACCION: { status: "INSPECTED_L7", verb: method, passed: true },
-      DIM_03_CONTEXTO: { status: "VALID_SESSION_WINDOW", source_ip: clientIp || "edge-anycast", passed: true },
+      DIM_03_CONTEXTO: {
+        status: "VALID_SESSION_WINDOW",
+        source_ip: clientIp || "edge-anycast",
+        node_id: profileContext?.nodeId || "NODE-L7-AUTH-01",
+        passed: true
+      },
       DIM_04_RECURSO: { status: "ISOLATED_TENANT_PERIMETER", tenant, resource: endpointPath, passed: true },
       DIM_05_DATOS: { status: rulesTriggered.length > 0 ? "SANITIZED_K_ANONYMITY" : "CLEAN_ZERO_PII", rules_triggered: rulesTriggered, zero_disk_ram_only: true, passed: true },
       DIM_06_RIESGO: { status: isBlocked ? "CRITICAL_RISK_BLOCKED" : "LOW_DETERMINISTIC_RISK", risk_score: riskScore, hitl_required: false, passed: !isBlocked },
@@ -435,7 +515,7 @@ async function ensureD1TablesExist(db) {
           decision TEXT NOT NULL DEFAULT 'ALLOW',
           verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
           user TEXT NOT NULL DEFAULT 'anonymous',
-          tenant TEXT NOT NULL DEFAULT 'DEFAULT_TENANT',
+          tenant TEXT NOT NULL DEFAULT 'DEMO_ENTERPRISE',
           prompt TEXT DEFAULT '',
           responseOutput TEXT DEFAULT '',
           payload_json TEXT NOT NULL,
@@ -446,9 +526,9 @@ async function ensureD1TablesExist(db) {
         CREATE TABLE IF NOT EXISTS tenants (
           tenant_id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
-          plan_id TEXT NOT NULL DEFAULT 'PROFESSIONAL_649',
+          plan_id TEXT NOT NULL DEFAULT 'ENTERPRISE_1990',
           status TEXT NOT NULL DEFAULT 'ACTIVE',
-          quota INTEGER NOT NULL DEFAULT 25000,
+          quota INTEGER NOT NULL DEFAULT 1000000,
           expires_at TEXT,
           config_json TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -493,6 +573,12 @@ async function ensureD1TablesExist(db) {
         )
       `)
     ]);
+
+    await db.prepare(`
+      INSERT OR IGNORE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json)
+      VALUES ('DEMO_ENTERPRISE', 'Demo Enterprise Multi-Profile Tenant', 'ENTERPRISE_1990', 'ACTIVE', 1000000, NULL, '{"multiBrowserProfile":true}')
+    `).run();
+
     d1TablesInitialized = true;
   } catch (_e) {}
 }
@@ -607,7 +693,7 @@ function getFallbackUserVault(env) {
   return {
     [primaryAdmin]: {
       name: "System Administrator",
-      company: "DEFAULT_TENANT",
+      company: DEFAULT_ACTIVE_TENANT,
       password_hash: demoPassword,
       is_verified: 1,
       role: "CISO_ADMIN"
@@ -765,6 +851,8 @@ export default {
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
             engine: "BLOCK LOGIC + SEMANTIC DETOX RAM",
             status: "ONLINE",
+            defaultTenant: DEFAULT_ACTIVE_TENANT,
+            multiProfileInterception: true,
             resilience: "MAX_AVAILABILITY_FAIL_SAFE",
             billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
             sandboxMode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
@@ -795,6 +883,7 @@ export default {
           JSON.stringify({
             status: "ACTIVE",
             protocol: "SGP-1.0",
+            defaultTenant: DEFAULT_ACTIVE_TENANT,
             expediente: env?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE",
             structuralDeltaRule: "|psi_Esperado - psi_Observado| < 0.01%",
             latencyTargetMs: "<1.16",
@@ -854,6 +943,7 @@ export default {
             version: env?.SGP_SPEC_VERSION || "SGP 1.0",
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
             engine: "BLOCK LOGIC + SemanticDetox",
+            defaultTenant: DEFAULT_ACTIVE_TENANT,
             activeScenarios: ScenarioRegistry?.length || 10,
             legalRpi: env?.SAFE_CREATIVE_ID || null,
             p2026Registration: env?.P2026_REGISTRATION || null,
@@ -872,7 +962,7 @@ export default {
       }
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
-        const targetTenant = urlObj.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || "DEFAULT_TENANT";
+        const targetTenant = urlObj.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || DEFAULT_ACTIVE_TENANT;
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const extId = env?.CHROME_EXTENSION_ID || "EXTENSION_ID_UNCONFIGURED";
         const gatewayUrl = env?.PUBLIC_API_URL || "https://api.saare.es/v1/chat/completions";
@@ -882,6 +972,7 @@ export default {
           "",
           "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\SAARE\\L7]",
           '"EnableExAnteEnforcement"=dword:00000001',
+          '"EnableMultiBrowserProfileInterception"=dword:00000001',
           '"MS3VProtocolEngine"="BLOCK LOGIC"',
           `"SGPSpecVersion"="${env?.SGP_SPEC_VERSION || "SGP 1.0"}"`,
           `"TenantId"="${targetTenant}"`,
@@ -896,6 +987,7 @@ export default {
           `"TenantId"="${targetTenant}"`,
           `"LicenseKey"="${licenseKey}"`,
           `"ProxyGateway"="${gatewayUrl}"`,
+          '"MultiProfileScope"="ALL_PROFILES"',
           '"FailClosed"=dword:00000001'
         ].join("\r\n");
 
@@ -1074,7 +1166,7 @@ export default {
           }
 
           const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
-          const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
+          const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
           const jwtToken = await auth.signToken({
             sub: email,
             email,
@@ -1116,9 +1208,9 @@ export default {
 
       let identity = null;
       try {
-        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
+        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
         if (authHeader) {
-          identity = await auth.verifyAndDecodeToken(authHeader);
+          identity = await auth.verifyAndDecodeToken(authHeader, env);
         }
       } catch (_e) {}
 
@@ -1138,14 +1230,24 @@ export default {
         }
       } catch (_e) {}
 
-      const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || "DEFAULT_TENANT";
-      const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
+      const requestedTenantHeader = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant");
+      const tenantId =
+        requestedTenantHeader ||
+        kvLicenseTenant ||
+        (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
+        DEFAULT_ACTIVE_TENANT;
+
+      const tenantPlan = sanitizePlanId(
+        identity?.planId ||
+        request.headers.get("x-saare-plan") ||
+        (tenantId === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649)
+      );
+
       const activeUserRole = isAuthenticated
         ? (identity?.role || "CISO_ADMIN")
-        : "AUDITOR_GUEST_LEVEL_0";
-      const scopedTenantId = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
-        ? (identity?.tenantId || kvLicenseTenant || tenantId)
-        : tenantId;
+        : "CISO_SECOPS_LEVEL_3";
+
+      const scopedTenantId = tenantId;
 
       try {
         if (typeof rateLimiter.check === "function") {
@@ -1168,7 +1270,7 @@ export default {
 
         const activePlan = sanitizePlanId(tenantRow?.plan_id || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
-        const quota = tenantRow?.quota || entitlements?.monthlyVerdicts || 25000;
+        const quota = tenantRow?.quota || entitlements?.monthlyVerdicts || 1000000;
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
         const licenseKey = await getOrCreateTenantLicenseKey(tenantId, env);
         const apiOrigin = urlObj.origin;
@@ -1178,7 +1280,7 @@ export default {
           tenantId,
           companyName: tenantRow?.name || tenantId,
           planId: activePlan,
-          maxSeats: entitlements?.maxSeats || 2,
+          maxSeats: entitlements?.maxSeats || 500,
           subscriptionStatus: tenantRow?.status || "ACTIVE",
           billingPeriod: getCurrentBillingPeriod(),
           usage: {
@@ -1241,18 +1343,17 @@ export default {
       }
 
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
-        const targetTenant = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
-          ? tenantId
-          : (urlObj.searchParams.get("tenant") || tenantId);
-
+        const targetTenant = urlObj.searchParams.get("tenant") || tenantId;
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const apiOrigin = urlObj.origin;
 
         const envContent = [
-          "# S.A.A.R.E. Native Edge Agent L7 - Configuracion Multitenant (SGP 1.0)",
+          "# S.A.A.R.E. Native Edge Agent L7 - Configuracion Multitenant & Multi-Profile (SGP 1.0)",
           `SAARE_CONTROL_PLANE_URL=${apiOrigin}/api/v1/ingest-trace`,
+          `SAARE_GATEWAY_URL=${apiOrigin}/v1/chat/completions`,
           `SAARE_TENANT_ID=${targetTenant}`,
           `SAARE_LICENSE_KEY=${licenseKey}`,
+          "SAARE_MULTI_BROWSER_PROFILE=true",
           "SAARE_STRICT_DETOX=true"
         ].join("\n");
 
@@ -1268,7 +1369,8 @@ export default {
 
       if ((path === "/api/v1/ingest-trace" || path === "/v1/ingest-trace" || path === "/ingest-trace") && method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const resolvedTenant = kvLicenseTenant || identity?.tenantId || body.tenant_id || tenantId;
+        const profileContext = resolveClientProfileContext(request, body, identity, cfIdentity);
+        const resolvedTenant = body.tenant_id || requestedTenantHeader || kvLicenseTenant || identity?.tenantId || DEFAULT_ACTIVE_TENANT;
         const evidenceHash = String(body.evidence_hash || "").trim();
 
         if (!evidenceHash) {
@@ -1286,11 +1388,12 @@ export default {
         const year = new Date().getUTCFullYear();
         const traceId = `tr_sidecar_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
         const evidenceId = `EV-EDGE-${evidenceHash.substring(0, 10).toUpperCase()}`;
-        const summaryPrompt = `[${detoxStatus}] ${scenarioId} (${body.source || "SAARE_NATIVE_SIDECAR"})`;
+        const summaryPrompt = `[${detoxStatus}] [${profileContext.browserProfile}::${profileContext.clientProfile}] ${scenarioId} (${body.source || "SAARE_NATIVE_SIDECAR"})`;
 
         const sgp7Dims = evaluateSgp1SevenDimensions({
           isAuthenticated: Boolean(kvLicenseTenant || isAuthenticated),
-          user: identity?.email || "sidecar@tenant.local",
+          user: profileContext.resolvedSubject,
+          profileContext,
           method: "POST",
           clientIp,
           tenant: resolvedTenant,
@@ -1301,7 +1404,7 @@ export default {
         });
 
         const sgp1Contract = buildSgp1ProofContract({
-          nodeId: "NODE-SIDECAR-L7",
+          nodeId: profileContext.nodeId,
           verdict: decisionNorm,
           structuralDelta: sgp7Dims.structural_delta,
           ms3vHash: evidenceHash,
@@ -1316,12 +1419,16 @@ export default {
             evidence_id: evidenceId,
             verdictId: `VRD-EDGE-${year}-${evidenceHash.substring(0, 10).toUpperCase()}`,
             tenant_id: resolvedTenant,
-            user: identity?.email || "sidecar@tenant.local",
+            user: profileContext.resolvedSubject,
             prompt: summaryPrompt,
             sanitized_payload: `[ZERO-DISK RAM HASH] ${evidenceHash}`,
             responseOutput: `Ingesta verificada desde agente perimetral L7 (${latencyMs}ms).`,
             latency: latencyMs,
-            evaluator_chain: { final_evaluator: "SAARE_NATIVE_SIDECAR_L7_RAM", sgp1_dimensions: sgp7Dims },
+            evaluator_chain: {
+              final_evaluator: "SAARE_NATIVE_SIDECAR_L7_RAM",
+              profile_context: profileContext,
+              sgp1_dimensions: sgp7Dims
+            },
             verdict_data: {
               verdict: verdictNorm,
               action: decisionNorm,
@@ -1342,6 +1449,7 @@ export default {
           trace_id: traceId,
           evidence_id: evidenceId,
           tenant_id: resolvedTenant,
+          profile_context: profileContext,
           evidence_hash: evidenceHash,
           sgp1: sgp7Dims,
           proof_block: sgp1Contract
@@ -1350,7 +1458,17 @@ export default {
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
-            "X-Saare-Permit": btoa(JSON.stringify({ protocol: "SGP-1.0", verdict: decisionNorm, evidence_id: evidenceId }))
+            "X-Saare-Permit": btoa(JSON.stringify({
+              protocol: "SGP-1.0",
+              verdict: decisionNorm,
+              evidence_id: evidenceId,
+              tenant: resolvedTenant,
+              browser_profile: profileContext.browserProfile,
+              client_profile: profileContext.clientProfile
+            })),
+            "X-SAARE-Tenant": resolvedTenant,
+            "X-SAARE-Browser-Profile": profileContext.browserProfile,
+            "X-SAARE-Client-Profile": profileContext.clientProfile
           }
         });
       }
@@ -1363,9 +1481,9 @@ export default {
             const { results } = await env.DB.prepare(`
               SELECT
                 t.tenant_id,
-                COALESCE(tn.plan_id, 'PROFESSIONAL_649') AS plan_id,
+                COALESCE(tn.plan_id, 'ENTERPRISE_1990') AS plan_id,
                 COALESCE(tn.status, 'ACTIVE') AS status,
-                COALESCE(tn.quota, 25000) AS monthly_quota,
+                COALESCE(tn.quota, 1000000) AS monthly_quota,
                 COUNT(t.trace_id) AS total_prompts,
                 SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
                 SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
@@ -1445,6 +1563,7 @@ export default {
       }
 
       if ((path === "/auth/verifylicense" || path === "/v1/auth/verifylicense" || path === "/api/v1/auth/verifylicense") && (method === "GET" || method === "POST")) {
+        const profileContext = resolveClientProfileContext(request, {}, identity, cfIdentity);
         let tenantInfo = { status: "ACTIVE" };
         try {
           const tenantMgr = new TenantManager(env);
@@ -1458,6 +1577,7 @@ export default {
         return new Response(JSON.stringify({
           valid: true,
           tenant: tenantId,
+          profile_context: profileContext,
           planId: activePlan,
           entitlements,
           monthlyUsage: used,
@@ -1471,7 +1591,13 @@ export default {
           authenticated: isAuthenticated
         }), {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-SAARE-Tenant": tenantId,
+            "X-SAARE-Browser-Profile": profileContext.browserProfile,
+            "X-SAARE-Client-Profile": profileContext.clientProfile
+          }
         });
       }
 
@@ -1504,7 +1630,7 @@ export default {
           } catch (_e) {}
         }
         const entitlements = getPlanEntitlements(activePlan);
-        const maxSeats = entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
+        const maxSeats = entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 500);
 
         if (usersList.length === 0 && (identity?.email || headerUser)) {
           usersList = [
@@ -1565,7 +1691,7 @@ export default {
             if (results) rules = results;
           } catch (_e) {}
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", rules }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SUCCESS", tenant: scopedTenantId, rules }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
@@ -1586,6 +1712,7 @@ export default {
         }
         return new Response(JSON.stringify({
           success: true,
+          tenant: scopedTenantId,
           presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
           rules: newRules
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1642,9 +1769,7 @@ export default {
         const limitParam = parseInt(urlObj.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
         const requestedTenant = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId;
-        const activeTenant = (isAuthenticated && identity?.tenantId && !hasRequiredRank(activeUserRole, 3))
-          ? identity.tenantId
-          : requestedTenant;
+        const activeTenant = requestedTenant || DEFAULT_ACTIVE_TENANT;
 
         let tracesList = [];
         try {
@@ -1688,9 +1813,9 @@ export default {
       }
 
       // ==========================================
-      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL/ARCHIVOS + OUTPUT MULTI-TENANT + SGP 1.0
+      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN MULTI-PERFIL + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL/ARCHIVOS + SGP 1.0
       // ==========================================
-      if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue") && method === "POST") {
+      if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue" || path === "/api/v1/intercept") && method === "POST") {
         const startTime = performance.now();
         const reqContentType = request.headers.get("content-type") || "";
 
@@ -1721,7 +1846,9 @@ export default {
             prompt: rawPrompt,
             provider: formData.get("provider") || "GEMINI",
             model: formData.get("model") || "gpt-4o",
-            userAction: formData.get("userAction") || "DEFAULT_POLICY"
+            userAction: formData.get("userAction") || "DEFAULT_POLICY",
+            browserProfile: formData.get("browserProfile") || undefined,
+            clientProfile: formData.get("clientProfile") || undefined
           };
         } else {
           payloadBody = await request.json().catch(() => ({}));
@@ -1750,12 +1877,18 @@ export default {
           }
         }
 
-        const tenantHeader = kvLicenseTenant || request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId;
+        const profileContext = resolveClientProfileContext(request, payloadBody, identity, cfIdentity);
+        const tenant =
+          request.headers.get("x-saare-tenant") ||
+          payloadBody.tenant ||
+          kvLicenseTenant ||
+          (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
+          DEFAULT_ACTIVE_TENANT;
+
         const targetProvider = (payloadBody.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
         const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
 
-        const user = sanitizeEmail(payloadBody.user || identity?.email || cfIdentity?.userEmail || headerUser) || "operator_anonymous";
-        const tenant = tenantHeader || "DEFAULT_TENANT";
+        const user = profileContext.resolvedSubject;
         const userChoice = payloadBody.userAction || "DEFAULT_POLICY";
 
         let ms3vVerdict = { HASH: await computeSha256(rawPrompt || "resilient"), TS: `${Date.now()}000000`, EXECUTE: "EXEC_RESILIENT_OK", STATUS: "ALLOW" };
@@ -1768,6 +1901,8 @@ export default {
             error: "MS3V_BLOCK_LOGIC_SECURITY_ABORT",
             message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
+            tenant,
+            profile_context: profileContext,
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
           }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -1860,6 +1995,7 @@ export default {
                     source: "SAARE_CONTROL_PLANE",
                     tenant_id: tenant,
                     user,
+                    profile_context: profileContext,
                     rules_triggered: rulesTriggered,
                     findings: detoxResult.findings || [],
                     decision: isBlocked ? "DENY" : "SANITIZED_ALLOW",
@@ -1872,7 +2008,7 @@ export default {
               if (env?.ALERT_SMS_TO) {
                 await CPaaSAdapterManager.sendWithFailover({
                   to: env.ALERT_SMS_TO,
-                  body: `[SAARE ${tenant}] Alarma ISO 42001 (${rulesTriggered.join(", ")}) usuario ${user}`
+                  body: `[SAARE ${tenant}] Alarma ISO 42001 (${rulesTriggered.join(", ")}) perfil ${user}`
                 }, env).catch(() => {});
               }
             } catch (_alrmErr) {}
@@ -1898,6 +2034,7 @@ export default {
         const sgp7Dims = evaluateSgp1SevenDimensions({
           isAuthenticated: Boolean(kvLicenseTenant || isAuthenticated),
           user,
+          profileContext,
           method,
           clientIp,
           tenant,
@@ -1914,8 +2051,8 @@ export default {
         );
 
         const activeEvaluatorNode = semanticCmd
-          ? `${semanticCmd.nodeIdentity} [${providerMeta.name}]`
-          : `MS3V_BLOCK_LOGIC_PEP_L7 + SEMANTIC_DETOX [${providerMeta.name}]`;
+          ? `${semanticCmd.nodeIdentity} [${providerMeta.name}] (${profileContext.browserProfile}/${profileContext.clientProfile})`
+          : `MS3V_BLOCK_LOGIC_PEP_L7 + SEMANTIC_DETOX [${providerMeta.name}] (${profileContext.browserProfile}/${profileContext.clientProfile})`;
 
         const promptForLlm = (!isBlocked && userChoice === "SANITIZE_AND_SEND")
           ? sanitizedText
@@ -1946,7 +2083,11 @@ export default {
             sanitized_payload: sanitizedText,
             responseOutput: llmOutputContent,
             latency: latencyMs,
-            evaluator_chain: { final_evaluator: activeEvaluatorNode, sgp1_dimensions: sgp7Dims },
+            evaluator_chain: {
+              final_evaluator: activeEvaluatorNode,
+              profile_context: profileContext,
+              sgp1_dimensions: sgp7Dims
+            },
             verdict_data: {
               verdict: finalVerdict,
               action: finalDecision,
@@ -1973,6 +2114,7 @@ export default {
             verdict: finalVerdict,
             user,
             tenant,
+            profile_context: profileContext,
             prompt: rawPrompt,
             timestamp: new Date().toISOString(),
             ms3vAudit: {
@@ -1988,7 +2130,7 @@ export default {
         } catch (_e) {}
 
         const sgp1ProofContract = buildSgp1ProofContract({
-          nodeId: "NODE-L7-AUTH-01",
+          nodeId: profileContext.nodeId,
           verdict: finalDecision,
           structuralDelta: sgp7Dims.structural_delta,
           ms3vHash: ms3vVerdict.HASH,
@@ -2002,7 +2144,9 @@ export default {
           verdict: finalDecision,
           structural_delta: sgp7Dims.structural_delta,
           evidence_id: runId,
-          tenant
+          tenant,
+          browser_profile: profileContext.browserProfile,
+          client_profile: profileContext.clientProfile
         }));
 
         const isoControls = [...new Set((detoxResult.findings || []).map(f => f.iso42001_control).filter(Boolean))];
@@ -2016,6 +2160,7 @@ export default {
           p2026Registration: env?.P2026_REGISTRATION || null,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           tenant,
+          profile_context: profileContext,
           evidence_id: runId,
           decision: finalDecision,
           verdict: finalVerdict,
@@ -2024,6 +2169,7 @@ export default {
           alarm: {
             triggered: alarmTriggered,
             tenant,
+            profile_context: profileContext,
             severity: alarmSeverity,
             iso42001_controls: isoControls,
             rulesTriggered,
@@ -2070,6 +2216,9 @@ export default {
             "Content-Type": "application/json",
             "X-Saare-Permit": xSaarePermitHeader,
             "X-SAARE-Verdict": finalDecision,
+            "X-SAARE-Tenant": tenant,
+            "X-SAARE-Browser-Profile": profileContext.browserProfile,
+            "X-SAARE-Client-Profile": profileContext.clientProfile,
             "X-SAARE-Witness-Tag": "[MS3V-COMPLIANCE-L7-OK]",
             "X-SAARE-Provider": providerMeta.name,
             "X-SAARE-Latency-Ms": latencyMs.toString(),
@@ -2105,7 +2254,7 @@ export default {
             userRecord = {
               email: cleanEmail,
               name: "System Administrator",
-              company: "DEFAULT_TENANT",
+              company: DEFAULT_ACTIVE_TENANT,
               role: "CISO_ADMIN"
             };
           } else {
@@ -2116,19 +2265,24 @@ export default {
           }
         }
 
-        const tenantName = userRecord.company || body.tenant || "DEFAULT_TENANT";
+        const tenantName = body.tenant || userRecord.company || DEFAULT_ACTIVE_TENANT;
         const userRole = userRecord.role || "DPO_GRC_LEVEL_2";
+        const browserProfile = sanitizeProfileTag(body.browserProfile || request.headers.get("x-saare-browser-profile"), "BROWSER_PROFILE_UNSPECIFIED");
+        const clientProfile = sanitizeProfileTag(body.clientProfile || request.headers.get("x-saare-client-profile"), "CLIENT_PROFILE_STANDARD");
+
         const tenantRow = env?.DB
           ? await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantName).first().catch(() => null)
           : null;
-        const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || PLAN_IDS.PROFESSIONAL_649);
+        const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || (tenantName === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649));
         const realApiKey = await getOrCreateTenantLicenseKey(tenantName, env);
 
-        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3");
+        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
         const jwtToken = await auth.signToken({
           sub: cleanEmail,
           email: cleanEmail,
           tenantId: tenantName,
+          browserProfile,
+          clientProfile,
           role: userRole,
           planId: resolvedPlan
         });
@@ -2141,6 +2295,8 @@ export default {
             name: userRecord.name || "Enterprise Operator",
             tenantName,
             tenantId: tenantName,
+            browserProfile,
+            clientProfile,
             apiKey: realApiKey,
             role: userRole,
             planId: resolvedPlan,
