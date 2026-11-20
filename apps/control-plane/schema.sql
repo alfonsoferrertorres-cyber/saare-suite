@@ -1,125 +1,118 @@
--- S.A.A.R.E. Enterprise Control Plane - Cloudflare D1 Schema (v1.5.0)
+﻿-- S.A.A.R.E. Enterprise Control Plane - Cloudflare D1 Schema (Compatible con tablas existentes)
 PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS tenants (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT,
+  email TEXT,
+  name TEXT,
+  plan TEXT DEFAULT 'ENTERPRISE',
+  plan_id TEXT DEFAULT 'ENTERPRISE_1990',
+  status TEXT DEFAULT 'ACTIVE',
+  quota INTEGER DEFAULT 1000000,
+  monthly_quota INTEGER DEFAULT 1000000,
+  expires_at TEXT,
+  default_policy_json TEXT DEFAULT '{}',
+  config_json TEXT DEFAULT '{}',
+  updated_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  name TEXT,
+  company TEXT,
+  role TEXT DEFAULT 'CISO_ADMIN',
+  is_verified INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS consolidated_traces (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   trace_id TEXT NOT NULL UNIQUE,
   tenant_id TEXT NOT NULL,
-  user_id TEXT,
-  session_id TEXT,
-  protocol_version TEXT DEFAULT 'SGP-1.0/MS3V',
-  decision TEXT NOT NULL CHECK (decision IN ('ALLOW', 'BLOCK', 'SANITIZE', 'CHALLENGE')),
-  risk_score REAL DEFAULT 0.0,
-  reasons_json TEXT DEFAULT '[]',
-  redacted_fields_json TEXT DEFAULT '[]',
-  latency_ms INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  user_email TEXT NOT NULL,
+  final_evaluator_node TEXT,
+  final_decision TEXT NOT NULL DEFAULT 'ALLOW',
+  decision TEXT NOT NULL DEFAULT 'ALLOW',
+  execution_latency_ms REAL,
+  anchored INTEGER DEFAULT 0,
+  timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+  sanitized_payload TEXT,
+  prompt TEXT,
+  verdict TEXT,
+  it_risk_level TEXT,
+  dpia_status TEXT,
+  bias_metrics TEXT,
+  esg_impact TEXT,
+  final_action TEXT NOT NULL DEFAULT 'ALLOWED',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  evidence_id TEXT UNIQUE NOT NULL,
+  trace_id TEXT NOT NULL,
+  verdictId TEXT NOT NULL,
+  decision TEXT NOT NULL DEFAULT 'ALLOW',
+  user TEXT NOT NULL DEFAULT 'anonymous',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+  tenant TEXT NOT NULL DEFAULT 'ENTERPRISE'
+);
+
+CREATE TABLE IF NOT EXISTS merkle_anchors (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  merkle_root TEXT NOT NULL,
+  batch_size INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS custom_rules (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  enabled INTEGER NOT NULL DEFAULT 1,
+  priority INTEGER NOT NULL DEFAULT 100,
+  action TEXT NOT NULL DEFAULT 'BLOCK',
+  description TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tenant_usage (
+  tenant_id TEXT NOT NULL,
+  billing_period TEXT NOT NULL,
+  verdict_count INTEGER DEFAULT 0,
+  PRIMARY KEY (tenant_id, billing_period)
+);
+
+CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  recipient TEXT NOT NULL,
+  status TEXT NOT NULL,
+  evidence_hash TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_consolidated_traces_tenant_created
   ON consolidated_traces (tenant_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_consolidated_traces_decision
-  ON consolidated_traces (decision, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS runs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  run_id TEXT NOT NULL UNIQUE,
-  tenant_id TEXT NOT NULL,
-  trace_id TEXT,
-  profile_name TEXT DEFAULT 'default',
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'BLOCKED')),
-  input_hash TEXT,
-  output_hash TEXT,
-  metadata_json TEXT DEFAULT '{}',
-  started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  completed_at TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_runs_tenant_status
-  ON runs (tenant_id, status, started_at DESC);
-
-CREATE TABLE IF NOT EXISTS tenants (
-  tenant_id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  plan TEXT NOT NULL DEFAULT 'ENTERPRISE',
-  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TRIAL')),
-  default_policy_json TEXT DEFAULT '{}',
-  monthly_quota INTEGER DEFAULT 1000000,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-);
-
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL UNIQUE,
-  tenant_id TEXT NOT NULL,
-  email TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('OWNER', 'ADMIN', 'AUDITOR', 'MEMBER')),
-  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_users_tenant_email
-  ON users (tenant_id, email);
-
-CREATE TABLE IF NOT EXISTS merkle_anchors (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  anchor_id TEXT NOT NULL UNIQUE,
-  tenant_id TEXT,
-  merkle_root TEXT NOT NULL,
-  leaf_count INTEGER NOT NULL CHECK (leaf_count >= 0),
-  window_start TEXT NOT NULL,
-  window_end TEXT NOT NULL,
-  anchored_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_merkle_anchors_window
-  ON merkle_anchors (window_end DESC);
-
-CREATE TABLE IF NOT EXISTS custom_rules (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  rule_id TEXT NOT NULL UNIQUE,
-  tenant_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
-  priority INTEGER NOT NULL DEFAULT 100,
-  action TEXT NOT NULL CHECK (action IN ('ALLOW', 'BLOCK', 'SANITIZE', 'CHALLENGE')),
-  pattern TEXT NOT NULL,
-  description TEXT,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
-);
+CREATE INDEX IF NOT EXISTS idx_runs_tenant_created
+  ON runs (tenant, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_custom_rules_tenant_enabled
   ON custom_rules (tenant_id, enabled, priority ASC);
 
-CREATE TABLE IF NOT EXISTS tenant_usage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  tenant_id TEXT NOT NULL,
-  billing_period TEXT NOT NULL, -- Formato YYYY-MM
-  requests_count INTEGER NOT NULL DEFAULT 0,
-  blocked_count INTEGER NOT NULL DEFAULT 0,
-  sanitized_count INTEGER NOT NULL DEFAULT 0,
-  tokens_processed INTEGER NOT NULL DEFAULT 0,
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  UNIQUE (tenant_id, billing_period),
-  FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  audit_id TEXT NOT NULL UNIQUE,
-  tenant_id TEXT NOT NULL,
-  channel TEXT NOT NULL, -- SMS, VOICE, WHATSAPP, EMAIL, WEBHOOK
-  direction TEXT NOT NULL DEFAULT 'OUTBOUND' CHECK (direction IN ('INBOUND', 'OUTBOUND')),
-  recipient_hash TEXT,
-  decision TEXT NOT NULL CHECK (decision IN ('ALLOW', 'BLOCK', 'SANITIZE', 'CHALLENGE')),
-  reason TEXT,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-);
-
 CREATE INDEX IF NOT EXISTS idx_cpaas_audit_logs_tenant_created
   ON cpaas_audit_logs (tenant_id, created_at DESC);
+
+INSERT OR IGNORE INTO tenants (id, tenant_id, name, plan, plan_id, status, quota, monthly_quota, config_json)
+VALUES ('DEMO_ENTERPRISE', 'DEMO_ENTERPRISE', 'Demo Enterprise Multi-Profile Tenant', 'ENTERPRISE', 'ENTERPRISE_1990', 'ACTIVE', 1000000, 1000000, '{"multiBrowserProfile":true}');

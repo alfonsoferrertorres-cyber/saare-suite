@@ -9,6 +9,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string]$FailureMessage = "El comando fallo."
+    )
+    Invoke-Expression $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$FailureMessage (ExitCode=$LASTEXITCODE)"
+    }
+}
+
 # ------------------------------------------------------------------------------
 # FASE 0: PRE-FLIGHT CHECKS & VERIFICACION DE PERMISOS
 # ------------------------------------------------------------------------------
@@ -23,7 +34,7 @@ Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
 if (-not $env:CLOUDFLARE_API_TOKEN) {
     try {
         $whoami = npx wrangler whoami 2>&1
-        if ($whoami -like "*You are not logged in*") {
+        if ($LASTEXITCODE -ne 0 -or ($whoami -like "*You are not logged in*")) {
             Write-Host "[ERROR] No has iniciado sesion en Cloudflare. Ejecuta 'npx wrangler login' o define `$env:CLOUDFLARE_API_TOKEN." -ForegroundColor Red
             exit 1
         }
@@ -38,6 +49,9 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
 Write-Host " -> Verificando estado del repositorio Git..." -ForegroundColor Gray
 try {
     git rev-parse --is-inside-work-tree | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "No es un repositorio Git."
+    }
 } catch {
     Write-Host "[ERROR] El directorio actual no es un repositorio Git valido." -ForegroundColor Red
     exit 1
@@ -47,10 +61,10 @@ try {
 # FASE 1: DEPENDENCIAS, EMPAQUETADO DE EXTENSION + SIDECAR PYTHON Y LIMPIEZA
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [1/7] Resolviendo dependencias, empaquetando artefactos L7 y limpiando builds..." -ForegroundColor Yellow
-pnpm install --no-frozen-lockfile
+Invoke-NativeCommand -Command "pnpm install --no-frozen-lockfile" -FailureMessage "Fallo al instalar dependencias con pnpm"
 
 # Limpieza de dist/ antiguos y temporales de Vite
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist", "apps/control-plane/dist"
 Get-ChildItem -Recurse -Filter "vite.config.js.timestamp-*.mjs" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 $consolePublicDeploy = if (Test-Path "apps/saare-console") {
@@ -158,41 +172,41 @@ if ($sidecarSrc -and $consolePublicDeploy) {
 Write-Host "`n==> [2/7] Compilando aplicaciones web (saare-console + saare-suite)..." -ForegroundColor Cyan
 
 Write-Host " -> Compilando Consola GRC (saare-console)..." -ForegroundColor Gray
-pnpm --filter saare-console run build
+Invoke-NativeCommand -Command "pnpm --filter saare-console run build" -FailureMessage "Fallo al compilar saare-console"
 
 Write-Host " -> Compilando Landing Comercial (saare-suite)..." -ForegroundColor Gray
-pnpm --filter saare-suite run build
+Invoke-NativeCommand -Command "pnpm --filter saare-suite run build" -FailureMessage "Fallo al compilar saare-suite"
 
 # ------------------------------------------------------------------------------
 # FASE 3: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [3/7] Desplegando Frontends a Cloudflare Pages..." -ForegroundColor Cyan
 
-$consoleDist = if (Test-Path "saare-console\dist") {
+$consoleDist = if (Test-Path "saare-console/dist") {
     "saare-console/dist"
-} elseif (Test-Path "apps\saare-console\dist") {
+} elseif (Test-Path "apps/saare-console/dist") {
     "apps/saare-console/dist"
 } else {
     $null
 }
 if ($consoleDist) {
     Write-Host " -> Desplegando Consola GRC ($consoleDist)..." -ForegroundColor Gray
-    npx wrangler pages deploy $consoleDist --project-name=saare-console --branch=main --commit-dirty=true
+    Invoke-NativeCommand -Command "npx wrangler pages deploy `"$consoleDist`" --project-name=saare-console --branch=main --commit-dirty=true" -FailureMessage "Fallo al desplegar saare-console"
 } else {
     Write-Host "[ERROR] Fallo la compilacion de saare-console. No existe carpeta dist." -ForegroundColor Red
     exit 1
 }
 
-$suiteDist = if (Test-Path "saare-suite\dist") {
+$suiteDist = if (Test-Path "saare-suite/dist") {
     "saare-suite/dist"
-} elseif (Test-Path "apps\saare-suite\dist") {
+} elseif (Test-Path "apps/saare-suite/dist") {
     "apps/saare-suite/dist"
 } else {
     $null
 }
 if ($suiteDist) {
     Write-Host " -> Desplegando Landing Comercial ($suiteDist)..." -ForegroundColor Gray
-    npx wrangler pages deploy $suiteDist --project-name=saare-suite --branch=main --commit-dirty=true
+    Invoke-NativeCommand -Command "npx wrangler pages deploy `"$suiteDist`" --project-name=saare-suite --branch=main --commit-dirty=true" -FailureMessage "Fallo al desplegar saare-suite"
 } else {
     Write-Host "[ERROR] Fallo la compilacion de saare-suite. No existe carpeta dist." -ForegroundColor Red
     exit 1
@@ -204,7 +218,7 @@ if ($suiteDist) {
 Write-Host "`n==> [4/7] Desplegando Control Plane Worker y Esquemas D1..." -ForegroundColor Cyan
 $controlPlanePath = if (Test-Path "control-plane") {
     "control-plane"
-} elseif (Test-Path "apps\control-plane") {
+} elseif (Test-Path "apps/control-plane") {
     "apps/control-plane"
 } else {
     $null
@@ -224,17 +238,29 @@ if ($controlPlanePath) {
 
         if ($sqlPath) {
             Write-Host " -> Aplicando esquema relacional D1 ($sqlPath) en remoto..." -ForegroundColor Gray
-            npx wrangler d1 execute saare-vault-d1 --remote --file=$sqlPath --yes
+            Invoke-NativeCommand -Command "npx wrangler d1 execute saare-vault-d1 --remote --file=`"$sqlPath`" --yes" -FailureMessage "Fallo al aplicar schema.sql en D1"
             Write-Host " -> [OK] Esquema D1 aplicado correctamente." -ForegroundColor Green
         } else {
             Write-Host "[ADVERTENCIA] No se encontro el archivo schema.sql. Omitiendo migracion D1." -ForegroundColor DarkYellow
         }
 
+        # Evita error 'A non-wrangler worker-configuration.d.ts already exists'
+        $dTsFile = "worker-configuration.d.ts"
+        if (Test-Path $dTsFile) {
+            $contentCheck = Get-Content -Path $dTsFile -Raw -ErrorAction SilentlyContinue
+            if ($contentCheck -notmatch "Generated by Wrangler") {
+                Remove-Item -Path $dTsFile -Force -ErrorAction SilentlyContinue
+            }
+        }
+
         Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
-        npx wrangler types
+        Invoke-NativeCommand -Command "npx wrangler types" -FailureMessage "Fallo al generar tipos con wrangler types"
 
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
-        npx wrangler deploy
+        Invoke-NativeCommand -Command "npx wrangler deploy" -FailureMessage "Fallo al desplegar el Worker"
+    } catch {
+        Write-Host "[ERROR] Fase 4 detenida: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
     } finally {
         Pop-Location
     }

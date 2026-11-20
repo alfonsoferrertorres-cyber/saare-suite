@@ -1,9 +1,12 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "TenantId": {
       "type": "string",
-      "title": "Identificador de Inquilino S.A.A.R.E."
+      "title": "Identificador de Inquilino S.A.A.R.E.",
+      "minLength": 1
     },
     "BrowserProfile": {
       "type": "string",
@@ -27,11 +30,13 @@
     },
     "FailClosed": {
       "type": "boolean",
-      "title": "Bloquear si el Control Plane no responde"
+      "title": "Bloquear si el Control Plane no responde",
+      "default": true
     },
     "EnableExAnteEnforcement": {
       "type": "boolean",
-      "title": "Activar inspección ex-ante en RAM"
+      "title": "Activar inspección ex-ante en RAM",
+      "default": true
     }
   }
 }

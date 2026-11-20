@@ -1,0 +1,13 @@
+// Generado y tipado para S.A.A.R.E. Enterprise Control Plane (v1.5.0)
+declare namespace Cloudflare {
+  interface Env {
+    DB: D1Database;
+    SAARE_VAULT_KV: KVNamespace;
+    USAGE_ANALYTICS?: AnalyticsEngineDataset;
+    ENVIRONMENT?: string;
+    ADMIN_API_KEY?: string;
+    MERKLE_BATCH_LIMIT?: string;
+  }
+}
+
+interface Env extends Cloudflare.Env {}
