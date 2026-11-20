@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl");
   const tenantInput = document.getElementById("tenant");
+  const browserProfileInput = document.getElementById("browserProfile");
+  const clientProfileInput = document.getElementById("clientProfile");
   const apiKeyInput = document.getElementById("apiKey");
   const userInput = document.getElementById("user");
   const failClosedInput = document.getElementById("failClosed");
@@ -10,12 +12,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detoxStatusBox = document.getElementById("detoxStatusBox");
   const detoxEngineLabel = document.getElementById("detoxEngine");
   const detoxStateLabel = document.getElementById("detoxState");
-  const detoxRulesList = document.getElementById("detoxRules");
   const alarmTenantLabel = document.getElementById("alarmTenant");
+  const detoxBrowserProfileLabel = document.getElementById("detoxBrowserProfile");
+  const detoxClientProfileLabel = document.getElementById("detoxClientProfile");
   const alarmControlsLabel = document.getElementById("alarmControls");
+  const detoxRulesList = document.getElementById("detoxRules");
   const alarmBanner = document.getElementById("alarmBanner");
 
-  function renderDetoxAndAlarm(statusObj, fallbackTenant) {
+  function renderDetoxAndAlarm(statusObj, fallbackTenant, fallbackBrowserProfile, fallbackClientProfile) {
     if (!statusObj || !detoxStatusBox) return;
 
     detoxStatusBox.style.display = "block";
@@ -45,6 +49,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       alarmTenantLabel.textContent = activeTenant;
     }
 
+    if (detoxBrowserProfileLabel) {
+      detoxBrowserProfileLabel.textContent =
+        statusObj.browserProfile ||
+        statusObj.profile_context?.browserProfile ||
+        fallbackBrowserProfile ||
+        "Chrome_Perfil_Cliente_01";
+    }
+
+    if (detoxClientProfileLabel) {
+      detoxClientProfileLabel.textContent =
+        statusObj.clientProfile ||
+        statusObj.profile_context?.clientProfile ||
+        fallbackClientProfile ||
+        "Perfil_Auditoria_L7";
+    }
+
     const controls = Array.isArray(alarm.iso42001_controls) ? alarm.iso42001_controls : [];
     if (alarmControlsLabel) {
       alarmControlsLabel.textContent = controls.length > 0 ? controls.join(", ") : "Sin controles disparados";
@@ -72,12 +92,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (saareConfig) {
       if (saareConfig.apiUrl) apiUrlInput.value = saareConfig.apiUrl;
       if (saareConfig.tenantId) tenantInput.value = saareConfig.tenantId;
+      if (saareConfig.browserProfile) browserProfileInput.value = saareConfig.browserProfile;
+      if (saareConfig.clientProfile) clientProfileInput.value = saareConfig.clientProfile;
       if (saareConfig.apiKey) apiKeyInput.value = saareConfig.apiKey;
       if (saareConfig.userEmail) userInput.value = saareConfig.userEmail;
       if (saareConfig.failClosed !== undefined) failClosedInput.checked = Boolean(saareConfig.failClosed);
     }
 
-    renderDetoxAndAlarm(lastDetoxStatus, saareConfig?.tenantId);
+    if (!browserProfileInput.value) {
+      browserProfileInput.value = browserProfileInput.placeholder || "Chrome_Perfil_Cliente_01";
+    }
+    if (!clientProfileInput.value) {
+      clientProfileInput.value = clientProfileInput.placeholder || "Perfil_Auditoria_L7";
+    }
+
+    renderDetoxAndAlarm(
+      lastDetoxStatus,
+      saareConfig?.tenantId,
+      browserProfileInput.value,
+      clientProfileInput.value
+    );
   } catch (err) {
     console.error("[S.A.A.R.E. Popup Error]:", err);
   }
@@ -91,6 +125,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const tenantId = (tenantInput.value.trim() || tenantInput.placeholder || "DEMO_ENTERPRISE").trim();
+    const browserProfile = (browserProfileInput.value.trim() || browserProfileInput.placeholder || "Chrome_Perfil_Cliente_01").trim();
+    const clientProfile = (clientProfileInput.value.trim() || clientProfileInput.placeholder || "Perfil_Auditoria_L7").trim();
     const apiKey = apiKeyInput.value.trim();
     const userEmail = (userInput.value.trim() || userInput.placeholder || "operador_l7@saare.local").trim().toLowerCase();
     const failClosed = Boolean(failClosedInput.checked);
@@ -98,6 +134,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const saareConfig = {
       apiUrl: cleanUrl,
       tenantId,
+      browserProfile,
+      clientProfile,
       apiKey,
       userEmail,
       failClosed,
@@ -109,14 +147,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       apiUrlInput.value = cleanUrl;
       tenantInput.value = tenantId;
+      browserProfileInput.value = browserProfile;
+      clientProfileInput.value = clientProfile;
       userInput.value = userEmail;
 
       if (alarmTenantLabel && detoxStatusBox?.style.display === "block") {
         alarmTenantLabel.textContent = tenantId;
       }
+      if (detoxBrowserProfileLabel && detoxStatusBox?.style.display === "block") {
+        detoxBrowserProfileLabel.textContent = browserProfile;
+      }
+      if (detoxClientProfileLabel && detoxStatusBox?.style.display === "block") {
+        detoxClientProfileLabel.textContent = clientProfile;
+      }
 
       statusDiv.style.color = "#34d399";
-      statusDiv.textContent = `✅ Nodo L7 Vinculado (${tenantId})`;
+      statusDiv.textContent = `✅ Nodo L7 Vinculado (${tenantId} · ${browserProfile})`;
 
       setTimeout(() => {
         statusDiv.textContent = "";

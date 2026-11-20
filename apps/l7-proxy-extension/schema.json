@@ -5,6 +5,14 @@
       "type": "string",
       "title": "Identificador de Inquilino S.A.A.R.E."
     },
+    "BrowserProfile": {
+      "type": "string",
+      "title": "Perfil de Navegador (ej. Chrome_Perfil_Cliente_01)"
+    },
+    "ClientProfile": {
+      "type": "string",
+      "title": "Perfil de Cliente / Operativa L7"
+    },
     "LicenseKey": {
       "type": "string",
       "title": "API Key / Licencia del Tenant S.A.A.R.E."

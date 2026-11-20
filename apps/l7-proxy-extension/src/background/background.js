@@ -1,4 +1,4 @@
-// S.A.A.R.E. Enterprise L7 Service Worker (SGP 1.0 Production + Semantic Detox + ISO 42001 Alarms)
+// S.A.A.R.E. Enterprise L7 Service Worker (SGP 1.0 Production + Semantic Detox + ISO 42001 Alarms + Multi-Profile)
 
 const DEFAULT_GATEWAY = "https://api.saare.es/v1/chat/completions";
 
@@ -7,6 +7,8 @@ async function resolveEffectiveConfig() {
   try {
     managed = await chrome.storage.managed.get([
       "TenantId",
+      "BrowserProfile",
+      "ClientProfile",
       "LicenseKey",
       "ProxyGateway",
       "TrustAnchor",
@@ -25,6 +27,8 @@ async function resolveEffectiveConfig() {
 
   return {
     tenantId: (managed.TenantId || local.tenantId || "DEMO_ENTERPRISE").trim(),
+    browserProfile: (managed.BrowserProfile || local.browserProfile || "Chrome_Perfil_Cliente_01").trim(),
+    clientProfile: (managed.ClientProfile || local.clientProfile || "Perfil_Auditoria_L7").trim(),
     apiKey: (managed.LicenseKey || local.apiKey || "").trim(),
     gateway: (managed.ProxyGateway || local.apiUrl || DEFAULT_GATEWAY).trim().replace(/\/+$/, ""),
     userEmail: (local.userEmail || "operador_l7@saare.local").trim().toLowerCase(),
@@ -55,6 +59,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             decision: "ALLOW",
             verdict: "PERMITIDO",
             sanitizedPrompt: rawPrompt,
+            browserProfile: config.browserProfile,
+            clientProfile: config.clientProfile,
             alarm: { triggered: false, severity: "INFO", allowedActions: ["ALLOW"] },
             detox: { status: "DISABLED", rulesTriggered: [], engine: "v1.4-DETOX-RAM-ISO42001-FULL" }
           }
@@ -66,6 +72,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const headers = {
           "Content-Type": "application/json",
           "x-saare-tenant": config.tenantId,
+          "x-saare-browser-profile": config.browserProfile,
+          "x-saare-client-profile": config.clientProfile,
           "x-saare-user": config.userEmail,
           "x-saare-source": originHost
         };
@@ -82,6 +90,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             prompt: rawPrompt,
             messages: [{ role: "user", content: rawPrompt }],
             tenant_id: config.tenantId,
+            browserProfile: config.browserProfile,
+            clientProfile: config.clientProfile,
             user: config.userEmail,
             source: originHost,
             userAction,
@@ -127,6 +137,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               ...detoxInfo,
               decision,
               verdict,
+              browserProfile: data.profile_context?.browserProfile || config.browserProfile,
+              clientProfile: data.profile_context?.clientProfile || config.clientProfile,
+              profile_context: data.profile_context || {
+                browserProfile: config.browserProfile,
+                clientProfile: config.clientProfile
+              },
               alarm: alarmInfo,
               timestamp: new Date().toISOString(),
               targetHost: originHost
@@ -138,6 +154,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           ...data,
           decision,
           verdict,
+          browserProfile: config.browserProfile,
+          clientProfile: config.clientProfile,
           sanitizedPrompt: detoxInfo.sanitizedPayload || data.sanitizedPrompt || rawPrompt,
           alarm: alarmInfo,
           detox: detoxInfo
@@ -186,6 +204,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               ...errorDetox,
               decision,
               verdict,
+              browserProfile: config.browserProfile,
+              clientProfile: config.clientProfile,
               alarm: errorAlarm,
               timestamp: new Date().toISOString(),
               targetHost: originHost
@@ -199,6 +219,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           verdict: {
             decision,
             verdict,
+            browserProfile: config.browserProfile,
+            clientProfile: config.clientProfile,
             category: "CONTROL_PLANE_UNREACHABLE",
             sanitizedPrompt: rawPrompt,
             alarm: errorAlarm,
