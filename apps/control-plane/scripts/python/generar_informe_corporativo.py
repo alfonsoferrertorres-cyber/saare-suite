@@ -6,20 +6,25 @@ S.A.A.R.E. Control Plane v10.0 / SGP 1.0
 """
 
 import json
-import sys
 import os
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
+
 
 def generate_corporate_report(input_traces_file, output_report_file):
     if not os.path.exists(input_traces_file):
         print(f"[-] Error: No se encontró el archivo de trazas: {input_traces_file}")
         sys.exit(1)
 
-    with open(input_traces_file, 'r', encoding='utf-8') as f:
-        traces = json.load(f)
+    with open(input_traces_file, "r", encoding="utf-8") as f:
+        loaded = json.load(f)
 
+    traces = loaded if isinstance(loaded, list) else []
     total_inspections = len(traces)
-    denied = [t for t in traces if t.get('decision') == 'DENY' or t.get('verdict') == 'RECHAZADO']
+    denied = [
+        t for t in traces
+        if isinstance(t, dict) and (t.get("decision") == "DENY" or t.get("verdict") == "RECHAZADO")
+    ]
     allowed = total_inspections - len(denied)
     block_rate = round((len(denied) / total_inspections * 100), 2) if total_inspections > 0 else 0.0
 
@@ -27,7 +32,7 @@ def generate_corporate_report(input_traces_file, output_report_file):
         "reportHeader": {
             "title": "INFORME CORPORATIVO DE GOBERNANZA IA Y RESILIENCIA OPERATIVA",
             "specification": "S.A.A.R.E. SGP 1.0 / Core PEP L7 v8.4",
-            "generatedAt": datetime.utcnow().isoformat() + "Z",
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
             "auditAuthority": "Gabinete Técnico Comercial MS3V"
         },
         "metricsSummary": {
@@ -40,10 +45,15 @@ def generate_corporate_report(input_traces_file, output_report_file):
         "auditedEvidenceSet": traces[:10]
     }
 
-    with open(output_report_file, 'w', encoding='utf-8') as f:
+    out_dir = os.path.dirname(os.path.abspath(output_report_file))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    with open(output_report_file, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
     print(f"[+] Informe Corporativo generado en: {output_report_file}")
+
 
 if __name__ == "__main__":
     input_file = sys.argv[1] if len(sys.argv) > 1 else "traces.json"

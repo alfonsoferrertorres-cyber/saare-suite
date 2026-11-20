@@ -1,4 +1,4 @@
-// saare-console/src/main.jsx — Punto de Entrada Oficial S.A.A.R.E. Console GRC (v10.0)
+// saare-console/src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';

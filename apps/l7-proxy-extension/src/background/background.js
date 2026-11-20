@@ -56,7 +56,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             verdict: "PERMITIDO",
             sanitizedPrompt: rawPrompt,
             alarm: { triggered: false, severity: "INFO", allowedActions: ["ALLOW"] },
-            detox: { status: "DISABLED", rulesTriggered: [], engine: "v1.3-DETOX-RAM-ISO42001-FULL" }
+            detox: { status: "DISABLED", rulesTriggered: [], engine: "v1.4-DETOX-RAM-ISO42001-FULL" }
           }
         });
         return;
@@ -100,29 +100,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           throw new Error(data.error || data.message || `HTTP ${res.status} en Control Plane L7`);
         }
 
+        const decision = data.decision || (res.ok ? "ALLOW" : "DENY");
+        const verdict = data.verdict || (res.ok ? "PERMITIDO" : "RECHAZADO");
+
         const detoxInfo = data.detox || {
           status: res.ok ? "CLEAN" : "ERROR",
           rulesTriggered: [],
           findings: [],
-          engine: "v1.3-DETOX-RAM-ISO42001-FULL"
+          engine: "v1.4-DETOX-RAM-ISO42001-FULL"
         };
 
         const alarmInfo = data.alarm || {
           triggered: Array.isArray(detoxInfo.rulesTriggered) && detoxInfo.rulesTriggered.length > 0,
           tenant: config.tenantId,
-          severity: data.decision === "DENY" ? "HIGH" : "INFO",
+          severity: decision === "DENY" ? "HIGH" : "INFO",
           iso42001_controls: [],
           rulesTriggered: detoxInfo.rulesTriggered || [],
           findings: detoxInfo.findings || [],
           requiresUserDecision: false,
-          allowedActions: data.decision === "DENY" ? ["BLOCK"] : ["ALLOW"]
+          allowedActions: decision === "DENY" ? ["BLOCK"] : ["ALLOW"]
         };
 
-        // Persistir el último estado de desintoxicación y alarma para que el Popup lo muestre
         try {
           await chrome.storage.local.set({
             lastDetoxStatus: {
               ...detoxInfo,
+              decision,
+              verdict,
               alarm: alarmInfo,
               timestamp: new Date().toISOString(),
               targetHost: originHost
@@ -132,8 +136,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         const normalizedVerdict = {
           ...data,
-          decision: data.decision || (res.ok ? "ALLOW" : "DENY"),
-          verdict: data.verdict || (res.ok ? "PERMITIDO" : "RECHAZADO"),
+          decision,
+          verdict,
           sanitizedPrompt: detoxInfo.sanitizedPayload || data.sanitizedPrompt || rawPrompt,
           alarm: alarmInfo,
           detox: detoxInfo
@@ -148,8 +152,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (err) {
         console.error("[S.A.A.R.E. L7 Service Worker Error]:", err);
 
+        const decision = config.failClosed ? "DENY" : "ALLOW";
+        const verdict = config.failClosed ? "FAIL_CLOSED_BLOCKED" : "FAIL_OPEN_ALLOWED";
+
         const errorDetox = {
-          engine: "v1.3-DETOX-RAM-ISO42001-FULL",
+          engine: "v1.4-DETOX-RAM-ISO42001-FULL",
           status: "ERROR_UNREACHABLE",
           rulesTriggered: ["AIMS_FAIL_CLOSED_TRIGGERED"],
           findings: [
@@ -177,6 +184,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           await chrome.storage.local.set({
             lastDetoxStatus: {
               ...errorDetox,
+              decision,
+              verdict,
               alarm: errorAlarm,
               timestamp: new Date().toISOString(),
               targetHost: originHost
@@ -188,8 +197,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           success: true,
           failClosed: config.failClosed,
           verdict: {
-            decision: config.failClosed ? "DENY" : "ALLOW",
-            verdict: config.failClosed ? "FAIL_CLOSED_BLOCKED" : "FAIL_OPEN_ALLOWED",
+            decision,
+            verdict,
             category: "CONTROL_PLANE_UNREACHABLE",
             sanitizedPrompt: rawPrompt,
             alarm: errorAlarm,
@@ -200,6 +209,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
     })();
 
-    return true; // Mantiene el canal abierto para respuesta asíncrona
+    return true;
   }
 });

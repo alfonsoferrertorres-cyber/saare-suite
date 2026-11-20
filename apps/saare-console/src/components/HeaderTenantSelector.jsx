@@ -5,28 +5,33 @@ import { useTenant } from '../context/TenantContext';
 export const HeaderTenantSelector = ({ availableTenants = [] }) => {
   const { activeTenant, updateTenant } = useTenant();
 
+  const normalizedTenants = Array.isArray(availableTenants) ? availableTenants : [];
+  const hasActiveOption = normalizedTenants.some((t) => t.id === activeTenant);
+  const options = !hasActiveOption && activeTenant
+    ? [{ id: activeTenant, name: activeTenant }, ...normalizedTenants]
+    : normalizedTenants;
+
   return (
     <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg flex flex-col">
       <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
         Tenant / Organismo Activo
       </span>
       <select
-        value={activeTenant}
+        value={activeTenant || ''}
         onChange={(e) => updateTenant(e.target.value)}
-        className="bg-transparent text-emerald-400 font-semibold mt-1 focus:outline-none cursor-pointer"
+        disabled={options.length === 0}
+        className="bg-transparent text-emerald-400 font-semibold mt-1 focus:outline-none cursor-pointer disabled:opacity-60"
       >
-        {availableTenants.length > 0 ? (
-          availableTenants.map((t) => (
+        {options.length === 0 ? (
+          <option value="" className="bg-slate-900 text-slate-400">
+            Sin tenants asignados
+          </option>
+        ) : (
+          options.map((t) => (
             <option key={t.id} value={t.id} className="bg-slate-900 text-white">
-              {t.name} ({t.id})
+              {t.name ? `${t.name} (${t.id})` : t.id}
             </option>
           ))
-        ) : (
-          <>
-            <option value="DEMO_ENTERPRISE" className="bg-slate-900 text-white">DEMO_ENTERPRISE</option>
-            <option value="ORGANISMO_SALUD_ES" className="bg-slate-900 text-white">ORGANISMO_SALUD_ES</option>
-            <option value="FINTECH_CORP_01" className="bg-slate-900 text-white">FINTECH_CORP_01</option>
-          </>
         )}
       </select>
     </div>

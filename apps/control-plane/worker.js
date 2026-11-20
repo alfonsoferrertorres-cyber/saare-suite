@@ -102,7 +102,7 @@ function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
         out = out.replace(rx, `[SANITIZADO:${String(r.name || r.id || "RULE").slice(0, 24)}]`);
         extraRules.push(`CUSTOM_${String(r.name || r.id || "RULE").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`);
       }
-    } catch (e) {}
+    } catch (_e) {}
   }
 
   return { sanitizedText: out, extraRules: [...new Set(extraRules)] };
@@ -239,15 +239,22 @@ class CPaaSAdapterManager {
   }
 
   static async sendWithFailover(payload, env, priorityOrder = ["twilio", "messagebird", "vonage", "infobip"]) {
+    const errors = [];
     for (const key of priorityOrder) {
       try {
         if (key === "twilio") return await this.sendTwilio(payload, env);
         if (key === "messagebird") return await this.sendMessageBird(payload, env);
         if (key === "vonage") return await this.sendVonage(payload, env);
         if (key === "infobip") return await this.sendInfobip(payload, env);
-      } catch (err) {}
+      } catch (err) {
+        errors.push(`${key}: ${err?.message || "unknown error"}`);
+      }
     }
-    return { provider: "SAARE_RESILIENT_FALLBACK", messageId: `fb_${Date.now()}` };
+    return {
+      provider: "SAARE_RESILIENT_FALLBACK",
+      messageId: `fb_${Date.now()}`,
+      fallbackErrors: errors
+    };
   }
 }
 
@@ -439,9 +446,9 @@ async function ensureD1TablesExist(db) {
         CREATE TABLE IF NOT EXISTS tenants (
           tenant_id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
-          plan_id TEXT NOT NULL,
+          plan_id TEXT NOT NULL DEFAULT 'PROFESSIONAL_649',
           status TEXT NOT NULL DEFAULT 'ACTIVE',
-          quota INTEGER NOT NULL DEFAULT 10000,
+          quota INTEGER NOT NULL DEFAULT 25000,
           expires_at TEXT,
           config_json TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -469,11 +476,12 @@ async function ensureD1TablesExist(db) {
       `),
       db.prepare(`
         CREATE TABLE IF NOT EXISTS custom_rules (
-          id TEXT PRIMARY KEY,
+          id TEXT NOT NULL,
           tenant_id TEXT NOT NULL,
           name TEXT NOT NULL,
           pattern TEXT NOT NULL,
-          created_at TEXT DEFAULT (datetime('now'))
+          created_at TEXT DEFAULT (datetime('now')),
+          PRIMARY KEY (tenant_id, id)
         )
       `),
       db.prepare(`
@@ -486,7 +494,7 @@ async function ensureD1TablesExist(db) {
       `)
     ]);
     d1TablesInitialized = true;
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 function getCurrentBillingPeriod() {
@@ -501,7 +509,7 @@ async function getTenantMonthlyUsage(db, tenantId) {
       "SELECT verdict_count FROM tenant_usage WHERE tenant_id = ? AND billing_period = ?"
     ).bind(tenantId, period).first();
     return row?.verdict_count || 0;
-  } catch (e) {
+  } catch (_e) {
     return 0;
   }
 }
@@ -516,11 +524,11 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
       ON CONFLICT(tenant_id, billing_period)
       DO UPDATE SET verdict_count = verdict_count + excluded.verdict_count
     `).bind(tenantId, period, count).run();
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 function getKvBinding(env) {
-  return env?.SAARE_KV_VAULT || env?.SAARE_VAULT_KV || null;
+  return env?.SAARE_VAULT_KV || env?.SAARE_KV_VAULT || null;
 }
 
 async function getOrCreateTenantLicenseKey(tenantId, env) {
@@ -536,7 +544,7 @@ async function getOrCreateTenantLicenseKey(tenantId, env) {
       }
     }
     return licenseKey;
-  } catch (err) {
+  } catch (_err) {
     return `sk_saare_fallback_${tenantId}`;
   }
 }
@@ -586,9 +594,9 @@ async function processBatchMerkleAnchor(tenantId, env) {
           batchSize: results.length,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
         }, env);
-      } catch (scErr) {}
+      } catch (_scErr) {}
     }
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 function getFallbackUserVault(env) {
@@ -633,7 +641,7 @@ async function hashPasswordPbkdf2(password) {
     );
     const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
     return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
-  } catch (e) {
+  } catch (_e) {
     return `pbkdf2$100000$fallback$${password}`;
   }
 }
@@ -669,7 +677,7 @@ async function verifyPassword(stored, candidate) {
       result |= expectedHex.charCodeAt(i) ^ actualHex.charCodeAt(i);
     }
     return result === 0;
-  } catch (e) {
+  } catch (_e) {
     return stored === candidate;
   }
 }
@@ -725,9 +733,16 @@ async function invokeAgnosticLlmProvider(providerKey, sanitizedPrompt, modelName
         return data?.choices?.[0]?.message?.content || "Respuesta completada por OpenAI.";
       }
     }
-  } catch (err) {}
+  } catch (_err) {}
 
   return `[S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE / MS3V BLOCK LOGIC] Inferencia ejecutada correctamente bajo la política ex-ante sobre el proveedor ${provider.name}. Comando auditado y sellado criptográficamente (${authorName}).`;
+}
+
+function normalizeRoutePath(rawPathname) {
+  let normalizedPath = rawPathname.replace(/\/+$/, "") || "/";
+  while (normalizedPath.includes("/api/v1/api/v1")) normalizedPath = normalizedPath.replace("/api/v1/api/v1", "/api/v1");
+  while (normalizedPath.includes("/v1/v1")) normalizedPath = normalizedPath.replace("/v1/v1", "/v1");
+  return normalizedPath;
 }
 
 export default {
@@ -764,7 +779,7 @@ export default {
       let killswitchResponse = null;
       try {
         killswitchResponse = await verifyKillswitch(env);
-      } catch (kErr) {}
+      } catch (_kErr) {}
 
       if (killswitchResponse) {
         const headers = new Headers(killswitchResponse.headers);
@@ -772,11 +787,7 @@ export default {
         return new Response(killswitchResponse.body, { status: killswitchResponse.status, headers });
       }
 
-      let normalizedPath = urlObj.pathname.replace(/\/$/, "") || "/";
-      while (normalizedPath.includes("/api/v1/api/v1")) normalizedPath = normalizedPath.replace("/api/v1/api/v1", "/api/v1");
-      while (normalizedPath.includes("/v1/v1")) normalizedPath = normalizedPath.replace("/v1/v1", "/v1");
-
-      const path = normalizedPath;
+      const path = normalizeRoutePath(urlObj.pathname);
       const method = request.method;
 
       if ((path === "/sgp1/status" || path === "/v1/sgp1/status" || path === "/api/v1/sgp1/status") && method === "GET") {
@@ -817,7 +828,7 @@ export default {
             evidenceVaultReady: Boolean(env?.DB || getKvBinding(env))
           });
           if (healthy) await deployment.executeDeployment();
-        } catch (rErr) {
+        } catch (_rErr) {
           healthy = true;
         }
 
@@ -864,7 +875,7 @@ export default {
         const targetTenant = urlObj.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || "DEFAULT_TENANT";
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const extId = env?.CHROME_EXTENSION_ID || "EXTENSION_ID_UNCONFIGURED";
-        const gatewayUrl = env?.PUBLIC_API_URL || "https://api.example.com/v1/chat/completions";
+        const gatewayUrl = env?.PUBLIC_API_URL || "https://api.saare.es/v1/chat/completions";
 
         const gpoRegistryContent = [
           "Windows Registry Editor Version 5.00",
@@ -924,7 +935,10 @@ export default {
         try {
           return await handleStripeWebhook(request, env);
         } catch (stripeErr) {
-          return new Response(JSON.stringify({ status: "RECEIVED_WITH_RESILIENCE_WARNING", error: stripeErr.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ status: "RECEIVED_WITH_RESILIENCE_WARNING", error: stripeErr.message }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
         }
       }
 
@@ -1035,7 +1049,7 @@ export default {
                   message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
                 }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
               }
-            } catch (d1Ex) {}
+            } catch (_d1Ex) {}
           }
 
           const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
@@ -1056,7 +1070,7 @@ export default {
                   "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
                 ).bind(email, passwordHash, fullName, sandboxTenantId)
               ]);
-            } catch (dbBatchErr) {}
+            } catch (_dbBatchErr) {}
           }
 
           const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
@@ -1087,7 +1101,6 @@ export default {
               isVerified: true
             }
           }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
         } catch (provisionErr) {
           return new Response(JSON.stringify({
             error: "SANDBOX_PROVISION_EXCEPTION",
@@ -1107,13 +1120,13 @@ export default {
         if (authHeader) {
           identity = await auth.verifyAndDecodeToken(authHeader);
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       let cfIdentity = null;
       try {
         const zeroTrust = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS, env);
         cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
-      } catch (e) {}
+      } catch (_e) {}
 
       const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
 
@@ -1123,16 +1136,16 @@ export default {
         if (rawBearerToken && kv) {
           kvLicenseTenant = await kv.get(`token_tenant:${rawBearerToken}`);
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       const tenantId = identity?.tenantId || kvLicenseTenant || request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || "DEFAULT_TENANT";
-      const scopedTenantId = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
-        ? (identity?.tenantId || kvLicenseTenant || tenantId)
-        : tenantId;
       const tenantPlan = sanitizePlanId(identity?.planId || request.headers.get("x-saare-plan") || PLAN_IDS.PROFESSIONAL_649);
       const activeUserRole = isAuthenticated
         ? (identity?.role || "CISO_ADMIN")
         : "AUDITOR_GUEST_LEVEL_0";
+      const scopedTenantId = (isAuthenticated && !hasRequiredRank(activeUserRole, 3))
+        ? (identity?.tenantId || kvLicenseTenant || tenantId)
+        : tenantId;
 
       try {
         if (typeof rateLimiter.check === "function") {
@@ -1144,14 +1157,14 @@ export default {
             });
           }
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       if ((path === "/api/v1/billing/usage" || path === "/v1/billing/usage" || path === "/billing/usage") && method === "GET") {
         await ensureD1TablesExist(env.DB);
         let tenantRow = null;
         try {
           tenantRow = env?.DB ? await env.DB.prepare("SELECT * FROM tenants WHERE tenant_id = ?").bind(tenantId).first() : null;
-        } catch (e) {}
+        } catch (_e) {}
 
         const activePlan = sanitizePlanId(tenantRow?.plan_id || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
@@ -1197,7 +1210,7 @@ export default {
         let tenantRow = null;
         try {
           tenantRow = env?.DB ? await env.DB.prepare("SELECT config_json FROM tenants WHERE tenant_id = ?").bind(tenantId).first() : null;
-        } catch (e) {}
+        } catch (_e) {}
         const cfg = tenantRow?.config_json ? JSON.parse(tenantRow.config_json) : {};
 
         if (!cfg.stripeCustomerId) {
@@ -1320,7 +1333,7 @@ export default {
             compliance: ComplianceEngine.mapExecutionToCompliance(scenarioId, decisionNorm, detoxStatus),
             payload_hash: evidenceHash
           });
-        } catch (vErr) {}
+        } catch (_vErr) {}
 
         await incrementTenantUsage(env?.DB, resolvedTenant, 1);
 
@@ -1363,7 +1376,7 @@ export default {
               ORDER BY total_prompts DESC
             `).all();
             if (results) metricsData = results;
-          } catch (mErr) {}
+          } catch (_mErr) {}
         }
         return new Response(JSON.stringify({ success: true, status: "SUCCESS", data: metricsData }), {
           status: 200,
@@ -1374,7 +1387,10 @@ export default {
       if ((path === "/cpaas/send" || path === "/api/v1/cpaas/send" || path === "/v1/cpaas/send") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         if (!body.to || !body.body) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
         }
 
         const priorityOrder = Array.isArray(body.priority) ? body.priority : ["twilio", "messagebird", "vonage", "infobip"];
@@ -1400,7 +1416,7 @@ export default {
                   evidenceHash,
                   new Date().toISOString()
                 ).run();
-              } catch (auditErr) {}
+              } catch (_auditErr) {}
             };
 
             if (ctx && typeof ctx.waitUntil === "function") {
@@ -1417,7 +1433,7 @@ export default {
             evidenceHash,
             timestamp: new Date().toISOString()
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        } catch (err) {
+        } catch (_err) {
           return new Response(JSON.stringify({
             success: true,
             resilientFallback: true,
@@ -1433,7 +1449,7 @@ export default {
         try {
           const tenantMgr = new TenantManager(env);
           tenantInfo = await tenantMgr.getTenant(tenantId) || { status: "ACTIVE" };
-        } catch (e) {}
+        } catch (_e) {}
 
         const activePlan = sanitizePlanId(tenantInfo?.planId || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
@@ -1467,7 +1483,7 @@ export default {
           const headers = new Headers(sseResult.headers);
           Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
           return new Response(sseResult.body, { status: sseResult.status, headers });
-        } catch (sseErr) {
+        } catch (_sseErr) {
           return new Response("data: {\"status\":\"CONNECTED_RESILIENT\"}\n\n", {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
@@ -1485,7 +1501,7 @@ export default {
             if (tenantRow?.plan_id) activePlan = sanitizePlanId(tenantRow.plan_id);
             const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?").bind(tenantId).all();
             if (results && results.length > 0) usersList = results;
-          } catch (e) {}
+          } catch (_e) {}
         }
         const entitlements = getPlanEntitlements(activePlan);
         const maxSeats = entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 10);
@@ -1530,10 +1546,14 @@ export default {
             await env.DB.prepare(
               "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, ?, 1)"
             ).bind(cleanAssignEmail, passwordHash, assignName, scopedTenantId, assignRole).run();
-          } catch (e) {}
+          } catch (_e) {}
         }
 
-        return new Response(JSON.stringify({ success: true, message: `Asiento asignado a ${cleanAssignEmail}`, assigned: { email: cleanAssignEmail, role: assignRole, name: assignName } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Asiento asignado a ${cleanAssignEmail}`,
+          assigned: { email: cleanAssignEmail, role: assignRole, name: assignName }
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
@@ -1543,7 +1563,7 @@ export default {
             await ensureD1TablesExist(env.DB);
             const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).all();
             if (results) rules = results;
-          } catch (e) {}
+          } catch (_e) {}
         }
         return new Response(JSON.stringify({ status: "SUCCESS", rules }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -1562,7 +1582,7 @@ export default {
                 .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, r.name, r.pattern)
                 .run();
             }
-          } catch (e) {}
+          } catch (_e) {}
         }
         return new Response(JSON.stringify({
           success: true,
@@ -1598,7 +1618,10 @@ export default {
       }
 
       if ((path === "/vault/sync" || path === "/api/v1/vault/sync") && method === "GET") {
-        return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
       }
 
       if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
@@ -1627,9 +1650,16 @@ export default {
         try {
           const vaultEngine = new EvidenceVaultEngine(env);
           tracesList = await vaultEngine.getTenantTraces(activeTenant, safeLimit);
-        } catch (tErr) {}
+        } catch (_tErr) {}
 
-        return new Response(JSON.stringify({ status: "SUCCESS", tenant: activeTenant, count: tracesList.length, limit: safeLimit, traces: tracesList, evidences: tracesList }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          status: "SUCCESS",
+          tenant: activeTenant,
+          count: tracesList.length,
+          limit: safeLimit,
+          traces: tracesList,
+          evidences: tracesList
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/api/v1/evidence/verify" || path === "/evidence/verify") && method === "POST") {
@@ -1641,7 +1671,7 @@ export default {
             { proof: proof || "SHA256_RFC3161_VALIDATED" },
             safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH
           );
-        } catch (e) {}
+        } catch (_e) {}
 
         return new Response(JSON.stringify({
           valid: true,
@@ -1681,7 +1711,7 @@ export default {
             if (typeof file === "object" && typeof file.text === "function" && fileSize <= 200000) {
               try {
                 fileTextExcerpt = (await file.text()).slice(0, 4000);
-              } catch (fErr) {}
+              } catch (_fErr) {}
             }
             rawPrompt = `[MULTIMODAL_MEDIA_INTERCEPTED: file=${fileName}, size=${fileSize}bytes] ${fileTextExcerpt} ${textPrompt}`.trim();
           } else {
@@ -1731,7 +1761,7 @@ export default {
         let ms3vVerdict = { HASH: await computeSha256(rawPrompt || "resilient"), TS: `${Date.now()}000000`, EXECUTE: "EXEC_RESILIENT_OK", STATUS: "ALLOW" };
         try {
           ms3vVerdict = await engineBlockLogic(rawPrompt, SAARE_APPROVED_COMMANDS, env);
-        } catch (e) {}
+        } catch (_e) {}
 
         if (ms3vVerdict.STATUS === "ABORT_SEQUENCE") {
           return new Response(JSON.stringify({
@@ -1747,7 +1777,7 @@ export default {
           try {
             const { results } = await env.DB.prepare("SELECT name, pattern FROM custom_rules WHERE tenant_id = ?").bind(tenant).all();
             if (results) tenantCustomRules = results;
-          } catch (rErr) {}
+          } catch (_rErr) {}
         }
 
         const semanticCmd = parseSemanticCommand(rawPrompt, env);
@@ -1777,7 +1807,7 @@ export default {
                 customHardBlockHit = true;
               }
             }
-          } catch (rxErr) {}
+          } catch (_rxErr) {}
         }
 
         if (hasMediaAttachment && !rulesTriggered.includes("AIMS_MULTIMODAL_MEDIA_INSPECTED")) {
@@ -1845,7 +1875,7 @@ export default {
                   body: `[SAARE ${tenant}] Alarma ISO 42001 (${rulesTriggered.join(", ")}) usuario ${user}`
                 }, env).catch(() => {});
               }
-            } catch (alrmErr) {}
+            } catch (_alrmErr) {}
           };
 
           if (ctx && typeof ctx.waitUntil === "function") {
@@ -1928,7 +1958,7 @@ export default {
             compliance: complianceAssessment,
             payload_hash: await computeSha256(rawPrompt)
           });
-        } catch (e) {}
+        } catch (_e) {}
 
         await incrementTenantUsage(env?.DB, tenant, 1);
 
@@ -1955,7 +1985,7 @@ export default {
             complianceImpact: complianceAssessment.compliance_impact,
             doubleChainOfCustody: { doubleChainOfCustody: true }
           }, env);
-        } catch (e) {}
+        } catch (_e) {}
 
         const sgp1ProofContract = buildSgp1ProofContract({
           nodeId: "NODE-L7-AUTH-01",
@@ -2060,7 +2090,7 @@ export default {
           try {
             await ensureD1TablesExist(env.DB);
             userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
-          } catch (e) {}
+          } catch (_e) {}
         }
 
         const fallbackVault = getFallbackUserVault(env);
@@ -2123,7 +2153,6 @@ export default {
         JSON.stringify({ error: "NOT_FOUND", message: `La ruta [${request.method} ${request.url}] no existe en S.A.A.R.E. Control Plane.` }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-
     } catch (globalErr) {
       return new Response(
         JSON.stringify({
@@ -2149,7 +2178,7 @@ export default {
           targetTenants = results.map(r => r.tenant_id);
         }
       }
-    } catch (e) {}
+    } catch (_e) {}
 
     for (const tId of targetTenants) {
       try {
@@ -2158,7 +2187,7 @@ export default {
         } else {
           await processBatchMerkleAnchor(tId, env);
         }
-      } catch (cronErr) {}
+      } catch (_cronErr) {}
     }
   }
 };

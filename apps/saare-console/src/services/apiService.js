@@ -1,37 +1,63 @@
-// saare-console/src/services/apiService.js — Servicio API S.A.A.R.E. (v12.5 / Multi-Tenant + Enrutador L7 Local)
+// saare-console/src/services/apiService.js
 import { SAARE_CONFIG } from '../config/saareState';
 
 const LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
 const ROUTE_MODE_KEY = 'SAARE_ROUTE_MODE'; // 'CLOUD_EDGE' | 'LOCAL_SIDECAR'
 
-function getAuthContext() {
-  const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
-  const tenant = localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE';
-  const user = localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'operador@saare.es';
-  const role = localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST';
+const readStorage = (keys = []) => {
+  if (typeof window === 'undefined') return '';
+  for (const key of keys) {
+    try {
+      const fromSession = window.sessionStorage?.getItem(key);
+      if (fromSession) return fromSession;
+      const fromLocal = window.localStorage?.getItem(key);
+      if (fromLocal) return fromLocal;
+    } catch {
+      // Ignorar restricciones de almacenamiento
+    }
+  }
+  return '';
+};
 
-  const rawBase = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
+const writeStorage = (key, value) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage?.setItem(key, value);
+  } catch {
+    // Ignorar restricciones de almacenamiento
+  }
+};
+
+function getAuthContext() {
+  const token = readStorage(['saare_auth_token', 'saare_token']);
+  const tenant = readStorage(['saare_tenant_domain', 'saare_tenant']) || SAARE_CONFIG?.DEFAULT_TENANT || '';
+  const user = readStorage(['saare_user_email']) || SAARE_CONFIG?.DEFAULT_USER || '';
+  const role = readStorage(['saare_user_role']) || SAARE_CONFIG?.DEFAULT_ROLE || '';
+
+  const rawBase = String(SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
   const cleanRoot = rawBase.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
   const baseUrl = `${cleanRoot}/v1`;
 
   return { token, tenant, user, role, baseUrl, cleanRoot };
 }
 
-async function saareFetch(endpoint, options = {}) {
+export async function saareFetch(endpoint, options = {}) {
   const { token, tenant, user, role, baseUrl } = getAuthContext();
 
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBaseUrl}${cleanEndpoint}`;
-  const activeToken = options.overrideToken || token;
-  const activeTenant = options.overrideTenant || tenant;
+  const activeToken = options.overrideToken ?? token;
+  const activeTenant = options.overrideTenant ?? tenant;
+  const activeUser = options.overrideUser ?? user;
+  const activeRole = options.overrideRole ?? role;
 
   const headers = {
     'Content-Type': 'application/json',
-    'x-saare-tenant': activeTenant,
-    'x-saare-user': options.overrideUser || user,
-    'x-saare-role': options.overrideRole || role,
-    ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {}),
+    ...(activeTenant ? { 'x-saare-tenant': activeTenant } : {}),
+    ...(activeUser ? { 'x-saare-user': activeUser } : {}),
+    ...(activeRole ? { 'x-saare-role': activeRole } : {}),
+    ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
     ...(options.headers || {})
   };
 
@@ -44,8 +70,18 @@ async function saareFetch(endpoint, options = {}) {
 }
 
 export const apiService = {
+  getCurrentUser() {
+    const { user, tenant, role } = getAuthContext();
+    return {
+      email: user,
+      tenantId: tenant,
+      tenantName: tenant,
+      role
+    };
+  },
+
   getRouteMode() {
-    return localStorage.getItem(ROUTE_MODE_KEY) || 'CLOUD_EDGE';
+    return readStorage([ROUTE_MODE_KEY]) || 'CLOUD_EDGE';
   },
 
   async setRouteMode(targetMode) {
@@ -56,25 +92,31 @@ export const apiService = {
         body: JSON.stringify({ prompt: 'PING_HEALTH_CHECK', scenario: 'HEALTH' })
       });
       if (!probe.ok) {
-        throw new Error('El agente Python local respondió con error.');
+        throw new Error('El agente local respondió con error.');
       }
-      localStorage.setItem(ROUTE_MODE_KEY, 'LOCAL_SIDECAR');
+      writeStorage(ROUTE_MODE_KEY, 'LOCAL_SIDECAR');
       return { mode: 'LOCAL_SIDECAR', endpoint: LOCAL_SIDECAR_URL };
     }
 
-    localStorage.setItem(ROUTE_MODE_KEY, 'CLOUD_EDGE');
+    writeStorage(ROUTE_MODE_KEY, 'CLOUD_EDGE');
     return { mode: 'CLOUD_EDGE', endpoint: `${getAuthContext().baseUrl}/chat/completions` };
   },
 
   downloadNativeSidecar(overrideTenant) {
     const { tenant, cleanRoot } = getAuthContext();
-    const targetTenant = overrideTenant || tenant;
-    window.open('/deploy/saare_native_sidecar.zip', '_blank');
-    window.open(`${cleanRoot}/api/v1/agent/bootstrap?tenant=${encodeURIComponent(targetTenant)}`, '_blank');
+    const targetTenant = overrideTenant ?? tenant;
+    if (typeof window === 'undefined') return;
+    window.open('/deploy/saare_native_sidecar.zip', '_blank', 'noopener,noreferrer');
+    const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
+    window.open(`${cleanRoot}/api/v1/agent/bootstrap${query}`, '_blank', 'noopener,noreferrer');
   },
 
   async getKpis(startDate, endDate) {
-    const query = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : '';
+    const params = new URLSearchParams();
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
     try {
       const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
       if (res && res.ok) {
@@ -88,9 +130,9 @@ export const apiService = {
           allowedActions: allowed,
           deniedActions: denied,
           reviewActions: Number(data.reviewActions ?? 0),
-          averageLatencyMs: Number(data.averageLatencyMs ?? 0.84),
-          activeSellersCount: Number(data.activeSellersCount ?? 12),
-          activeTenantsCount: Number(data.activeTenantsCount ?? 1)
+          averageLatencyMs: Number(data.averageLatencyMs ?? 0),
+          activeSellersCount: Number(data.activeSellersCount ?? 0),
+          activeTenantsCount: Number(data.activeTenantsCount ?? 0)
         };
       }
     } catch (e) {
@@ -103,11 +145,14 @@ export const apiService = {
     try {
       const { tenant, user } = getAuthContext();
       const limit = params.limit || 100;
-      const activeTenant = params.tenant || tenant;
-      const activeUser = params.user || user;
+      const activeTenant = params.tenant ?? tenant;
+      const activeUser = params.user ?? user;
 
-      const query = `?limit=${limit}&tenant=${encodeURIComponent(activeTenant)}&user=${encodeURIComponent(activeUser)}`;
-      const res = await saareFetch(`/traces${query}`, {
+      const searchParams = new URLSearchParams({ limit: String(limit) });
+      if (activeTenant) searchParams.set('tenant', activeTenant);
+      if (activeUser) searchParams.set('user', activeUser);
+
+      const res = await saareFetch(`/traces?${searchParams.toString()}`, {
         method: 'GET',
         overrideTenant: activeTenant,
         overrideUser: activeUser,
@@ -120,7 +165,7 @@ export const apiService = {
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
       }
       if (res && res.status === 429) {
-        console.warn('⚠️ Rate Limit 429 alcanzado.');
+        console.warn('Rate limit alcanzado.');
         return [];
       }
     } catch (e) {
@@ -136,27 +181,29 @@ export const apiService = {
       if (res && res.ok) {
         const data = await res.json();
         return {
-          nodeId: data.node || data.service || 'SAARE-NODE-L7-01',
+          nodeId: data.node || data.service || '',
           tenantId: tenant,
-          mode: 'FAIL-CLOSED',
-          latencyP99Ms: Number(data.latencyP99Ms ?? 0.84),
-          activePolicies: 8,
+          mode: data.mode || 'FAIL-CLOSED',
+          latencyP99Ms: Number(data.latencyP99Ms ?? 0),
+          activePolicies: Number(data.activePolicies ?? 0),
           status: data.status || 'HEALTHY',
-          trustAnchor: data.trustAnchor || 'https://vault.saare.es',
-          vaultSource: 'D1_HYBRID'
+          trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || '',
+          vaultSource: data.vaultSource || ''
         };
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[SAARE API] Error consultando estado del nodo:', e);
+    }
 
     return {
-      nodeId: 'SAARE-NODE-L7-01',
+      nodeId: '',
       tenantId: tenant,
       mode: 'FAIL-CLOSED',
-      latencyP99Ms: 0.84,
-      activePolicies: 8,
-      status: 'OPERATIVE',
-      trustAnchor: 'https://vault.saare.es',
-      vaultSource: 'D1_HYBRID'
+      latencyP99Ms: 0,
+      activePolicies: 0,
+      status: 'UNAVAILABLE',
+      trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || '',
+      vaultSource: ''
     };
   },
 
@@ -168,9 +215,9 @@ export const apiService = {
     if (typeof payloadOrPrompt === 'string') {
       bodyData = {
         prompt: payloadOrPrompt,
-        tenant: context.tenant || tenant,
-        user: context.user || user,
-        role: context.role || role,
+        tenant: context.tenant ?? tenant,
+        user: context.user ?? user,
+        role: context.role ?? role,
         ...context
       };
     } else if (payloadOrPrompt && typeof payloadOrPrompt === 'object') {
@@ -183,19 +230,18 @@ export const apiService = {
       };
     }
 
-    // Ruta 1: Sidecar Local en RAM (127.0.0.1:8080)
     if (routeMode === 'LOCAL_SIDECAR') {
       try {
         const localRes = await fetch(LOCAL_SIDECAR_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-SAARE-Tenant': bodyData.tenant
+            ...(bodyData.tenant ? { 'X-SAARE-Tenant': bodyData.tenant } : {})
           },
           body: JSON.stringify({
             prompt: bodyData.prompt || '',
-            scenario: bodyData.scenarioId || bodyData.scenario || 'EU_AI_ACT_L7',
-            tenant_id: bodyData.tenant
+            scenario: bodyData.scenarioId || bodyData.scenario || 'DEFAULT',
+            tenant_id: bodyData.tenant || ''
           })
         });
 
@@ -205,10 +251,10 @@ export const apiService = {
         return {
           success: !isDeny,
           route: 'LOCAL_SIDECAR_RAM',
-          tenant: localData.tenant_id || bodyData.tenant,
-          evidence_id: `EV-EDGE-${(localData.evidence_hash || '').slice(0, 10).toUpperCase()}`,
+          tenant: localData.tenant_id || bodyData.tenant || '',
+          evidence_id: localData.evidence_hash ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}` : '',
           decision: isDeny ? 'DENY' : 'ALLOW',
-          verdict: isDeny ? 'RECHAZADO' : (localData.detox_status === 'SANITIZED' ? 'SANCP_SANITIZED' : 'PERMITIDO'),
+          verdict: isDeny ? 'RECHAZADO' : (localData.detox_status === 'SANITIZED' ? 'SANITIZED' : 'PERMITIDO'),
           enforcement: {
             verdict: isDeny ? 'DENY' : 'ALLOW',
             sanitizedInRam: true,
@@ -218,22 +264,19 @@ export const apiService = {
             d1VaultSynced: Boolean(localData.d1_vault_synced)
           },
           inference: {
-            provider: 'LOCAL_SIDECAR_PYTHON',
-            responseContent: isDeny
-              ? '[BLOQUEO LOCAL EN RAM] Inducción semántica neutralizada en el nodo perimetral.'
-              : localData.clean_prompt
+            provider: 'LOCAL_SIDECAR',
+            responseContent: isDeny ? '' : localData.clean_prompt
           }
         };
       } catch (e) {
         return {
           decision: 'DENY',
           verdict: 'LOCAL_SIDECAR_UNREACHABLE',
-          error: `Agente local 127.0.0.1:8080 inaccesible (${e.message}). Inicia saare_framework.py o cambia a Cloud Edge.`
+          error: e.message
         };
       }
     }
 
-    // Ruta 2: Cloud Edge (api.saare.es)
     try {
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
@@ -252,7 +295,7 @@ export const apiService = {
       return {
         decision: 'DENY',
         verdict: 'FAIL_CLOSED_BLOCKED',
-        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado preventivamente por la Bóveda L7.`
+        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado.`
       };
     } catch (e) {
       return { decision: 'DENY', verdict: 'FAIL_CLOSED', error: e.message };
@@ -262,10 +305,15 @@ export const apiService = {
   async syncVault() {
     try {
       const res = await saareFetch('/vault/sync', { method: 'GET' });
-      if (res && res.ok) return await res.json();
-    } catch (e) {}
-    return { success: true, trustAnchor: 'https://vault.saare.es', source: 'D1_HYBRID' };
+      if (res && res.ok) {
+        return await res.json();
+      }
+      return { success: false, status: res?.status || 0 };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 };
 
+export const api = apiService;
 export default apiService;

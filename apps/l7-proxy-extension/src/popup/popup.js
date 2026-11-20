@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     detoxStatusBox.style.display = "block";
     if (detoxEngineLabel) {
-      detoxEngineLabel.textContent = statusObj.engine || "v1.3-DETOX-RAM-ISO42001-FULL";
+      detoxEngineLabel.textContent = statusObj.engine || "v1.4-DETOX-RAM-ISO42001-FULL";
     }
 
     const state = statusObj.status || "CLEAN";

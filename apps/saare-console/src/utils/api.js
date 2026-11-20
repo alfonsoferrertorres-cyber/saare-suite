@@ -1,49 +1,66 @@
-// saare-console/src/utils/api.js — Puente de compatibilidad API y constantes (SGP 1.0 Producción)
+// saare-console/src/utils/api.js
 import { SAARE_CONFIG } from '../config/saareState';
-import apiService from '../services/apiService';
 
-// Host dinámico resuelto desde la configuración centralizada (sin dominios fijados)
-export const API_HOST = SAARE_CONFIG?.CONTROL_PLANE_URL || "https://api.saare.es";
+export const API_HOST = SAARE_CONFIG?.CONTROL_PLANE_URL || 'https://api.saare.es';
+
+const readStorageValue = (keys = []) => {
+  if (typeof window === 'undefined') return '';
+  for (const key of keys) {
+    try {
+      const fromSession = window.sessionStorage?.getItem(key);
+      if (fromSession) return fromSession;
+      const fromLocal = window.localStorage?.getItem(key);
+      if (fromLocal) return fromLocal;
+    } catch {
+      // Ignorar restricciones de almacenamiento
+    }
+  }
+  return '';
+};
 
 export const api = {
   getCurrentUser: () => {
     return {
-      email: localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || 'auditor@saare.es',
-      tenantId: localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || 'DEMO_ENTERPRISE',
-      role: localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || 'AUDITOR_GUEST'
+      email: readStorageValue(['saare_user_email']) || SAARE_CONFIG?.DEFAULT_USER || '',
+      tenantId:
+        readStorageValue(['saare_tenant_domain', 'saare_tenant']) ||
+        SAARE_CONFIG?.DEFAULT_TENANT ||
+        '',
+      role: readStorageValue(['saare_user_role']) || SAARE_CONFIG?.DEFAULT_ROLE || ''
     };
   }
 };
 
 export const saareFetch = async (endpoint, options = {}) => {
   try {
-    // Si apiService tiene un método request o delegamos directamente
-    const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token') || '';
-    const tenant = localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE';
-    const user = localStorage.getItem('saare_user_email') || 'auditor@saare.es';
-    const role = localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST';
+    const token = readStorageValue(['saare_auth_token', 'saare_token']);
+    const currentUser = api.getCurrentUser();
 
-    const cleanBase = API_HOST.trim().replace(/\/+$/, '');
+    const tenant = options.overrideTenant ?? currentUser.tenantId;
+    const user = options.overrideUser ?? currentUser.email;
+    const role = options.overrideRole ?? currentUser.role;
+
+    const cleanBase = String(API_HOST || '').trim().replace(/\/+$/, '');
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${cleanBase}${cleanEndpoint}`;
 
     const headers = {
       'Content-Type': 'application/json',
-      'x-saare-tenant': options.overrideTenant || tenant,
-      'x-saare-user': options.overrideUser || user,
-      'x-saare-role': options.overrideRole || role,
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(tenant ? { 'x-saare-tenant': tenant } : {}),
+      ...(user ? { 'x-saare-user': user } : {}),
+      ...(role ? { 'x-saare-role': role } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     };
 
-    const response = await fetch(url, {
-      ...options,
+    const { overrideTenant, overrideUser, overrideRole, ...fetchOptions } = options;
+
+    return await fetch(url, {
+      ...fetchOptions,
       headers
     });
-
-    return response;
   } catch (e) {
-    console.warn("[SAARE API BRIDGE WARNING]:", e);
+    console.warn('[SAARE API BRIDGE WARNING]:', e);
     return { ok: false, error: e.message };
   }
 };

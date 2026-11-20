@@ -1,34 +1,36 @@
-// saare-console/src/Login.jsx — Access & Activation Gate S.A.A.R.E. (SGP 1.0 / JWT + Sandbox 2 Asientos Perpetuo)
+// saare-console/src/Login.jsx
 import React, { useState } from 'react';
-import { api, API_BASE_URL } from './utils/api';
+import { api, API_HOST } from './utils/api';
+import { SAARE_CONFIG } from './config/saareState';
 
-export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_FREE' }) {
-  const [authMode, setAuthMode] = useState('SANDBOX'); // 'SANDBOX' | 'LOGIN'
+export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
+  const [authMode, setAuthMode] = useState('SANDBOX');
   const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || '');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || '');
   const [role, setRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
-  const [acceptedTerms, setAcceptedTerms] = useState(true);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const persistSession = ({ token, userEmail, userRole, tenantDomain, planId, apiKey }) => {
-    localStorage.setItem('saare_token', token);
-    localStorage.setItem('saare_auth_token', token);
-    localStorage.setItem('saare_user_email', userEmail);
-    localStorage.setItem('saare_user_role', userRole);
-    localStorage.setItem('saare_tenant_domain', tenantDomain);
-    localStorage.setItem('saare_plan_id', planId);
+    if (token) {
+      localStorage.setItem('saare_token', token);
+      localStorage.setItem('saare_auth_token', token);
+    }
+    if (userEmail) localStorage.setItem('saare_user_email', userEmail);
+    if (userRole) localStorage.setItem('saare_user_role', userRole);
+    if (tenantDomain) localStorage.setItem('saare_tenant_domain', tenantDomain);
+    if (planId) localStorage.setItem('saare_plan_id', planId);
     if (apiKey) localStorage.setItem('saare_api_key', apiKey);
     localStorage.setItem('saare_consent_accepted', 'true');
-    localStorage.setItem('saare_agnostic_active', 'true');
   };
 
   const handleActivationSubmit = async (e) => {
     e.preventDefault();
     if (!acceptedTerms) {
-      setErrorMsg('Debe aceptar los términos de inspección ex-ante para continuar.');
+      setErrorMsg('Debe aceptar los términos de operación para continuar.');
       return;
     }
 
@@ -36,17 +38,17 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
     const cleanTenant = tenant.trim();
 
     if (!cleanEmail || !password) {
-      setErrorMsg('Por favor introduzca su correo de trabajo y contraseña de acceso.');
+      setErrorMsg('Introduzca su correo corporativo y contraseña.');
       return;
     }
 
     if (authMode === 'SANDBOX') {
       if (!cleanTenant) {
-        setErrorMsg('Indique el nombre de su empresa u organismo para aislar su entorno Sandbox.');
+        setErrorMsg('Indique el nombre de la empresa u organismo.');
         return;
       }
       if (password.trim().length < 6) {
-        setErrorMsg('La contraseña de la Sandbox debe tener al menos 6 caracteres.');
+        setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
         return;
       }
     }
@@ -54,22 +56,11 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
     setLoading(true);
     setErrorMsg('');
 
-    const normalizedTenantLogin = cleanTenant.toUpperCase() || 'ORGANISMO_DEFAULT';
-    const agnosticCommandPayload = {
-      command: 'INICIAR_CUMPLIMIENTO_EXANTE_SAARE',
-      witnessTag: '[MS3V-COMPLIANCE-L7-OK]',
-      mode: 'AGNOSTIC_UNIVERSAL_LLM_ENFORCEMENT',
-      operatorEmail: cleanEmail,
-      tenantDomain: normalizedTenantLogin,
-      role: authMode === 'SANDBOX' ? 'CISO_ADMIN' : role,
-      planType: authMode === 'SANDBOX' ? 'SANDBOX_FREE' : selectedPlan,
-      timestamp: new Date().toISOString()
-    };
+    const baseUrl = String(SAARE_CONFIG?.CONTROL_PLANE_URL || API_HOST || '').trim().replace(/\/+$/, '');
 
     try {
-      // MODO 1: ALTA INSTANTÁNEA EN SANDBOX GRATUITA PERPETUA DE 2 ASIENTOS (SIN TARJETA)
       if (authMode === 'SANDBOX') {
-        const res = await fetch(`${API_BASE_URL}/api/v1/sandbox/provision`, {
+        const res = await fetch(`${baseUrl}/api/v1/sandbox/provision`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -81,11 +72,11 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
         });
 
         const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || data.error || 'No se pudo aprovisionar la Sandbox.');
+        if (!res.ok || !data.success || !data.token) {
+          throw new Error(data.message || data.error || 'No se pudo aprovisionar el entorno.');
         }
 
-        const provisionedTenant = data.user?.tenantId || normalizedTenantLogin;
+        const provisionedTenant = data.user?.tenantId || cleanTenant;
         const provisionedRole = data.user?.role || 'CISO_ADMIN';
 
         persistSession({
@@ -93,7 +84,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
           userEmail: cleanEmail,
           userRole: provisionedRole,
           tenantDomain: provisionedTenant,
-          planId: 'SANDBOX_FREE',
+          planId: data.user?.planId || selectedPlan,
           apiKey: data.user?.apiKey
         });
 
@@ -104,24 +95,16 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
           role: provisionedRole,
           tenantName: provisionedTenant,
           apiKey: data.user?.apiKey,
-          plan: 'SANDBOX_FREE',
-          maxSeats: data.maxSeats || 2,
-          expiresAt: null,
-          agnosticPayload: {
-            ...agnosticCommandPayload,
-            tenantDomain: provisionedTenant,
-            planType: 'SANDBOX_FREE'
-          }
+          plan: data.user?.planId || selectedPlan,
+          maxSeats: data.maxSeats
         });
         return;
       }
 
-      // MODO 2: AUTENTICACIÓN DE OPERADOR EXISTENTE (JWT)
-      const authResponse = await api.login(cleanEmail, password, normalizedTenantLogin);
-
-      const token = authResponse.token || localStorage.getItem('saare_token');
+      const authResponse = await api.login(cleanEmail, password, cleanTenant);
+      const token = authResponse.token || localStorage.getItem('saare_token') || '';
       const verifiedEmail = authResponse.user?.email || cleanEmail;
-      const verifiedTenant = authResponse.user?.tenantId || normalizedTenantLogin;
+      const verifiedTenant = authResponse.user?.tenantId || cleanTenant;
       const verifiedRole = authResponse.user?.role || role;
       const verifiedPlan = authResponse.user?.planId || selectedPlan;
 
@@ -141,66 +124,24 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
         role: verifiedRole,
         tenantName: verifiedTenant,
         apiKey: authResponse.user?.apiKey,
-        plan: verifiedPlan,
-        agnosticPayload: {
-          ...agnosticCommandPayload,
-          tenantDomain: verifiedTenant,
-          role: verifiedRole,
-          planType: verifiedPlan
-        }
+        plan: verifiedPlan
       });
     } catch (err) {
-      console.warn('[SAARE GATE] Verificación Backend:', err.message);
-
-      if (authMode === 'SANDBOX') {
-        setErrorMsg(err.message || 'Error al crear el entorno Sandbox gratuito.');
-        setLoading(false);
-        return;
-      }
-
-      if (err.message && !err.message.includes('offline') && !err.message.includes('conexión')) {
-        setErrorMsg(err.message || 'Credenciales de acceso no válidas.');
-        setLoading(false);
-        return;
-      }
-
-      // Fallback de Resiliencia Local si el servidor es inalcanzable
-      const localToken = `sk_saare_local_exante_${Date.now()}`;
-      persistSession({
-        token: localToken,
-        userEmail: cleanEmail,
-        userRole: role,
-        tenantDomain: normalizedTenantLogin,
-        planId: selectedPlan
-      });
-
+      setErrorMsg(err.message || 'Error en el proceso de autenticación.');
       setLoading(false);
-      onLoginSuccess({
-        token: localToken,
-        email: cleanEmail,
-        role,
-        tenantName: normalizedTenantLogin,
-        plan: selectedPlan,
-        agnosticPayload: agnosticCommandPayload
-      });
     }
   };
 
   return (
     <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 font-sans text-slate-100">
       <div className="bg-[#0b0f19] border border-[#1e293b] rounded-2xl max-w-xl w-full p-8 shadow-2xl space-y-6">
-
         <div className="p-4 bg-[#020617] border border-[#1e293b] rounded-xl text-center">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-sky-500/10 border border-sky-500/30 rounded-lg mb-2">
-            🧠
-          </div>
           <h1 className="text-base font-black text-[#f59e0b] tracking-wider uppercase">
             Sistema de Alineamiento, Auditoría y Resiliencia Estructural
           </h1>
-          <p className="text-[11px] text-slate-400 font-mono mt-1">S.A.A.R.E. CONSOLE GRC v12.5 / SGP 1.0</p>
+          <p className="text-[11px] text-slate-400 font-mono mt-1">S.A.A.R.E. CONSOLE GRC</p>
         </div>
 
-        {/* SELECTOR DE MODO: SANDBOX PERPETUA 2 ASIENTOS VS ACCESO EXISTENTE */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-[#020617] border border-[#1e293b] rounded-xl">
           <button
             type="button"
@@ -211,7 +152,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🧪 Sandbox Gratis (2 Asientos)
+            Alta Sandbox
           </button>
           <button
             type="button"
@@ -222,32 +163,24 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🔐 Acceso Operador
+            Acceso Operador
           </button>
         </div>
 
         <div className="text-center space-y-2">
           <h2 className="text-base font-extrabold uppercase text-slate-100 tracking-wide">
             {authMode === 'SANDBOX'
-              ? 'ALTA INSTANTÁNEA SANDBOX PERPETUA (2 ASIENTOS · 0 €)'
-              : 'ACTIVACIÓN DEL MÓDULO HÍBRIDO EX-ANTE Y BÓVEDA D1'}
+              ? 'ALTA DE ENTORNO SANDBOX MULTITENANT'
+              : 'ACCESO A NODO MULTITENANT Y BÓVEDA D1'}
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
-            {authMode === 'SANDBOX' ? (
-              <>
-                Despliegue inmediato y <strong className="text-emerald-400">sin límite de días ni tarjeta</strong> con <strong className="text-emerald-400">2 asientos CISO/DPO</strong>, <strong className="text-sky-400">1.000 veredictos L7/mes</strong> y acceso completo a GRC, Proxy L7 y Bóveda WORM.
-              </>
-            ) : (
-              <>
-                Al confirmar el acceso a la <strong className="text-sky-400">Consola GRC S.A.A.R.E. (SGP 1.0)</strong>, se validarán sus credenciales y se activará su perímetro <strong className="text-emerald-400">BLOCK LOGIC Ex-Ante D1</strong>.
-              </>
-            )}
+            Configura tu sesión aislada por tenant para operar en la consola GRC.
           </p>
         </div>
 
         {errorMsg && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-lg text-center font-mono">
-            ⚠️ {errorMsg}
+            {errorMsg}
           </div>
         )}
 
@@ -255,14 +188,14 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
           {authMode === 'SANDBOX' && (
             <div>
               <label className="block text-[11px] font-mono font-bold text-emerald-400 uppercase mb-1">
-                NOMBRE DEL RESPONSABLE / CISO EVALUADOR:
+                NOMBRE DEL RESPONSABLE:
               </label>
               <input
                 type="text"
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ej. Ana García (CISO)"
+                placeholder="Nombre y apellidos"
                 className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -270,23 +203,21 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
 
           <div>
             <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
-              CORREO DE TRABAJO / OPERADOR RESPONSABLE:
+              CORREO CORPORATIVO:
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ejemplo@organizacion.es"
+              placeholder="operador@organizacion.es"
               className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
             />
           </div>
 
           <div>
             <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
-              {authMode === 'SANDBOX'
-                ? 'CREA TU CONTRASEÑA DE ACCESO (MÍN. 6 CARACTERES):'
-                : 'CONTRASEÑA / CREDENCIAL DE ACCESO:'}
+              CONTRASEÑA:
             </label>
             <input
               type="password"
@@ -301,14 +232,14 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
-                {authMode === 'SANDBOX' ? 'EMPRESA / ORGANISMO:' : 'ORGANISMO / TENANT:'}
+                EMPRESA / TENANT:
               </label>
               <input
                 type="text"
                 required={authMode === 'SANDBOX'}
                 value={tenant}
                 onChange={(e) => setTenant(e.target.value)}
-                placeholder={authMode === 'SANDBOX' ? 'Ej. Acme Corp SL' : 'Opcional (se detecta por email)'}
+                placeholder="Identificador de tenant"
                 className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -323,11 +254,11 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-sky-500 cursor-pointer disabled:opacity-80"
               >
-                <option value="CISO_ADMIN">👑 CISO ADMIN (L4)</option>
-                <option value="CISO_SECOPS_LEVEL_3">🛡️ SECOPS (L3)</option>
-                <option value="DPO_GRC_LEVEL_2">⚖️ DPO GRC (L2)</option>
-                <option value="BOARD_EXECUTIVE_LEVEL_1">📈 EXECUTIVE (L1)</option>
-                <option value="OPERATIONAL_AGENT_USER">⚙️ AGENT (L0)</option>
+                <option value="CISO_ADMIN">CISO ADMIN (L4)</option>
+                <option value="CISO_SECOPS_LEVEL_3">SECOPS (L3)</option>
+                <option value="DPO_GRC_LEVEL_2">DPO GRC (L2)</option>
+                <option value="BOARD_EXECUTIVE_LEVEL_1">EXECUTIVE (L1)</option>
+                <option value="OPERATIONAL_AGENT_USER">AGENT (L0)</option>
               </select>
             </div>
           </div>
@@ -341,17 +272,17 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
               className="mt-0.5 accent-emerald-500 cursor-pointer w-4 h-4"
             />
             <label htmlFor="terms" className="text-[11px] text-slate-400 leading-snug cursor-pointer select-none">
-              Acepto los términos de inspección ex-ante L7, sellado en Bóveda D1 y autorizo la inyección del comando semántico de seguridad.
+              Acepto los términos operativos del tenant y la trazabilidad de auditoría asociada a mi sesión.
             </label>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
             <button
               type="button"
-              onClick={onBack || (() => { setEmail(''); setPassword(''); })}
+              onClick={onBack || (() => { setEmail(''); setPassword(''); setTenant(''); })}
               className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider cursor-pointer"
             >
-              {onBack ? 'VOLVER A CONSOLA' : 'LIMPIAR'}
+              {onBack ? 'VOLVER' : 'LIMPIAR'}
             </button>
 
             <button
@@ -360,16 +291,19 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = 'SANDBOX_
               className="w-full py-3 bg-[#10b981] hover:bg-[#059669] disabled:bg-slate-800 text-slate-950 font-black rounded-xl text-xs transition uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading
-                ? (authMode === 'SANDBOX' ? 'CREANDO SANDBOX...' : 'VERIFICANDO CREDENCIALES...')
-                : (authMode === 'SANDBOX' ? '🚀 CREAR SANDBOX PERPETUA Y ENTRAR' : '🛡️ ACEPTAR, ACTIVAR NODO L7 Y ENTRAR')}
+                ? 'PROCESANDO...'
+                : authMode === 'SANDBOX'
+                  ? 'CREAR ENTORNO Y ENTRAR'
+                  : 'ACTIVAR SESIÓN Y ENTRAR'}
             </button>
           </div>
         </form>
 
-        <div className="text-center text-[10px] font-mono text-slate-500 border-t border-[#1e293b] pt-3">
-          Trust Anchor: https://vault.saare.es | Safe Creative ID: 2607076315021
-        </div>
-
+        {SAARE_CONFIG?.TRUST_ANCHOR && (
+          <div className="text-center text-[10px] font-mono text-slate-500 border-t border-[#1e293b] pt-3">
+            Trust Anchor: {SAARE_CONFIG.TRUST_ANCHOR}
+          </div>
+        )}
       </div>
     </div>
   );

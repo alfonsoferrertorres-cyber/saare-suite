@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos Globales y Tema Oscuro — S.A.A.R.E. Console GRC (SGP 1.0) */
 :root {
   color-scheme: dark;
   --bg-main: #030712;

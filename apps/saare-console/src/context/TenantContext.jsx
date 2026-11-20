@@ -1,22 +1,39 @@
-// apps/saare-console/src/context/TenantContext.jsx
+// TenantContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SAARE_CONFIG } from '../config/saareState';
 
-const TenantContext = createContext();
+const TenantContext = createContext(null);
 
 export const TenantProvider = ({ children }) => {
   const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem('saare_session');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('saare_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
-  const [activeTenant, setActiveTenant] = useState(session?.tenantId || 'DEMO_ENTERPRISE');
+  const [activeTenant, setActiveTenant] = useState(
+    () => session?.tenantId || localStorage.getItem('saare_tenant') || SAARE_CONFIG.DEFAULT_TENANT || ''
+  );
 
-  const updateTenant = (tenantId) => {
-    setActiveTenant(tenantId);
+  useEffect(() => {
+    if (activeTenant) {
+      localStorage.setItem('saare_tenant', activeTenant);
+    }
+  }, [activeTenant]);
+
+  const updateTenant = (newTenantId) => {
+    setActiveTenant(newTenantId);
     if (session) {
-      const updated = { ...session, tenantId };
+      const updated = { ...session, tenantId: newTenantId };
       setSession(updated);
-      localStorage.setItem('saare_session', JSON.stringify(updated));
+      try {
+        localStorage.setItem('saare_session', JSON.stringify(updated));
+      } catch {
+        // Ignorar errores de almacenamiento
+      }
     }
   };
 

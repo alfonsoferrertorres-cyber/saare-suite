@@ -1,30 +1,29 @@
 // saare-console/src/components/Navbar.jsx
 import React from 'react';
 
-export default function Navbar({ 
-  tenantId = "ENTERPRISE", 
-  role = "CISO ADMIN (Nivel 4)", 
-  nodeStatus = "ONLINE",
-  onLogout 
+export default function Navbar({
+  tenantId = 'ENTERPRISE',
+  role = 'CISO ADMIN (Nivel 4)',
+  nodeStatus = 'ONLINE',
+  nodeEndpoint = 'api.saare.es',
+  onLogout
 }) {
   return (
     <nav style={{
       display: 'flex',
       alignItems: 'center',
-      justify: 'space-between',
+      justifyContent: 'space-between',
       padding: '12px 24px',
       background: '#0b0f19',
       borderBottom: '1px solid #1e293b',
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
     }}>
-      {/* Sección Izquierda: Branding y Estado de Capa L7 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <img 
-          src="/assets/logo-saare.svg" 
-          alt="S.A.A.R.E. Logo" 
+        <img
+          src="/assets/logo-saare.svg"
+          alt="S.A.A.R.E. Logo"
           style={{ height: '32px', width: 'auto' }}
           onError={(e) => {
-            // Fallback visual por si el asset no está presente
             e.target.style.display = 'none';
           }}
         />
@@ -37,7 +36,6 @@ export default function Navbar({
           </span>
         </div>
 
-        {/* Badge de Estado del Nodo */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -58,11 +56,10 @@ export default function Navbar({
             background: '#10b981',
             boxShadow: '0 0 8px #10b981'
           }} />
-          <span>PEP L7: {nodeStatus} (127.0.0.1:8080)</span>
+          <span>PEP L7: {nodeStatus} ({nodeEndpoint})</span>
         </div>
       </div>
 
-      {/* Sección Derecha: Información del Rol / Sesión Activa */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '12px', fontWeight: '800', color: '#e2e8f0' }}>
@@ -75,6 +72,7 @@ export default function Navbar({
 
         {onLogout && (
           <button
+            type="button"
             onClick={onLogout}
             style={{
               padding: '6px 12px',
@@ -87,8 +85,8 @@ export default function Navbar({
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
-            onMouseOver={(e) => e.target.style.color = '#f87171'}
-            onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+            onMouseOver={(e) => { e.currentTarget.style.color = '#f87171'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
           >
             Cerrar Sesión
           </button>

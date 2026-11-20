@@ -1,49 +1,35 @@
-// src/services/governanceTemplatesEngine.js — Generador de Informes Virginizados S.A.A.R.E.
+// governanceTemplatesEngine.js
 import { SAARE_CONFIG } from '../config/saareState';
 
-/**
- * Genera el paquete consolidado con los 4 informes oficiales de gobernanza GRC,
- * rellenados dinámicamente con los datos de telemetría y configuración del Tenant.
- *
- * @param {Object} params - Parámetros de configuración del informe.
- * @param {string} [params.tenantId='ENTERPRISE'] - Identificador del organismo/empresa.
- * @param {string} [params.userEmail='ciso@empresa.com'] - Correo del operador o CISO.
- * @param {string} [params.userRole='CISO_ADMIN'] - Rol o nivel RBAC del operador.
- * @param {Array} [params.evidences=[]] - Lista de evidencias e inspecciones registradas.
- * @param {Array} [params.customFilters=[]] - Reglas y filtros personalizados activos.
- * @returns {Object} Paquete estructurado con los 4 informes de gobernanza.
- */
 export function generateVirginizedGovernancePackage({
-  tenantId = 'ENTERPRISE',
-  userEmail = 'ciso@empresa.com',
-  userRole = 'CISO_ADMIN',
+  tenantId = '',
+  userEmail = '',
+  userRole = '',
   evidences = [],
-  customFilters = []
+  customFilters = [],
+  metrics = {}
 } = {}) {
   const timestamp = new Date().toISOString();
-
-  // Validación defensiva de arreglos
   const safeEvidences = Array.isArray(evidences) ? evidences : [];
   const safeCustomFilters = Array.isArray(customFilters) ? customFilters : [];
 
-  // Filtrado de evidencias denegadas o bloqueadas
   const deniedEvidences = safeEvidences.filter(
-    e => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO' || e.verdict === 'REJECTED')
+    (e) => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO' || e.verdict === 'REJECTED' || e.final_decision === 'DENY')
   );
 
-  // Muestra de hash de Merkle para prueba criptográfica
   const sampleMerkle =
     safeEvidences[0]?.merkleRoot ||
+    safeEvidences[0]?.merkle_root ||
     safeEvidences[0]?.proofBundle?.payloadHash ||
-    '6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842';
+    '';
 
-  const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
-  const safeCreativeId = SAARE_CONFIG?.SAFE_CREATIVE_ID || 'RPI-2607076315021';
-  const activeRulesCount = safeCustomFilters.length + 8; // 8 directivas base + reglas personalizadas
+  const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || '';
+  const safeCreativeId = SAARE_CONFIG?.SAFE_CREATIVE_ID || '';
+  const activeRulesCount = safeCustomFilters.length;
 
   return {
     metadata: {
-      generator: 'S.A.A.R.E. SGP 1.0 Governance Engine',
+      generator: 'S.A.A.R.E. Governance Engine',
       trustAnchor,
       safeCreativeId,
       tenantId,
@@ -51,101 +37,70 @@ export function generateVirginizedGovernancePackage({
       operatorRole: userRole,
       generatedAt: timestamp
     },
-
-    // 📊 1. INFORME DE GESTIÓN DE RIESGOS TECNOLÓGICOS (IT RISK ASSESSMENT)
     itRiskAssessment: {
       title: 'INFORME DE GESTIÓN DE RIESGOS TECNOLÓGICOS Y RESILIENCIA OPERATIVA',
       framework: 'EU Regulation 2022/2554 (DORA) / ISO/IEC 27001:2022',
       executiveSummary: {
         totalAuditedPrompts: safeEvidences.length,
         threatsInterceptedExAnte: deniedEvidences.length,
-        residualRiskLevel: deniedEvidences.length > 50 ? 'MEDIO-CONTENIDO' : 'BAJO-CONTROLADO'
+        residualRiskLevel: metrics.residualRiskLevel || 'N/A'
       },
-      riskHeatmap: [
-        {
-          riskId: 'R-01',
-          description: 'Inyección de Prompts y Exfiltración de datos vía LLM / Agentes IA',
-          inherentImpact: 5,
-          probability: 4,
-          currentControls: `Intercepción Ex-Ante en Capa 7 con ${activeRulesCount} reglas activas en RAM`,
-          residualRisk: 'BAJO (Interceptado en RAM)',
-          actionPlan: 'Mantener filtrado Zero-Disk y sincronización en Bóveda D1'
-        },
-        {
-          riskId: 'R-02',
-          description: 'Interrupción de disponibilidad por falla de proveedor LLM',
-          inherentImpact: 4,
-          probability: 3,
-          currentControls: 'Política Fail-Closed y aislamiento mediante SAARE Resilience Gate',
-          residualRisk: 'CONTENIDO',
-          actionPlan: 'Pruebas trimestrales de estrés en Resilience Lab'
-        }
-      ]
+      riskHeatmap: []
     },
-
-    // 🔒 2. EVALUACIÓN DE IMPACTO EN PROTECCIÓN DE DATOS (EIPD / DPIA)
     dpiaAssessment: {
       title: 'EVALUACIÓN DE IMPACTO EN LA PROTECCIÓN DE DATOS (EIPD / DPIA)',
       framework: 'RGPD (Reglamento UE 2016/679) / LOPDGDD 3/2018',
       dataCycle: {
         origin: 'Entradas de texto e inferencias procesadas por usuarios autorizados',
-        storage: 'Operación Volátil en RAM (Zero-Disk Storage)',
-        transfers: 'Cifrado de extremo a extremo con sanitización previa de PII',
-        destruction: 'Purga automática por ciclo de memoria y sellado criptográfico'
+        storage: 'Operación Volátil en RAM',
+        transfers: 'Según configuración del tenant',
+        destruction: 'Según política de retención del tenant'
       },
-      proportionalityAnalysis:
-        'Tratamiento legítimo orientado a la prevención de fugas de datos de carácter personal (DNI, IBAN, datos de salud) mediante enmascaramiento determinista ex-ante.',
+      proportionalityAnalysis: 'Evaluación sujeta a los parámetros y políticas configuradas por el tenant.',
       identifiedMitigations: {
-        piiRedaction: 'Sanitización en memoria RAM antes del procesamiento por el LLM',
-        evidenceAnchoring: `Sello notarial Ed25519 con hash de carga útil: ${sampleMerkle}`,
-        arcoRights: 'Garantizado por disociación irreversible de identidades en Bóveda D1'
+        piiRedaction: 'Sanitización configurada por política del tenant',
+        evidenceAnchoring: sampleMerkle,
+        arcoRights: 'Gestionado según procedimientos del tenant'
       },
       dpoApproval: {
-        status: 'APROBADO_CON_CONTROLES',
+        status: 'PENDIENTE_REVISION',
         dpoRole: userRole,
         signatureTimestamp: timestamp
       }
     },
-
-    // 🤖 3. EVALUACIÓN Y MITIGACIÓN DE SESGOS EN IA (EU AI ACT ART. 10 Y 27)
     aiBiasReport: {
-      title: 'INFORME DE EVALUACIÓN Y MITIGACIÓN DE SESGOS Y COMPORTAMIENTO ESTOCÁSTICO',
-      framework: 'EU Artificial Intelligence Act (Regulation UE 2024/1689) - Artículos 10, 15 & 27',
+      title: 'INFORME DE EVALUACIÓN Y MITIGACIÓN DE SESGOS',
+      framework: 'EU Artificial Intelligence Act (Regulation UE 2024/1689)',
       modelInventory: {
-        nodeType: 'PEP L7 Sovereign Gateway',
+        nodeType: 'PEP L7 Gateway',
         activePolicyRules: activeRulesCount,
         inspectedTraceCount: safeEvidences.length
       },
       representativenessMetrics: {
-        disparateImpactRatio: '1.02 (Dentro del rango óptimo 0.85 - 1.15)',
-        stochasticDesviationDeltaE: '< 0.01%',
-        biasAuditResult: 'SISTEMA CONFORME SIN DISPARIDAD SOCIOECONÓMICA'
+        disparateImpactRatio: metrics.disparateImpactRatio || 'N/A',
+        stochasticDesviationDeltaE: metrics.stochasticDesviationDeltaE || 'N/A',
+        biasAuditResult: metrics.biasAuditResult || 'N/A'
       },
-      appliedMitigations:
-        'Filtro de contexto semántico continuo y eliminación de variables sustitutas (proxy variables) en la Capa 7.',
-      humanInTheLoopClause:
-        'Ningún dictamen de bloqueo o denegación emitido por el sistema tiene carácter irrestricto. El usuario puede solicitar la revisión manual del evento por la figura GRC/DPO.'
+      appliedMitigations: 'Según reglas activas del tenant.',
+      humanInTheLoopClause: 'Sujeto a los protocolos de supervisión definidos por el tenant.'
     },
-
-    // 🌱 4. ESTADO DE INFORMACIÓN NO FINANCIERA (EINF / ESG / DNSH)
     einfEsgReport: {
       title: 'ESTADO DE INFORMACIÓN NO FINANCIERA (EINF) Y DECLARACIÓN DNSH',
-      framework: 'Directiva CSRD (UE 2022/2464) / Marco DNSH Red.es (Kit Consulting & Kit Digital)',
+      framework: 'Directiva CSRD (UE 2022/2464) / Marco DNSH',
       governanceDimension: {
-        rbacSeatsStatus: 'Matriz RBAC de 5 niveles activa',
-        ethicalChannelIncidents: 0,
-        auditTrailIntegrity: '100% Inmutable en Bóveda D1'
+        rbacSeatsStatus: 'Configurado por tenant',
+        ethicalChannelIncidents: metrics.ethicalChannelIncidents ?? 0,
+        auditTrailIntegrity: sampleMerkle ? 'REGISTRADO' : 'SIN_EVIDENCIA'
       },
       environmentalDimension: {
-        dnshComplianceStatus: 'COMPLIANT_DNSH (Do No Significant Harm)',
-        gpuEnergySavingsPercentage: '45%',
-        ramComputeBytesWritten: 0,
-        environmentalImpact:
-          'Operación Zero-Disk en memoria volátil que reduce el consumo computacional redundante en servidores Cloud.'
+        dnshComplianceStatus: metrics.dnshComplianceStatus || 'N/A',
+        gpuEnergySavingsPercentage: metrics.gpuEnergySavingsPercentage || 'N/A',
+        ramComputeBytesWritten: metrics.ramComputeBytesWritten ?? 0,
+        environmentalImpact: metrics.environmentalImpact || 'N/A'
       },
       socialDimension: {
-        operatorAccessControl: 'Garantía de privacidad e igualdad en el análisis de prompts',
-        trainingHoursPerOperator: 40
+        operatorAccessControl: 'Configurado por tenant',
+        trainingHoursPerOperator: metrics.trainingHoursPerOperator ?? 0
       }
     }
   };

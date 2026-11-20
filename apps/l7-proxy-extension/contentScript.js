@@ -82,11 +82,14 @@
 
   function isSendButtonTarget(target) {
     if (!target || typeof target.closest !== "function") return false;
-    return Boolean(
-      target.closest(
-        'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"], div[role="button"][aria-label*="Enviar"], button.send-button'
-      )
+    const btn = target.closest(
+      'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"], div[role="button"][aria-label*="Enviar"], button.send-button'
     );
+    if (!btn) return false;
+    if (btn.hasAttribute("disabled") || btn.getAttribute("aria-disabled") === "true") {
+      return false;
+    }
+    return true;
   }
 
   async function evaluateAndProcess(event, inputEl) {
@@ -177,7 +180,7 @@
           setInputValue(inputEl, finalText);
         }
 
-        const sigToMark = getInputValue(inputEl).trim() || trimmedPrompt;
+        const sigToMark = finalText.trim() || trimmedPrompt;
         setTimeout(() => {
           markAndSubmit(inputEl, sigToMark);
         }, 60);
@@ -288,7 +291,7 @@
       'button[aria-label*="Send"], button[aria-label*="Enviar"], button[data-testid="send-button"], button[type="submit"], div[role="button"][aria-label*="Send"], div[role="button"][aria-label*="Enviar"]'
     );
 
-    if (sendButton && !sendButton.hasAttribute("disabled")) {
+    if (sendButton && !sendButton.hasAttribute("disabled") && sendButton.getAttribute("aria-disabled") !== "true") {
       sendButton.click();
       return;
     }

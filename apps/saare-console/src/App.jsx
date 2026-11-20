@@ -1,4 +1,4 @@
-// saare-console/src/App.jsx — Consola GRC S.A.A.R.E. Enterprise v12.5 / SGP 1.0 (Multi-Tenant + Sandbox 2 Seats + Stripe Billing)
+// saare-console/src/App.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GovernanceToolbar from './components/GovernanceToolbar';
 import OfficialReportModal from './components/OfficialReportModal';
@@ -60,11 +60,10 @@ const redactSensitiveText = (value = '') => {
     .replace(/\b(?:\d[ -]*?){13,16}\b/g, '[CARD_REDACTED]');
 };
 
-const isProductionTenantId = (id = '') => {
+const isValidTenantId = (id = '') => {
   const normalized = String(id || '').trim();
-  if (!normalized || normalized.length < 4) return false;
+  if (!normalized || normalized.length < 2) return false;
   if (normalized.includes('@')) return false;
-  if (/ficticio|test_node|^sdf$/i.test(normalized)) return false;
   return true;
 };
 
@@ -75,36 +74,29 @@ export default function App() {
   const checkoutStatus = queryParams.get('checkout');
 
   const [userEmail, setUserEmail] = useState(() => {
-    const stored = (localStorage.getItem('saare_user_email') || '').trim().toLowerCase();
-    return stored || 'auditor@saare.es';
+    return (localStorage.getItem('saare_user_email') || SAARE_CONFIG?.DEFAULT_USER || '').trim().toLowerCase();
   });
 
   const [tenantId, setTenantId] = useState(() => {
-    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || 'DEMO_ENTERPRISE').trim();
-    return isProductionTenantId(candidate) ? candidate : 'DEMO_ENTERPRISE';
+    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || '').trim();
+    return isValidTenantId(candidate) ? candidate : '';
   });
 
-  const [userRole, setUserRole] = useState(() => (urlRole || localStorage.getItem('saare_user_role') || 'AUDITOR_GUEST').trim());
+  const [userRole, setUserRole] = useState(() => (urlRole || localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || '').trim());
 
   const [authToken, setAuthToken] = useState(
     () => localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token') || ''
   );
 
   const [availableTenants, setAvailableTenants] = useState(() => {
-    const base = [
-      { id: 'DEMO_ENTERPRISE', name: 'Demo Enterprise (Global)' },
-      { id: 'ORGANISMO_DEMO_01', name: 'Organismo Público Demo 01' },
-      { id: 'ORGANISMO_SALUD_ES', name: 'Servicio de Salud Regional' },
-      { id: 'FINTECH_CORP_01', name: 'Fintech Banking Corp' }
-    ];
-    const current = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
-    if (current && isProductionTenantId(current) && !base.some((t) => t.id === current)) {
-      return [{ id: current, name: `Mi Organización (${current})` }, ...base];
+    const initial = [];
+    const current = (urlTenant || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || '').trim();
+    if (current && isValidTenantId(current)) {
+      initial.push({ id: current, name: current });
     }
-    return base;
+    return initial;
   });
 
-  // Estados de navegación y runtime
   const [viewMode, setViewMode] = useState('GRC_AUDIT');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
@@ -113,35 +105,29 @@ export default function App() {
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState('');
 
-  // Estado de facturación, cuotas y credenciales del tenant
   const [billingInfo, setBillingInfo] = useState(null);
   const [isBillingLoading, setIsBillingLoading] = useState(false);
 
-  // Modal de Acceso / Alta Sandbox 2 Asientos Perpetuo
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authTab, setAuthTab] = useState('SANDBOX'); // 'SANDBOX' | 'LOGIN'
+  const [authTab, setAuthTab] = useState('SANDBOX');
   const [authForm, setAuthForm] = useState({ email: '', companyName: '', name: '', password: '' });
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Estados de modales operativos
   const [showOfficialReportModal, setShowOfficialReportModal] = useState(false);
   const [showSeatsModal, setShowSeatsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
 
-  // Evaluador Ex-Ante en RAM
-  const [testPrompt, setTestPrompt] = useState('Auditar cumplimiento normativo ex-ante bajo ISO/IEC 42001 y SGP 1.0.');
+  const [testPrompt, setTestPrompt] = useState('');
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Estados para gestión de reglas personalizadas / DLP
   const [customRules, setCustomRules] = useState([]);
   const [ruleForm, setRuleForm] = useState({ name: '', pattern: '' });
   const [isRulesLoading, setIsRulesLoading] = useState(false);
 
-  // Datos de Bóveda D1 — ARRANQUE ESTRICTO A 0
   const [evidences, setEvidences] = useState([]);
   const [tenantMetrics, setTenantMetrics] = useState([]);
 
@@ -165,13 +151,16 @@ export default function App() {
     };
   }, []);
 
-  // Consulta de suscripción, cuota y API Key real del tenant
   const fetchBillingUsage = useCallback(async (overrideTenant = null, overrideToken = null) => {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
+    if (!targetTenant) {
+      setBillingInfo(null);
+      return;
+    }
     try {
       const headers = { 'x-saare-tenant': targetTenant };
-      if (activeTok) headers['Authorization'] = `Bearer ${activeTok}`;
+      if (activeTok) headers.Authorization = `Bearer ${activeTok}`;
       const res = await fetch(getApiEndpoint('/api/v1/billing/usage'), { headers });
       if (res.ok) {
         const data = await res.json();
@@ -184,14 +173,14 @@ export default function App() {
     }
   }, [tenantId, authToken]);
 
-  // Consulta de reglas personalizadas
   const fetchCustomRules = useCallback(async (overrideTenant = null, overrideToken = null) => {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
+    if (!targetTenant) return;
     setIsRulesLoading(true);
     try {
       const headers = { 'x-saare-tenant': targetTenant, 'Content-Type': 'application/json' };
-      if (activeTok) headers['Authorization'] = `Bearer ${activeTok}`;
+      if (activeTok) headers.Authorization = `Bearer ${activeTok}`;
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), { headers });
       if (res.ok) {
         const data = await res.json();
@@ -200,13 +189,14 @@ export default function App() {
         throw new Error(`HTTP ${res.status}`);
       }
     } catch {
-      triggerGovernance('⚠️ Error al cargar reglas personalizadas desde D1.');
+      triggerGovernance('Error al cargar reglas personalizadas desde D1.');
     } finally {
       setIsRulesLoading(false);
     }
   }, [tenantId, authToken, triggerGovernance]);
 
   const handleApplyIso42001Governance = async () => {
+    if (!tenantId) return;
     setIsRulesLoading(true);
     const mergedById = new Map();
     [...customRules, ...ISO_42001_PRESET_RULES].forEach((r, i) => {
@@ -217,7 +207,7 @@ export default function App() {
 
     try {
       const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
@@ -229,13 +219,13 @@ export default function App() {
       setCustomRules(Array.isArray(data?.rules) ? data.rules : finalRules);
 
       if (res.ok) {
-        triggerGovernance(`🛡️ Gobernanza ISO 42001 aplicada y sincronizada para [${tenantId}].`);
+        triggerGovernance(`Gobernanza ISO 42001 aplicada y sincronizada para [${tenantId}].`);
       } else {
-        triggerGovernance(`🛡️ Gobernanza ISO 42001 cargada en sesión para [${tenantId}].`);
+        triggerGovernance(`Gobernanza ISO 42001 cargada en sesión para [${tenantId}].`);
       }
     } catch {
       setCustomRules(finalRules);
-      triggerGovernance('🛡️ Gobernanza ISO 42001 cargada en modo local.');
+      triggerGovernance('Gobernanza ISO 42001 cargada en modo local.');
     } finally {
       setIsRulesLoading(false);
     }
@@ -243,6 +233,7 @@ export default function App() {
 
   const handleSaveCustomRule = async (e) => {
     e.preventDefault();
+    if (!tenantId) return;
     const trimmedName = ruleForm.name.trim();
     const trimmedPattern = ruleForm.pattern.trim();
     if (!trimmedName || !trimmedPattern) return;
@@ -250,7 +241,7 @@ export default function App() {
     try {
       new RegExp(trimmedPattern);
     } catch {
-      triggerGovernance('⚠️ Expresión regular inválida en el patrón de la regla.');
+      triggerGovernance('Expresión regular inválida en el patrón de la regla.');
       return;
     }
 
@@ -259,7 +250,7 @@ export default function App() {
       const newRule = { id: `RULE-${Date.now()}`, name: trimmedName, pattern: trimmedPattern };
       const updatedRules = [...customRules, newRule];
       const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
@@ -274,15 +265,14 @@ export default function App() {
       const data = await res.json().catch(() => null);
       setCustomRules(Array.isArray(data?.rules) ? data.rules : updatedRules);
       setRuleForm({ name: '', pattern: '' });
-      triggerGovernance('✅ Regla DLP personalizada guardada y sincronizada.');
+      triggerGovernance('Regla DLP personalizada guardada y sincronizada.');
     } catch {
-      triggerGovernance('⚠️ Error al guardar la regla personalizada.');
+      triggerGovernance('Error al guardar la regla personalizada.');
     } finally {
       setIsRulesLoading(false);
     }
   };
 
-  // Mapeo dinámico 1:1 con la Bóveda D1
   const mapEvidences = useCallback((remoteEvidences, activeTenantId) => {
     const rawList = Array.isArray(remoteEvidences)
       ? remoteEvidences
@@ -290,10 +280,8 @@ export default function App() {
 
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
 
-    const safeDomainSuffix = String(activeTenantId || 'tenant').toLowerCase().replace(/[^a-z0-9]/g, '') || 'tenant';
-
     return rawList
-      .filter(item => item && typeof item === 'object')
+      .filter((item) => item && typeof item === 'object')
       .map((item, idx) => {
         const isDeny = item.final_decision === 'DENY' || item.decision === 'DENY' || item.verdict === 'RECHAZADO';
         const rawPromptVal = item.prompt || item.rawPrompt || item.input || '';
@@ -306,17 +294,17 @@ export default function App() {
           time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
           rawTimestamp: item.timestamp || new Date().toISOString(),
           cat: item.cat || (isDeny ? 'PII_DETECTED' : 'AUDITORIA_CONFORME'),
-          sub: item.sub || 'ISO/IEC 42001 / EU AI Act',
+          sub: item.sub || '',
           prompt: safePrompt,
           responseOutput: isDeny ? '[BLOQUEADO EX-ANTE]' : redactSensitiveText(item.responseOutput || item.response || ''),
           verdict: item.verdict || (isDeny ? 'RECHAZADO' : 'PERMITIDO'),
           decision: isDeny ? 'DENY' : 'ALLOW',
-          anchored: item.anchored !== undefined ? item.anchored : 1,
+          anchored: item.anchored !== undefined ? item.anchored : 0,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
-          user: item.user || `operador@${safeDomainSuffix}.es`,
-          tenant: isProductionTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : activeTenantId,
-          merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7',
-          latency: item.execution_latency_ms || item.latency || 0.84,
+          user: item.user || '',
+          tenant: isValidTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : activeTenantId,
+          merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '',
+          latency: item.execution_latency_ms || item.latency || 0,
           rawJson: item
         };
       });
@@ -326,6 +314,7 @@ export default function App() {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     const activeRole = overrideRole || userRole;
+    if (!targetTenant) return;
 
     setIsFetchingMetrics(true);
     setMetricsError('');
@@ -333,11 +322,11 @@ export default function App() {
       const endpoint = getApiEndpoint('/v1/metrics/tenants');
       const headers = {
         'x-saare-tenant': targetTenant,
-        'x-saare-role': activeRole,
+        ...(activeRole ? { 'x-saare-role': activeRole } : {}),
         'Content-Type': 'application/json'
       };
       if (activeTok) {
-        headers['Authorization'] = `Bearer ${activeTok}`;
+        headers.Authorization = `Bearer ${activeTok}`;
       }
 
       const res = await fetch(endpoint, { method: 'GET', headers });
@@ -350,8 +339,8 @@ export default function App() {
 
       const isGlobalAdmin = activeRole === 'CISO_ADMIN' && Boolean(activeTok);
       const cleanRows = rawRows
-        .filter(row => isProductionTenantId(row?.tenant_id))
-        .filter(row => isGlobalAdmin || row.tenant_id === targetTenant);
+        .filter((row) => isValidTenantId(row?.tenant_id))
+        .filter((row) => isGlobalAdmin || row.tenant_id === targetTenant);
 
       setTenantMetrics(cleanRows);
     } catch (e) {
@@ -364,6 +353,11 @@ export default function App() {
   const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null, overrideToken = null) => {
     const targetTenant = overrideTenant || tenantId;
     const activeTok = overrideToken !== null ? overrideToken : authToken;
+    if (!targetTenant) {
+      setEvidences([]);
+      return;
+    }
+
     setIsFetchingVault(true);
     try {
       const traces = await apiService.getTelemetryTraces({
@@ -383,7 +377,7 @@ export default function App() {
       ]);
     } catch {
       setEvidences([]);
-      triggerGovernance(`⚠️ Bóveda D1 [${targetTenant}] sin registros o error de conexión.`);
+      triggerGovernance(`Bóveda D1 [${targetTenant}] sin registros o error de conexión.`);
     } finally {
       setIsFetchingVault(false);
     }
@@ -393,10 +387,16 @@ export default function App() {
     setTenantId(newTenant);
     setTestResult(null);
     setCustomRules([]);
-    localStorage.setItem('saare_tenant_domain', newTenant);
-    fetchTelemetryDirectFromVault(newTenant);
-    if (activeTab === 'RULES') {
-      fetchCustomRules(newTenant);
+    if (newTenant) {
+      localStorage.setItem('saare_tenant_domain', newTenant);
+      fetchTelemetryDirectFromVault(newTenant);
+      if (activeTab === 'RULES') {
+        fetchCustomRules(newTenant);
+      }
+    } else {
+      localStorage.removeItem('saare_tenant_domain');
+      setEvidences([]);
+      setTenantMetrics([]);
     }
   };
 
@@ -405,25 +405,27 @@ export default function App() {
     localStorage.removeItem('saare_auth_token');
     localStorage.removeItem('saare_api_key');
     localStorage.removeItem('saare_plan_id');
-    localStorage.setItem('saare_tenant_domain', 'DEMO_ENTERPRISE');
-    localStorage.setItem('saare_user_email', 'auditor@saare.es');
-    localStorage.setItem('saare_user_role', 'AUDITOR_GUEST');
+    localStorage.removeItem('saare_tenant_domain');
+    localStorage.removeItem('saare_user_email');
+    localStorage.removeItem('saare_user_role');
+    localStorage.removeItem('saare_session');
 
     setAuthToken('');
-    setTenantId('DEMO_ENTERPRISE');
-    setUserEmail('auditor@saare.es');
-    setUserRole('AUDITOR_GUEST');
+    setTenantId('');
+    setUserEmail('');
+    setUserRole('');
+    setEvidences([]);
+    setTenantMetrics([]);
     setBillingInfo(null);
     setCustomRules([]);
     setTestResult(null);
-    triggerGovernance('🔒 Sesión cerrada. Modo lectura DEMO_ENTERPRISE activo.');
-    fetchTelemetryDirectFromVault('DEMO_ENTERPRISE', '');
+    triggerGovernance('Sesión cerrada.');
   };
 
   useEffect(() => {
     if (checkoutStatus === 'success' && urlTenant) {
       localStorage.setItem('saare_tenant_domain', urlTenant);
-      triggerGovernance(`✅ Suscripción activada para [${urlTenant}]. Revisa tu correo o inicia sesión.`);
+      triggerGovernance(`Suscripción activada para [${urlTenant}].`);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [checkoutStatus, urlTenant, triggerGovernance]);
@@ -471,38 +473,34 @@ export default function App() {
         throw new Error(data?.message || data?.error || 'No se pudo completar la autenticación.');
       }
 
-      const newTenant = data.user?.tenantId || data.user?.tenantName || 'DEMO_ENTERPRISE';
+      const newTenant = data.user?.tenantId || data.user?.tenantName || '';
       const newEmail = data.user?.email || authForm.email;
       const newRole = data.user?.role || 'CISO_ADMIN';
 
       localStorage.setItem('saare_token', data.token);
       localStorage.setItem('saare_auth_token', data.token);
-      localStorage.setItem('saare_tenant_domain', newTenant);
-      localStorage.setItem('saare_user_email', newEmail);
-      localStorage.setItem('saare_user_role', newRole);
-      localStorage.setItem('saare_plan_id', data.user?.planId || (authTab === 'SANDBOX' ? 'SANDBOX_FREE' : 'ACTIVE'));
-      if (data.user?.apiKey) {
-        localStorage.setItem('saare_api_key', data.user.apiKey);
-      }
+      if (newTenant) localStorage.setItem('saare_tenant_domain', newTenant);
+      if (newEmail) localStorage.setItem('saare_user_email', newEmail);
+      if (newRole) localStorage.setItem('saare_user_role', newRole);
+      if (data.user?.planId) localStorage.setItem('saare_plan_id', data.user.planId);
+      if (data.user?.apiKey) localStorage.setItem('saare_api_key', data.user.apiKey);
 
       setAuthToken(data.token);
       setTenantId(newTenant);
       setUserEmail(newEmail);
       setUserRole(newRole);
 
-      setAvailableTenants((prev) =>
-        prev.some((t) => t.id === newTenant)
-          ? prev
-          : [{ id: newTenant, name: `${authForm.companyName || newTenant} (${newTenant})` }, ...prev]
-      );
+      if (newTenant) {
+        setAvailableTenants((prev) =>
+          prev.some((t) => t.id === newTenant)
+            ? prev
+            : [{ id: newTenant, name: `${authForm.companyName || newTenant} (${newTenant})` }, ...prev]
+        );
+      }
 
       setShowAuthModal(false);
       setAuthForm({ email: '', companyName: '', name: '', password: '' });
-      triggerGovernance(
-        authTab === 'SANDBOX'
-          ? `🚀 Sandbox Perpetuo (2 asientos) aprovisionado: ${newTenant}`
-          : `🔓 Sesión iniciada en [${newTenant}]`
-      );
+      triggerGovernance(`Sesión iniciada${newTenant ? ` en [${newTenant}]` : ''}.`);
       await fetchTelemetryDirectFromVault(newTenant, data.token);
     } catch (err) {
       setAuthError(err.message);
@@ -531,9 +529,9 @@ export default function App() {
         }
         throw new Error('URL de checkout no segura');
       }
-      triggerGovernance(`⚠️ ${data?.message || 'No se pudo abrir Stripe Checkout.'}`);
+      triggerGovernance(data?.message || 'No se pudo abrir Stripe Checkout.');
     } catch {
-      triggerGovernance('⚠️ Error de red conectando con Stripe Billing.');
+      triggerGovernance('Error de red conectando con Stripe Billing.');
     } finally {
       setIsBillingLoading(false);
     }
@@ -542,8 +540,8 @@ export default function App() {
   const handleOpenStripePortal = async () => {
     setIsBillingLoading(true);
     try {
-      const headers = { 'Content-Type': 'application/json', 'x-saare-tenant': tenantId };
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      const headers = { 'Content-Type': 'application/json', ...(tenantId ? { 'x-saare-tenant': tenantId } : {}) };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
       const res = await fetch(getApiEndpoint('/api/v1/billing/portal'), { method: 'POST', headers });
       const data = await res.json();
       if (res.ok && data?.url) {
@@ -553,9 +551,9 @@ export default function App() {
         }
         throw new Error('URL de portal no segura');
       }
-      triggerGovernance(`ℹ️ ${data?.message || 'Este tenant está en plan Sandbox gratuito sin suscripción Stripe activa.'}`);
+      triggerGovernance(data?.message || 'No hay suscripción activa para gestionar.');
     } catch {
-      triggerGovernance('⚠️ Error abriendo el portal de facturación.');
+      triggerGovernance('Error abriendo el portal de facturación.');
     } finally {
       setIsBillingLoading(false);
     }
@@ -564,34 +562,35 @@ export default function App() {
   const handleDownloadL7Extension = () => {
     const a = document.createElement('a');
     a.href = '/deploy/saare_l7_proxy_extension.zip';
-    a.download = `saare_l7_proxy_extension_${tenantId}.zip`;
+    a.download = `saare_l7_proxy_extension_${tenantId || 'tenant'}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId}].`);
+    triggerGovernance(`Paquete Extensión L7 (.ZIP) descargado para [${tenantId || 'tenant'}].`);
   };
 
   const handleDownloadEnterpriseGpoReg = async () => {
     try {
-      const res = await fetch(getApiEndpoint(`/api/v1/deploy/gpo-policy?tenant=${encodeURIComponent(tenantId)}`));
+      const query = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : '';
+      const res = await fetch(getApiEndpoint(`/api/v1/deploy/gpo-policy${query}`));
       if (res.ok) {
         const regText = await res.text();
         const blob = new Blob([regText], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
+        a.download = `SAARE_L7_POLICY_${tenantId || 'tenant'}.reg`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        triggerGovernance(`Directiva GPO con LicenseKey inyectada generada para [${tenantId}].`);
+        triggerGovernance(`Directiva GPO generada para [${tenantId || 'tenant'}].`);
         return;
       }
     } catch {}
 
     const gateway = getApiEndpoint('/v1/chat/completions');
-    const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || 'https://vault.saare.es';
+    const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || '';
     const licenseKey = billingInfo?.credentials?.licenseKey || localStorage.getItem('saare_api_key') || '';
 
     const regContent = [
@@ -616,12 +615,12 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SAARE_L7_POLICY_${tenantId}.reg`;
+    a.download = `SAARE_L7_POLICY_${tenantId || 'tenant'}.reg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    triggerGovernance(`Directiva GPO generada para [${tenantId}].`);
+    triggerGovernance(`Directiva GPO generada para [${tenantId || 'tenant'}].`);
   };
 
   const handleDownloadK8sManifest = () => {
@@ -632,7 +631,7 @@ export default function App() {
       '  name: saare-ip-manifest',
       '  namespace: saare-system',
       'data:',
-      '  TITULAR_CORPORATIVO: "S.A.A.R.E. Enterprise Control Plane"',
+      `  TITULAR_CORPORATIVO: "${SAARE_CONFIG?.COMPANY_NAME || ''}"`,
       `  TENANT_ID: "${tenantId}"`,
       `  GATEWAY_URL: "${getApiEndpoint('/v1/chat/completions')}"`
     ].join('\n') + '\n';
@@ -641,7 +640,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `01-ip-manifest-${tenantId.toLowerCase()}.yaml`;
+    a.download = `01-ip-manifest-${(tenantId || 'tenant').toLowerCase()}.yaml`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -664,7 +663,7 @@ export default function App() {
         token: authToken,
         role: userRole
       });
-      const latencyMs = (performance.now() - t0).toFixed(2) + ' ms';
+      const latencyMs = `${(performance.now() - t0).toFixed(2)} ms`;
       const isDeny = data?.decision === 'DENY' || data?.verdict === 'FAIL_CLOSED_BLOCKED' || data?.verdict === 'RECHAZADO';
 
       const evalResult = {
@@ -674,11 +673,11 @@ export default function App() {
           ? '[PAYLOAD BLOQUEADO Y REDACTADO EN RAM]'
           : redactSensitiveText(data?.sanitizedPrompt || data?.enforcement?.executedCommand || promptToRun),
         latency: latencyMs,
-        seal: data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || '9a364b25d96058d4f618f3d967836872a9c017b773e522289c0b5fd04b0c2ca7'
+        seal: data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || ''
       };
 
       setTestResult(evalResult);
-      triggerGovernance(`⚡ Prompt interceptado (${evalResult.decision}) y sellado en D1.`);
+      triggerGovernance(`Prompt interceptado (${evalResult.decision}).`);
       await fetchTelemetryDirectFromVault();
     } catch {
       triggerGovernance('Error al evaluar el prompt en el gateway L7.');
@@ -693,112 +692,77 @@ export default function App() {
   };
 
   const totalInspecciones = evidences.length;
-  const totalDeny = evidences.filter(e => e.decision === 'DENY').length;
+  const totalDeny = evidences.filter((e) => e.decision === 'DENY').length;
   const tasaBloqueo = totalInspecciones > 0 ? ((totalDeny / totalInspecciones) * 100).toFixed(1) : '0.0';
   const resolvedApiKey = billingInfo?.credentials?.licenseKey || localStorage.getItem('saare_api_key') || '';
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-
       {governanceStatus && (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: '#059669', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 10000, fontWeight: '800', fontSize: '0.82rem', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-          🔔 {governanceStatus}
+          {governanceStatus}
         </div>
       )}
 
-      {/* HEADER PRINCIPAL */}
       <header style={{ width: '100%', background: '#0b0f19', borderBottom: '1px solid #1e293b', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', maxWidth: '1280px', padding: '0 16px', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontWeight: '900', color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '0.5px' }}>S.A.A.R.E. CONSOLE GRC</span>
-            <span style={{ background: '#1e293b', color: '#34d399', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
-              {billingInfo?.planId || localStorage.getItem('saare_plan_id') || 'SGP 1.0 Enterprise'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setViewMode('GRC_AUDIT')}
-              style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'GRC_AUDIT' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              🟩 GRC & AUDIT
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('EXECUTIVE')}
-              style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'EXECUTIVE' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              🟦 EJECUTIVO
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('SUBSIDIES')}
-              style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'SUBSIDIES' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              📙 SUBVENCIONES
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowSeatsModal(true)}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              👥 ROLES/ASIENTOS ({billingInfo?.maxSeats || 2})
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFriaModal(true)}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              📋 AUDITORÍA FRIA
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadL7Extension}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              🧩 EXTENSIÓN L7 (.ZIP)
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadEnterpriseGpoReg}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #10b981', background: '#064e3b', color: '#34d399', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              ⚙️ POLÍTICA GPO (.REG)
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadK8sManifest}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #8b5cf6', background: '#4c1d95', color: '#c084fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              ☸️ MANIFIESTO K8S
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAuthModal(true)}
-              style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #f59e0b', background: '#78350f', color: '#fde68a', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-              🔑 {authToken ? 'CUENTA / SANDBOX' : 'ACTIVAR SANDBOX GRATIS'}
-            </button>
-            {authToken && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #ef4444', background: '#450a0a', color: '#fca5a5', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-                🚪 SALIR
-              </button>
+            {(billingInfo?.planId || localStorage.getItem('saare_plan_id')) && (
+              <span style={{ background: '#1e293b', color: '#34d399', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                {billingInfo?.planId || localStorage.getItem('saare_plan_id')}
+              </span>
             )}
           </div>
 
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => setViewMode('GRC_AUDIT')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'GRC_AUDIT' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              GRC &amp; AUDIT
+            </button>
+            <button type="button" onClick={() => setViewMode('EXECUTIVE')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'EXECUTIVE' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              EJECUTIVO
+            </button>
+            <button type="button" onClick={() => setViewMode('SUBSIDIES')} style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: viewMode === 'SUBSIDIES' ? '#d97706' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              SUBVENCIONES
+            </button>
+            <button type="button" onClick={() => setShowSeatsModal(true)} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              ROLES/ASIENTOS ({billingInfo?.maxSeats ?? 0})
+            </button>
+            <button type="button" onClick={() => setShowFriaModal(true)} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              AUDITORÍA FRIA
+            </button>
+            <button type="button" onClick={handleDownloadL7Extension} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              EXTENSIÓN L7 (.ZIP)
+            </button>
+            <button type="button" onClick={handleDownloadEnterpriseGpoReg} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #10b981', background: '#064e3b', color: '#34d399', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              POLÍTICA GPO (.REG)
+            </button>
+            <button type="button" onClick={handleDownloadK8sManifest} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #8b5cf6', background: '#4c1d95', color: '#c084fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              MANIFIESTO K8S
+            </button>
+            <button type="button" onClick={() => setShowAuthModal(true)} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #f59e0b', background: '#78350f', color: '#fde68a', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+              {authToken ? 'CUENTA / SANDBOX' : 'ACTIVAR SANDBOX'}
+            </button>
+            {authToken && (
+              <button type="button" onClick={handleLogout} style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #ef4444', background: '#450a0a', color: '#fca5a5', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+                SALIR
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* CUERPO PRINCIPAL */}
       <main style={{ maxWidth: '1280px', margin: '24px auto', padding: '0 16px' }}>
-
         {viewMode === 'SUBSIDIES' && (
           <SubsidiesHub tenantId={tenantId} onBack={() => setViewMode('GRC_AUDIT')} />
         )}
 
         {viewMode === 'EXECUTIVE' && (
-          <ExecutiveView tenantId={tenantId} evidences={evidences} onManageSeats={() => setShowSeatsModal(true)} />
+          <ExecutiveView tenantId={tenantId} userRole={userRole} evidences={evidences} onManageSeats={() => setShowSeatsModal(true)} />
         )}
 
         {viewMode === 'GRC_AUDIT' && (
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
-
             <GovernanceToolbar
               tenantId={tenantId}
               userEmail={userEmail}
@@ -806,21 +770,24 @@ export default function App() {
               onExportClick={() => setShowExportModal(true)}
             />
 
-            {/* TARJETAS DE MÉTRICAS, SUSCRIPCIÓN Y SELECTOR DE INQUILINO */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
-
               <div style={{ background: '#020617', border: '1px solid #38bdf8', padding: '16px', borderRadius: '8px' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>ORGANISMO / TENANT ACTIVO</div>
                 <select
                   value={tenantId}
                   onChange={(e) => handleTenantChange(e.target.value)}
-                  style={{ width: '100%', marginTop: '6px', padding: '6px 8px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', fontWeight: '900', fontSize: '0.9rem', borderRadius: '6px', cursor: 'pointer' }}>
-                  {availableTenants.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.id})</option>
-                  ))}
+                  style={{ width: '100%', marginTop: '6px', padding: '6px 8px', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', fontWeight: '900', fontSize: '0.9rem', borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  {availableTenants.length === 0 ? (
+                    <option value="">Sin tenant seleccionado</option>
+                  ) : (
+                    availableTenants.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.id})</option>
+                    ))
+                  )}
                 </select>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '6px' }}>
-                  API Key: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{resolvedApiKey ? `${resolvedApiKey.slice(0, 18)}...` : 'Sincronizando...'}</span>
+                  API Key: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{resolvedApiKey ? `${resolvedApiKey.slice(0, 18)}...` : 'No configurada'}</span>
                 </div>
               </div>
 
@@ -831,84 +798,51 @@ export default function App() {
               </div>
 
               <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8' }}>PLAN & CUOTA MENSUAL</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8' }}>PLAN &amp; CUOTA MENSUAL</div>
                 <div style={{ fontSize: '1.05rem', fontWeight: '900', color: '#fbbf24', marginTop: '4px' }}>
-                  {billingInfo?.planId || localStorage.getItem('saare_plan_id') || 'SANDBOX_FREE'}
+                  {billingInfo?.planId || localStorage.getItem('saare_plan_id') || 'N/A'}
                 </div>
                 <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '2px' }}>
-                  {billingInfo?.usage ? `${billingInfo.usage.verdictsConsumed} / ${billingInfo.usage.monthlyQuota} veredictos` : '2 Asientos Perpetuos'}
+                  {billingInfo?.usage ? `${billingInfo.usage.verdictsConsumed} / ${billingInfo.usage.monthlyQuota} veredictos` : 'Sin datos de cuota'}
                 </div>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleStartStripeUpgrade('PROFESSIONAL_649')}
-                    disabled={isBillingLoading}
-                    style={{ padding: '4px 8px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}>
-                    ⚡ Upgrade Pro
+                  <button type="button" onClick={() => handleStartStripeUpgrade('PROFESSIONAL_649')} disabled={isBillingLoading} style={{ padding: '4px 8px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}>
+                    Upgrade Pro
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenStripePortal}
-                    disabled={isBillingLoading}
-                    style={{ padding: '4px 8px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', cursor: 'pointer' }}>
-                    💳 Facturación
+                  <button type="button" onClick={handleOpenStripePortal} disabled={isBillingLoading} style={{ padding: '4px 8px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', cursor: 'pointer' }}>
+                    Facturación
                   </button>
                 </div>
               </div>
 
               <div style={{ background: '#020617', border: '1px solid #1e293b', padding: '16px', borderRadius: '8px' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8' }}>ESTADO DEL RUNTIME</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#34d399', marginTop: '4px' }}>● OPERATIVO</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#34d399', marginTop: '4px' }}>OPERATIVO</div>
                 <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Reloj Local: {timeStr}</div>
               </div>
-
             </div>
 
-            {/* PESTAÑAS DE TELEMETRÍA Y CONFIGURACIÓN */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e293b', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('GLOBAL')}
-                  style={{ padding: '10px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                <button type="button" onClick={() => setActiveTab('GLOBAL')} style={{ padding: '10px 16px', background: activeTab === 'GLOBAL' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                   EVIDENCIAS Y TRAZAS D1
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('METRICS');
-                    fetchTenantMetrics();
-                  }}
-                  style={{ padding: '10px 16px', background: activeTab === 'METRICS' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  📊 CONSUMO MULTI-TENANT
+                <button type="button" onClick={() => { setActiveTab('METRICS'); fetchTenantMetrics(); }} style={{ padding: '10px 16px', background: activeTab === 'METRICS' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  CONSUMO MULTI-TENANT
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('RUNLIVE')}
-                  style={{ padding: '10px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  ⚡ EVALUADOR EX-ANTE EN RAM
+                <button type="button" onClick={() => setActiveTab('RUNLIVE')} style={{ padding: '10px 16px', background: activeTab === 'RUNLIVE' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  EVALUADOR EX-ANTE EN RAM
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('RULES');
-                    fetchCustomRules();
-                  }}
-                  style={{ padding: '10px 16px', background: activeTab === 'RULES' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  ⚙️ REGLAS DLP / CUSTOM
+                <button type="button" onClick={() => { setActiveTab('RULES'); fetchCustomRules(); }} style={{ padding: '10px 16px', background: activeTab === 'RULES' ? '#0284c7' : 'transparent', color: '#fff', border: 'none', borderRadius: '6px 6px 0 0', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  REGLAS DLP / CUSTOM
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => fetchTelemetryDirectFromVault()}
-                disabled={isFetchingVault}
-                style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
-                {isFetchingVault ? 'Consultando Bóveda...' : `🔄 Sincronizar Bóveda (${tenantId})`}
+              <button type="button" onClick={() => fetchTelemetryDirectFromVault()} disabled={isFetchingVault} style={{ padding: '6px 14px', marginBottom: '6px', background: '#0f172a', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+                {isFetchingVault ? 'Consultando Bóveda...' : `Sincronizar Bóveda (${tenantId || 'N/A'})`}
               </button>
             </div>
 
-            {/* TAB 1: EVIDENCIAS Y TRAZAS D1 */}
             {activeTab === 'GLOBAL' && (
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
@@ -926,7 +860,7 @@ export default function App() {
                     {evidences.length === 0 ? (
                       <tr>
                         <td colSpan="6" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                          🛡️ Bóveda D1 del tenant <strong>{tenantId}</strong> conectada (0 registros actuales). Esperando telemetría L7...
+                          Sin registros de evidencia para el tenant <strong>{tenantId || 'no definido'}</strong>.
                         </td>
                       </tr>
                     ) : (
@@ -940,13 +874,12 @@ export default function App() {
                               {ev.decision === 'DENY' ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
                             </span>
                           </td>
-                          <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>{ev.merkleRoot.substring(0, 20)}...</td>
+                          <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>
+                            {ev.merkleRoot ? `${ev.merkleRoot.substring(0, 20)}...` : 'N/A'}
+                          </td>
                           <td style={{ padding: '12px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPdfReport(ev)}
-                              style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
-                              📄 IMPRIMIR PDF
+                            <button type="button" onClick={() => handleOpenPdfReport(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
+                              IMPRIMIR PDF
                             </button>
                           </td>
                         </tr>
@@ -957,25 +890,20 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: CONSUMO MULTI-TENANT AISLADO */}
             {activeTab === 'METRICS' && (
               <div style={{ overflowX: 'auto', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', background: '#020617' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                   <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
-                    📊 Métricas Agregadas de Consumo por Inquilino (D1 Vault)
+                    Métricas Agregadas de Consumo por Inquilino
                   </h3>
-                  <button
-                    type="button"
-                    onClick={() => fetchTenantMetrics()}
-                    disabled={isFetchingMetrics}
-                    style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}>
-                    {isFetchingMetrics ? 'Actualizando...' : '↻ Refrescar Métricas'}
+                  <button type="button" onClick={() => fetchTenantMetrics()} disabled={isFetchingMetrics} style={{ padding: '5px 12px', background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}>
+                    {isFetchingMetrics ? 'Actualizando...' : 'Refrescar Métricas'}
                   </button>
                 </div>
 
                 {metricsError && (
                   <div style={{ marginBottom: '12px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', borderRadius: '6px', color: '#fca5a5', fontSize: '0.78rem' }}>
-                    ⚠️ {metricsError}
+                    {metricsError}
                   </div>
                 )}
 
@@ -994,7 +922,7 @@ export default function App() {
                     {isFetchingMetrics ? (
                       <tr>
                         <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
-                          Consultando consumo agregado multi-tenant en D1...
+                          Consultando consumo agregado multi-tenant...
                         </td>
                       </tr>
                     ) : tenantMetrics.length === 0 ? (
@@ -1007,7 +935,7 @@ export default function App() {
                       tenantMetrics.map((row, idx) => (
                         <tr key={row.tenant_id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
                           <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold', fontFamily: 'monospace' }}>{row.tenant_id}</td>
-                          <td style={{ padding: '12px', color: '#fbbf24', fontWeight: '700' }}>{row.plan_id || 'SANDBOX_FREE'}</td>
+                          <td style={{ padding: '12px', color: '#fbbf24', fontWeight: '700' }}>{row.plan_id || 'N/A'}</td>
                           <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{row.total_prompts ?? 0}</td>
                           <td style={{ padding: '12px', color: '#34d399', fontWeight: 'bold' }}>{row.aprobados ?? 0}</td>
                           <td style={{ padding: '12px', color: '#f87171', fontWeight: 'bold' }}>{row.bloqueados_pii ?? 0}</td>
@@ -1020,71 +948,50 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 3: EVALUADOR EX-ANTE EN RAM */}
             {activeTab === 'RUNLIVE' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>⚡ EVALUADOR PROMPT EX-ANTE EN RAM (BLOCK LOGIC)</h3>
+                <h3 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>EVALUADOR PROMPT EX-ANTE EN RAM</h3>
                 <textarea
                   rows={3}
                   value={testPrompt}
                   onChange={(e) => setTestPrompt(e.target.value)}
+                  placeholder="Introduce un prompt para evaluar..."
                   style={{ width: '100%', padding: '12px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontFamily: 'monospace', boxSizing: 'border-box' }}
                 />
                 <button
                   type="button"
                   onClick={() => handleExecuteTestExAnte()}
                   disabled={isEvaluating}
-                  style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
-                  {isEvaluating ? 'PROCESANDO EN DISYUNTOR L7...' : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId}]`}
+                  style={{ width: '100%', marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}
+                >
+                  {isEvaluating ? 'PROCESANDO EN DISYUNTOR L7...' : `EJECUTAR RUNTIME EX-ANTE PARA [${tenantId || 'TENANT'}]`}
                 </button>
 
                 {testResult && (
                   <div style={{ marginTop: '16px', background: '#0b0f19', border: `1px solid ${testResult.decision === 'DENY' ? '#ef4444' : '#10b981'}`, padding: '14px', borderRadius: '6px' }}>
                     <div style={{ fontWeight: '900', color: testResult.decision === 'DENY' ? '#f87171' : '#34d399' }}>VEREDICTO: {testResult.verdict}</div>
                     <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '6px', fontFamily: 'monospace' }}>Payload Resultante: {testResult.sanitizedPrompt}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px', fontFamily: 'monospace' }}>Sello Merkle Integrity: {testResult.seal} | Latencia: {testResult.latency}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px', fontFamily: 'monospace' }}>Sello Merkle Integrity: {testResult.seal || 'N/A'} | Latencia: {testResult.latency}</div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* TAB 4: REGLAS DLP / CUSTOM */}
             {activeTab === 'RULES' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                   <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
-                    ⚙️ Gestión de Reglas y Patrones DLP Personalizados (Bóveda D1)
+                    Gestión de Reglas y Patrones DLP Personalizados
                   </h3>
-                  <button
-                    type="button"
-                    onClick={handleApplyIso42001Governance}
-                    disabled={isRulesLoading}
-                    style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}>
-                    🛡️ Gobernanza ISO 42001
+                  <button type="button" onClick={handleApplyIso42001Governance} disabled={isRulesLoading} style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}>
+                    Gobernanza ISO 42001
                   </button>
                 </div>
 
                 <form onSubmit={handleSaveCustomRule} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nombre de la regla (ej. [ISO 42001] SECRETO_INTERNO - DENY)"
-                    value={ruleForm.name}
-                    onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })}
-                    style={{ padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem' }}
-                  />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Patrón regex (ej. (CONFIDENCIAL_\\d+))"
-                    value={ruleForm.pattern}
-                    onChange={(e) => setRuleForm({ ...ruleForm, pattern: e.target.value })}
-                    style={{ padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isRulesLoading}
-                    style={{ padding: '10px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <input type="text" required placeholder="Nombre de la regla" value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} style={{ padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem' }} />
+                  <input type="text" required placeholder="Patrón regex" value={ruleForm.pattern} onChange={(e) => setRuleForm({ ...ruleForm, pattern: e.target.value })} style={{ padding: '10px', background: '#0b0f19', border: '1px solid #334155', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }} />
+                  <button type="submit" disabled={isRulesLoading} style={{ padding: '10px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}>
                     {isRulesLoading ? 'Guardando...' : '+ Añadir Regla'}
                   </button>
                 </form>
@@ -1102,7 +1009,7 @@ export default function App() {
                       {customRules.length === 0 ? (
                         <tr>
                           <td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                            No hay reglas personalizadas definidas para este tenant en la Bóveda D1. Pulsa "Gobernanza ISO 42001" para cargar el pack base.
+                            No hay reglas personalizadas definidas para este tenant.
                           </td>
                         </tr>
                       ) : (
@@ -1119,100 +1026,54 @@ export default function App() {
                 </div>
               </div>
             )}
-
           </div>
         )}
-
       </main>
 
-      {/* MODAL DE ALTA SANDBOX GRATUITO PERPETUO (2 ASIENTOS) / LOGIN */}
       {showAuthModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
           <div style={{ background: '#0b0f19', border: '1px solid #38bdf8', borderRadius: '12px', maxWidth: '440px', width: '100%', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.05rem', fontWeight: '900' }}>
-                🛡️ Acceso Multi-Tenant S.A.A.R.E.
+                Acceso Multi-Tenant S.A.A.R.E.
               </h3>
               <button type="button" onClick={() => setShowAuthModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <button
-                type="button"
-                onClick={() => { setAuthTab('SANDBOX'); setAuthError(''); }}
-                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'SANDBOX' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-                🆓 Sandbox Gratis (2 Asientos)
+              <button type="button" onClick={() => { setAuthTab('SANDBOX'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'SANDBOX' ? '#059669' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+                Alta Sandbox
               </button>
-              <button
-                type="button"
-                onClick={() => { setAuthTab('LOGIN'); setAuthError(''); }}
-                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'LOGIN' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
-                🔐 Iniciar Sesión
+              <button type="button" onClick={() => { setAuthTab('LOGIN'); setAuthError(''); }} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: authTab === 'LOGIN' ? '#0284c7' : '#1e293b', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+                Iniciar Sesión
               </button>
             </div>
 
             <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {authTab === 'SANDBOX' && (
                 <>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nombre de la empresa u organismo"
-                    value={authForm.companyName}
-                    onChange={(e) => setAuthForm({ ...authForm, companyName: e.target.value })}
-                    style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Tu nombre completo (opcional)"
-                    value={authForm.name}
-                    onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                    style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-                  />
+                  <input type="text" required placeholder="Nombre de la empresa u organismo" value={authForm.companyName} onChange={(e) => setAuthForm({ ...authForm, companyName: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
+                  <input type="text" placeholder="Nombre del responsable (opcional)" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
                 </>
               )}
 
-              <input
-                type="email"
-                required
-                placeholder="Correo corporativo (ej. ciso@empresa.com)"
-                value={authForm.email}
-                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-              />
-
-              <input
-                type="password"
-                required
-                minLength={6}
-                placeholder="Contraseña (mínimo 6 caracteres)"
-                value={authForm.password}
-                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-              />
+              <input type="email" required placeholder="Correo corporativo" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
+              <input type="password" required minLength={6} placeholder="Contraseña (mínimo 6 caracteres)" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} style={{ padding: '10px', background: '#020617', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} />
 
               {authError && (
                 <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '6px', color: '#fca5a5', fontSize: '0.78rem' }}>
-                  ⚠️ {authError}
+                  {authError}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                style={{ padding: '11px', background: authTab === 'SANDBOX' ? '#059669' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
-                {authSubmitting
-                  ? 'Procesando...'
-                  : authTab === 'SANDBOX'
-                    ? 'CREAR SANDBOX PERPETUO (2 ASIENTOS · 0€)'
-                    : 'ENTRAR A LA CONSOLA GRC'}
+              <button type="submit" disabled={authSubmitting} style={{ padding: '11px', background: authTab === 'SANDBOX' ? '#059669' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer' }}>
+                {authSubmitting ? 'Procesando...' : authTab === 'SANDBOX' ? 'CREAR ENTORNO SANDBOX' : 'ENTRAR A LA CONSOLA'}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODALES FUNCIONALES */}
       {showOfficialReportModal && selectedEvidenceForPdf && (
         <OfficialReportModal
           evidence={selectedEvidenceForPdf}

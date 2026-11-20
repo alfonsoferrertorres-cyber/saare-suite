@@ -1,4 +1,4 @@
-// saare-console/src/utils/subsidies.js — Utilidades y Funciones Auxiliares de Subvenciones (SGP 1.0)
+// saare-console/src/utils/subsidies.js
 
 export const GRANT_TYPES = {
   KIT_CONSULTING: 'KIT_CONSULTING',
@@ -17,30 +17,25 @@ export const DEFAULT_GRANT_METADATA = {
   generatedAt: new Date().toISOString()
 };
 
-/**
-  Valida que el objeto de metadatos contenga los campos requeridos
- */
 export function validateGrantMetadata(metadata) {
   if (!metadata || typeof metadata !== 'object') return false;
-  return Boolean(metadata.grantType && typeof metadata.dossierId === 'string' && metadata.dossierId.trim() !== '');
+  return Boolean(
+    metadata.grantType &&
+    typeof metadata.dossierId === 'string' &&
+    metadata.dossierId.trim() !== ''
+  );
 }
 
-/**
-  Genera la declaración criptográfica DNSH (Do No Significant Harm) para el expediente
- */
-export function generateDnshStatement(tenantId) {
+export function generateDnshStatement(tenantId = '', options = {}) {
   return {
-    tenantId: tenantId || 'ORGANISMO_DEMO_01',
+    tenantId: tenantId || '',
     timestamp: new Date().toISOString(),
-    dnshPrinciple: "COMPLIANT_NO_SIGNIFICANT_HARM",
-    architecture: "RAM_ZERO_DISK_COMPUTE",
-    energyEfficiency: "Optimización L7 ex-ante que reduce consumo computacional superfluo en infraestructura LLM."
+    dnshPrinciple: options.dnshPrinciple || 'COMPLIANT_NO_SIGNIFICANT_HARM',
+    architecture: options.architecture || '',
+    energyEfficiency: options.energyEfficiency || ''
   };
 }
 
-/**
-  Formatea las claves de tipos de subvención para mostrar en la interfaz de usuario
- */
 export function formatGrantTypeLabel(grantType) {
   const labels = {
     [GRANT_TYPES.KIT_CONSULTING]: 'Kit Consulting (Asesoramiento IA)',

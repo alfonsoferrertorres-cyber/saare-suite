@@ -1,8 +1,4 @@
-// saare-console/src/utils/subsidies.js — Constantes y Utilidades de Subvenciones
-
-/**
- * Constantes y funciones de utilidad para la gestión de Ayudas y Subvenciones.
- */
+// saare-console/src/utils/subsidies.js
 
 export const GRANT_TYPES = {
   KIT_CONSULTING: 'KIT_CONSULTING',
@@ -22,36 +18,24 @@ export const DEFAULT_GRANT_METADATA = {
   generatedAt: new Date().toISOString()
 };
 
-/**
- * Valida la estructura básica de los metadatos de subvención.
- * @param {Object} metadata 
- * @returns {boolean}
- */
 export function validateGrantMetadata(metadata) {
   if (!metadata || typeof metadata !== 'object') return false;
-  return Boolean(metadata.grantType && String(metadata.dossierId || '').trim().length > 0);
+  return Boolean(
+    metadata.grantType &&
+    String(metadata.dossierId || '').trim().length > 0
+  );
 }
 
-/**
- * Genera la declaración oficial de cumplimiento del principio DNSH (Do No Significant Harm).
- * @param {string} tenantId - Identificador de la organización.
- * @returns {Object}
- */
-export function generateDnshStatement(tenantId = 'ENTERPRISE') {
+export function generateDnshStatement(tenantId = '', options = {}) {
   return {
-    tenantId,
+    tenantId: tenantId || '',
     timestamp: new Date().toISOString(),
-    dnshPrinciple: "COMPLIANT_NO_SIGNIFICANT_HARM",
-    architecture: "RAM_ZERO_DISK_COMPUTE",
-    energyEfficiency: "Optimización L7 ex-ante que reduce consumo computacional superfluo en infraestructura LLM."
+    dnshPrinciple: options.dnshPrinciple || 'COMPLIANT_NO_SIGNIFICANT_HARM',
+    architecture: options.architecture || '',
+    energyEfficiency: options.energyEfficiency || ''
   };
 }
 
-/**
- * Convierte las claves técnicas de GRANT_TYPES a nombres legibles para la interfaz GRC.
- * @param {string} grantType 
- * @returns {string}
- */
 export function formatGrantTypeLabel(grantType) {
   const labels = {
     [GRANT_TYPES.KIT_CONSULTING]: 'Kit Consulting (Asesoramiento IA)',
