@@ -58,7 +58,7 @@ function CookiesPage({ onBack }) {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('LANDING'); // 'LANDING' | 'LOGIN' | 'PRIVACY' | 'TERMS' | 'COOKIES'
+  const [currentView, setCurrentView] = useState('LANDING');
   const [selectedPlan, setSelectedPlan] = useState('SANDBOX_FREE');
 
   const getConsoleBaseUrl = () => {
@@ -75,17 +75,14 @@ export default function App() {
     return (import.meta.env.VITE_CONSOLE_URL || defaultConsoleUrl).replace(/\/$/, '');
   };
 
-  // Redirección directa a la Consola GRC (console.saare.es)
   const handleNavigateToConsole = (planKey = 'LOGIN') => {
     const consoleUrl = getConsoleBaseUrl();
 
-    // Acceso directo para operadores que ya tienen cuenta o licencia
     if (planKey === 'LOGIN') {
       window.location.href = `${consoleUrl}/`;
       return;
     }
 
-    // Alta instantánea en Sandbox Gratuita de 2 Asientos
     if (planKey === 'SANDBOX_FREE' || planKey === 'DISCOVER_FREE') {
       localStorage.setItem('saare_user_plan', 'SANDBOX_FREE');
       localStorage.setItem('saare_user_role', 'CISO_ADMIN');

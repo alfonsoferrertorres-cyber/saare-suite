@@ -7,14 +7,14 @@ const B2B_PLANS = [
     id: 'SANDBOX_FREE',
     name: 'Sandbox Evaluador',
     price: '0',
-    period: '/14 días',
-    description: 'Prueba inmediata en producción sin tarjeta de crédito para CISO, DPO o equipo auditor.',
+    period: ' / gratis',
+    description: 'Acceso inmediato sin tarjeta de crédito para CISO, DPO o equipo auditor.',
     badge: 'GRATIS · SIN TARJETA',
     isSandbox: true,
     features: [
       '2 asientos incluidos (Admin CISO + DPO/Auditor)',
       'Acceso completo a todos los módulos GRC y Proxy L7',
-      '1.000 inspecciones ex-ante SGP 1.0 incluidas',
+      '1.000 inspecciones ex-ante SGP 1.0 / mes incluidas',
       'Bóveda de evidencias D1 aislada y licencia API real',
       'Generación de políticas GPO y bootstrap de agente'
     ],
@@ -119,7 +119,6 @@ export const PricingPlans = ({ onSelectPlan }) => {
       .substring(0, 24);
 
     try {
-      // 1. Si existe Payment Link directo de Stripe en variables de entorno, adjuntar metadatos
       if (selectedPlan.stripePaymentLink) {
         const url = new URL(selectedPlan.stripePaymentLink);
         url.searchParams.set('prefilled_email', corporateEmail.trim().toLowerCase());
@@ -128,7 +127,6 @@ export const PricingPlans = ({ onSelectPlan }) => {
         return;
       }
 
-      // 2. Solicitar sesión de suscripción Stripe al Control Plane real (/api/v1/billing/checkout)
       const apiBase = getCleanApiBase();
       const res = await fetch(`${apiBase}/api/v1/billing/checkout`, {
         method: 'POST',
@@ -147,19 +145,11 @@ export const PricingPlans = ({ onSelectPlan }) => {
         return;
       }
 
-      // 3. Fallback si Stripe aún no tiene precios configurados o contacto Enterprise
       setStatusMessage(
-        data.message || `Solicitud registrada para ${companyName} (Tenant: ${generatedTenantId}). Redirigiendo a Consola...`
+        data.message || data.error || 'No se pudo iniciar la sesión de suscripción. Verifique la configuración de facturación.'
       );
-      setTimeout(() => {
-        if (typeof onSelectPlan === 'function') {
-          onSelectPlan(selectedPlan.id);
-        } else {
-          window.location.href = `https://console.saare.es/?tenant=${encodeURIComponent(generatedTenantId)}&plan=${encodeURIComponent(selectedPlan.id)}&role=CISO_ADMIN`;
-        }
-      }, 1500);
-    } catch (err) {
-      setStatusMessage('Error al conectar con la pasarela de aprovisionamiento. Inténtalo de nuevo.');
+    } catch {
+      setStatusMessage('Error al conectar con el servicio de facturación. Inténtelo de nuevo.');
     } finally {
       setIsRedirecting(false);
     }
@@ -167,7 +157,6 @@ export const PricingPlans = ({ onSelectPlan }) => {
 
   return (
     <div className="w-full text-white">
-      {/* Grid de 4 planes (Sandbox 2 Asientos + 3 Planes B2B) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
         {B2B_PLANS.map((plan) => (
           <div
@@ -234,7 +223,6 @@ export const PricingPlans = ({ onSelectPlan }) => {
         ))}
       </div>
 
-      {/* Modal de Pre-Aprovisionamiento antes de saltar a Stripe */}
       {selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
@@ -285,7 +273,7 @@ export const PricingPlans = ({ onSelectPlan }) => {
               </div>
 
               {statusMessage && (
-                <div className="p-3 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-xs">
+                <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs">
                   {statusMessage}
                 </div>
               )}

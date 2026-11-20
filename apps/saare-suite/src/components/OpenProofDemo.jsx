@@ -20,21 +20,22 @@ export default function OpenProofDemo() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-slate-800 gap-3">
         <div>
           <h4 className="font-bold text-sm text-white font-sans">
-            Open Proof: Demostración "Don't Trust, Verify"
+            Open Proof: Verificación de Integridad
           </h4>
           <p className="text-slate-400 font-sans text-xs mt-0.5">
-            Comprueba la resiliencia criptográfica alterando un byte del paquete de evidencia.
+            Comprueba la validación criptográfica ante la alteración de un byte del paquete de evidencia.
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setTampered(!tampered)}
-          className={`px-3 py-1.5 rounded font-sans text-xs font-semibold transition-colors ${
+          className={`px-3 py-1.5 rounded font-sans text-xs font-semibold transition-colors cursor-pointer ${
             tampered
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
               : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
           }`}
         >
-          {tampered ? 'Restaurar Evidencia Original' : 'Simular Alteración de Payload'}
+          {tampered ? 'Restaurar Evidencia Original' : 'Alterar 1 Byte Payload'}
         </button>
       </div>
 
@@ -48,7 +49,7 @@ export default function OpenProofDemo() {
                 proofBundle: {
                   ...SAMPLE_PROOF.proofBundle,
                   payloadHash: tampered
-                    ? "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b99" // Hash alterado
+                    ? "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b99"
                     : SAMPLE_PROOF.proofBundle.payloadHash
                 }
               },

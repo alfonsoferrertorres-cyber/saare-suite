@@ -89,7 +89,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
     }
   };
 
-  // ACCESO DIRECTO SIN FRICCIÓN HACIA LA CONSOLA O SANDBOX 2 ASIENTOS
   const handleAction = (plan = 'SANDBOX_FREE') => {
     if (typeof onSelectPlan === 'function') {
       onSelectPlan(plan);
@@ -105,7 +104,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans antialiased selection:bg-[#38BDDB] selection:text-slate-950">
 
-      {/* NAVEGACIÓN PRINCIPAL */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#030712]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#top" className="flex items-center gap-3 group">
@@ -150,7 +148,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       </header>
 
       <main id="top">
-        {/* HERO — PRIMERA PANTALLA */}
         <section className="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#0B132B] via-[#050B18] to-[#030712] py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -193,7 +190,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               </p>
             </div>
 
-            {/* MONITOR / DIAGRAMA DE FLUJO TÉCNICO */}
             <div className="relative flex justify-center">
               <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl font-mono">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
@@ -223,7 +219,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 01. EL PROBLEMA */}
         <section className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
@@ -262,7 +257,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 02. LA ARQUITECTURA */}
         <section id="motor" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -298,7 +292,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 03. DIFERENCIACIÓN */}
         <section id="diferenciacion" className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -346,7 +339,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 04. GUÍA DE INTEGRACIÓN RÁPIDA (PROXY AGNÓSTICO) */}
         <section id="integracion" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-12">
@@ -358,7 +350,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Opción A: Archivo .env */}
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -383,7 +374,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 </div>
               </div>
 
-              {/* Opción B: Código Estándar */}
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -417,7 +407,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 05. GOBERNANZA Y CUMPLIMIENTO */}
         <section id="legal-guarantee" className="border-b border-slate-800/80 py-20 bg-[#030712]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-12">
@@ -467,20 +456,18 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 06. LICENCIAMIENTO */}
         <section id="pricing" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. LICENCIAMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Empieza con el alcance que necesitas. Escala cuando tu operación lo requiera.</h2>
-              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Incluye Sandbox gratuita de 2 asientos durante 14 días sin tarjeta.</p>
+              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Incluye Sandbox gratuita de 2 asientos (hasta 1.000 veredictos/mes) sin tarjeta.</p>
             </div>
 
             <PricingSection onSelectPlan={handleAction} />
           </div>
         </section>
 
-        {/* 07. PARA QUIÉN ES S.A.A.R.E. */}
         <section className="border-b border-slate-800/80 py-20 bg-slate-950">
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -509,7 +496,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 08. VALIDACIÓN TÉCNICA Y BIBLIOTECA DE EVIDENCIAS */}
         <section id="templates" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
@@ -549,7 +535,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           </div>
         </section>
 
-        {/* 09. LLAMADA FINAL A LA ACCIÓN */}
         <section id="evaluation" className="py-20 bg-slate-950">
           <div className="mx-auto max-w-4xl px-6">
             <div className="rounded-3xl border border-slate-800 bg-[#0A101E] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
@@ -682,7 +667,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         </section>
       </main>
 
-      {/* PIE DE PÁGINA */}
       <footer id="support" className="border-t border-slate-800/80 bg-slate-950 px-6 py-14">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 font-mono gap-6">
           <div className="space-y-1 text-center md:text-left">
@@ -699,13 +683,12 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         </div>
       </footer>
 
-      {/* BANNER DE COOKIES */}
       {!cookiesAccepted && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-[#0A101E]/95 backdrop-blur-md p-4 sm:p-6 shadow-2xl">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-300 leading-relaxed text-center sm:text-left">
               <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este sitio utiliza exclusivamente cookies técnicas esenciales para garantizar la navegación y la gestión de sesión.{' '}
-              <button onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1 cursor-pointer">Más información</button>
+              <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1 cursor-pointer">Más información</button>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button

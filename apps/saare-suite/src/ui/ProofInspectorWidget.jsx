@@ -2,17 +2,17 @@
 import React, { useState } from 'react';
 
 const ORIGINAL_SAMPLE_PROOF = {
-  evidence_id: "prff_89f3a12c4b01e",
-  tenant_id: "tnt_enterprise_isv_01",
-  system_id: "sys_core_llm_gateway",
-  policy_version: "pol_v2.4.1",
-  control_version: "ctrl_l7_failclosed_v1.0",
-  timestamp: "2026-09-30T09:15:00.000Z",
-  payload_digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  merkle_root: "a81d42f567b1209e7c301b44d71e2c91834f82d1c95a201b17e88421899a1b02",
-  signature: "ed25519:92f1ab880e412...3a9f02c",
-  timestamp_token: "rfc3161:tst_qtsa_2026_0930_valid",
-  verification_status: "INTACT"
+  evidence_id: 'prff_89f3a12c4b01e',
+  tenant_id: 'tnt_enterprise_isv_01',
+  system_id: 'sys_core_llm_gateway',
+  policy_version: 'pol_v2.4.1',
+  control_version: 'ctrl_l7_failclosed_v1.0',
+  timestamp: '2026-09-30T09:15:00.000Z',
+  payload_digest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  merkle_root: 'a81d42f567b1209e7c301b44d71e2c91834f82d1c95a201b17e88421899a1b02',
+  signature: 'ed25519:92f1ab880e412...3a9f02c',
+  timestamp_token: 'rfc3161:tst_qtsa_2026_0930_valid',
+  verification_status: 'INTACT',
 };
 
 export default function ProofInspectorWidget() {
@@ -28,29 +28,61 @@ export default function ProofInspectorWidget() {
     setTimeout(() => {
       try {
         const parsed = JSON.parse(proofData);
-        
-        const isDigestValid = parsed.payload_digest === ORIGINAL_SAMPLE_PROOF.payload_digest && !isTampered;
-        const isMerkleValid = parsed.merkle_root === ORIGINAL_SAMPLE_PROOF.merkle_root && !isTampered;
-        const isSignatureValid = parsed.signature === ORIGINAL_SAMPLE_PROOF.signature && !isTampered;
-        const isTimestampValid = Boolean(parsed.timestamp_token && parsed.timestamp_token.startsWith("rfc3161:"));
 
-        const isValid = isDigestValid && isMerkleValid && isSignatureValid && isTimestampValid;
+        const isDigestValid = parsed.payload_digest === ORIGINAL_SAMPLE_PROOF.payload_digest;
+        const isMerkleValid = parsed.merkle_root === ORIGINAL_SAMPLE_PROOF.merkle_root;
+        const isSignatureValid = parsed.signature === ORIGINAL_SAMPLE_PROOF.signature;
+        const isTimestampValid = Boolean(
+          typeof parsed.timestamp_token === 'string' && parsed.timestamp_token.startsWith('rfc3161:')
+        );
+        const isStatusIntact = parsed.verification_status === 'INTACT';
+
+        const isValid =
+          isDigestValid && isMerkleValid && isSignatureValid && isTimestampValid && isStatusIntact;
 
         setVerificationResult({
           status: isValid ? 'VALID' : 'INVALID',
           checks: [
-            { name: "SHA-256 Payload Digest Alignment", passed: isDigestValid, detail: isDigestValid ? "Digest matches execution record" : "Digest mismatch detected (Payload modified)" },
-            { name: "Merkle Tree Inclusion & Root", passed: isMerkleValid, detail: isMerkleValid ? "Inclusion proof valid in tree depth 4" : "Merkle root consistency failed" },
-            { name: "Ed25519 Signature Verification", passed: isSignatureValid, detail: isSignatureValid ? "Signed by Control Plane Public Key" : "Signature verification failed" },
-            { name: "RFC 3161 Timestamp Token Binding", passed: isTimestampValid, detail: isTimestampValid ? "Bound to TSP TimeStampToken" : "Invalid or missing timestamp token" }
-          ]
+            {
+              name: 'SHA-256 Payload Digest Alignment',
+              passed: isDigestValid,
+              detail: isDigestValid
+                ? 'Digest matches execution record'
+                : 'Digest mismatch detected (Payload modified)',
+            },
+            {
+              name: 'Merkle Tree Inclusion & Root',
+              passed: isMerkleValid,
+              detail: isMerkleValid
+                ? 'Inclusion proof valid in tree depth 4'
+                : 'Merkle root consistency failed',
+            },
+            {
+              name: 'Ed25519 Signature Verification',
+              passed: isSignatureValid,
+              detail: isSignatureValid
+                ? 'Signed by Control Plane Public Key'
+                : 'Signature verification failed',
+            },
+            {
+              name: 'RFC 3161 Timestamp Token Binding',
+              passed: isTimestampValid,
+              detail: isTimestampValid
+                ? 'Bound to TSP TimeStampToken'
+                : 'Invalid or missing timestamp token',
+            },
+          ],
         });
-      } catch (err) {
+      } catch {
         setVerificationResult({
           status: 'VERIFICATION_ERROR',
           checks: [
-            { name: "JSON Structural Integrity", passed: false, detail: "Malformed proof payload" }
-          ]
+            {
+              name: 'JSON Structural Integrity',
+              passed: false,
+              detail: 'Malformed proof payload',
+            },
+          ],
         });
       }
       setIsVerifying(false);
@@ -60,12 +92,12 @@ export default function ProofInspectorWidget() {
   const handleTamperPayload = () => {
     try {
       const parsed = JSON.parse(proofData);
-      parsed.payload_digest = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b859";
-      parsed.verification_status = "ALTERED_BY_TESTER";
+      parsed.payload_digest = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b859';
+      parsed.verification_status = 'ALTERED_BY_TESTER';
       setProofData(JSON.stringify(parsed, null, 2));
       setIsTampered(true);
       setVerificationResult(null);
-    } catch (e) {
+    } catch {
       // noop
     }
   };
@@ -94,22 +126,28 @@ export default function ProofInspectorWidget() {
         <div className="flex gap-2">
           {!isTampered ? (
             <button
+              type="button"
               onClick={handleTamperPayload}
-              className="px-3 py-1.5 text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg transition-colors">
+              className="px-3 py-1.5 text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg transition-colors cursor-pointer"
+            >
               Alterar 1 Byte Payload
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleReset}
-              className="px-3 py-1.5 text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors">
+              className="px-3 py-1.5 text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+            >
               Restaurar Original
             </button>
           )}
           <button
+            type="button"
             onClick={handleVerify}
             disabled={isVerifying}
-            className="px-5 py-1.5 text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg transition-all shadow-md shadow-cyan-500/10 disabled:opacity-50">
-            {isVerifying ? "Verificando..." : "Verificar Paquete"}
+            className="px-5 py-1.5 text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg transition-all shadow-md shadow-cyan-500/10 disabled:opacity-50 cursor-pointer"
+          >
+            {isVerifying ? 'Verificando...' : 'Verificar Paquete'}
           </button>
         </div>
       </div>
@@ -124,6 +162,7 @@ export default function ProofInspectorWidget() {
             value={proofData}
             onChange={(e) => {
               setProofData(e.target.value);
+              setIsTampered(e.target.value !== JSON.stringify(ORIGINAL_SAMPLE_PROOF, null, 2));
               setVerificationResult(null);
             }}
             rows={12}
@@ -139,18 +178,20 @@ export default function ProofInspectorWidget() {
 
             {verificationResult ? (
               <div className="space-y-4">
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${
-                  verificationResult.status === 'VALID' 
-                    ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-400'
-                    : 'bg-rose-950/50 border-rose-500/40 text-rose-400'
-                }`}>
+                <div
+                  className={`p-4 rounded-xl border flex items-center justify-between ${
+                    verificationResult.status === 'VALID'
+                      ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-400'
+                      : 'bg-rose-950/50 border-rose-500/40 text-rose-400'
+                  }`}
+                >
                   <div>
                     <span className="text-xs font-mono font-bold uppercase block">
                       VERDICTO: {verificationResult.status}
                     </span>
                     <span className="text-[11px] opacity-80">
-                      {verificationResult.status === 'VALID' 
-                        ? 'La evidencia es auténtica, no ha sido alterada y está verificada.' 
+                      {verificationResult.status === 'VALID'
+                        ? 'La evidencia es auténtica, no ha sido alterada y está verificada.'
                         : 'Verificación fallida. Se ha detectado corrupción o manipulación de datos.'}
                     </span>
                   </div>
@@ -161,12 +202,19 @@ export default function ProofInspectorWidget() {
 
                 <div className="space-y-2">
                   {verificationResult.checks.map((check, idx) => (
-                    <div key={idx} className="bg-slate-900/80 border border-slate-800/80 p-3 rounded-lg flex items-start justify-between text-xs">
+                    <div
+                      key={idx}
+                      className="bg-slate-900/80 border border-slate-800/80 p-3 rounded-lg flex items-start justify-between text-xs"
+                    >
                       <div>
                         <p className="font-semibold text-slate-200">{check.name}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">{check.detail}</p>
                       </div>
-                      <span className={`font-mono font-bold text-xs ${check.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <span
+                        className={`font-mono font-bold text-xs ${
+                          check.passed ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
                         {check.passed ? 'PASSED ✓' : 'FAILED ✗'}
                       </span>
                     </div>

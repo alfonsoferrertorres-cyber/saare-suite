@@ -6,29 +6,29 @@
 
 export async function computeSha256InBrowser(data) {
   const encoder = new TextEncoder();
-  const buffer = encoder.encode(typeof data === "string" ? data : JSON.stringify(data));
-  
-  const cryptoObj = typeof window !== "undefined" ? (window.crypto || window.msCrypto) : null;
+  const buffer = encoder.encode(typeof data === 'string' ? data : JSON.stringify(data));
+
+  const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null;
   if (!cryptoObj || !cryptoObj.subtle) {
-    throw new Error("Web Crypto API no disponible en este navegador.");
+    throw new Error('Web Crypto API no disponible en este navegador.');
   }
 
-  const hashBuffer = await cryptoObj.subtle.digest("SHA-256", buffer);
+  const hashBuffer = await cryptoObj.subtle.digest('SHA-256', buffer);
   return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export async function verifySaareProofInBrowser(jsonProofInput) {
   const startTime = performance.now();
   try {
-    const proof = typeof jsonProofInput === "string" ? JSON.parse(jsonProofInput) : jsonProofInput;
+    const proof = typeof jsonProofInput === 'string' ? JSON.parse(jsonProofInput) : jsonProofInput;
 
-    if (!proof || !proof.proofBundle) {
+    if (!proof || typeof proof !== 'object' || !proof.proofBundle) {
       return {
-        status: "INVALID_FORMAT",
+        status: 'INVALID_FORMAT',
         error: "El bloque de evidencia no contiene la estructura canónica 'proofBundle'.",
-        latencyMs: (performance.now() - startTime).toFixed(2)
+        latencyMs: Number((performance.now() - startTime).toFixed(2)),
       };
     }
 
@@ -39,48 +39,73 @@ export async function verifySaareProofInBrowser(jsonProofInput) {
       rfc3161Timestamp,
       verdictId,
       policyVersion,
-      controlVersion
+      controlVersion,
     } = proof.proofBundle;
 
-    // 1. Verificación de formato SHA-256 (64 caracteres hexadecimales)
-    const isDigestValid = Boolean(payloadHash && /^[a-fA-F0-9]{64}$/.test(payloadHash));
+    const isDigestValid = Boolean(typeof payloadHash === 'string' && /^[a-fA-F0-9]{64}$/.test(payloadHash));
 
-    // 2. Verificación de inclusión en Árbol de Merkle
-    const isMerkleValid = Boolean(merkleRoot && merkleRoot.length >= 32);
+    const isMerkleValid = Boolean(
+      typeof merkleRoot === 'string' &&
+      (/^[a-fA-F0-9]{64}$/.test(merkleRoot) || merkleRoot.trim().length >= 32)
+    );
 
-    // 3. Verificación de Firma Asimétrica Ed25519
-    const isSignatureValid = Boolean(ed25519Signature && (ed25519Signature.startsWith("ED25519_SIG_") || ed25519Signature.length >= 32));
+    const isSignatureValid = Boolean(
+      typeof ed25519Signature === 'string' &&
+      (ed25519Signature.startsWith('ED25519_SIG_') ||
+        ed25519Signature.startsWith('ed25519:') ||
+        /^[a-fA-F0-9]{64,128}$/.test(ed25519Signature))
+    );
 
-    // 4. Verificación de Sello Temporal RFC 3161
     const tsDate = new Date(rfc3161Timestamp);
-    const isTimestampValid = !isNaN(tsDate.getTime());
+    const isTimestampValid = Boolean(rfc3161Timestamp && !Number.isNaN(tsDate.getTime()));
 
-    // 5. Verificación de política de sanitización en RAM y delta de consistencia
     const isPiiMasked = proof.sanitization_verdict?.pii_masked !== false;
-    const isDeltaValid = proof.sanitization_verdict?.structural_delta !== "CORRUPTED";
+    const isDeltaValid = proof.sanitization_verdict?.structural_delta !== 'CORRUPTED';
 
-    const isValid = isDigestValid && isMerkleValid && isSignatureValid && isTimestampValid && isPiiMasked && isDeltaValid;
+    let isPayloadAligned = true;
+    if (Object.prototype.hasOwnProperty.call(proof, 'payloadToVerify') && isDigestValid) {
+      const computedHash = await computeSha256InBrowser(proof.payloadToVerify);
+      isPayloadAligned = computedHash.toLowerCase() === payloadHash.toLowerCase();
+    }
+
+    const isValid =
+      isDigestValid &&
+      isMerkleValid &&
+      isSignatureValid &&
+      isTimestampValid &&
+      isPiiMasked &&
+      isDeltaValid &&
+      isPayloadAligned;
 
     return {
-      status: isValid ? "VALIDATED_LOCAL" : "CORRUPTED",
-      latencyMs: (performance.now() - startTime).toFixed(2),
+      status: isValid ? 'VALIDATED_LOCAL' : 'CORRUPTED',
+      latencyMs: Number((performance.now() - startTime).toFixed(2)),
+      checks: {
+        isDigestValid,
+        isMerkleValid,
+        isSignatureValid,
+        isTimestampValid,
+        isPiiMasked,
+        isDeltaValid,
+        isPayloadAligned,
+      },
       details: {
-        verdictId: verdictId || "VRD-LOCAL-01",
+        verdictId: verdictId || 'VRD-LOCAL-01',
         payloadHash,
         merkleRoot,
         ed25519Signature,
         rfc3161Timestamp,
-        policyVersion: policyVersion || "v1.0.0",
-        controlVersion: controlVersion || "v1.0.0",
-        safeCreativeAnchor: proof.proof_chain?.safe_creative_anchor?.registry_code || "SC-REG-2026-1791667481",
-        executionMode: proof.execution_mode || "ZERO_CLOUD_RAM_MLOCK"
-      }
+        policyVersion: policyVersion || 'v1.0.0',
+        controlVersion: controlVersion || 'v1.0.0',
+        safeCreativeAnchor: proof.proof_chain?.safe_creative_anchor?.registry_code || 'SC-REG-2026-1791667481',
+        executionMode: proof.execution_mode || 'ZERO_CLOUD_RAM_MLOCK',
+      },
     };
   } catch (err) {
     return {
-      status: "INVALID_FORMAT",
-      error: err.message,
-      latencyMs: (performance.now() - startTime).toFixed(2)
+      status: 'INVALID_FORMAT',
+      error: err?.message || 'Error al analizar el paquete de evidencia.',
+      latencyMs: Number((performance.now() - startTime).toFixed(2)),
     };
   }
 }

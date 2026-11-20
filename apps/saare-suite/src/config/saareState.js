@@ -7,7 +7,6 @@ export const SAARE_CONFIG = {
   TRUST_ANCHOR: import.meta.env.VITE_TRUST_ANCHOR || 'SAARE-MD-IPRES-2026',
   EXPEDIENTE_FRAMEWORK: import.meta.env.VITE_EXPEDIENTE_FRAMEWORK || 'MS3V-RECON-VALID-2026',
 
-  // Valores por defecto no sensibles (pueden sobreescribirse por .env)
   DEFAULT_TENANT: DEFAULT_TENANT_FALLBACK,
   DEFAULT_ROLE: import.meta.env.VITE_DEFAULT_ROLE || 'OPERATIONAL_AGENT_USER',
   DEFAULT_PLAN: 'SANDBOX_FREE',
@@ -16,9 +15,6 @@ export const SAARE_CONFIG = {
   CONTROL_PLANE_NODE: import.meta.env.VITE_CONTROL_PLANE_NODE || 'saare-control-plane-prod',
   D1_REGION: import.meta.env.VITE_D1_REGION || 'D1-EU-WESTERN-EUROPE',
 
-  /**
-   * Helper para obtener el contexto dinámico del cliente actual desde la sesión local.
-   */
   getCurrentContext: () => {
     return {
       userEmail: localStorage.getItem('saare_user_email') || null,

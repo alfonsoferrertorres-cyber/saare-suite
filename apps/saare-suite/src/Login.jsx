@@ -85,7 +85,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && (data.success || data.token)) {
         const u = data.user || {};
@@ -103,7 +103,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
       } else {
         setErrorMsg(data.message || data.error || 'Credenciales inválidas o cuenta sin verificar.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error de conexión con el Control Plane de S.A.A.R.E.');
     } finally {
       setLoading(false);
@@ -139,7 +139,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
           password: password.trim()
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
         const provisionedUser = {
@@ -154,7 +154,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
       } else {
         setErrorMsg(data.message || data.error || 'No se pudo aprovisionar el entorno Sandbox.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Fallo de red al registrar la organización en el Control Plane.');
     } finally {
       setLoading(false);
@@ -176,7 +176,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         },
         body: JSON.stringify({ email: email.trim().toLowerCase() })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
         setSuccessMsg(data.message || 'Instrucciones enviadas desde legal@saare.es.');
@@ -184,7 +184,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
       } else {
         setErrorMsg(data.message || data.error || 'No se pudo procesar la solicitud.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error de conexión con el servicio de correo legal.');
     } finally {
       setLoading(false);
@@ -206,7 +206,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         },
         body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && (data.success || data.token)) {
         saveSessionAndProceed(
@@ -221,7 +221,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
       } else {
         setErrorMsg(data.message || data.error || 'Código de verificación inválido o expirado.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error al validar el código con el servidor.');
     } finally {
       setLoading(false);
@@ -232,6 +232,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col justify-center items-center p-4 relative selection:bg-cyan-500 selection:text-slate-950">
       {typeof onBack === 'function' && (
         <button
+          type="button"
           onClick={onBack}
           className="absolute top-6 left-6 text-xs font-semibold text-slate-400 hover:text-cyan-400 transition-colors flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 cursor-pointer"
         >
@@ -341,7 +342,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         {authMode === 'REGISTER' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div className="bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-xl text-[11px] text-emerald-400 font-bold text-center">
-              ⚡ Aprovisionamiento Instantáneo · 2 Asientos · 14 Días Sin Tarjeta
+              ⚡ Aprovisionamiento Instantáneo · 2 Asientos · Sin Tarjeta
             </div>
 
             <div>
@@ -396,10 +397,10 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 onChange={(e) => setPlanType(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
               >
-                <option value="SANDBOX_FREE">Sandbox Gratuita (2 Asientos · 14 Días)</option>
-                <option value="STARTER_199">Starter (199 €/mes · 10 Asientos)</option>
-                <option value="PROFESSIONAL_649">Professional (649 €/mes · 50 Asientos)</option>
-                <option value="ENTERPRISE_1990">Enterprise (1.990 €/mes · 250 Asientos)</option>
+                <option value="SANDBOX_FREE">Sandbox Gratuita (2 Asientos · 1.000 veredictos/mes)</option>
+                <option value="STARTER_199">Starter (199 €/mes)</option>
+                <option value="PROFESSIONAL_649">Professional (649 €/mes)</option>
+                <option value="ENTERPRISE_1990">Enterprise (1.990 €/mes)</option>
               </select>
             </div>
 
