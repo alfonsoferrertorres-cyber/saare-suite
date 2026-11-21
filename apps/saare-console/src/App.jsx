@@ -7,6 +7,7 @@ import { ExecutiveView } from './components/ExecutiveView';
 import SeatsManagementModal from './components/SeatsManagementModal';
 import ReportExportModal from './components/ReportExportModal';
 import FriaWizardModal from './components/FriaReportModal';
+import SoaIso42001CompilerButton from './components/SoaIso42001CompilerButton';
 import { SAARE_CONFIG } from './config/saareState';
 import apiService from './services/apiService';
 
@@ -1033,6 +1034,13 @@ export default function App() {
             <button type="button" onClick={handleDownloadIso42001Dossier} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #a855f7', background: '#3b0764', color: '#e9d5ff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               DOSSIER ISO 42001
             </button>
+            <SoaIso42001CompilerButton
+              apiBaseUrl={getApiEndpoint('')}
+              tenantId={tenantId}
+              authToken={authToken}
+              userEmail={userEmail}
+              onCompiled={(hash) => triggerGovernance(`SoA ISO 42001 compilada (${hash.slice(0, 12)}...) para [${tenantId || 'TENANT'}].`)}
+            />
             <button type="button" onClick={handleExportTracesJson} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #14b8a6', background: '#134e4a', color: '#5eead4', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               EXPORTAR TRAZAS (.JSON)
             </button>
