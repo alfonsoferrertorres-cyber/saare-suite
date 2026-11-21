@@ -1,4 +1,4 @@
-// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Resiliencia Total + Multi-Tenant + Core V6 + Semantic Detox)
+// control-plane/worker.js — Orquestador Global S.A.A.R.E. Enterprise (SGP 1.0 / V12.5 Resiliencia Total + Multi-Tenant + Core V6 + Semantic Detox + Merkle/eIDAS/Shamir 2-de-3)
 
 import { handleCors } from "./src/middleware/corsHandler.js";
 import { AuthMiddleware } from "./src/middleware/authMiddleware.js";
@@ -15,6 +15,10 @@ import { EvidenceVaultEngine } from "./src/engines/evidenceVaultEngine.js";
 import { TelemetryServer } from "./src/services/telemetryServer.js";
 import { generateProofBundle } from "./src/services/proofBundle.js";
 import TimestampingEngine from "./src/services/timestampingEngine.js";
+
+import { buildMerkleBatch, verifyMerkleProof } from "../../packages/merkle-eidas/merkleTree.js";
+import { timestampMerkleRoot } from "../../packages/merkle-eidas/eidasTimestamping.js";
+import { sealForensicBatch, verifyEvidenceInclusion } from "../../packages/merkle-eidas/forensicBatchService.js";
 
 import { engineBlockLogic } from "./src/packages/ms3v-core.js";
 import { verifyKillswitch } from "./src/modules/killswitch.js";
@@ -75,6 +79,23 @@ const SAARE_APPROVED_COMMANDS = [
   "SAARE_AUTO_CALIBRATE",
   "LOGIC_SAFE_STATE"
 ];
+
+function getJwtSecret(env) {
+  return env?.JWT_SECRET || "enterprise_oidc_secret_key_v3";
+}
+
+function isSafeRegexPattern(pattern = "") {
+  if (typeof pattern !== "string") return false;
+  const trimmed = pattern.trim();
+  if (!trimmed || trimmed.length > 240) return false;
+  if (/(\+|\*|\{\d+,?\d*\})\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
+  try {
+    new RegExp(trimmed, "i");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -175,7 +196,7 @@ function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
 
   for (const r of Array.isArray(customRules) ? customRules : []) {
     try {
-      if (!r?.pattern) continue;
+      if (!r?.pattern || !isSafeRegexPattern(r.pattern)) continue;
       const rx = new RegExp(r.pattern, "gi");
       if (rx.test(out)) {
         rx.lastIndex = 0;
@@ -454,7 +475,10 @@ function evaluateSgp1SevenDimensions({
 
 function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, proofBundle, env }) {
   const timestampUtc = new Date().toISOString();
-  const serialId = `EU-TSA-${(ms3vHash || "SAFE").slice(0, 6).toUpperCase()}`;
+  const hasRealTsa = Boolean(env?.EIDAS_TSA_URL);
+  const serialId = hasRealTsa
+    ? `EIDAS-TSA-${(ms3vHash || "SAFE").slice(0, 8).toUpperCase()}`
+    : `LOCAL-SEAL-${(ms3vHash || "SAFE").slice(0, 8).toUpperCase()}`;
   const signature = proofBundle?.proofBundle?.ed25519Signature || `ed25519:sig:${ms3vHash || "resilient"}`;
 
   return {
@@ -467,7 +491,9 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
       eidas_tsa_rfc3161: {
         serial: serialId,
         gen_time_utc: timestampUtc,
-        standard: "RFC 3161 / eIDAS"
+        standard: "RFC 3161 / eIDAS",
+        assurance_level: hasRealTsa ? "CONFIGURED_TSA_PENDING_VERIFY" : "LOCAL_INTEGRITY",
+        is_qualified_eidas: false
       },
       safe_creative_anchor: {
         registry_code: env?.SAFE_CREATIVE_ID || "UNCONFIGURED",
@@ -596,6 +622,19 @@ async function ensureD1TablesExist(db) {
         )
       `),
       db.prepare(`
+        CREATE TABLE IF NOT EXISTS forensic_batches (
+          batch_id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL,
+          merkle_root TEXT NOT NULL,
+          leaf_count INTEGER NOT NULL DEFAULT 0,
+          is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
+          assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
+          tsa_reference TEXT DEFAULT '',
+          batch_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
         CREATE TABLE IF NOT EXISTS custom_rules (
           id TEXT NOT NULL,
           tenant_id TEXT NOT NULL,
@@ -619,8 +658,27 @@ async function ensureD1TablesExist(db) {
           verdict_count INTEGER DEFAULT 0,
           PRIMARY KEY (tenant_id, billing_period)
         )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS tenant_soa_iso42001 (
+          tenant_id TEXT PRIMARY KEY,
+          role_type TEXT NOT NULL,
+          ai_act_scope TEXT NOT NULL,
+          organization_name TEXT NOT NULL,
+          approver_email TEXT NOT NULL DEFAULT '',
+          controls_json TEXT NOT NULL,
+          compiled_hash TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
       `)
     ]);
+
+    try {
+      await db.prepare("ALTER TABLE consolidated_traces ADD COLUMN ms3v_hash TEXT DEFAULT ''").run();
+    } catch (_altErr1) {}
+    try {
+      await db.prepare("ALTER TABLE consolidated_traces ADD COLUMN ms3v_timestamp_ns TEXT DEFAULT ''").run();
+    } catch (_altErr2) {}
 
     await db.prepare(`
       INSERT OR IGNORE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json)
@@ -709,13 +767,40 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
   } catch (_e) {}
 }
 
+async function checkTenantQuotaAndStatus(db, tenantId, fallbackPlan) {
+  const activePlan = sanitizePlanId(fallbackPlan);
+  const entitlements = getPlanEntitlements(activePlan);
+  let status = "ACTIVE";
+  let quota = entitlements?.monthlyVerdicts || 1000000;
+
+  if (db && tenantId) {
+    try {
+      await ensureD1TablesExist(db);
+      const row = await db.prepare("SELECT status, quota, plan_id FROM tenants WHERE tenant_id = ?").bind(tenantId).first();
+      if (row) {
+        status = String(row.status || "ACTIVE").toUpperCase();
+        if (row.quota) quota = Number(row.quota);
+      }
+    } catch (_e) {}
+  }
+
+  const used = await getTenantMonthlyUsage(db, tenantId);
+  if (status === "SUSPENDED" || status === "CANCELED" || status === "UNPAID") {
+    return { allowed: false, reason: "SUBSCRIPTION_INACTIVE", status, used, quota };
+  }
+  if (used >= quota) {
+    return { allowed: false, reason: "MONTHLY_QUOTA_EXCEEDED", status, used, quota };
+  }
+  return { allowed: true, reason: null, status, used, quota };
+}
+
 async function getOrCreateTenantLicenseKey(tenantId, env) {
   try {
     const kv = getKvBinding(env);
     let licenseKey = kv ? await kv.get(`license:${tenantId}`) : null;
 
     if (!licenseKey) {
-      licenseKey = `sk_saare_live_${(await computeSha256(`${tenantId}:${env?.JWT_SECRET || "saare"}`)).slice(0, 28)}`;
+      licenseKey = `sk_saare_live_${(await computeSha256(`${tenantId}:${getJwtSecret(env)}`)).slice(0, 28)}`;
       if (kv) {
         await kv.put(`license:${tenantId}`, licenseKey).catch(() => {});
         await kv.put(`token_tenant:${licenseKey}`, tenantId).catch(() => {});
@@ -750,16 +835,33 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
       if (!results || results.length === 0) return;
 
-      const combinedHashes = results.map(r => (r.ms3v_hash && String(r.ms3v_hash).trim()) || r.trace_id).join(":");
-      const merkleRoot = await computeSha256(combinedHashes);
+      const merkle = await buildMerkleBatch(
+        results.map((r) => ({
+          trace_id: r.trace_id,
+          tenant_id: tenantId,
+          payloadHash: r.ms3v_hash || r.trace_id,
+          timestamp: r.timestamp
+        }))
+      );
+
+      const tsaSeal = await timestampMerkleRoot(
+        {
+          merkleRoot: merkle.merkleRoot,
+          tenantId,
+          expedienteId: env?.EIDAS_EXPEDIENTE_ID || env?.EXPEDIENTE_ID,
+          leafCount: merkle.leafCount
+        },
+        env
+      );
+
       const anchorId = `ANK-${new Date().getUTCFullYear()}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
 
       await env.DB.prepare(
         "INSERT INTO merkle_anchors (id, tenant_id, merkle_root, batch_size, created_at) VALUES (?, ?, ?, ?, ?)"
-      ).bind(anchorId, tenantId, merkleRoot, results.length, timestamp).run();
+      ).bind(anchorId, tenantId, merkle.merkleRoot, merkle.leafCount, timestamp).run();
 
-      const traceIds = results.map(r => r.trace_id);
+      const traceIds = results.map((r) => r.trace_id);
       const placeholders = traceIds.map(() => "?").join(",");
       await env.DB.prepare(
         `UPDATE consolidated_traces SET anchored = 1 WHERE trace_id IN (${placeholders})`
@@ -768,8 +870,10 @@ async function processBatchMerkleAnchor(tenantId, env) {
       try {
         await registerEvidenceInSafeCreative({
           id: anchorId,
-          merkleRoot,
-          batchSize: results.length,
+          merkleRoot: merkle.merkleRoot,
+          tsaReference: tsaSeal.tsaReference,
+          isQualifiedEidas: tsaSeal.isQualifiedEidas,
+          batchSize: merkle.leafCount,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
         }, env);
       } catch (_scErr) {}
@@ -937,7 +1041,7 @@ export default {
             service: "S.A.A.R.E. Enterprise Control Plane",
             version: env?.SGP_SPEC_VERSION || "SGP 1.0",
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
-            engine: "BLOCK LOGIC + SEMANTIC DETOX RAM",
+            engine: "BLOCK LOGIC + SEMANTIC DETOX RAM + MERKLE + EIDAS + SHAMIR 2-OF-3",
             status: "ONLINE",
             defaultTenant: DEFAULT_ACTIVE_TENANT,
             multiProfileInterception: true,
@@ -978,6 +1082,7 @@ export default {
             failClosedMode: true,
             zeroDiskRamOnly: true,
             semanticDetoxVersion: semanticDetox.version,
+            custodyScheme: "SHAMIR_2_OF_3_GF256+AES-256-GCM",
             dimensionsActive: [
               "DIM_01_IDENTIDAD",
               "DIM_02_ACCION",
@@ -1049,8 +1154,154 @@ export default {
         });
       }
 
+      const authHeader = request.headers.get("Authorization") || "";
+      const rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || urlObj.searchParams.get("user"));
+      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
+
+      let identity = null;
+      try {
+        const auth = new AuthMiddleware(getJwtSecret(env), env);
+        if (authHeader) {
+          identity = await auth.verifyAndDecodeToken(authHeader, env);
+        }
+      } catch (_e) {}
+
+      let cfIdentity = null;
+      try {
+        const zeroTrust = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS, env);
+        cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
+      } catch (_e) {}
+
+      const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
+
+      const kv = getKvBinding(env);
+      let kvLicenseTenant = null;
+      try {
+        if (rawBearerToken && kv) {
+          kvLicenseTenant = await kv.get(`token_tenant:${rawBearerToken}`);
+        }
+      } catch (_e) {}
+
+      const boundTenant =
+        kvLicenseTenant ||
+        (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
+        null;
+
+      const requestedTenantHeader = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant");
+      const activeUserRole = isAuthenticated
+        ? (identity?.role || "TENANT_ADMIN")
+        : "OPERATOR_UNAUTHENTICATED";
+
+      const isGlobalAdmin = isAuthenticated && activeUserRole === "CISO_ADMIN" && !boundTenant;
+      const tenantId = isGlobalAdmin
+        ? (requestedTenantHeader || DEFAULT_ACTIVE_TENANT)
+        : (boundTenant || requestedTenantHeader || DEFAULT_ACTIVE_TENANT);
+
+      const tenantPlan = sanitizePlanId(
+        identity?.planId ||
+        request.headers.get("x-saare-plan") ||
+        (tenantId === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649)
+      );
+
+      const scopedTenantId = tenantId;
+
+      // ==========================================
+      // SELLADO DE LOTE FORENSE (MERKLE + EIDAS + CUSTODIA 2-DE-3) Y VERIFICACIÓN DE INCLUSIÓN
+      // ==========================================
+      if ((path === "/api/v1/forensics/batch/seal" || path === "/v1/forensics/batch/seal") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const targetTenant = String(
+          isGlobalAdmin ? (body.tenantId || scopedTenantId) : scopedTenantId
+        ).trim().toUpperCase();
+
+        let evidences = Array.isArray(body.evidences) ? body.evidences : [];
+        if (evidences.length === 0) {
+          try {
+            const vaultEngine = new EvidenceVaultEngine(env);
+            const traces = await vaultEngine.getTenantTraces(targetTenant, Number(body.limit) || 100);
+            evidences = (traces || []).map((t) => ({
+              evidence_id: t.evidence_id || t.id,
+              trace_id: t.trace_id || t.id,
+              tenant_id: targetTenant,
+              decision: t.decision || "ALLOW",
+              payloadHash: t.payloadHash || t.ms3v_hash || "",
+              timestamp: t.timestamp || t.created_at || new Date().toISOString()
+            }));
+          } catch (_evErr) {}
+        }
+
+        const bundle = await sealForensicBatch(
+          {
+            tenantId: targetTenant,
+            evidences,
+            enable2of3Custody: body.enable2of3Custody !== false,
+            expedienteId: body.expedienteId || null
+          },
+          env
+        );
+
+        if (env?.DB) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            await env.DB.prepare(`
+              INSERT OR REPLACE INTO forensic_batches (
+                batch_id, tenant_id, merkle_root, leaf_count,
+                is_qualified_eidas, assurance_level, tsa_reference, batch_json, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              bundle.batchId,
+              bundle.tenantId,
+              bundle.merkleRoot,
+              bundle.leafCount,
+              bundle.isQualifiedEidas ? 1 : 0,
+              bundle.assuranceLevel,
+              bundle.timestampSeal?.tsaReference || "",
+              JSON.stringify(bundle),
+              bundle.createdAt
+            ).run();
+
+            if (bundle.merkleRoot && bundle.leafCount > 0) {
+              await env.DB.prepare(
+                "INSERT OR IGNORE INTO merkle_anchors (id, tenant_id, merkle_root, batch_size, created_at) VALUES (?, ?, ?, ?, ?)"
+              ).bind(bundle.batchId, bundle.tenantId, bundle.merkleRoot, bundle.leafCount, bundle.createdAt).run();
+            }
+          } catch (_dbBatchErr) {}
+        }
+
+        const kvBatch = getKvBinding(env);
+        if (kvBatch) {
+          try {
+            await kvBatch.put(`forensic_batch:latest:${bundle.tenantId}`, JSON.stringify(bundle), {
+              expirationTtl: 86400 * 90
+            });
+          } catch (_kvBatchErr) {}
+        }
+
+        return new Response(JSON.stringify(bundle), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      if ((path === "/api/v1/forensics/batch/verify" || path === "/v1/forensics/batch/verify") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const verification = await verifyEvidenceInclusion({
+          leafHash: body.leafHash,
+          proof: body.proof,
+          merkleRoot: body.merkleRoot
+        });
+
+        return new Response(JSON.stringify(verification), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
-        const targetTenant = urlObj.searchParams.get("tenant") || request.headers.get("x-saare-tenant") || DEFAULT_ACTIVE_TENANT;
+        const targetTenant = isGlobalAdmin
+          ? (urlObj.searchParams.get("tenant") || scopedTenantId)
+          : scopedTenantId;
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const extId = env?.CHROME_EXTENSION_ID || "EXTENSION_ID_UNCONFIGURED";
         const gatewayUrl = env?.PUBLIC_API_URL || "https://api.saare.es/v1/chat/completions";
@@ -1254,7 +1505,7 @@ export default {
           }
 
           const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
-          const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
+          const auth = new AuthMiddleware(getJwtSecret(env), env);
           const jwtToken = await auth.signToken({
             sub: email,
             email,
@@ -1289,54 +1540,6 @@ export default {
         }
       }
 
-      const authHeader = request.headers.get("Authorization") || "";
-      const rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
-      const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || urlObj.searchParams.get("user"));
-      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
-
-      let identity = null;
-      try {
-        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
-        if (authHeader) {
-          identity = await auth.verifyAndDecodeToken(authHeader, env);
-        }
-      } catch (_e) {}
-
-      let cfIdentity = null;
-      try {
-        const zeroTrust = new ZeroTrustMiddleware(env?.CF_TEAM_DOMAIN, env?.CF_AUDIENCE_TAG, SAARE_APPROVED_COMMANDS, env);
-        cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
-      } catch (_e) {}
-
-      const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
-
-      const kv = getKvBinding(env);
-      let kvLicenseTenant = null;
-      try {
-        if (rawBearerToken && kv) {
-          kvLicenseTenant = await kv.get(`token_tenant:${rawBearerToken}`);
-        }
-      } catch (_e) {}
-
-      const requestedTenantHeader = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant");
-      const tenantId =
-        requestedTenantHeader ||
-        kvLicenseTenant ||
-        (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
-        DEFAULT_ACTIVE_TENANT;
-
-      const tenantPlan = sanitizePlanId(
-        identity?.planId ||
-        request.headers.get("x-saare-plan") ||
-        (tenantId === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649)
-      );
-
-      const activeUserRole = isAuthenticated
-        ? (identity?.role || "CISO_ADMIN")
-        : "CISO_SECOPS_LEVEL_3";
-
-      const scopedTenantId = tenantId;
-
       try {
         if (typeof rateLimiter.check === "function") {
           const rateResult = await rateLimiter.check(tenantId);
@@ -1348,6 +1551,88 @@ export default {
           }
         }
       } catch (_e) {}
+
+      if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "GET") {
+        const targetTenant = isGlobalAdmin
+          ? (urlObj.searchParams.get("tenant") || scopedTenantId)
+          : scopedTenantId;
+        let soaRecord = null;
+        if (env?.DB) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            const row = await env.DB.prepare(
+              "SELECT * FROM tenant_soa_iso42001 WHERE tenant_id = ?"
+            ).bind(targetTenant).first();
+            if (row) {
+              soaRecord = {
+                tenantId: row.tenant_id,
+                roleType: row.role_type,
+                aiActScope: row.ai_act_scope,
+                organizationName: row.organization_name,
+                approverEmail: row.approver_email,
+                controls: row.controls_json ? JSON.parse(row.controls_json) : [],
+                compiledHash: row.compiled_hash,
+                updatedAt: row.updated_at
+              };
+            }
+          } catch (_soaErr) {}
+        }
+        return new Response(JSON.stringify({
+          status: "SUCCESS",
+          tenant: targetTenant,
+          soa: soaRecord
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const targetTenant = isGlobalAdmin ? (body.tenant || scopedTenantId) : scopedTenantId;
+        const roleType = String(body.roleType || "INTEGRADOR_DESARROLLADOR").slice(0, 80);
+        const aiActScope = String(body.aiActScope || "ALTO_RIESGO_Y_TRANSPARENCIA").slice(0, 80);
+        const organizationName = String(body.organizationName || targetTenant).slice(0, 160);
+        const approverEmail = sanitizeEmail(body.approverEmail || headerUser || "");
+        const controls = Array.isArray(body.controls) ? body.controls.slice(0, 120) : [];
+        const updatedAt = new Date().toISOString();
+
+        const canonicalSoa = JSON.stringify({
+          tenant: targetTenant,
+          roleType,
+          aiActScope,
+          organizationName,
+          approverEmail,
+          controls,
+          updatedAt
+        });
+        const compiledHash = await computeSha256(canonicalSoa);
+
+        if (env?.DB) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            await env.DB.prepare(`
+              INSERT OR REPLACE INTO tenant_soa_iso42001
+                (tenant_id, role_type, ai_act_scope, organization_name, approver_email, controls_json, compiled_hash, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              targetTenant,
+              roleType,
+              aiActScope,
+              organizationName,
+              approverEmail,
+              JSON.stringify(controls),
+              compiledHash,
+              updatedAt
+            ).run();
+          } catch (_soaSaveErr) {}
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          status: "COMPILED",
+          tenant: targetTenant,
+          compiledHash,
+          updatedAt
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       if ((path === "/api/v1/billing/usage" || path === "/v1/billing/usage" || path === "/billing/usage") && method === "GET") {
         await ensureD1TablesExist(env.DB);
@@ -1431,7 +1716,7 @@ export default {
       }
 
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
-        const targetTenant = urlObj.searchParams.get("tenant") || tenantId;
+        const targetTenant = isGlobalAdmin ? (urlObj.searchParams.get("tenant") || tenantId) : tenantId;
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const apiOrigin = urlObj.origin;
 
@@ -1458,9 +1743,20 @@ export default {
       if ((path === "/api/v1/ingest-trace" || path === "/v1/ingest-trace" || path === "/ingest-trace") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const profileContext = resolveClientProfileContext(request, body, identity, cfIdentity);
-        const resolvedTenant = body.tenant_id || requestedTenantHeader || kvLicenseTenant || identity?.tenantId || DEFAULT_ACTIVE_TENANT;
-        const evidenceHash = String(body.evidence_hash || "").trim();
+        const resolvedTenant = isGlobalAdmin ? (body.tenant_id || tenantId) : scopedTenantId;
 
+        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, resolvedTenant, tenantPlan);
+        if (!quotaCheck.allowed) {
+          return new Response(JSON.stringify({
+            error: quotaCheck.reason,
+            message: quotaCheck.reason === "MONTHLY_QUOTA_EXCEEDED"
+              ? "Cuota mensual de veredictos agotada para este tenant."
+              : "La suscripción del tenant no está activa.",
+            usage: { used: quotaCheck.used, quota: quotaCheck.quota, status: quotaCheck.status }
+          }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const evidenceHash = String(body.evidence_hash || "").trim();
         if (!evidenceHash) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio." }), {
             status: 400,
@@ -1540,7 +1836,6 @@ export default {
               action: decisionNorm,
               rules: [detoxStatus, scenarioId],
               ms3vHash: traceIntegrityHash,
-              merkleRoot: traceIntegrityHash,
               ms3vTimestampNs: `${Date.now()}000000`,
               executedCommand: "SEMANTIC_DETOX_L7"
             },
@@ -1558,7 +1853,7 @@ export default {
           tenant_id: resolvedTenant,
           profile_context: profileContext,
           evidence_hash: evidenceHash,
-          merkleRoot: traceIntegrityHash,
+          chainHash: traceIntegrityHash,
           ms3vHash: traceIntegrityHash,
           prevHash,
           sgp1: sgp7Dims,
@@ -1589,21 +1884,38 @@ export default {
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            const { results } = await env.DB.prepare(`
-              SELECT
-                t.tenant_id,
-                COALESCE(tn.plan_id, 'ENTERPRISE_1990') AS plan_id,
-                COALESCE(tn.status, 'ACTIVE') AS status,
-                COALESCE(tn.quota, 1000000) AS monthly_quota,
-                COUNT(t.trace_id) AS total_prompts,
-                SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
-                SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
-                MAX(datetime(t.timestamp)) AS ultima_actividad
-              FROM consolidated_traces t
-              LEFT JOIN tenants tn ON t.tenant_id = tn.tenant_id
-              GROUP BY t.tenant_id
-              ORDER BY total_prompts DESC
-            `).all();
+            const { results } = isGlobalAdmin
+              ? await env.DB.prepare(`
+                  SELECT
+                    t.tenant_id,
+                    COALESCE(tn.plan_id, 'ENTERPRISE_1990') AS plan_id,
+                    COALESCE(tn.status, 'ACTIVE') AS status,
+                    COALESCE(tn.quota, 1000000) AS monthly_quota,
+                    COUNT(t.trace_id) AS total_prompts,
+                    SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
+                    SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
+                    MAX(datetime(t.timestamp)) AS ultima_actividad
+                  FROM consolidated_traces t
+                  LEFT JOIN tenants tn ON t.tenant_id = tn.tenant_id
+                  GROUP BY t.tenant_id
+                  ORDER BY total_prompts DESC
+                `).all()
+              : await env.DB.prepare(`
+                  SELECT
+                    t.tenant_id,
+                    COALESCE(tn.plan_id, 'ENTERPRISE_1990') AS plan_id,
+                    COALESCE(tn.status, 'ACTIVE') AS status,
+                    COALESCE(tn.quota, 1000000) AS monthly_quota,
+                    COUNT(t.trace_id) AS total_prompts,
+                    SUM(CASE WHEN t.final_decision = 'ALLOW' OR t.verdict = 'PERMITIDO' THEN 1 ELSE 0 END) AS aprobados,
+                    SUM(CASE WHEN t.final_decision = 'DENY' OR t.verdict = 'RECHAZADO' THEN 1 ELSE 0 END) AS bloqueados_pii,
+                    MAX(datetime(t.timestamp)) AS ultima_actividad
+                  FROM consolidated_traces t
+                  LEFT JOIN tenants tn ON t.tenant_id = tn.tenant_id
+                  WHERE t.tenant_id = ?
+                  GROUP BY t.tenant_id
+                  ORDER BY total_prompts DESC
+                `).bind(scopedTenantId).all();
             if (results) metricsData = results;
           } catch (_mErr) {}
         }
@@ -1696,7 +2008,7 @@ export default {
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           protocol: "SGP 1.0 / Protocolo MS3V / Motor BLOCK LOGIC",
           node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
-          status: "ACTIVE",
+          status: tenantInfo?.status || "ACTIVE",
           legalRpi: env?.SAFE_CREATIVE_ID || null,
           expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? "PERPETUAL" : (tenantInfo?.expiresAt || null),
           authenticated: isAuthenticated
@@ -1827,21 +2139,23 @@ export default {
 
         const hasRulesPayload = body?.preset === "ISO_42001" || Array.isArray(body?.rules);
         if (hasRulesPayload) {
-          const newRules = body?.preset === "ISO_42001"
+          const candidateRules = body?.preset === "ISO_42001"
             ? ISO_42001_PRESET_RULES
             : body.rules;
+
+          const validRules = candidateRules.filter((r) => r?.name && isSafeRegexPattern(r?.pattern));
 
           if (env?.DB) {
             try {
               await ensureD1TablesExist(env.DB);
-              for (const r of newRules) {
+              for (const r of validRules) {
                 await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
-                  .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, r.name, r.pattern)
+                  .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, String(r.name).slice(0, 120), String(r.pattern).trim())
                   .run();
               }
             } catch (_e) {}
           }
-          rules = newRules;
+          rules = validRules;
         }
 
         await setTenantRulesEnabled(env, scopedTenantId, nextEnabled);
@@ -1891,23 +2205,36 @@ export default {
 
       if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
         const hash = path.split("/verify/")[1] || "";
+        let foundAnchor = null;
+        if (env?.DB && hash) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            foundAnchor = await env.DB.prepare(
+              "SELECT id, tenant_id, merkle_root, batch_size, created_at FROM merkle_anchors WHERE merkle_root = ? OR id = ? LIMIT 1"
+            ).bind(hash, hash).first();
+          } catch (_vDbErr) {}
+        }
+
         return new Response(JSON.stringify({
-          verified: true,
-          status: "VERIFIED",
-          merkleRoot: hash,
+          verified: Boolean(foundAnchor),
+          status: foundAnchor ? "VERIFIED_MERKLE_ANCHOR" : "NOT_FOUND_IN_ANCHORS",
+          merkleRoot: foundAnchor?.merkle_root || hash,
+          anchorId: foundAnchor?.id || null,
+          tenantId: foundAnchor?.tenant_id || null,
+          batchSize: foundAnchor?.batch_size || null,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           node: env?.SAFE_CREATIVE_ID || "NODE-L7-PRIMARY",
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC / RFC 3161",
-          timestamp: new Date().toISOString(),
-          message: "Sello criptográfico e inmutabilidad acreditados contra la Bóveda WORM D1 con trazabilidad MS3V."
+          timestamp: new Date().toISOString()
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
         const limitParam = parseInt(urlObj.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
-        const requestedTenant = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId;
-        const activeTenant = requestedTenant || DEFAULT_ACTIVE_TENANT;
+        const activeTenant = isGlobalAdmin
+          ? (request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId)
+          : scopedTenantId;
 
         let tracesList = [];
         try {
@@ -1926,7 +2253,14 @@ export default {
       }
 
       if ((path === "/api/v1/evidence/verify" || path === "/evidence/verify") && method === "POST") {
-        const { proof, safeCreativeHash } = await request.json().catch(() => ({}));
+        const body = await request.json().catch(() => ({}));
+        const { proof, safeCreativeHash, leafHash, merkleProof, merkleRoot } = body;
+
+        let merkleProofValid = null;
+        if (leafHash && Array.isArray(merkleProof) && merkleRoot) {
+          merkleProofValid = await verifyMerkleProof(leafHash, merkleProof, merkleRoot);
+        }
+
         let seal = { rootHash: "SHA256_RESILIENT_ROOT", tsaHash: "TSA_SEAL_ACTIVE", timestampUtc: new Date().toISOString() };
         try {
           const engine = new TimestampingEngine(env?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE");
@@ -1937,22 +2271,21 @@ export default {
         } catch (_e) {}
 
         return new Response(JSON.stringify({
-          valid: true,
+          valid: merkleProofValid === null ? true : merkleProofValid,
+          merkleProofValid,
           expediente: env?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE",
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           titular: getTitularNif(env),
           proof: proof || "SHA256_RFC3161_VALIDATED",
-          rootMerkleHash: seal.rootHash,
+          rootMerkleHash: merkleRoot || seal.rootHash,
           tsaHash: seal.tsaHash,
-          isQualifiedTSA: Boolean(safeCreativeHash || env?.SAFE_CREATIVE_TSA_HASH),
+          isQualifiedTSA: false,
+          assuranceLevel: "LOCAL_INTEGRITY",
           timestampUtc: seal.timestampUtc,
           standard: "ISO/IEC 27037:2012 / RFC 3161 / eIDAS / Art. 326 LEC"
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // ==========================================
-      // EMBUDO A: GATEWAY L7 DE INTERCEPCIÓN MULTI-PERFIL + DESINTOXICACIÓN SEMÁNTICA + MULTIMODAL/ARCHIVOS + SGP 1.0
-      // ==========================================
       if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue" || path === "/api/v1/intercept") && method === "POST") {
         const startTime = performance.now();
         const reqContentType = request.headers.get("content-type") || "";
@@ -2016,12 +2349,21 @@ export default {
         }
 
         const profileContext = resolveClientProfileContext(request, payloadBody, identity, cfIdentity);
-        const tenant =
-          request.headers.get("x-saare-tenant") ||
-          payloadBody.tenant ||
-          kvLicenseTenant ||
-          (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
-          DEFAULT_ACTIVE_TENANT;
+        const tenant = isGlobalAdmin
+          ? (request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId)
+          : scopedTenantId;
+
+        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, tenant, tenantPlan);
+        if (!quotaCheck.allowed) {
+          return new Response(JSON.stringify({
+            error: quotaCheck.reason,
+            message: quotaCheck.reason === "MONTHLY_QUOTA_EXCEEDED"
+              ? "Cuota mensual de veredictos agotada para este tenant."
+              : "La suscripción del tenant no está activa.",
+            tenant,
+            usage: { used: quotaCheck.used, quota: quotaCheck.quota, status: quotaCheck.status }
+          }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
         const targetProvider = (payloadBody.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
         const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
@@ -2050,7 +2392,7 @@ export default {
         if (rulesEnabled && env?.DB) {
           try {
             const { results } = await env.DB.prepare("SELECT name, pattern FROM custom_rules WHERE tenant_id = ?").bind(tenant).all();
-            if (results) tenantCustomRules = results;
+            if (results) tenantCustomRules = results.filter((r) => isSafeRegexPattern(r?.pattern));
           } catch (_rErr) {}
         }
 
@@ -2065,7 +2407,7 @@ export default {
         let customHardBlockHit = false;
         for (const r of tenantCustomRules) {
           try {
-            if (!r?.pattern) continue;
+            if (!r?.pattern || !isSafeRegexPattern(r.pattern)) continue;
             const rx = new RegExp(r.pattern, "i");
             if (rx.test(rawPrompt)) {
               const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
@@ -2249,7 +2591,6 @@ export default {
               action: finalDecision,
               rules: rulesTriggered,
               ms3vHash: traceIntegrityHash,
-              merkleRoot: traceIntegrityHash,
               ms3vTimestampNs: ms3vVerdict.TS,
               executedCommand: ms3vVerdict.EXECUTE
             },
@@ -2276,7 +2617,6 @@ export default {
             timestamp: eventTimestamp,
             ms3vAudit: {
               hash: traceIntegrityHash,
-              merkleRoot: traceIntegrityHash,
               prevHash,
               engineHash: ms3vVerdict.HASH,
               timestampNs: ms3vVerdict.TS,
@@ -2323,7 +2663,7 @@ export default {
           profile_context: profileContext,
           evidence_id: runId,
           trace_id: traceId,
-          merkleRoot: traceIntegrityHash,
+          chainHash: traceIntegrityHash,
           prevHash,
           decision: finalDecision,
           verdict: finalVerdict,
@@ -2359,7 +2699,7 @@ export default {
             piiDetected: rulesTriggered.length > 0,
             mediaIntercepted: hasMediaAttachment,
             ms3vIntegrityHash: traceIntegrityHash,
-            merkleRoot: traceIntegrityHash,
+            chainHash: traceIntegrityHash,
             prevHash,
             ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
@@ -2372,7 +2712,7 @@ export default {
           proofBundle,
           evidence: {
             vaultProof: sgp1ProofContract.proof_chain.ed25519_sig,
-            merkleRoot: traceIntegrityHash,
+            chainHash: traceIntegrityHash,
             timestamp: eventTimestamp
           }
         }), {
@@ -2442,7 +2782,7 @@ export default {
         const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || (tenantName === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649));
         const realApiKey = await getOrCreateTenantLicenseKey(tenantName, env);
 
-        const auth = new AuthMiddleware(env?.JWT_SECRET || "enterprise_oidc_secret_key_v3", env);
+        const auth = new AuthMiddleware(getJwtSecret(env), env);
         const jwtToken = await auth.signToken({
           sub: cleanEmail,
           email: cleanEmail,
@@ -2483,7 +2823,7 @@ export default {
           message: globalErr?.message || "Error controlado por el núcleo de alta disponibilidad SGP 1.0",
           timestamp: new Date().toISOString()
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   },

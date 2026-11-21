@@ -105,31 +105,75 @@ export const PLAN_CATALOG = {
 export function sanitizePlanId(rawPlan) {
   if (!rawPlan || typeof rawPlan !== "string") return PLAN_IDS.SANDBOX_FREE;
   const upper = rawPlan.trim().toUpperCase();
-  if (Object.prototype.hasOwnProperty.call(PLAN_CATALOG, upper)) return upper;
-  if (upper.includes("SANDBOX") || upper.includes("FREE")) return PLAN_IDS.SANDBOX_FREE;
-  if (upper.includes("STARTER") || upper.includes("199")) return PLAN_IDS.STARTER_199;
-  if (upper.includes("COMPLIANCE") || upper.includes("249")) return PLAN_IDS.COMPLIANCE_249;
-  if (upper.includes("PRO") || upper.includes("649")) return PLAN_IDS.PROFESSIONAL_649;
-  if (upper.includes("1990")) return PLAN_IDS.ENTERPRISE_1990;
-  if (upper.includes("ENTERPRISE") || upper.includes("1500")) return PLAN_IDS.ENTERPRISE_1500;
+
+  if (Object.prototype.hasOwnProperty.call(PLAN_CATALOG, upper)) {
+    return upper;
+  }
+
+  if (upper.includes("SANDBOX") || upper.includes("FREE")) {
+    return PLAN_IDS.SANDBOX_FREE;
+  }
+  if (upper.includes("1990") || upper.includes("UNLIMITED")) {
+    return PLAN_IDS.ENTERPRISE_1990;
+  }
+  if (upper.includes("1500") || upper.includes("SOVEREIGN") || upper.includes("ENTERPRISE")) {
+    return PLAN_IDS.ENTERPRISE_1500;
+  }
+  if (upper.includes("649") || upper.includes("PRO")) {
+    return PLAN_IDS.PROFESSIONAL_649;
+  }
+  if (upper.includes("249") || upper.includes("COMPLIANCE")) {
+    return PLAN_IDS.COMPLIANCE_249;
+  }
+  if (upper.includes("199") || upper.includes("STARTER")) {
+    return PLAN_IDS.STARTER_199;
+  }
+
   return PLAN_IDS.SANDBOX_FREE;
 }
 
 export function getPlanEntitlements(planId) {
   const cleanId = sanitizePlanId(planId);
-  return PLAN_CATALOG[cleanId] || PLAN_CATALOG[PLAN_IDS.SANDBOX_FREE];
+  const base = PLAN_CATALOG[cleanId] || PLAN_CATALOG[PLAN_IDS.SANDBOX_FREE];
+  return {
+    ...base,
+    features: { ...base.features }
+  };
 }
 
-export function checkQuota(planId, currentUsage = 0) {
+export function checkQuota(planId, currentUsage = 0, customQuota = null) {
   const entitlements = getPlanEntitlements(planId);
-  const limit = entitlements.monthlyVerdicts;
-  const used = Math.max(0, Number(currentUsage) || 0);
+  const parsedCustom = Number(customQuota);
+  const limit =
+    Number.isFinite(parsedCustom) && parsedCustom > 0
+      ? Math.floor(parsedCustom)
+      : entitlements.monthlyVerdicts;
+  const used = Math.max(0, Math.floor(Number(currentUsage) || 0));
+
   return {
     allowed: used < limit,
     planId: entitlements.planId,
     used,
     limit,
     remaining: Math.max(0, limit - used)
+  };
+}
+
+export function canAssignSeat(planId, currentSeats = 0, customMaxSeats = null) {
+  const entitlements = getPlanEntitlements(planId);
+  const parsedCustom = Number(customMaxSeats);
+  const maxSeats =
+    Number.isFinite(parsedCustom) && parsedCustom > 0
+      ? Math.floor(parsedCustom)
+      : entitlements.maxSeats;
+  const usedSeats = Math.max(0, Math.floor(Number(currentSeats) || 0));
+
+  return {
+    allowed: usedSeats < maxSeats,
+    planId: entitlements.planId,
+    usedSeats,
+    maxSeats,
+    remainingSeats: Math.max(0, maxSeats - usedSeats)
   };
 }
 
@@ -145,5 +189,6 @@ export default {
   sanitizePlanId,
   getPlanEntitlements,
   checkQuota,
+  canAssignSeat,
   isFeatureAllowed
 };

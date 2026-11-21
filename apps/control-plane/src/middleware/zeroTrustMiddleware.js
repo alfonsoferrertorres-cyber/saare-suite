@@ -13,8 +13,8 @@ export class ZeroTrustMiddleware {
   constructor(teamDomain, audienceTag, approvedParams = [], env = {}) {
     this.teamDomain = this.normalizeTeamDomain(teamDomain);
     this.audienceTags = Array.isArray(audienceTag)
-      ? audienceTag.filter(Boolean)
-      : audienceTag ? [audienceTag] : [];
+      ? audienceTag.map(t => String(t).trim()).filter(Boolean)
+      : audienceTag ? [String(audienceTag).trim()].filter(Boolean) : [];
     this.certsUrl = this.teamDomain ? `https://${this.teamDomain}/cdn-cgi/access/certs` : "";
     this.env = env || {};
 
@@ -39,17 +39,21 @@ export class ZeroTrustMiddleware {
 
     const now = Date.now();
     const cached = JWKS_MODULE_CACHE.get(this.certsUrl);
-    if (cached && now < cached.expiry) {
+    if (cached && now < cached.expiry && Array.isArray(cached.keys) && cached.keys.length > 0) {
       return cached.keys;
     }
 
     const res = await fetch(this.certsUrl);
     if (!res.ok) {
-      throw new Error(`No se pudieron obtener las claves públicas JWKS de ${this.certsUrl}`);
+      throw new Error(`No se pudieron obtener las claves públicas JWKS de ${this.certsUrl} (HTTP ${res.status})`);
     }
 
     const jwks = await res.json();
-    const keys = Array.isArray(jwks.keys) ? jwks.keys : [];
+    const keys = Array.isArray(jwks?.keys) ? jwks.keys : [];
+    if (keys.length === 0) {
+      throw new Error(`JWKS vacío recibido desde ${this.certsUrl}`);
+    }
+
     JWKS_MODULE_CACHE.set(this.certsUrl, {
       keys,
       expiry: now + 3600 * 1000
@@ -63,7 +67,10 @@ export class ZeroTrustMiddleware {
   }
 
   base64UrlToUint8Array(str) {
-    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+    let base64 = String(str || "").replace(/-/g, "+").replace(/_/g, "/");
+    if (base64.length % 4 === 1) {
+      throw new Error("Longitud Base64URL inválida");
+    }
     while (base64.length % 4 !== 0) {
       base64 += "=";
     }
@@ -120,31 +127,35 @@ export class ZeroTrustMiddleware {
       }
 
       const now = Math.floor(Date.now() / 1000);
-      if (payload.exp && now >= payload.exp) {
+      if (typeof payload.exp === "number" && now >= payload.exp) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Token expirado" };
       }
 
-      if (payload.nbf && now < payload.nbf) {
+      if (typeof payload.nbf === "number" && now < payload.nbf) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Token aún no es válido" };
       }
 
       if (this.audienceTags.length > 0) {
-        const tokenAud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+        const tokenAud = Array.isArray(payload.aud)
+          ? payload.aud.map(a => String(a).trim())
+          : payload.aud ? [String(payload.aud).trim()] : [];
         const hasValidAud = this.audienceTags.some(tag => tokenAud.includes(tag));
         if (!hasValidAud) {
           return { userEmail: null, isZeroTrustVerified: false, error: "Audience (AUD) no coincide" };
         }
       }
 
-      if (payload.iss) {
-        const cleanIss = String(payload.iss).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-        if (cleanIss !== this.teamDomain) {
-          return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
-        }
+      if (!payload.iss) {
+        return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) ausente en token" };
+      }
+
+      const cleanIss = String(payload.iss).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+      if (cleanIss !== this.teamDomain) {
+        return { userEmail: null, isZeroTrustVerified: false, error: "Emisor (iss) no coincide con el Team Domain" };
       }
 
       const publicKeys = await this.getPublicKeys();
-      const matchingJwk = publicKeys.find(key => key.kid === header.kid);
+      const matchingJwk = publicKeys.find(key => key.kid && key.kid === header.kid);
 
       if (!matchingJwk) {
         return { userEmail: null, isZeroTrustVerified: false, error: "Clave pública (kid) no encontrada en JWKS de Cloudflare" };

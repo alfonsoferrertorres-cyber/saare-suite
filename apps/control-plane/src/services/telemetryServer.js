@@ -1,5 +1,16 @@
 // control-plane/telemetryServer.js — Servidor SSE Telemetry Stream S.A.A.R.E. (SGP 1.0 / V12.2 Producción)
 
+function normalizeTenantId(rawTenant) {
+  if (!rawTenant || typeof rawTenant !== "string") return "DEMO_ENTERPRISE";
+  return (
+    rawTenant
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "_")
+      .slice(0, 32) || "DEMO_ENTERPRISE"
+  );
+}
+
 export class TelemetryServer {
   constructor(env) {
     this.env = env;
@@ -10,6 +21,7 @@ export class TelemetryServer {
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
+    const cleanTenantId = normalizeTenantId(tenantId);
     const isAdminRole = ["CISO_ADMIN", "CISO_SECOPS_LEVEL_3", "SUPER_ADMIN"].includes(
       String(activeUserRole || "").toUpperCase()
     );
@@ -33,7 +45,7 @@ export class TelemetryServer {
         try {
           if (this.env?.DB) {
             let query = `
-              SELECT 
+              SELECT
                 id,
                 evidence_id,
                 trace_id,
@@ -49,7 +61,7 @@ export class TelemetryServer {
               FROM runs
               WHERE tenant = ?
             `;
-            const bindings = [tenantId];
+            const bindings = [cleanTenantId];
 
             if (currentUser && !isAdminRole) {
               query += " AND user = ?";
@@ -61,7 +73,7 @@ export class TelemetryServer {
             const { results } = await this.env.DB.prepare(query).bind(...bindings).all();
 
             if (results?.length > 0) {
-              initialEvidences = results.map(row => {
+              initialEvidences = results.map((row) => {
                 let parsedPayload = {};
                 if (row.payload_json) {
                   try {
@@ -84,7 +96,7 @@ export class TelemetryServer {
                   decision: isDeny ? "DENY" : "ALLOW",
                   verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
                   user: row.user || currentUser,
-                  tenant: row.tenant || tenantId,
+                  tenant: normalizeTenantId(row.tenant || cleanTenantId),
                   prompt: row.prompt || row.responseOutput || "(Payload L7 verificado en RAM)",
                   sanitizedPayload: row.responseOutput || row.prompt || "",
                   latency: parsedPayload.latency || 0.84,
@@ -107,14 +119,15 @@ export class TelemetryServer {
         const kv = this.env?.SAARE_VAULT_KV || this.env?.SAARE_KV_VAULT || null;
         if (initialEvidences.length === 0 && kv) {
           try {
-            const kvData = await kv.get(`runs_${tenantId}`, "json");
+            const kvData = await kv.get(`runs_${cleanTenantId}`, "json");
             if (Array.isArray(kvData) && kvData.length > 0) {
               initialEvidences = kvData
-                .filter(item => item && (!currentUser || isAdminRole || item.user === currentUser))
-                .map(item => {
+                .filter((item) => item && (!currentUser || isAdminRole || item.user === currentUser))
+                .map((item) => {
                   const isDeny = item.decision === "DENY" || item.verdict === "RECHAZADO";
                   return {
                     ...item,
+                    tenant: normalizeTenantId(item.tenant || cleanTenantId),
                     decision: isDeny ? "DENY" : "ALLOW",
                     verdict: isDeny ? "RECHAZADO" : "PERMITIDO"
                   };
@@ -130,6 +143,7 @@ export class TelemetryServer {
         const initEvent = {
           type: "INIT",
           status: "ONLINE_SSE",
+          tenant: cleanTenantId,
           mode: this.env?.DB ? "D1_HYBRID" : "KV_STORE",
           witnessTag: "[MS3V-COMPLIANCE-L7-OK]",
           activeHeaders: [
@@ -148,7 +162,7 @@ export class TelemetryServer {
 
         for (let i = 0; i < 300; i++) {
           if (request?.signal?.aborted) break;
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise((r) => setTimeout(r, 2000));
           if (request?.signal?.aborted) break;
 
           keepAliveCounter++;
@@ -159,6 +173,7 @@ export class TelemetryServer {
 
           const telemetryEvent = {
             timestamp: new Date().toISOString(),
+            tenant: cleanTenantId,
             p50_ms: parseFloat((0.2 + Math.random() * 0.1).toFixed(2)),
             p95_ms: parseFloat((0.7 + Math.random() * 0.2).toFixed(2)),
             p99_ms: parseFloat((1.0 + Math.random() * 0.3).toFixed(2)),

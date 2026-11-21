@@ -23,7 +23,6 @@ export async function registerEvidenceInSafeCreative(anchorData = {}, env = {}, 
   const EngineClass = TimestampingEngine.default || TimestampingEngine;
   const engine = new EngineClass(expedienteId);
 
-  // 1. Generación de sello local preliminar
   const localSeal = await engine.sealTransaction(
     safeAnchor,
     env?.SAFE_CREATIVE_TSA_HASH || null
@@ -31,9 +30,6 @@ export async function registerEvidenceInSafeCreative(anchorData = {}, env = {}, 
 
   try {
     if (!env?.SAFE_CREATIVE_API_KEY) {
-      console.warn(
-        "[SafeCreativeClient] API Key no detectada en 'env'. Registrando bajo custodia local inalterable."
-      );
       return {
         success: true,
         mode: "LOCAL_CUSTODY_ONLY",
@@ -44,23 +40,31 @@ export async function registerEvidenceInSafeCreative(anchorData = {}, env = {}, 
       };
     }
 
-    // 2. Transmisión del Merkle Root al endpoint de Safe Creative
-    const response = await fetch("https://api.safecreative.org/v2/work/register", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${env.SAFE_CREATIVE_API_KEY}`,
-        "Content-Type": "application/json",
-        "X-SAARE-Expediente": expedienteId
-      },
-      body: JSON.stringify({
-        code: safeAnchor.id || `ANK-${Date.now()}`,
-        title: `S.A.A.R.E. Merkle Anchor - ${safeAnchor.id || "GLOBAL_ROOT"}`,
-        rootHash: localSeal.rootHash,
-        expediente: expedienteId,
-        author: authorName,
-        legalFramework
-      })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    let response;
+    try {
+      response = await fetch("https://api.safecreative.org/v2/work/register", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.SAFE_CREATIVE_API_KEY}`,
+          "Content-Type": "application/json",
+          "X-SAARE-Expediente": expedienteId
+        },
+        body: JSON.stringify({
+          code: safeAnchor.id || `ANK-${Date.now()}`,
+          title: `S.A.A.R.E. Merkle Anchor - ${safeAnchor.id || "GLOBAL_ROOT"}`,
+          rootHash: localSeal.rootHash,
+          expediente: expedienteId,
+          author: authorName,
+          legalFramework
+        }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(
@@ -75,7 +79,6 @@ export async function registerEvidenceInSafeCreative(anchorData = {}, env = {}, 
       resData.code ||
       `TSA_QUALIFIED_SAFE_CREATIVE_${localSeal.rootHash.slice(0, 12).toUpperCase()}`;
 
-    // 3. Re-sellado final con respuesta TSA / eIDAS
     const finalSeal = await engine.sealTransaction(safeAnchor, tsaHash);
 
     return {
@@ -87,12 +90,12 @@ export async function registerEvidenceInSafeCreative(anchorData = {}, env = {}, 
       seal: finalSeal
     };
   } catch (error) {
-    console.error("[SafeCreativeClient Error]:", error);
+    console.error("[SafeCreativeClient Error]:", error?.message || error);
     return {
       success: false,
       mode: "LOCAL_FALLBACK_ON_ERROR",
       qualifiedTsaConfirmed: false,
-      error: error.message,
+      error: error?.message || "Error de conexión con Safe Creative",
       expediente: expedienteId,
       seal: localSeal
     };

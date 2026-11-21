@@ -1,5 +1,16 @@
 // apps/control-plane/src/engines/evidenceVaultEngine.js — S.A.A.R.E. Evidence Vault Engine (SGP 1.0)
 
+function normalizeTenantId(rawTenant) {
+  if (!rawTenant || typeof rawTenant !== "string") return "DEFAULT_TENANT";
+  return (
+    rawTenant
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "_")
+      .slice(0, 32) || "DEFAULT_TENANT"
+  );
+}
+
 async function computeWebSha256(text = "") {
   const data = new TextEncoder().encode(String(text));
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -55,6 +66,7 @@ export class EvidenceVaultEngine {
       `);
       EvidenceVaultEngine.schemaInitialized = true;
     } catch (err) {
+      EvidenceVaultEngine.schemaInitialized = false;
       console.error("[Vault Engine] Error inicializando esquemas SQL D1:", err.message);
     }
   }
@@ -68,7 +80,7 @@ export class EvidenceVaultEngine {
     const traceId = safePayload.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
     const evidenceId = safePayload.evidence_id || `EV-L7-${Date.now()}`;
     const verdictId = safePayload.verdictId || `VRD-${year}-${String(evidenceId).replace(/^EV-L7-/i, "")}`;
-    const tenantId = safePayload.tenant_id || safePayload.tenant || "DEFAULT_TENANT";
+    const tenantId = normalizeTenantId(safePayload.tenant_id || safePayload.tenant);
     const user = safePayload.user || "anonymous";
 
     const decision = safePayload.decision || (safePayload.verdict_data?.action === "BLOCKED" ? "DENY" : "ALLOW");
@@ -255,6 +267,7 @@ export class EvidenceVaultEngine {
     };
     delete base.payload_json;
 
+    const cleanFallback = normalizeTenantId(fallbackTenant);
     const traceId = base.trace_id || base.id || base.evidence_id || "";
     const d1Hash = traceId && d1HashMap[traceId] ? d1HashMap[traceId] : "";
 
@@ -274,7 +287,7 @@ export class EvidenceVaultEngine {
         JSON.stringify({
           trace_id: traceId,
           evidence_id: base.evidence_id || base.id || "",
-          tenant: base.tenant || base.tenant_id || fallbackTenant,
+          tenant: normalizeTenantId(base.tenant || base.tenant_id || cleanFallback),
           user: base.user || "anonymous",
           decision: base.decision || "ALLOW",
           verdict: base.verdict || "PERMITIDO",
@@ -285,12 +298,15 @@ export class EvidenceVaultEngine {
       );
     }
 
+    const resolvedTenant = normalizeTenantId(base.tenant || base.tenant_id || cleanFallback);
+
     return {
       ...base,
       id: base.id || base.evidence_id || traceId,
       evidence_id: base.evidence_id || base.id || traceId,
       trace_id: traceId,
-      tenant: base.tenant || base.tenant_id || fallbackTenant,
+      tenant: resolvedTenant,
+      tenant_id: resolvedTenant,
       timestamp: base.timestamp || base.created_at || "",
       merkleRoot: integrityHash,
       ms3v_hash: integrityHash,
@@ -301,6 +317,7 @@ export class EvidenceVaultEngine {
   }
 
   async getTenantTraces(tenantId, limit = 50) {
+    const cleanTenant = normalizeTenantId(tenantId);
     const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 500);
     const d1HashMap = {};
 
@@ -311,7 +328,7 @@ export class EvidenceVaultEngine {
         try {
           const { results: traceHashes } = await this.env.DB.prepare(`
             SELECT trace_id, ms3v_hash FROM consolidated_traces WHERE tenant_id = ? ORDER BY rowid DESC LIMIT ?
-          `).bind(tenantId, safeLimit).all();
+          `).bind(cleanTenant, safeLimit).all();
 
           if (Array.isArray(traceHashes)) {
             for (const row of traceHashes) {
@@ -324,11 +341,11 @@ export class EvidenceVaultEngine {
 
         const { results } = await this.env.DB.prepare(`
           SELECT * FROM runs WHERE tenant = ? ORDER BY id DESC LIMIT ?
-        `).bind(tenantId, safeLimit).all();
+        `).bind(cleanTenant, safeLimit).all();
 
         if (results && results.length > 0) {
           return await Promise.all(
-            results.map((item) => this.normalizeTraceItem(item, tenantId, d1HashMap))
+            results.map((item) => this.normalizeTraceItem(item, cleanTenant, d1HashMap))
           );
         }
       } catch (err) {
@@ -339,10 +356,10 @@ export class EvidenceVaultEngine {
     const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
     if (kv) {
       try {
-        const kvData = await kv.get(`runs_${tenantId}`, "json");
+        const kvData = await kv.get(`runs_${cleanTenant}`, "json");
         if (Array.isArray(kvData)) {
           return await Promise.all(
-            kvData.slice(0, safeLimit).map((item) => this.normalizeTraceItem(item, tenantId, d1HashMap))
+            kvData.slice(0, safeLimit).map((item) => this.normalizeTraceItem(item, cleanTenant, d1HashMap))
           );
         }
       } catch {}

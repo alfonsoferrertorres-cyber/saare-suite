@@ -4,6 +4,10 @@ import { TimestampingEngine } from "./timestampingEngine.js";
 
 export async function generateProofBundle(rawEvidence = {}, env = {}) {
   const safeEvidence = rawEvidence && typeof rawEvidence === "object" ? rawEvidence : {};
+  const tenantId = String(safeEvidence.tenant_id || safeEvidence.tenant || "DEFAULT_TENANT")
+    .trim()
+    .toUpperCase();
+
   const isDeny =
     safeEvidence.decision === "DENY" ||
     safeEvidence.verdict === "RECHAZADO" ||
@@ -80,7 +84,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
     safeEvidence.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
 
   const keyManager = new EnterpriseKeyManager(env);
-  const canonicalSignPayload = `${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
+  const canonicalSignPayload = `${tenantId}|${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
   const ed25519Signature =
     safeEvidence.cryptoSeal ||
     (await keyManager.deriveEd25519Signature(canonicalSignPayload));
@@ -92,7 +96,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
   const externalTsaHash =
     safeEvidence.tsaHash || env?.SAFE_CREATIVE_TSA_HASH || null;
   const tsaSeal = await tsaEngine.sealTransaction(
-    { verdictId, payloadHash, ed25519Signature },
+    { tenantId, verdictId, payloadHash, ed25519Signature },
     externalTsaHash
   );
 
@@ -102,8 +106,16 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
         !tsaSeal.tsaHash.startsWith("TSA-RFC3161-"))
   );
 
+  const deterministicSuffix = (
+    await computeSha256(`${tenantId}:${verdictId}:${payloadHash}`)
+  )
+    .substring(0, 10)
+    .toUpperCase();
+
   return {
     ...safeEvidence,
+    tenant: tenantId,
+    tenant_id: tenantId,
     id: runId,
     evidence_id: runId,
     trace_id: traceId,
@@ -112,6 +124,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
     verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
     cryptoSeal: ed25519Signature,
     proofBundle: {
+      tenantId,
       verdictId,
       payloadHash,
       ed25519Signature,
@@ -134,7 +147,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
       auditStandard:
         safeEvidence.norma || safeEvidence.sub || "EU AI Act / DORA / ISO 27037",
       complianceCode:
-        safeEvidence.complianceCode || `MS3V-GRANT-EVIDENCE-${Date.now()}`
+        safeEvidence.complianceCode || `MS3V-GRANT-${deterministicSuffix}`
     }
   };
 }

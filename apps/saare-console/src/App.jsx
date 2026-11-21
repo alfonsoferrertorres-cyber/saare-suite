@@ -36,8 +36,17 @@ const ISO_42001_PRESET_RULES = [
   }
 ];
 
+const normalizeTenantId = (id = '') => {
+  return String(id || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, '_')
+    .slice(0, 32);
+};
+
 const getRulesEnabledStorageKey = (tenant = '') => {
-  return `saare_rules_enabled_${String(tenant || 'default').trim()}`;
+  const clean = normalizeTenantId(tenant);
+  return `saare_rules_enabled_${clean || 'default'}`;
 };
 
 const readStoredRulesEnabled = (tenant = '') => {
@@ -73,10 +82,11 @@ const redactSensitiveText = (value = '') => {
 };
 
 const isValidTenantId = (id = '') => {
-  const normalized = String(id || '').trim();
-  if (!normalized || normalized.length < 2) return false;
-  if (normalized.includes('@')) return false;
-  return true;
+  const raw = String(id || '').trim();
+  if (!raw || raw.length < 2) return false;
+  if (raw.includes('@')) return false;
+  const normalized = normalizeTenantId(raw);
+  return normalized.length >= 2;
 };
 
 const triggerBlobDownload = (content, filename, mimeType = 'application/json;charset=utf-8') => {
@@ -93,17 +103,16 @@ const triggerBlobDownload = (content, filename, mimeType = 'application/json;cha
 
 export default function App() {
   const queryParams = new URLSearchParams(window.location.search);
-  const urlTenant = queryParams.get('tenant') ? queryParams.get('tenant').trim() : null;
+  const urlTenant = queryParams.get('tenant') ? normalizeTenantId(queryParams.get('tenant')) : null;
   const urlRole = queryParams.get('role') ? queryParams.get('role').trim() : null;
   const checkoutStatus = queryParams.get('checkout');
 
-  // Arranque 100% virgen: sin DEFAULT_USER, DEFAULT_TENANT ni DEFAULT_ROLE preinyectados
   const [userEmail, setUserEmail] = useState(() => {
     return (localStorage.getItem('saare_user_email') || '').trim().toLowerCase();
   });
 
   const [tenantId, setTenantId] = useState(() => {
-    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
+    const candidate = urlTenant || normalizeTenantId(localStorage.getItem('saare_tenant_domain') || '');
     return isValidTenantId(candidate) ? candidate : '';
   });
 
@@ -117,7 +126,7 @@ export default function App() {
 
   const [availableTenants, setAvailableTenants] = useState(() => {
     const initial = [];
-    const current = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
+    const current = urlTenant || normalizeTenantId(localStorage.getItem('saare_tenant_domain') || '');
     if (current && isValidTenantId(current)) {
       initial.push({ id: current, name: current });
     }
@@ -134,6 +143,10 @@ export default function App() {
 
   const [billingInfo, setBillingInfo] = useState(null);
   const [isBillingLoading, setIsBillingLoading] = useState(false);
+
+  const [forensicBatch, setForensicBatch] = useState(null);
+  const [isSealingBatch, setIsSealingBatch] = useState(false);
+  const [inclusionStatusByEvidence, setInclusionStatusByEvidence] = useState({});
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authTab, setAuthTab] = useState('TOKEN');
@@ -160,7 +173,7 @@ export default function App() {
 
   const [customRules, setCustomRules] = useState([]);
   const [tenantRulesEnabled, setTenantRulesEnabled] = useState(() => {
-    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
+    const candidate = urlTenant || normalizeTenantId(localStorage.getItem('saare_tenant_domain') || '');
     return readStoredRulesEnabled(isValidTenantId(candidate) ? candidate : '');
   });
   const [ruleForm, setRuleForm] = useState({ name: '', pattern: '' });
@@ -191,7 +204,7 @@ export default function App() {
 
   const persistSessionData = useCallback(({ token, tenant, email, role, planId, apiKey, companyName }) => {
     const cleanToken = String(token || '').replace(/^Bearer\s+/i, '').trim();
-    const cleanTenant = String(tenant || '').trim();
+    const cleanTenant = normalizeTenantId(tenant);
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanRole = String(role || '').trim();
 
@@ -238,7 +251,7 @@ export default function App() {
   }, []);
 
   const fetchBillingUsage = useCallback(async (overrideTenant = null, overrideToken = null) => {
-    const targetTenant = overrideTenant || tenantId;
+    const targetTenant = normalizeTenantId(overrideTenant || tenantId);
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     if (!targetTenant) {
       setBillingInfo(null);
@@ -260,7 +273,7 @@ export default function App() {
   }, [tenantId, authToken]);
 
   const fetchCustomRules = useCallback(async (overrideTenant = null, overrideToken = null) => {
-    const targetTenant = overrideTenant || tenantId;
+    const targetTenant = normalizeTenantId(overrideTenant || tenantId);
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     if (!targetTenant) {
       setCustomRules([]);
@@ -423,6 +436,34 @@ export default function App() {
     }
   };
 
+  const handleRemoveCustomRule = async (ruleId) => {
+    if (!tenantId || !ruleId) return;
+    setIsRulesLoading(true);
+    const updatedRules = customRules.filter((r) => r.id !== ruleId);
+    try {
+      const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+      const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ enabled: tenantRulesEnabled, rules: updatedRules })
+      });
+
+      if (!res.ok) {
+        throw new Error('Error al eliminar regla en Bóveda D1');
+      }
+
+      const data = await res.json().catch(() => null);
+      setCustomRules(Array.isArray(data?.rules) ? data.rules : updatedRules);
+      triggerGovernance('Regla personalizada eliminada.');
+    } catch {
+      triggerGovernance('Error al eliminar la regla personalizada.');
+    } finally {
+      setIsRulesLoading(false);
+    }
+  };
+
   const mapEvidences = useCallback((remoteEvidences, activeTenantId) => {
     const rawList = Array.isArray(remoteEvidences)
       ? remoteEvidences
@@ -452,7 +493,9 @@ export default function App() {
           anchored: item.anchored !== undefined ? item.anchored : 0,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
           user: item.user || '',
-          tenant: isValidTenantId(item.tenant_id || item.tenant) ? (item.tenant_id || item.tenant) : activeTenantId,
+          tenant: isValidTenantId(item.tenant_id || item.tenant)
+            ? normalizeTenantId(item.tenant_id || item.tenant)
+            : activeTenantId,
           merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '',
           latency: item.execution_latency_ms || item.latency || 0,
           rawJson: item
@@ -461,7 +504,7 @@ export default function App() {
   }, []);
 
   const fetchTenantMetrics = useCallback(async (overrideTenant = null, overrideToken = null, overrideRole = null) => {
-    const targetTenant = overrideTenant || tenantId;
+    const targetTenant = normalizeTenantId(overrideTenant || tenantId);
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     const activeRole = overrideRole || userRole;
     if (!targetTenant) {
@@ -493,6 +536,7 @@ export default function App() {
       const isGlobalAdmin = activeRole === 'CISO_ADMIN' && Boolean(activeTok);
       const cleanRows = rawRows
         .filter((row) => isValidTenantId(row?.tenant_id))
+        .map((row) => ({ ...row, tenant_id: normalizeTenantId(row.tenant_id) }))
         .filter((row) => isGlobalAdmin || row.tenant_id === targetTenant);
 
       setTenantMetrics(cleanRows);
@@ -504,12 +548,14 @@ export default function App() {
   }, [tenantId, userRole, authToken]);
 
   const fetchTelemetryDirectFromVault = useCallback(async (overrideTenant = null, overrideToken = null) => {
-    const targetTenant = overrideTenant || tenantId;
+    const targetTenant = normalizeTenantId(overrideTenant || tenantId);
     const activeTok = overrideToken !== null ? overrideToken : authToken;
     if (!targetTenant) {
       setEvidences([]);
       setTenantMetrics([]);
       setBillingInfo(null);
+      setForensicBatch(null);
+      setInclusionStatusByEvidence({});
       return;
     }
 
@@ -538,11 +584,108 @@ export default function App() {
     }
   }, [tenantId, userEmail, authToken, userRole, mapEvidences, fetchTenantMetrics, fetchBillingUsage, triggerGovernance]);
 
-  const handleTenantChange = (newTenant) => {
+  const handleSealForensicBatch = useCallback(async () => {
+    if (!tenantId) {
+      triggerGovernance('Configura un Tenant ID antes de sellar un lote forense.');
+      return;
+    }
+
+    setIsSealingBatch(true);
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-saare-tenant': tenantId
+      };
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
+
+      const res = await fetch(getApiEndpoint('/api/v1/forensics/batch/seal'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          tenantId,
+          enable2of3Custody: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+      }
+
+      setForensicBatch(data);
+      setInclusionStatusByEvidence({});
+      triggerGovernance(
+        `Lote ${data.batchId} sellado (${data.isQualifiedEidas ? 'eIDAS Cualificado' : data.assuranceLevel}).`
+      );
+    } catch (err) {
+      triggerGovernance(err?.message || 'Error al sellar el lote forense.');
+    } finally {
+      setIsSealingBatch(false);
+    }
+  }, [tenantId, authToken, triggerGovernance]);
+
+  const handleVerifyEvidenceInclusion = useCallback(async (ev) => {
+    if (!forensicBatch?.merkleRoot || !forensicBatch?.proofsByEvidenceId) {
+      triggerGovernance('Primero sella un lote de Merkle para verificar pruebas de inclusión.');
+      return;
+    }
+
+    const proofEntry =
+      forensicBatch.proofsByEvidenceId[ev.id] ||
+      forensicBatch.proofsByEvidenceId[ev.rawJson?.evidence_id] ||
+      null;
+
+    if (!proofEntry) {
+      setInclusionStatusByEvidence((prev) => ({ ...prev, [ev.id]: 'NO_IN_BATCH' }));
+      triggerGovernance(`La evidencia ${ev.id} no está incluida en el lote ${forensicBatch.batchId}.`);
+      return;
+    }
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(tenantId ? { 'x-saare-tenant': tenantId } : {})
+      };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+      const res = await fetch(getApiEndpoint('/api/v1/forensics/batch/verify'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          leafHash: proofEntry.leafHash,
+          proof: proofEntry.proof,
+          merkleRoot: forensicBatch.merkleRoot
+        })
+      });
+
+      const data = await res.json();
+      const valid = Boolean(res.ok && data?.verified);
+      setInclusionStatusByEvidence((prev) => ({
+        ...prev,
+        [ev.id]: valid ? 'VERIFIED' : 'INVALID'
+      }));
+      triggerGovernance(
+        valid
+          ? `Inclusión Merkle verificada para ${ev.id}.`
+          : `La prueba de inclusión de ${ev.id} no coincide con la raíz.`
+      );
+    } catch {
+      triggerGovernance('Error al verificar la prueba de inclusión.');
+    }
+  }, [forensicBatch, tenantId, authToken, triggerGovernance]);
+
+  const handleTenantChange = (rawTenant) => {
+    const newTenant = normalizeTenantId(rawTenant);
     setTenantId(newTenant);
     setTenantRulesEnabled(readStoredRulesEnabled(newTenant));
     setTestResult(null);
     setCustomRules([]);
+    setBillingInfo(null);
+    setTenantMetrics([]);
+    setForensicBatch(null);
+    setInclusionStatusByEvidence({});
     if (newTenant) {
       localStorage.setItem('saare_tenant_domain', newTenant);
       fetchTelemetryDirectFromVault(newTenant);
@@ -552,7 +695,6 @@ export default function App() {
     } else {
       localStorage.removeItem('saare_tenant_domain');
       setEvidences([]);
-      setTenantMetrics([]);
     }
   };
 
@@ -580,6 +722,8 @@ export default function App() {
     setEvidences([]);
     setTenantMetrics([]);
     setBillingInfo(null);
+    setForensicBatch(null);
+    setInclusionStatusByEvidence({});
     setCustomRules([]);
     setTenantRulesEnabled(true);
     setTestResult(null);
@@ -603,9 +747,9 @@ export default function App() {
 
   useEffect(() => {
     if (tenantId) {
-      fetchTelemetryDirectFromVault();
+      fetchTelemetryDirectFromVault(tenantId, authToken);
     }
-  }, [tenantId, fetchTelemetryDirectFromVault]);
+  }, [tenantId, authToken, fetchTelemetryDirectFromVault]);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -615,7 +759,7 @@ export default function App() {
     try {
       if (authTab === 'TOKEN') {
         const cleanToken = String(authForm.token || '').replace(/^Bearer\s+/i, '').trim();
-        const targetTenant = String(authForm.tenantId || tenantId || '').trim();
+        const targetTenant = normalizeTenantId(authForm.tenantId || tenantId || '');
 
         if (!cleanToken) {
           throw new Error('Introduce un Token Bearer o API Key válido.');
@@ -666,7 +810,7 @@ export default function App() {
         throw new Error(data?.message || data?.error || 'No se pudo completar la autenticación.');
       }
 
-      const newTenant = data.user?.tenantId || data.user?.tenantName || authForm.tenantId || '';
+      const newTenant = normalizeTenantId(data.user?.tenantId || data.user?.tenantName || authForm.tenantId || '');
       const newEmail = data.user?.email || authForm.email;
       const newRole = data.user?.role || 'TENANT_ADMIN';
 
@@ -694,12 +838,19 @@ export default function App() {
   const handleStartStripeUpgrade = async (targetPlan = 'PROFESSIONAL_649') => {
     setIsBillingLoading(true);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(tenantId ? { 'x-saare-tenant': tenantId } : {})
+      };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
       const res = await fetch(getApiEndpoint('/api/v1/billing/checkout'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          email: userEmail,
-          companyName: billingInfo?.companyName || tenantId,
+          email: userEmail || undefined,
+          companyName: billingInfo?.companyName || tenantId || undefined,
+          tenantId: tenantId || undefined,
           planId: targetPlan
         })
       });
@@ -711,7 +862,7 @@ export default function App() {
         }
         throw new Error('URL de checkout no segura');
       }
-      triggerGovernance(data?.message || 'No se pudo abrir Stripe Checkout.');
+      triggerGovernance(data?.message || data?.error || 'No se pudo abrir Stripe Checkout.');
     } catch {
       triggerGovernance('Error de red conectando con Stripe Billing.');
     } finally {
@@ -733,7 +884,7 @@ export default function App() {
         }
         throw new Error('URL de portal no segura');
       }
-      triggerGovernance(data?.message || 'No hay suscripción activa para gestionar.');
+      triggerGovernance(data?.message || data?.error || 'No hay suscripción activa para gestionar.');
     } catch {
       triggerGovernance('Error abriendo el portal de facturación.');
     } finally {
@@ -832,6 +983,17 @@ export default function App() {
         deniedCount: denied,
         blockRatePercent: blockRate
       },
+      latestForensicBatch: forensicBatch
+        ? {
+            batchId: forensicBatch.batchId,
+            merkleRoot: forensicBatch.merkleRoot,
+            leafCount: forensicBatch.leafCount,
+            isQualifiedEidas: forensicBatch.isQualifiedEidas,
+            assuranceLevel: forensicBatch.assuranceLevel,
+            tsaReference: forensicBatch.timestampSeal?.tsaReference || null,
+            custody2of3Enabled: Boolean(forensicBatch.custody2of3)
+          }
+        : null,
       rulesEnabled: tenantRulesEnabled,
       activeCustomRulesCount: customRules.length,
       customRules,
@@ -958,9 +1120,9 @@ export default function App() {
 
       setTestResult(evalResult);
       triggerGovernance(`Prompt interceptado (${evalResult.decision}).`);
-      await fetchTelemetryDirectFromVault();
-    } catch {
-      triggerGovernance('Error al evaluar el prompt en el gateway L7.');
+      await fetchTelemetryDirectFromVault(tenantId, authToken);
+    } catch (err) {
+      triggerGovernance(err?.message || 'Error al evaluar el prompt en el gateway L7.');
     } finally {
       setIsEvaluating(false);
     }
@@ -1106,7 +1268,7 @@ export default function App() {
         {viewMode === 'GRC_AUDIT' && (
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
             <GovernanceToolbar
-              targetHash={evidences[0]?.merkleRoot || ''}
+              targetHash={forensicBatch?.merkleRoot || evidences[0]?.merkleRoot || ''}
               tenantId={tenantId}
               rulesEnabled={tenantRulesEnabled}
               onToggleTenantRules={handleToggleTenantRules}
@@ -1128,6 +1290,35 @@ export default function App() {
               onExportLecActa={handleExportLecActa}
               onExportClick={() => setShowExportModal(true)}
             />
+
+            <div style={{ margin: '18px 0', padding: '14px 18px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase' }}>
+                  Lote Forense — Árbol de Merkle + Sellado Temporal + Custodia 2-de-3
+                </div>
+                {forensicBatch ? (
+                  <div style={{ fontSize: '0.76rem', color: '#cbd5e1', marginTop: '4px', fontFamily: 'monospace' }}>
+                    Root: {forensicBatch.merkleRoot?.slice(0, 24)}... | Hojas: {forensicBatch.leafCount} | Sello:{' '}
+                    <span style={{ color: forensicBatch.isQualifiedEidas ? '#34d399' : '#fbbf24' }}>
+                      {forensicBatch.isQualifiedEidas ? 'QUALIFIED_EIDAS' : forensicBatch.assuranceLevel}
+                    </span>{' '}
+                    | Custodia: {forensicBatch.custody2of3 ? '2-DE-3 ACTIVA' : 'DESACTIVADA'}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
+                    Aún no se ha generado un lote de Merkle para el tenant activo.
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSealForensicBatch}
+                disabled={isSealingBatch || !tenantId}
+                style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: tenantId ? 'pointer' : 'not-allowed', opacity: tenantId ? 1 : 0.5 }}
+              >
+                {isSealingBatch ? 'Sellando Lote...' : 'Sellar Lote Merkle + 2-de-3'}
+              </button>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
               <div style={{ background: '#020617', border: '1px solid #38bdf8', padding: '16px', borderRadius: '8px' }}>
@@ -1212,37 +1403,59 @@ export default function App() {
                       <th style={{ padding: '12px' }}>PROMPT / INSTRUCCIÓN</th>
                       <th style={{ padding: '12px' }}>VEREDICTO</th>
                       <th style={{ padding: '12px' }}>HUELLA INTEGRIDAD</th>
+                      <th style={{ padding: '12px', textAlign: 'center' }}>PRUEBA MERKLE</th>
                       <th style={{ padding: '12px', textAlign: 'center' }}>INFORME OFICIAL</th>
                     </tr>
                   </thead>
                   <tbody>
                     {evidences.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                        <td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
                           Sin registros de evidencia para el tenant <strong>{tenantId || 'no definido'}</strong>.
                         </td>
                       </tr>
                     ) : (
-                      evidences.map((ev, idx) => (
-                        <tr key={ev.id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
-                          <td style={{ padding: '12px', color: '#94a3b8' }}>{ev.time}</td>
-                          <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold' }}>{ev.id}</td>
-                          <td style={{ padding: '12px', color: '#cbd5e1', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.prompt}</td>
-                          <td style={{ padding: '12px' }}>
-                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontWeight: '800', background: ev.decision === 'DENY' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: ev.decision === 'DENY' ? '#ef4444' : '#10b981', border: `1px solid ${ev.decision === 'DENY' ? '#ef4444' : '#10b981'}` }}>
-                              {ev.decision === 'DENY' ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>
-                            {ev.merkleRoot ? `${ev.merkleRoot.substring(0, 20)}...` : 'N/A'}
-                          </td>
-                          <td style={{ padding: '12px', textAlign: 'center' }}>
-                            <button type="button" onClick={() => handleOpenPdfReport(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
-                              IMPRIMIR PDF
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      evidences.map((ev, idx) => {
+                        const incStatus = inclusionStatusByEvidence[ev.id];
+                        return (
+                          <tr key={ev.id || idx} style={{ borderBottom: '1px solid #1e293b', background: idx % 2 === 0 ? '#0b0f19' : '#0f172a' }}>
+                            <td style={{ padding: '12px', color: '#94a3b8' }}>{ev.time}</td>
+                            <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold' }}>{ev.id}</td>
+                            <td style={{ padding: '12px', color: '#cbd5e1', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.prompt}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ padding: '4px 8px', borderRadius: '4px', fontWeight: '800', background: ev.decision === 'DENY' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: ev.decision === 'DENY' ? '#ef4444' : '#10b981', border: `1px solid ${ev.decision === 'DENY' ? '#ef4444' : '#10b981'}` }}>
+                                {ev.decision === 'DENY' ? 'DENY (RECHAZADO)' : 'ALLOW (PERMITIDO)'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', fontFamily: 'monospace', color: '#64748b', fontSize: '0.72rem' }}>
+                              {ev.merkleRoot ? `${ev.merkleRoot.substring(0, 20)}...` : 'N/A'}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyEvidenceInclusion(ev)}
+                                style={{
+                                  padding: '4px 8px',
+                                  background: incStatus === 'VERIFIED' ? 'rgba(16,185,129,0.15)' : '#0f172a',
+                                  color: incStatus === 'VERIFIED' ? '#34d399' : '#cbd5e1',
+                                  border: `1px solid ${incStatus === 'VERIFIED' ? '#10b981' : '#334155'}`,
+                                  borderRadius: '4px',
+                                  fontSize: '0.68rem',
+                                  fontWeight: '800',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {incStatus === 'VERIFIED' ? 'VERIFICADA' : 'VERIFICAR'}
+                              </button>
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <button type="button" onClick={() => handleOpenPdfReport(ev)} style={{ padding: '4px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}>
+                                IMPRIMIR PDF
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1394,12 +1607,13 @@ export default function App() {
                         <th style={{ padding: '12px' }}>ID DE REGLA</th>
                         <th style={{ padding: '12px' }}>NOMBRE</th>
                         <th style={{ padding: '12px' }}>PATRÓN / EXPRESIÓN REGULAR</th>
+                        <th style={{ padding: '12px', textAlign: 'center' }}>ACCIÓN</th>
                       </tr>
                     </thead>
                     <tbody>
                       {customRules.length === 0 ? (
                         <tr>
-                          <td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
                             No hay reglas personalizadas definidas para este tenant.
                           </td>
                         </tr>
@@ -1409,6 +1623,16 @@ export default function App() {
                             <td style={{ padding: '12px', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 'bold' }}>{rule.id}</td>
                             <td style={{ padding: '12px', color: '#f8fafc', fontWeight: 'bold' }}>{rule.name}</td>
                             <td style={{ padding: '12px', color: '#34d399', fontFamily: 'monospace' }}>{rule.pattern}</td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCustomRule(rule.id)}
+                                disabled={isRulesLoading}
+                                style={{ padding: '4px 10px', background: '#450a0a', color: '#fca5a5', border: '1px solid #dc2626', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer' }}
+                              >
+                                Eliminar
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}

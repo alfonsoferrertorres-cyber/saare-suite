@@ -20,14 +20,15 @@ async function generateSha256Hex(message) {
   const msgUint8 = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function getTimestampNs() {
   const ms = BigInt(Date.now());
-  const perfVal = typeof performance !== "undefined" && typeof performance.now === "function"
-    ? performance.now()
-    : 0;
+  const perfVal =
+    typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : 0;
   const nsOffset = BigInt(Math.max(0, Math.floor((perfVal % 1) * 1e6)));
   return (ms * 1000000n + nsOffset).toString();
 }
@@ -52,11 +53,11 @@ export async function engineBlockLogic(instruction, approvedParams = [], env = {
 
     const upperData = trimmedRaw.toUpperCase();
     const normalizedApproved = Array.isArray(approvedParams)
-      ? approvedParams.map(p => String(p).trim().toUpperCase()).filter(Boolean)
+      ? approvedParams.map((p) => String(p).trim().toUpperCase()).filter(Boolean)
       : [];
 
     const isApproved = normalizedApproved.some(
-      param => upperData === param || upperData.includes(param)
+      (param) => upperData === param || upperData.includes(param)
     );
 
     const executedCommand = isApproved ? upperData : "LOGIC_SAFE_STATE";

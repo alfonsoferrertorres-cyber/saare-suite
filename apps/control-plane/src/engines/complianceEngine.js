@@ -1,5 +1,5 @@
 // control-plane/src/engines/complianceEngine.js — Motor de Mapeo Regulatorio S.A.A.R.E. (SGP 1.0)
-import { getScenarioById } from '../modules/scenarioRegistry.js';
+import { getScenarioById } from "../modules/scenarioRegistry.js";
 
 const REGULATORY_FRAMEWORKS = {
   EU_AI_ACT: {
@@ -104,7 +104,7 @@ export class ComplianceEngine {
     for (const [fwKey, reqKeys] of Object.entries(activeScenario.compliance_mapping)) {
       const frameworkMeta = REGULATORY_FRAMEWORKS[fwKey];
       if (frameworkMeta) {
-        const requirementsCovered = (Array.isArray(reqKeys) ? reqKeys : []).map(reqKey => ({
+        const requirementsCovered = (Array.isArray(reqKeys) ? reqKeys : []).map((reqKey) => ({
           requirementKey: reqKey,
           description: frameworkMeta.requirements[reqKey] || reqKey,
           controlApplied: isDeny
@@ -128,7 +128,11 @@ export class ComplianceEngine {
       policyId: activeScenario.policyId,
       verdict: isDeny ? "RECHAZADO" : "PERMITIDO",
       decision: isDeny ? "DENY" : "ALLOW",
-      reason: reason || (isDeny ? "Activación de control ex-ante por riesgo detectado" : "Evaluación de políticas satisfactoria"),
+      reason:
+        reason ||
+        (isDeny
+          ? "Activación de control ex-ante por riesgo detectado"
+          : "Evaluación de políticas satisfactoria"),
       compliance_impact: {
         mappedFrameworks,
         audit_trail_status: "CRYPTOGRAPHICALLY_VERIFIED_IN_VAULT",
@@ -142,3 +146,5 @@ export class ComplianceEngine {
 export function evaluateComplianceDirectives(scenarioId, verdict, reason) {
   return ComplianceEngine.mapExecutionToCompliance(scenarioId, verdict, reason);
 }
+
+export default ComplianceEngine;

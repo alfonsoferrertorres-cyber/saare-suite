@@ -91,6 +91,86 @@ async function verifyStripeSignature(payload, sigHeader, secret, toleranceSecond
   return v1Signatures.some((sig) => timingSafeEqualHex(expected, sig));
 }
 
+async function ensureWebhookTables(db) {
+  if (!db) return;
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS stripe_processed_events (
+        event_id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        tenant_id TEXT,
+        processed_at TEXT NOT NULL
+      )
+    `)
+    .run();
+}
+
+async function isEventAlreadyProcessed(db, kv, eventId) {
+  if (!eventId) return false;
+  if (kv) {
+    const cached = await kv.get(`stripe_evt:${eventId}`);
+    if (cached) return true;
+  }
+  if (db) {
+    await ensureWebhookTables(db);
+    const row = await db
+      .prepare("SELECT event_id FROM stripe_processed_events WHERE event_id = ?")
+      .bind(eventId)
+      .first();
+    if (row?.event_id) return true;
+  }
+  return false;
+}
+
+async function markEventProcessed(db, kv, eventId, eventType, tenantId = null) {
+  if (!eventId) return;
+  const nowIso = new Date().toISOString();
+  if (kv) {
+    await kv.put(`stripe_evt:${eventId}`, JSON.stringify({ eventType, tenantId, processedAt: nowIso }), {
+      expirationTtl: 60 * 60 * 24 * 30
+    });
+  }
+  if (db) {
+    await ensureWebhookTables(db);
+    await db
+      .prepare(`
+        INSERT OR IGNORE INTO stripe_processed_events (event_id, event_type, tenant_id, processed_at)
+        VALUES (?, ?, ?, ?)
+      `)
+      .bind(eventId, eventType, tenantId, nowIso)
+      .run();
+  }
+}
+
+async function resolveExistingTenantId(db, kv, { metaTenantId, stripeCustomerId, fallbackCompany }) {
+  if (metaTenantId) {
+    return normalizeTenantId(metaTenantId);
+  }
+  if (stripeCustomerId && kv) {
+    const mapped = await kv.get(`stripe_cust:${stripeCustomerId}`);
+    if (mapped) return normalizeTenantId(mapped);
+  }
+  if (stripeCustomerId && db) {
+    const rows = await db
+      .prepare("SELECT tenant_id, config_json FROM tenants LIMIT 200")
+      .all()
+      .catch(() => ({ results: [] }));
+    for (const r of rows?.results || []) {
+      try {
+        const cfg = r.config_json ? JSON.parse(r.config_json) : {};
+        if (cfg.stripeCustomerId === stripeCustomerId) {
+          return normalizeTenantId(r.tenant_id);
+        }
+      } catch {}
+    }
+  }
+  const cleanCompany = String(fallbackCompany || "TENANT_PRO")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "_")
+    .slice(0, 18);
+  return normalizeTenantId(`TNT_${cleanCompany}_${Date.now().toString(36).toUpperCase()}`);
+}
+
 export async function provisionTenantFromBilling({
   tenantId,
   companyName,
@@ -171,6 +251,9 @@ export async function provisionTenantFromBilling({
   if (kv) {
     await kv.put(`license:${cleanTenant}`, licenseKey);
     await kv.put(`token_tenant:${licenseKey}`, cleanTenant);
+    if (stripeCustomerId) {
+      await kv.put(`stripe_cust:${stripeCustomerId}`, cleanTenant);
+    }
     await kv.put(
       `tenant_meta:${cleanTenant}`,
       JSON.stringify({
@@ -179,7 +262,8 @@ export async function provisionTenantFromBilling({
         quota: monthlyQuota,
         maxSeats,
         status: "ACTIVE",
-        stripeCustomerId: stripeCustomerId || null
+        stripeCustomerId: stripeCustomerId || null,
+        stripeSubscriptionId: stripeSubscriptionId || null
       })
     );
   }
@@ -228,13 +312,25 @@ export async function handleStripeWebhook(request, env) {
     });
   }
 
+  const kv = env?.SAARE_KV_VAULT || env?.SAARE_VAULT_KV || null;
+  if (event.id && (await isEventAlreadyProcessed(env?.DB, kv, event.id))) {
+    return new Response(
+      JSON.stringify({ received: true, deduplicated: true, eventId: event.id }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   if (event.type === "checkout.session.completed" || event.type === "invoice.paid") {
     const obj = event.data?.object || {};
-    const meta = obj.metadata || {};
+    const meta = obj.metadata || obj.subscription_details?.metadata || {};
     const email = obj.customer_details?.email || obj.customer_email || meta.adminEmail;
     const domainPart = email && email.includes("@") ? email.split("@")[1].split(".")[0] : "TENANT_PRO";
     const company = meta.companyName || domainPart.toUpperCase();
-    const tenantId = meta.tenantId || `TNT_${company}_${Date.now().toString(36).toUpperCase()}`;
+    const tenantId = await resolveExistingTenantId(env?.DB, kv, {
+      metaTenantId: meta.tenantId,
+      stripeCustomerId: obj.customer,
+      fallbackCompany: company
+    });
     const planId = meta.planId || "PROFESSIONAL_649";
 
     if (email) {
@@ -248,6 +344,8 @@ export async function handleStripeWebhook(request, env) {
         env
       });
 
+      await markEventProcessed(env?.DB, kv, event.id, event.type, provisioned.tenantId);
+
       return new Response(
         JSON.stringify({ received: true, provisioned: true, tenantId: provisioned.tenantId }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -255,15 +353,43 @@ export async function handleStripeWebhook(request, env) {
     }
   }
 
-  if (event.type === "customer.subscription.deleted") {
-    const sub = event.data?.object || {};
-    const rawTenantId = sub.metadata?.tenantId;
-    if (rawTenantId && env?.DB) {
-      const cleanTenant = normalizeTenantId(rawTenantId);
-      await env.DB.prepare("UPDATE tenants SET status = 'SUSPENDED' WHERE tenant_id = ?")
-        .bind(cleanTenant)
+  if (event.type === "invoice.payment_failed") {
+    const obj = event.data?.object || {};
+    const meta = obj.metadata || obj.subscription_details?.metadata || {};
+    const targetTenant = await resolveExistingTenantId(env?.DB, kv, {
+      metaTenantId: meta.tenantId,
+      stripeCustomerId: obj.customer,
+      fallbackCompany: null
+    }).catch(() => null);
+
+    if (targetTenant && env?.DB) {
+      await env.DB.prepare("UPDATE tenants SET status = 'PAST_DUE' WHERE tenant_id = ?")
+        .bind(targetTenant)
         .run();
     }
+    await markEventProcessed(env?.DB, kv, event.id, event.type, targetTenant);
+    return new Response(JSON.stringify({ received: true, status: "PAST_DUE" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    const sub = event.data?.object || {};
+    const targetTenant = await resolveExistingTenantId(env?.DB, kv, {
+      metaTenantId: sub.metadata?.tenantId,
+      stripeCustomerId: sub.customer,
+      fallbackCompany: null
+    }).catch(() => null);
+
+    if (targetTenant && env?.DB) {
+      await env.DB.prepare("UPDATE tenants SET status = 'SUSPENDED' WHERE tenant_id = ?")
+        .bind(targetTenant)
+        .run();
+    }
+    await markEventProcessed(env?.DB, kv, event.id, event.type, targetTenant);
+  } else if (event.id) {
+    await markEventProcessed(env?.DB, kv, event.id, event.type, null);
   }
 
   return new Response(JSON.stringify({ received: true }), {

@@ -44,14 +44,20 @@ export class TimestampingEngine {
 
   async sealTransaction(payload, externalTsaHash = null) {
     const timestampUtc = new Date().toISOString();
-    const hashHex = await this.computeSha256(payload);
+    const payloadHash = await this.computeSha256(payload);
+    const rootHash = await this.computeSha256({
+      expediente: this.expedienteId,
+      payloadHash,
+      timestampUtc
+    });
 
     const tsaHash =
-      externalTsaHash || `TSA-RFC3161-${hashHex.substring(0, 16).toUpperCase()}`;
+      externalTsaHash || `TSA-RFC3161-${rootHash.substring(0, 16).toUpperCase()}`;
 
     return Object.freeze({
       expediente: this.expedienteId,
-      rootHash: hashHex,
+      payloadHash,
+      rootHash,
       tsaHash,
       timestampUtc,
       spec: "SGP-1.0",

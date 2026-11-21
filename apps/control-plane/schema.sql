@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
   company TEXT,
   role TEXT DEFAULT 'CISO_ADMIN',
   is_verified INTEGER DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS consolidated_traces (
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS runs (
   verdictId TEXT NOT NULL,
   decision TEXT NOT NULL DEFAULT 'ALLOW',
   user TEXT NOT NULL DEFAULT 'anonymous',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT DEFAULT (datetime('now')),
   verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
   tenant TEXT NOT NULL DEFAULT 'ENTERPRISE'
 );
@@ -68,6 +68,18 @@ CREATE TABLE IF NOT EXISTS merkle_anchors (
   tenant_id TEXT NOT NULL,
   merkle_root TEXT NOT NULL,
   batch_size INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS forensic_batch_seals (
+  batch_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  merkle_root TEXT NOT NULL,
+  leaf_count INTEGER NOT NULL,
+  assurance_level TEXT NOT NULL,
+  is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
+  tsa_reference TEXT,
+  custody_2of3_enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -107,6 +119,12 @@ CREATE INDEX IF NOT EXISTS idx_consolidated_traces_tenant_created
 
 CREATE INDEX IF NOT EXISTS idx_runs_tenant_created
   ON runs (tenant, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_merkle_anchors_tenant_created
+  ON merkle_anchors (tenant_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_forensic_batch_seals_tenant_created
+  ON forensic_batch_seals (tenant_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_custom_rules_tenant_enabled
   ON custom_rules (tenant_id, enabled, priority ASC);

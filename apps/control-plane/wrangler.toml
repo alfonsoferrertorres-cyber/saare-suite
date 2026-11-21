@@ -61,7 +61,6 @@ crons = ["0 */6 * * *"]
 # ==========================================
 [env.staging]
 name = "saare-control-plane-staging"
-# Cuando tengas dominio o ruta de staging, descomenta y ajusta:
 # routes = [
 #   { pattern = "staging-api.saare.es", custom_domain = true }
 # ]
@@ -85,7 +84,7 @@ CPAAS_DEFAULT_PROVIDER = "twilio"
 TWILIO_FROM_NUMBER = ""
 INFOBIP_BASE_URL = "https://api.infobip.com"
 
-# IMPORTANTE: Sustituye estos IDs por una base D1 y un KV de staging antes de desplegar staging
+# Sustituye estos IDs por una base D1 y un KV de staging antes de desplegar staging
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1-staging"
@@ -106,3 +105,6 @@ enabled = true
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
+
+[env.staging.triggers]
+crons = ["0 */6 * * *"]

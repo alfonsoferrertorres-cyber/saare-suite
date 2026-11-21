@@ -4,6 +4,15 @@ export function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
+function normalizeTenantKey(rawTenant) {
+  if (!rawTenant || typeof rawTenant !== "string") return "";
+  return rawTenant
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "_")
+    .slice(0, 32);
+}
+
 function base64UrlEncode(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -34,8 +43,8 @@ function base64UrlDecode(str) {
 }
 
 export class AuthMiddleware {
-  constructor(jwtSecret = "enterprise_oidc_secret_key_v3", env = null) {
-    this.jwtSecret = jwtSecret;
+  constructor(jwtSecret = "", env = null) {
+    this.jwtSecret = jwtSecret || env?.JWT_SECRET || "";
     this.env = env;
     this.roleMapping = {
       "saare-ciso-group": "CISO_ADMIN",
@@ -45,11 +54,21 @@ export class AuthMiddleware {
     };
   }
 
+  _resolveSecret(envOverride = null) {
+    const secret = envOverride?.JWT_SECRET || this.env?.JWT_SECRET || this.jwtSecret;
+    if (!secret || typeof secret !== "string" || secret.length < 16) {
+      throw new Error("[AUTH_ERROR] Secreto JWT no configurado o inseguro");
+    }
+    return secret;
+  }
+
   async signToken(payload, expiresInSeconds = 86400) {
+    const secret = this._resolveSecret(this.env);
     const header = { alg: "HS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
     const fullPayload = {
       ...payload,
+      tenantId: normalizeTenantKey(payload?.tenantId || payload?.tenant_id || "") || undefined,
       iat: now,
       exp: now + expiresInSeconds,
       iss: "saare-control-plane"
@@ -62,7 +81,7 @@ export class AuthMiddleware {
 
     const key = await crypto.subtle.importKey(
       "raw",
-      encoder.encode(this.jwtSecret),
+      encoder.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign"]
@@ -87,33 +106,67 @@ export class AuthMiddleware {
       throw new Error("[AUTH_ERROR] Token o API Key vacío");
     }
 
+    const runtimeEnv = envOverride || this.env;
+
     if (cleanToken.startsWith("sk_saare_")) {
-      const runtimeEnv = envOverride || this.env;
       const kv = runtimeEnv?.SAARE_KV_VAULT || runtimeEnv?.SAARE_VAULT_KV || null;
-      let resolvedTenant = "DEMO_ENTERPRISE";
+      let resolvedTenant = "";
       let resolvedProfile = null;
+      let resolvedPlan = "SANDBOX_FREE";
+      let resolvedRole = "TENANT_ADMIN";
+      let resolvedStatus = "ACTIVE";
 
       if (kv) {
         try {
           const mappedTenant = await kv.get(`token_tenant:${cleanToken}`);
           if (mappedTenant) {
-            resolvedTenant = mappedTenant;
+            resolvedTenant = normalizeTenantKey(mappedTenant);
           }
           const mappedProfile = await kv.get(`token_profile:${cleanToken}`);
           if (mappedProfile) {
             resolvedProfile = mappedProfile;
           }
+          if (resolvedTenant) {
+            const meta = await kv.get(`tenant_meta:${resolvedTenant}`, "json");
+            if (meta && typeof meta === "object") {
+              if (meta.planId) resolvedPlan = meta.planId;
+              if (meta.status) resolvedStatus = meta.status;
+            }
+          }
         } catch {}
       }
 
+      if (!resolvedTenant && runtimeEnv?.DB) {
+        try {
+          const row = await runtimeEnv.DB.prepare(
+            "SELECT tenant_id, plan_id, status FROM tenants WHERE tenant_id = ? LIMIT 1"
+          )
+            .bind("DEMO_ENTERPRISE")
+            .first();
+          if (row?.tenant_id) {
+            resolvedTenant = normalizeTenantKey(row.tenant_id);
+            resolvedPlan = row.plan_id || resolvedPlan;
+            resolvedStatus = row.status || resolvedStatus;
+          }
+        } catch {}
+      }
+
+      if (!resolvedTenant) {
+        throw new Error("[AUTH_ERROR] API Key no reconocida o no vinculada a un tenant");
+      }
+
+      if (resolvedStatus !== "ACTIVE") {
+        throw new Error(`[AUTH_ERROR] Tenant en estado ${resolvedStatus}`);
+      }
+
       return {
-        sub: "service_custodian",
-        email: "custodian@demo-enterprise.local",
+        sub: `apikey:${resolvedTenant}`,
+        email: "",
         tenantId: resolvedTenant,
         browserProfile: resolvedProfile,
         clientProfile: resolvedProfile,
-        role: "CISO_ADMIN",
-        planId: "ENTERPRISE_1990",
+        role: resolvedRole,
+        planId: resolvedPlan,
         isApiKey: true
       };
     }
@@ -136,6 +189,7 @@ export class AuthMiddleware {
       throw new Error(`[AUTH_ERROR] Algoritmo JWT no permitido: ${header.alg || "desconocido"}`);
     }
 
+    const secret = this._resolveSecret(runtimeEnv);
     const encoder = new TextEncoder();
     const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
 
@@ -143,7 +197,7 @@ export class AuthMiddleware {
     try {
       const key = await crypto.subtle.importKey(
         "raw",
-        encoder.encode(this.jwtSecret),
+        encoder.encode(secret),
         { name: "HMAC", hash: "SHA-256" },
         false,
         ["verify"]
@@ -172,7 +226,7 @@ export class AuthMiddleware {
       throw new Error("[AUTH_ERROR] Imposible decodificar o parsear el JSON del payload");
     }
 
-    if (payload.exp && (Date.now() / 1000) >= (payload.exp + 5)) {
+    if (payload.exp && Date.now() / 1000 >= payload.exp + 5) {
       throw new Error("[AUTH_ERROR] Token JWT expirado");
     }
 
@@ -186,15 +240,17 @@ export class AuthMiddleware {
       }
     }
 
+    const normalizedTenant = normalizeTenantKey(payload.tenantId || payload.tenant_id || "");
+
     return {
-      sub: payload.sub || "user_anonymous",
-      email: sanitizeEmail(payload.email || ""),
-      tenantId: payload.tenant_id || payload.tenantId || "DEMO_ENTERPRISE",
-      browserProfile: payload.browser_profile || payload.browserProfile || null,
-      clientProfile: payload.client_profile || payload.clientProfile || null,
+      sub: payload.sub || payload.email || "",
+      email: sanitizeEmail(payload.email || payload.sub || ""),
+      tenantId: normalizedTenant || undefined,
+      browserProfile: payload.browserProfile || null,
+      clientProfile: payload.clientProfile || null,
       role: assignedRole,
-      planId: payload.plan_id || payload.planId || null,
-      groups: userGroups
+      planId: payload.planId || undefined,
+      isApiKey: false
     };
   }
 }

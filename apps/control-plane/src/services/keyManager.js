@@ -21,7 +21,8 @@ export class EnterpriseKeyManager {
   }
 
   getActivePrivateKey() {
-    return this.env?.ED25519_PRIVATE_KEY || null;
+    const raw = this.env?.ED25519_PRIVATE_KEY;
+    return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
   }
 
   hasPrivateKeyConfigured() {

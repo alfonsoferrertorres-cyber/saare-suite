@@ -57,19 +57,22 @@ export const DEFAULT_CORS_HEADERS = {
  * @returns {{ corsHeaders: Record<string, string>, preflightResponse: () => Response }}
  */
 export function handleCors(request) {
-  const origin = request.headers.get("Origin") || "*";
+  const origin = request?.headers?.get("Origin") || "";
+  const allowOrigin = !origin || origin === "null" ? "*" : origin;
 
   const corsHeaders = {
     ...DEFAULT_CORS_HEADERS,
-    "Access-Control-Allow-Origin": origin === "null" ? "*" : origin
+    "Access-Control-Allow-Origin": allowOrigin,
+    ...(allowOrigin !== "*" ? { Vary: "Origin" } : {})
   };
 
   return {
     corsHeaders,
-    preflightResponse: () => new Response(null, {
-      status: 204,
-      headers: corsHeaders
-    })
+    preflightResponse: () =>
+      new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      })
   };
 }
 

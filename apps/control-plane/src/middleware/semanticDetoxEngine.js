@@ -143,8 +143,10 @@ export class SemanticDetoxEngine {
   }
 
   isSafeRegexSource(source) {
-    if (!source || typeof source !== "string" || source.length > 250) return false;
-    if (/(\+|\*|\{[0-9]+,\})[+*?]/.test(source)) return false;
+    if (!source || typeof source !== "string") return false;
+    const trimmed = source.trim();
+    if (!trimmed || trimmed.length > 240) return false;
+    if (/(\+|\*|\{\d+,?\d*\})\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
     return true;
   }
 
@@ -256,7 +258,9 @@ export class SemanticDetoxEngine {
             piiDetected = true;
           }
 
-          const ruleCode = `TENANT_DLP_${String(rule?.name || rule?.id || "CUSTOM").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+          const ruleCode = `TENANT_DLP_${String(rule?.name || rule?.id || "CUSTOM")
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")}`;
           rx.lastIndex = 0;
           sanitized = sanitized.replace(rx, `[REDACTED_TENANT_POLICY:${rule?.name || "CUSTOM"}]`);
           addRule(ruleCode, {
@@ -300,7 +304,9 @@ export class SemanticDetoxEngine {
 
     const status = highRiskDetected
       ? "BLOCKED"
-      : (threatDetected ? "SANITIZED" : "CLEAN");
+      : threatDetected
+      ? "SANITIZED"
+      : "CLEAN";
 
     return {
       cleanPrompt,

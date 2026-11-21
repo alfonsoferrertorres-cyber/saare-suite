@@ -1,5 +1,5 @@
 // control-plane/src/services/tenantManager.js — S.A.A.R.E. Enterprise SGP 1.0 (D1 + KV + Fail-Closed Billing)
-import { PLAN_IDS, sanitizePlanId, getPlanEntitlements } from "../packages/entitlements.js";
+import { PLAN_IDS, sanitizePlanId, getPlanEntitlements, checkQuota } from "../packages/entitlements.js";
 
 export class TenantManager {
   constructor(env) {
@@ -23,6 +23,9 @@ export class TenantManager {
   }
 
   _isSandboxTenant(cleanId, planId) {
+    if (planId && planId !== PLAN_IDS.SANDBOX_FREE) {
+      return false;
+    }
     return (
       planId === PLAN_IDS.SANDBOX_FREE ||
       cleanId === "SANDBOX" ||
@@ -53,7 +56,7 @@ export class TenantManager {
       tier: isSandbox ? "SANDBOX" : safeCfg.tier || "ENTERPRISE",
       priceEur: isSandbox ? 0 : safeCfg.priceEur ?? 649,
       expiresAt: isSandbox ? null : safeCfg.expiresAt || safeCfg.expires_at || null,
-      status: safeCfg.status || "ACTIVE",
+      status: String(safeCfg.status || "ACTIVE").toUpperCase(),
       createdAt: safeCfg.createdAt || safeCfg.created_at || new Date().toISOString(),
       vaultUri: `kv://saare-vault/tenants/${cleanId}_vault.jsonld`,
       quota: safeCfg.quota ?? entitlements.monthlyVerdicts,
@@ -64,6 +67,21 @@ export class TenantManager {
         ? safeCfg.scenarios
         : ["*"]
     };
+  }
+
+  async _getCurrentMonthUsage(cleanId) {
+    if (!this.env?.DB) return null;
+    try {
+      const period = new Date().toISOString().slice(0, 7);
+      const row = await this.env.DB.prepare(
+        "SELECT verdict_count FROM tenant_usage WHERE tenant_id = ? AND billing_period = ? LIMIT 1"
+      )
+        .bind(cleanId, period)
+        .first();
+      return Number(row?.verdict_count || 0);
+    } catch {
+      return null;
+    }
   }
 
   async registerTenant(tenantId, name, config = {}) {
@@ -207,6 +225,7 @@ export class TenantManager {
       if (tenant.status === "UNPROVISIONED") {
         return {
           allowed: false,
+          code: "TENANT_UNPROVISIONED",
           reason: `El Tenant ${tenant.tenantId} no está aprovisionado. Complete la suscripción en saare.es.`
         };
       }
@@ -214,6 +233,7 @@ export class TenantManager {
       if (tenant.status !== "ACTIVE") {
         return {
           allowed: false,
+          code: "TENANT_INACTIVE",
           reason: `El Tenant ${tenant.tenantId} no se encuentra activo (Estado actual: ${tenant.status}).`
         };
       }
@@ -224,7 +244,20 @@ export class TenantManager {
         if (!Number.isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
           return {
             allowed: false,
+            code: "SUBSCRIPTION_EXPIRED",
             reason: `La suscripción del Tenant ${tenant.tenantId} expiró el ${expirationDate.toISOString()}.`
+          };
+        }
+      }
+
+      const monthlyUsage = await this._getCurrentMonthUsage(tenant.tenantId);
+      if (monthlyUsage !== null) {
+        const quotaStatus = checkQuota(tenant.planId, monthlyUsage, tenant.quota);
+        if (!quotaStatus.allowed) {
+          return {
+            allowed: false,
+            code: "MONTHLY_QUOTA_EXCEEDED",
+            reason: `Cuota mensual agotada para el Tenant ${tenant.tenantId} (${quotaStatus.used}/${quotaStatus.limit}).`
           };
         }
       }
@@ -236,13 +269,14 @@ export class TenantManager {
       if (!hasDirectAccess && !hasGlobalAccess) {
         return {
           allowed: false,
+          code: "SCENARIO_NOT_ALLOWED",
           reason: `Escenario ${scenarioId} no habilitado por contrato para el Tenant ${tenant.tenantId}.`
         };
       }
 
       return { allowed: true, tenant };
     } catch (error) {
-      return { allowed: false, reason: error.message };
+      return { allowed: false, code: "VALIDATION_ERROR", reason: error.message };
     }
   }
 }
