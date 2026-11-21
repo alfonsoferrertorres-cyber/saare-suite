@@ -640,6 +640,8 @@ async function ensureD1TablesExist(db) {
           is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
           assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
           tsa_reference TEXT DEFAULT '',
+          tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY',
+          tsr_base64 TEXT DEFAULT '',
           batch_json TEXT NOT NULL,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
@@ -689,6 +691,12 @@ async function ensureD1TablesExist(db) {
     try {
       await db.prepare("ALTER TABLE consolidated_traces ADD COLUMN ms3v_timestamp_ns TEXT DEFAULT ''").run();
     } catch (_altErr2) {}
+    try {
+      await db.prepare("ALTER TABLE forensic_batches ADD COLUMN tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY'").run();
+    } catch (_altErr3) {}
+    try {
+      await db.prepare("ALTER TABLE forensic_batches ADD COLUMN tsr_base64 TEXT DEFAULT ''").run();
+    } catch (_altErr4) {}
 
     await db.prepare(`
       INSERT OR IGNORE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json)
@@ -1267,8 +1275,9 @@ export default {
             await env.DB.prepare(`
               INSERT OR REPLACE INTO forensic_batches (
                 batch_id, tenant_id, merkle_root, leaf_count,
-                is_qualified_eidas, assurance_level, tsa_reference, batch_json, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_qualified_eidas, assurance_level, tsa_reference,
+                tsa_status, tsr_base64, batch_json, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
               bundle.batchId,
               bundle.tenantId,
@@ -1277,6 +1286,8 @@ export default {
               bundle.isQualifiedEidas ? 1 : 0,
               bundle.assuranceLevel,
               bundle.timestampSeal?.tsaReference || "",
+              bundle.timestampSeal?.status || bundle.assuranceLevel || "LOCAL_INTEGRITY",
+              bundle.timestampSeal?.tsrBase64 || "",
               JSON.stringify(bundle),
               bundle.createdAt
             ).run();

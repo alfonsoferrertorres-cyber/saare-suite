@@ -5,7 +5,8 @@
   "main": "worker.js",
   "scripts": {
     "dev": "wrangler dev worker.js",
-    "deploy": "wrangler deploy worker.js",
+    "deploy": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging",
     "types": "wrangler types",
     "telemetry": "node telemetryServer.js",
     "despacho": "node generar_despacho.js",

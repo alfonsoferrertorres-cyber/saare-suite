@@ -1,4 +1,4 @@
-// packages/merkle-eidas/eidasTimestamping.js — Adaptador de Sellado Temporal (eIDAS / RFC 3161 + Contingencia Local)
+// packages/merkle-eidas/eidasTimestamping.js — Adaptador RFC 3161 (JSON + ASN.1 DER) y Contingencia Local
 
 async function sha256Hex(input) {
   const text = typeof input === "string" ? input : JSON.stringify(input);
@@ -14,17 +14,84 @@ function isValidSha256Hex(hash = "") {
   return /^[0-9a-fA-F]{64}$/.test(String(hash || "").trim());
 }
 
+function hexToBytes32(hex) {
+  const clean = String(hex).trim().toLowerCase();
+  const bytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 /**
- * Sella una Merkle Root con soporte para TSA cualificada eIDAS y contingencia local explícita.
- * Nunca marca `isQualifiedEidas: true` si no hay confirmación real de un proveedor TSA.
- *
- * @param {Object} params
- * @param {string} params.merkleRoot - Hash SHA-256 de 64 caracteres hex
- * @param {string} [params.tenantId]
- * @param {string} [params.expedienteId]
- * @param {number} [params.leafCount]
- * @param {Object} [env]
- * @param {Object} [options]
+ * Construye una petición ASN.1 DER TimeStampReq (RFC 3161) para un digest SHA-256 de 32 bytes.
+ */
+function buildRfc3161Sha256Query(cleanRootHex) {
+  const digestBytes = hexToBytes32(cleanRootHex);
+  const nonceBytes = new Uint8Array(8);
+  crypto.getRandomValues(nonceBytes);
+  nonceBytes[0] &= 0x7f;
+
+  const prefix = new Uint8Array([
+    0x30, 0x41,
+    0x02, 0x01, 0x01,
+    0x30, 0x31,
+    0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00,
+    0x04, 0x20
+  ]);
+  const noncePrefix = new Uint8Array([0x02, 0x08]);
+  const certReqTrue = new Uint8Array([0x01, 0x01, 0xff]);
+
+  const query = new Uint8Array(
+    prefix.length + digestBytes.length + noncePrefix.length + nonceBytes.length + certReqTrue.length
+  );
+  let offset = 0;
+  query.set(prefix, offset); offset += prefix.length;
+  query.set(digestBytes, offset); offset += digestBytes.length;
+  query.set(noncePrefix, offset); offset += noncePrefix.length;
+  query.set(nonceBytes, offset); offset += nonceBytes.length;
+  query.set(certReqTrue, offset);
+
+  return query;
+}
+
+/**
+ * Verifica que la respuesta DER contenga un PKIStatusInfo con status = 0 (granted) o 1 (grantedWithMods).
+ */
+function isGrantedRfc3161Reply(bytes) {
+  if (!bytes || bytes.length < 12 || bytes[0] !== 0x30) return false;
+  for (let i = 2; i < Math.min(bytes.length - 5, 24); i++) {
+    if (
+      bytes[i] === 0x30 &&
+      bytes[i + 1] === 0x03 &&
+      bytes[i + 2] === 0x02 &&
+      bytes[i + 3] === 0x01 &&
+      (bytes[i + 4] === 0x00 || bytes[i + 4] === 0x01)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function shouldUseBinaryRfc3161(tsaUrl, options, env) {
+  if (options?.protocol === "json" || env?.EIDAS_TSA_PROTOCOL === "json") return false;
+  if (options?.protocol === "rfc3161" || env?.EIDAS_TSA_PROTOCOL === "rfc3161") return true;
+  const lower = String(tsaUrl || "").toLowerCase();
+  return lower.includes("/tsr") || lower.includes("freetsa") || lower.includes("digicert") || lower.includes("sectigo");
+}
+
+/**
+ * Sella una Merkle Root con soporte para TSA RFC 3161 (ASN.1 DER o JSON) y contingencia local explícita.
+ * Nunca marca `isQualifiedEidas: true` si no hay confirmación real y explícita de cualificación.
  */
 export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
   const cleanRoot = String(params?.merkleRoot || "").trim().toLowerCase();
@@ -69,15 +136,77 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
       timestampUtc: issuedAt,
       sealHash: localSealHash,
       tsaReference: `LOCAL-SEAL-${localSealHash.slice(0, 16).toUpperCase()}`,
-      qualificationNote: "Custodia local SHA-256 sin TSA cualificada eIDAS configurada"
+      qualificationNote: "Custodia local SHA-256 sin TSA configurada"
     });
   }
 
   const timeoutMs = Number(options?.timeoutMs || env?.EIDAS_TSA_TIMEOUT_MS || 8000);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const useBinaryRfc3161 = shouldUseBinaryRfc3161(tsaUrl, options, env);
 
   try {
+    if (useBinaryRfc3161) {
+      const tsqBytes = buildRfc3161Sha256Query(cleanRoot);
+      const headers = {
+        "Content-Type": "application/timestamp-query",
+        "Accept": "application/timestamp-reply"
+      };
+      if (tsaApiKey) {
+        headers.Authorization = `Bearer ${tsaApiKey}`;
+      }
+
+      const response = await fetch(tsaUrl, {
+        method: "POST",
+        headers,
+        body: tsqBytes,
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`TSA RFC 3161 respondió con estado HTTP ${response.status}`);
+      }
+
+      const tsrBytes = new Uint8Array(await response.arrayBuffer());
+      if (!isGrantedRfc3161Reply(tsrBytes)) {
+        throw new Error("La respuesta ASN.1 RFC 3161 no indica PKIStatus concedido");
+      }
+
+      const tsrBase64 = bytesToBase64(tsrBytes);
+      const tsqBase64 = bytesToBase64(tsqBytes);
+      const rfc3161SealHash = await sha256Hex({
+        ...digestPayload,
+        tsaUrl,
+        tsrSha256: await sha256Hex(tsrBase64)
+      });
+
+      const hostTag = (() => {
+        try {
+          return new URL(tsaUrl).hostname.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+        } catch {
+          return "RFC3161_TSA";
+        }
+      })();
+
+      return Object.freeze({
+        status: "SEALED_RFC3161_STANDARD",
+        mode: "RFC3161_BINARY_TSA",
+        assuranceLevel: "RFC3161_STANDARD",
+        isQualifiedEidas: false,
+        merkleRoot: cleanRoot,
+        tenantId,
+        expedienteId,
+        leafCount,
+        timestampUtc: issuedAt,
+        sealHash: rfc3161SealHash,
+        tsaReference: `RFC3161-${hostTag}-${rfc3161SealHash.slice(0, 12).toUpperCase()}`,
+        provider: tsaUrl,
+        tsqBase64,
+        tsrBase64,
+        qualificationNote: "Sello de tiempo electrónico RFC 3161 obtenido de TSA externa (eIDAS Art. 41.1)"
+      });
+    }
+
     const headers = {
       "Content-Type": "application/json",
       "X-SGP-Spec": "SGP-1.0",
@@ -123,9 +252,10 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
     );
 
     if (!providerConfirmed) {
-      throw new Error("La respuesta de la TSA no incluye token o comprobante cualificado verificable");
+      throw new Error("La respuesta de la TSA no incluye token o comprobante verificable");
     }
 
+    const isQualified = Boolean(data?.qualified === true || data?.eidasQualified === true);
     const qualifiedSealHash = await sha256Hex({
       ...digestPayload,
       tsaTokenOrReceipt,
@@ -133,10 +263,10 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
     });
 
     return Object.freeze({
-      status: "SEALED_QUALIFIED_EIDAS",
-      mode: "QUALIFIED_TSA_EIDAS",
-      assuranceLevel: "QUALIFIED",
-      isQualifiedEidas: true,
+      status: isQualified ? "SEALED_QUALIFIED_EIDAS" : "SEALED_TSA_TOKEN",
+      mode: isQualified ? "QUALIFIED_TSA_EIDAS" : "TSA_JSON_TOKEN",
+      assuranceLevel: isQualified ? "QUALIFIED" : "TSA_VERIFIED",
+      isQualifiedEidas: isQualified,
       merkleRoot: cleanRoot,
       tenantId,
       expedienteId,
@@ -144,8 +274,10 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
       timestampUtc: String(data?.timestamp || issuedAt),
       sealHash: qualifiedSealHash,
       tsaReference: String(tsaTokenOrReceipt),
-      provider: String(data?.provider || data?.tsaName || "EIDAS_QUALIFIED_TSA"),
-      qualificationNote: "Sello de tiempo cualificado eIDAS verificado desde proveedor TSA"
+      provider: String(data?.provider || data?.tsaName || tsaUrl),
+      qualificationNote: isQualified
+        ? "Sello de tiempo cualificado eIDAS verificado desde proveedor TSA"
+        : "Comprobante de sellado temporal obtenido desde endpoint TSA"
     });
   } catch (error) {
     return Object.freeze({
@@ -161,7 +293,7 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
       sealHash: localSealHash,
       tsaReference: `FALLBACK-LOCAL-${localSealHash.slice(0, 16).toUpperCase()}`,
       error: error?.message || "Error al contactar con el proveedor TSA",
-      qualificationNote: "Contingencia local aplicada: no se ha confirmado sello cualificado eIDAS"
+      qualificationNote: "Contingencia local aplicada: no se ha confirmado sello de TSA externa"
     });
   } finally {
     clearTimeout(timer);
