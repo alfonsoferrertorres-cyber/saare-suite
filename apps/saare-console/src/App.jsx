@@ -35,6 +35,17 @@ const ISO_42001_PRESET_RULES = [
   }
 ];
 
+const getRulesEnabledStorageKey = (tenant = '') => {
+  return `saare_rules_enabled_${String(tenant || 'default').trim()}`;
+};
+
+const readStoredRulesEnabled = (tenant = '') => {
+  if (!tenant) return true;
+  const raw = localStorage.getItem(getRulesEnabledStorageKey(tenant));
+  if (raw === null) return true;
+  return raw !== 'false';
+};
+
 const getApiEndpoint = (path = '') => {
   const baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
   const cleanBase = baseUrl.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
@@ -147,6 +158,10 @@ export default function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
 
   const [customRules, setCustomRules] = useState([]);
+  const [tenantRulesEnabled, setTenantRulesEnabled] = useState(() => {
+    const candidate = (urlTenant || localStorage.getItem('saare_tenant_domain') || '').trim();
+    return readStoredRulesEnabled(isValidTenantId(candidate) ? candidate : '');
+  });
   const [ruleForm, setRuleForm] = useState({ name: '', pattern: '' });
   const [isRulesLoading, setIsRulesLoading] = useState(false);
 
@@ -190,6 +205,7 @@ export default function App() {
       localStorage.setItem('saare_tenant_domain', cleanTenant);
       sessionStorage.setItem('saare_tenant_domain', cleanTenant);
       setTenantId(cleanTenant);
+      setTenantRulesEnabled(readStoredRulesEnabled(cleanTenant));
       setAvailableTenants((prev) =>
         prev.some((t) => t.id === cleanTenant)
           ? prev
@@ -257,6 +273,12 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setCustomRules(Array.isArray(data?.rules) ? data.rules : []);
+        if (typeof data?.enabled === 'boolean') {
+          setTenantRulesEnabled(data.enabled);
+          localStorage.setItem(getRulesEnabledStorageKey(targetTenant), String(data.enabled));
+        } else {
+          setTenantRulesEnabled(readStoredRulesEnabled(targetTenant));
+        }
       } else {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -266,6 +288,55 @@ export default function App() {
       setIsRulesLoading(false);
     }
   }, [tenantId, authToken, triggerGovernance]);
+
+  const handleToggleTenantRules = useCallback(async (nextEnabled) => {
+    if (!tenantId) {
+      triggerGovernance('Configura un Tenant ID antes de cambiar el estado de las reglas.');
+      return;
+    }
+
+    const desiredState = Boolean(nextEnabled);
+    setTenantRulesEnabled(desiredState);
+    localStorage.setItem(getRulesEnabledStorageKey(tenantId), String(desiredState));
+    setIsRulesLoading(true);
+
+    try {
+      const headers = { 'x-saare-tenant': tenantId, 'Content-Type': 'application/json' };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+      const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          enabled: desiredState,
+          rules: customRules
+        })
+      });
+
+      const data = res.ok ? await res.json().catch(() => null) : null;
+      const effectiveEnabled = typeof data?.enabled === 'boolean' ? data.enabled : desiredState;
+      setTenantRulesEnabled(effectiveEnabled);
+      localStorage.setItem(getRulesEnabledStorageKey(tenantId), String(effectiveEnabled));
+
+      if (Array.isArray(data?.rules)) {
+        setCustomRules(data.rules);
+      }
+
+      triggerGovernance(
+        effectiveEnabled
+          ? `Reglas DLP / políticas activadas para [${tenantId}].`
+          : `Reglas DLP / políticas desactivadas para [${tenantId}].`
+      );
+    } catch {
+      triggerGovernance(
+        desiredState
+          ? `Reglas marcadas como activas en sesión para [${tenantId}].`
+          : `Reglas marcadas como desactivadas en sesión para [${tenantId}].`
+      );
+    } finally {
+      setIsRulesLoading(false);
+    }
+  }, [tenantId, authToken, customRules, triggerGovernance]);
 
   const handleApplyIso42001Governance = async () => {
     if (!tenantId) {
@@ -287,7 +358,7 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ preset: 'ISO_42001', rules: finalRules })
+        body: JSON.stringify({ preset: 'ISO_42001', enabled: tenantRulesEnabled, rules: finalRules })
       });
 
       const data = res.ok ? await res.json().catch(() => null) : null;
@@ -333,7 +404,7 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ rules: updatedRules })
+        body: JSON.stringify({ enabled: tenantRulesEnabled, rules: updatedRules })
       });
 
       if (!res.ok) {
@@ -468,6 +539,7 @@ export default function App() {
 
   const handleTenantChange = (newTenant) => {
     setTenantId(newTenant);
+    setTenantRulesEnabled(readStoredRulesEnabled(newTenant));
     setTestResult(null);
     setCustomRules([]);
     if (newTenant) {
@@ -508,6 +580,7 @@ export default function App() {
     setTenantMetrics([]);
     setBillingInfo(null);
     setCustomRules([]);
+    setTenantRulesEnabled(true);
     setTestResult(null);
     triggerGovernance('Sesión cerrada. Consola restablecida en estado virgen.');
   };
@@ -758,6 +831,7 @@ export default function App() {
         deniedCount: denied,
         blockRatePercent: blockRate
       },
+      rulesEnabled: tenantRulesEnabled,
       activeCustomRulesCount: customRules.length,
       customRules,
       iso42001BaselineControls: ISO_42001_PRESET_RULES.map((r) => r.id),
@@ -1025,6 +1099,9 @@ export default function App() {
           <div style={{ background: '#0b0f19', borderRadius: '12px', padding: '24px', border: '1px solid #1e293b' }}>
             <GovernanceToolbar
               targetHash={evidences[0]?.merkleRoot || ''}
+              tenantId={tenantId}
+              rulesEnabled={tenantRulesEnabled}
+              onToggleTenantRules={handleToggleTenantRules}
               onVerifySignature={(h) => triggerGovernance(`Hash ${h.slice(0, 14)}... enviado a verificación Ed25519.`)}
               onExportCustody={handleExportTracesJson}
               onExportGrantDossier={handleDownloadIso42001Dossier}
@@ -1254,12 +1331,44 @@ export default function App() {
             {activeTab === 'RULES' && (
               <div style={{ background: '#020617', padding: '20px', borderRadius: '8px', border: '1px solid #1e293b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                  <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
-                    Gestión de Reglas y Patrones DLP Personalizados
-                  </h3>
-                  <button type="button" onClick={handleApplyIso42001Governance} disabled={isRulesLoading} style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}>
-                    Gobernanza ISO 42001
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1rem', fontWeight: '800' }}>
+                      Gestión de Reglas y Patrones DLP Personalizados
+                    </h3>
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      fontWeight: '800',
+                      background: tenantRulesEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: tenantRulesEnabled ? '#34d399' : '#fca5a5',
+                      border: `1px solid ${tenantRulesEnabled ? '#10b981' : '#ef4444'}`
+                    }}>
+                      {tenantRulesEnabled ? 'REGLAS ACTIVAS' : 'REGLAS DESACTIVADAS'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTenantRules(!tenantRulesEnabled)}
+                      disabled={isRulesLoading || !tenantId}
+                      style={{
+                        padding: '8px 14px',
+                        background: tenantRulesEnabled ? '#450a0a' : '#064e3b',
+                        color: tenantRulesEnabled ? '#fca5a5' : '#6ee7b7',
+                        border: `1px solid ${tenantRulesEnabled ? '#dc2626' : '#10b981'}`,
+                        borderRadius: '6px',
+                        fontWeight: '800',
+                        fontSize: '0.78rem',
+                        cursor: tenantId ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      {tenantRulesEnabled ? 'Desactivar Reglas Tenant' : 'Activar Reglas Tenant'}
+                    </button>
+                    <button type="button" onClick={handleApplyIso42001Governance} disabled={isRulesLoading} style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}>
+                      Gobernanza ISO 42001
+                    </button>
+                  </div>
                 </div>
 
                 <form onSubmit={handleSaveCustomRule} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>

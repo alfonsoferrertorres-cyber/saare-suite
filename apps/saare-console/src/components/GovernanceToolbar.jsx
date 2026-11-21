@@ -5,6 +5,9 @@ import { SAARE_CONFIG } from '../config/saareState';
 
 export default function GovernanceToolbar({
   targetHash = '',
+  tenantId = '',
+  rulesEnabled = true,
+  onToggleTenantRules,
   onVerifySignature,
   onExportCustody,
   onGenerateToken,
@@ -17,7 +20,12 @@ export default function GovernanceToolbar({
   onExportLecActa
 }) {
   const [status, setStatus] = useState('');
+  const [localRulesEnabled, setLocalRulesEnabled] = useState(Boolean(rulesEnabled));
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    setLocalRulesEnabled(Boolean(rulesEnabled));
+  }, [rulesEnabled]);
 
   useEffect(() => {
     return () => {
@@ -49,6 +57,21 @@ export default function GovernanceToolbar({
     if (typeof callback === 'function') {
       callback();
     }
+  };
+
+  const handleToggleRules = () => {
+    const nextState = !localRulesEnabled;
+    const tenantLabel = tenantId ? ` (${tenantId})` : '';
+    const actionMsg = nextState
+      ? `Activando reglas DLP / políticas del tenant${tenantLabel}...`
+      : `Desactivando reglas DLP / políticas del tenant${tenantLabel} (modo permisivo)...`;
+
+    triggerAction(actionMsg, () => {
+      setLocalRulesEnabled(nextState);
+      if (typeof onToggleTenantRules === 'function') {
+        onToggleTenantRules(nextState);
+      }
+    });
   };
 
   const handleVerify = (customHash) => {
@@ -173,6 +196,19 @@ export default function GovernanceToolbar({
           style={{ ...btnBase, background: '#312e81', color: '#e0e7ff', border: '1px solid #6366f1' }}
         >
           Acta LEC / ISO 27037
+        </button>
+
+        <button
+          type="button"
+          onClick={handleToggleRules}
+          style={{
+            ...btnBase,
+            background: localRulesEnabled ? '#450a0a' : '#064e3b',
+            color: localRulesEnabled ? '#fca5a5' : '#6ee7b7',
+            border: localRulesEnabled ? '1px solid #dc2626' : '1px solid #10b981'
+          }}
+        >
+          {localRulesEnabled ? 'Desactivar Reglas Tenant' : 'Activar Reglas Tenant'}
         </button>
       </div>
 

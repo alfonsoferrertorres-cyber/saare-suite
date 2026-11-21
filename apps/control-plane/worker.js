@@ -606,6 +606,13 @@ async function ensureD1TablesExist(db) {
         )
       `),
       db.prepare(`
+        CREATE TABLE IF NOT EXISTS tenant_rule_settings (
+          tenant_id TEXT PRIMARY KEY,
+          rules_enabled INTEGER NOT NULL DEFAULT 1,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
         CREATE TABLE IF NOT EXISTS tenant_usage (
           tenant_id TEXT NOT NULL,
           billing_period TEXT NOT NULL,
@@ -622,6 +629,54 @@ async function ensureD1TablesExist(db) {
 
     d1TablesInitialized = true;
   } catch (_e) {}
+}
+
+function getKvBinding(env) {
+  return env?.SAARE_VAULT_KV || env?.SAARE_KV_VAULT || null;
+}
+
+async function getTenantRulesEnabled(env, tenantId) {
+  if (!tenantId) return true;
+  const kv = getKvBinding(env);
+  if (kv) {
+    try {
+      const kvVal = await kv.get(`rules_enabled:${tenantId}`);
+      if (kvVal === "false" || kvVal === "0") return false;
+      if (kvVal === "true" || kvVal === "1") return true;
+    } catch (_kvErr) {}
+  }
+  if (env?.DB) {
+    try {
+      await ensureD1TablesExist(env.DB);
+      const row = await env.DB.prepare(
+        "SELECT rules_enabled FROM tenant_rule_settings WHERE tenant_id = ?"
+      ).bind(tenantId).first();
+      if (row !== null && row !== undefined && row.rules_enabled !== undefined) {
+        return Number(row.rules_enabled) !== 0;
+      }
+    } catch (_dbErr) {}
+  }
+  return true;
+}
+
+async function setTenantRulesEnabled(env, tenantId, enabled) {
+  if (!tenantId) return;
+  const normalized = Boolean(enabled);
+  const kv = getKvBinding(env);
+  if (kv) {
+    try {
+      await kv.put(`rules_enabled:${tenantId}`, normalized ? "true" : "false");
+    } catch (_kvErr) {}
+  }
+  if (env?.DB) {
+    try {
+      await ensureD1TablesExist(env.DB);
+      await env.DB.prepare(`
+        INSERT OR REPLACE INTO tenant_rule_settings (tenant_id, rules_enabled, updated_at)
+        VALUES (?, ?, ?)
+      `).bind(tenantId, normalized ? 1 : 0, new Date().toISOString()).run();
+    } catch (_dbErr) {}
+  }
 }
 
 function getCurrentBillingPeriod() {
@@ -652,10 +707,6 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
       DO UPDATE SET verdict_count = verdict_count + excluded.verdict_count
     `).bind(tenantId, period, count).run();
   } catch (_e) {}
-}
-
-function getKvBinding(env) {
-  return env?.SAARE_VAULT_KV || env?.SAARE_KV_VAULT || null;
 }
 
 async function getOrCreateTenantLicenseKey(tenantId, env) {
@@ -1744,6 +1795,7 @@ export default {
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
         let rules = [];
+        const rulesEnabled = await getTenantRulesEnabled(env, scopedTenantId);
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
@@ -1751,30 +1803,56 @@ export default {
             if (results) rules = results;
           } catch (_e) {}
         }
-        return new Response(JSON.stringify({ status: "SUCCESS", tenant: scopedTenantId, rules }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          status: "SUCCESS",
+          tenant: scopedTenantId,
+          enabled: rulesEnabled,
+          rules
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const newRules = body?.preset === "ISO_42001"
-          ? ISO_42001_PRESET_RULES
-          : (Array.isArray(body.rules) ? body.rules : []);
+        const currentEnabled = await getTenantRulesEnabled(env, scopedTenantId);
+        const nextEnabled = typeof body?.enabled === "boolean" ? body.enabled : currentEnabled;
 
+        let rules = [];
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
-            for (const r of newRules) {
-              await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
-                .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, r.name, r.pattern)
-                .run();
-            }
+            const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).all();
+            if (results) rules = results;
           } catch (_e) {}
         }
+
+        const hasRulesPayload = body?.preset === "ISO_42001" || Array.isArray(body?.rules);
+        if (hasRulesPayload) {
+          const newRules = body?.preset === "ISO_42001"
+            ? ISO_42001_PRESET_RULES
+            : body.rules;
+
+          if (env?.DB) {
+            try {
+              await ensureD1TablesExist(env.DB);
+              for (const r of newRules) {
+                await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
+                  .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, r.name, r.pattern)
+                  .run();
+              }
+            } catch (_e) {}
+          }
+          rules = newRules;
+        }
+
+        await setTenantRulesEnabled(env, scopedTenantId, nextEnabled);
+
         return new Response(JSON.stringify({
           success: true,
+          status: "SUCCESS",
           tenant: scopedTenantId,
+          enabled: nextEnabled,
           presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
-          rules: newRules
+          rules
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -1967,8 +2045,9 @@ export default {
           }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
+        const rulesEnabled = await getTenantRulesEnabled(env, tenant);
         let tenantCustomRules = [];
-        if (env?.DB) {
+        if (rulesEnabled && env?.DB) {
           try {
             const { results } = await env.DB.prepare("SELECT name, pattern FROM custom_rules WHERE tenant_id = ?").bind(tenant).all();
             if (results) tenantCustomRules = results;
