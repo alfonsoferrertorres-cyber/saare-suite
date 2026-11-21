@@ -188,6 +188,50 @@ function sanitizePiiAndCustomRules(inputText = "", customRules = []) {
   return { sanitizedText: out, extraRules: [...new Set(extraRules)] };
 }
 
+async function getLatestTenantTraceHash(db, tenantId) {
+  if (!db || !tenantId) return "GENESIS_0000000000000000000000000000000000000000000000000000000000000000";
+  try {
+    await ensureD1TablesExist(db);
+    const row = await db.prepare(
+      "SELECT ms3v_hash, trace_id FROM consolidated_traces WHERE tenant_id = ? ORDER BY rowid DESC LIMIT 1"
+    ).bind(tenantId).first();
+    if (row?.ms3v_hash && String(row.ms3v_hash).trim().length >= 32) {
+      return String(row.ms3v_hash).trim();
+    }
+    if (row?.trace_id) {
+      return await computeSha256(String(row.trace_id));
+    }
+  } catch (_e) {}
+  return "GENESIS_0000000000000000000000000000000000000000000000000000000000000000";
+}
+
+async function computeTraceIntegrityHash({
+  traceId,
+  evidenceId = "",
+  tenantId,
+  user = "",
+  decision = "ALLOW",
+  verdict = "PERMITIDO",
+  timestamp = "",
+  sanitizedPayload = "",
+  payloadHash = "",
+  prevHash = ""
+}) {
+  const canonicalPayload = JSON.stringify({
+    trace_id: String(traceId || ""),
+    evidence_id: String(evidenceId || ""),
+    tenant_id: String(tenantId || ""),
+    user: String(user || ""),
+    decision: String(decision || ""),
+    verdict: String(verdict || ""),
+    timestamp: String(timestamp || ""),
+    sanitized_payload: String(sanitizedPayload || ""),
+    payload_hash: String(payloadHash || ""),
+    prev_hash: String(prevHash || "")
+  });
+  return await computeSha256(canonicalPayload);
+}
+
 class CPaaSAdapterManager {
   static async sendTwilio(payload, env) {
     const accountSid = env?.TWILIO_ACCOUNT_SID;
@@ -650,12 +694,12 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
     if (pendingCount >= MERKLE_BATCH_THRESHOLD || (pendingCount > 0 && timeElapsed >= MERKLE_TIME_THRESHOLD_MS)) {
       const { results } = await env.DB.prepare(
-        "SELECT trace_id, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY timestamp ASC LIMIT 10000"
+        "SELECT trace_id, ms3v_hash, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY timestamp ASC LIMIT 10000"
       ).bind(tenantId).all();
 
       if (!results || results.length === 0) return;
 
-      const combinedHashes = results.map(r => r.trace_id).join(":");
+      const combinedHashes = results.map(r => (r.ms3v_hash && String(r.ms3v_hash).trim()) || r.trace_id).join(":");
       const merkleRoot = await computeSha256(combinedHashes);
       const anchorId = `ANK-${new Date().getUTCFullYear()}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
       const timestamp = new Date().toISOString();
@@ -1379,9 +1423,25 @@ export default {
         const scenarioId = body.scenario_id || "SEMANTIC_DETOX_L7";
         const latencyMs = Number(body.latency_ms) || 0;
         const year = new Date().getUTCFullYear();
+        const eventTimestamp = new Date().toISOString();
         const traceId = `tr_sidecar_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
         const evidenceId = `EV-EDGE-${evidenceHash.substring(0, 10).toUpperCase()}`;
         const summaryPrompt = `[${detoxStatus}] [${profileContext.browserProfile}::${profileContext.clientProfile}] ${scenarioId} (${body.source || "SAARE_NATIVE_SIDECAR"})`;
+        const sanitizedPayloadText = `[ZERO-DISK RAM HASH] ${evidenceHash}`;
+
+        const prevHash = await getLatestTenantTraceHash(env?.DB, resolvedTenant);
+        const traceIntegrityHash = await computeTraceIntegrityHash({
+          traceId,
+          evidenceId,
+          tenantId: resolvedTenant,
+          user: profileContext.resolvedSubject,
+          decision: decisionNorm,
+          verdict: verdictNorm,
+          timestamp: eventTimestamp,
+          sanitizedPayload: sanitizedPayloadText,
+          payloadHash: evidenceHash,
+          prevHash
+        });
 
         const sgp7Dims = evaluateSgp1SevenDimensions({
           isAuthenticated: Boolean(kvLicenseTenant || isAuthenticated),
@@ -1400,7 +1460,7 @@ export default {
           nodeId: profileContext.nodeId,
           verdict: decisionNorm,
           structuralDelta: sgp7Dims.structural_delta,
-          ms3vHash: evidenceHash,
+          ms3vHash: traceIntegrityHash,
           proofBundle: null,
           env
         });
@@ -1414,19 +1474,22 @@ export default {
             tenant_id: resolvedTenant,
             user: profileContext.resolvedSubject,
             prompt: summaryPrompt,
-            sanitized_payload: `[ZERO-DISK RAM HASH] ${evidenceHash}`,
+            sanitized_payload: sanitizedPayloadText,
             responseOutput: `Ingesta verificada desde agente perimetral L7 (${latencyMs}ms).`,
             latency: latencyMs,
             evaluator_chain: {
               final_evaluator: "SAARE_NATIVE_SIDECAR_L7_RAM",
               profile_context: profileContext,
-              sgp1_dimensions: sgp7Dims
+              sgp1_dimensions: sgp7Dims,
+              prev_hash: prevHash,
+              trace_integrity_hash: traceIntegrityHash
             },
             verdict_data: {
               verdict: verdictNorm,
               action: decisionNorm,
               rules: [detoxStatus, scenarioId],
-              ms3vHash: evidenceHash,
+              ms3vHash: traceIntegrityHash,
+              merkleRoot: traceIntegrityHash,
               ms3vTimestampNs: `${Date.now()}000000`,
               executedCommand: "SEMANTIC_DETOX_L7"
             },
@@ -1444,6 +1507,9 @@ export default {
           tenant_id: resolvedTenant,
           profile_context: profileContext,
           evidence_hash: evidenceHash,
+          merkleRoot: traceIntegrityHash,
+          ms3vHash: traceIntegrityHash,
+          prevHash,
           sgp1: sgp7Dims,
           proof_block: sgp1Contract
         }), {
@@ -1461,7 +1527,8 @@ export default {
             })),
             "X-SAARE-Tenant": resolvedTenant,
             "X-SAARE-Browser-Profile": profileContext.browserProfile,
-            "X-SAARE-Client-Profile": profileContext.clientProfile
+            "X-SAARE-Client-Profile": profileContext.clientProfile,
+            "X-SAARE-MS3V-Hash": traceIntegrityHash
           }
         });
       }
@@ -2059,10 +2126,25 @@ export default {
         const llmOutputContent = outputSanitized.sanitizedText;
 
         const year = new Date().getUTCFullYear();
+        const eventTimestamp = new Date().toISOString();
         const runId = await generateDeterministicEvidenceId(user, rawPrompt, payloadBody.evidence_id);
         const verdictId = payloadBody.verdictId || `VRD-${year}-${runId.replace("EV-L7-", "")}`;
         const traceId = `tr_llm_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
         const latencyMs = parseFloat((performance.now() - startTime).toFixed(2));
+        const rawPromptHash = await computeSha256(rawPrompt);
+        const prevHash = await getLatestTenantTraceHash(env?.DB, tenant);
+        const traceIntegrityHash = await computeTraceIntegrityHash({
+          traceId,
+          evidenceId: runId,
+          tenantId: tenant,
+          user,
+          decision: finalDecision,
+          verdict: finalVerdict,
+          timestamp: eventTimestamp,
+          sanitizedPayload: sanitizedText,
+          payloadHash: rawPromptHash,
+          prevHash
+        });
 
         try {
           const vaultEngine = new EvidenceVaultEngine(env);
@@ -2079,18 +2161,21 @@ export default {
             evaluator_chain: {
               final_evaluator: activeEvaluatorNode,
               profile_context: profileContext,
-              sgp1_dimensions: sgp7Dims
+              sgp1_dimensions: sgp7Dims,
+              prev_hash: prevHash,
+              trace_integrity_hash: traceIntegrityHash
             },
             verdict_data: {
               verdict: finalVerdict,
               action: finalDecision,
               rules: rulesTriggered,
-              ms3vHash: ms3vVerdict.HASH,
+              ms3vHash: traceIntegrityHash,
+              merkleRoot: traceIntegrityHash,
               ms3vTimestampNs: ms3vVerdict.TS,
               executedCommand: ms3vVerdict.EXECUTE
             },
             compliance: complianceAssessment,
-            payload_hash: await computeSha256(rawPrompt)
+            payload_hash: rawPromptHash
           });
         } catch (_e) {}
 
@@ -2109,9 +2194,12 @@ export default {
             tenant,
             profile_context: profileContext,
             prompt: rawPrompt,
-            timestamp: new Date().toISOString(),
+            timestamp: eventTimestamp,
             ms3vAudit: {
-              hash: ms3vVerdict.HASH,
+              hash: traceIntegrityHash,
+              merkleRoot: traceIntegrityHash,
+              prevHash,
+              engineHash: ms3vVerdict.HASH,
               timestampNs: ms3vVerdict.TS,
               executedCommand: ms3vVerdict.EXECUTE,
               author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
@@ -2126,7 +2214,7 @@ export default {
           nodeId: profileContext.nodeId,
           verdict: finalDecision,
           structuralDelta: sgp7Dims.structural_delta,
-          ms3vHash: ms3vVerdict.HASH,
+          ms3vHash: traceIntegrityHash,
           proofBundle,
           env
         });
@@ -2155,6 +2243,9 @@ export default {
           tenant,
           profile_context: profileContext,
           evidence_id: runId,
+          trace_id: traceId,
+          merkleRoot: traceIntegrityHash,
+          prevHash,
           decision: finalDecision,
           verdict: finalVerdict,
           sanitizedPrompt: sanitizedText,
@@ -2188,7 +2279,9 @@ export default {
             sanitizedInRam: true,
             piiDetected: rulesTriggered.length > 0,
             mediaIntercepted: hasMediaAttachment,
-            ms3vIntegrityHash: ms3vVerdict.HASH,
+            ms3vIntegrityHash: traceIntegrityHash,
+            merkleRoot: traceIntegrityHash,
+            prevHash,
             ms3vTimestampNs: ms3vVerdict.TS,
             executedCommand: ms3vVerdict.EXECUTE
           },
@@ -2200,7 +2293,8 @@ export default {
           proofBundle,
           evidence: {
             vaultProof: sgp1ProofContract.proof_chain.ed25519_sig,
-            timestamp: new Date().toISOString()
+            merkleRoot: traceIntegrityHash,
+            timestamp: eventTimestamp
           }
         }), {
           status: 200,
@@ -2215,7 +2309,7 @@ export default {
             "X-SAARE-Witness-Tag": "[MS3V-COMPLIANCE-L7-OK]",
             "X-SAARE-Provider": providerMeta.name,
             "X-SAARE-Latency-Ms": latencyMs.toString(),
-            "X-SAARE-MS3V-Hash": ms3vVerdict.HASH,
+            "X-SAARE-MS3V-Hash": traceIntegrityHash,
             "X-SAARE-MS3V-Timestamp": ms3vVerdict.TS,
             "X-SAARE-Proof-Status": "VERIFIED_ED25519"
           }
