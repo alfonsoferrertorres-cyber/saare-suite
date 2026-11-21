@@ -1,15 +1,19 @@
-name = "saare-control-plane-prod"
 main = "worker.js"
 compatibility_date = "2026-11-06"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 
+# ==========================================
+# ENTORNO DE PRODUCCIÓN
+# ==========================================
+[env.production]
+name = "saare-control-plane-prod"
 routes = [
   { pattern = "api.saare.es", custom_domain = true }
 ]
 
-[vars]
+[env.production.vars]
 AUTHOR_NAME = "GABINETE MS3V · INGENIERÍA Y AUDITORÍA S.A.A.R.E. S.L."
 EXPEDIENTE_ID = "MS3V-SGP1.0-MASTER-2026"
 SGP_SPEC_VERSION = "SGP 1.0"
@@ -23,32 +27,82 @@ SAFE_CREATIVE_TSA_HASH = ""
 SAFE_CREATIVE_CORE_ID = ""
 SAFE_CREATIVE_DICTAMEN_ID = ""
 SAFE_CREATIVE_ID = ""
-AUDIT_TOKEN = ""
 P2026_REGISTRATION = ""
 CPAAS_DEFAULT_PROVIDER = "twilio"
 TWILIO_FROM_NUMBER = ""
 INFOBIP_BASE_URL = "https://api.infobip.com"
 
-[[d1_databases]]
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "saare-vault-d1"
 database_id = "27eedbe9-1e30-4e11-bd26-220c049f264a"
 
-[[kv_namespaces]]
+[[env.production.kv_namespaces]]
 binding = "SAARE_VAULT_KV"
 id = "8dbfe21019834fc1bdefd9b66e4e810b"
 
-[[analytics_engine_datasets]]
+[[env.production.analytics_engine_datasets]]
 binding = "USAGE_ANALYTICS"
 dataset = "saare_tenant_usage"
 
-[observability]
+[env.production.observability]
 enabled = true
 
-[observability.logs]
+[env.production.observability.logs]
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
 
-[triggers]
+[env.production.triggers]
 crons = ["0 */6 * * *"]
+
+# ==========================================
+# ENTORNO DE STAGING (PRUEBAS)
+# ==========================================
+[env.staging]
+name = "saare-control-plane-staging"
+# Cuando tengas dominio o ruta de staging, descomenta y ajusta:
+# routes = [
+#   { pattern = "staging-api.saare.es", custom_domain = true }
+# ]
+
+[env.staging.vars]
+AUTHOR_NAME = "GABINETE MS3V · INGENIERÍA Y AUDITORÍA S.A.A.R.E. S.L."
+EXPEDIENTE_ID = "MS3V-SGP1.0-STAGING-2026"
+SGP_SPEC_VERSION = "SGP 1.0"
+WORKER_NAME = "saare-control-plane-staging"
+TRUST_ANCHOR = "https://staging-vault.saare.es"
+PUBLIC_API_URL = "https://staging-api.saare.es/v1/chat/completions"
+ALLOW_FALLBACK_VAULT = "true"
+ADMIN_EMAIL = ""
+CHROME_EXTENSION_ID = ""
+SAFE_CREATIVE_TSA_HASH = ""
+SAFE_CREATIVE_CORE_ID = ""
+SAFE_CREATIVE_DICTAMEN_ID = ""
+SAFE_CREATIVE_ID = ""
+P2026_REGISTRATION = ""
+CPAAS_DEFAULT_PROVIDER = "twilio"
+TWILIO_FROM_NUMBER = ""
+INFOBIP_BASE_URL = "https://api.infobip.com"
+
+# IMPORTANTE: Sustituye estos IDs por una base D1 y un KV de staging antes de desplegar staging
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "saare-vault-d1-staging"
+database_id = "REEMPLAZAR_CON_ID_D1_STAGING"
+
+[[env.staging.kv_namespaces]]
+binding = "SAARE_VAULT_KV"
+id = "REEMPLAZAR_CON_ID_KV_STAGING"
+
+[[env.staging.analytics_engine_datasets]]
+binding = "USAGE_ANALYTICS"
+dataset = "saare_tenant_usage_staging"
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true

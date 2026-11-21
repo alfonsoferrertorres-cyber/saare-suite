@@ -257,7 +257,7 @@ if ($controlPlanePath) {
         Invoke-NativeCommand -Command "npx wrangler types" -FailureMessage "Fallo al generar tipos con wrangler types"
 
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
-        Invoke-NativeCommand -Command "npx wrangler deploy" -FailureMessage "Fallo al desplegar el Worker"
+        Invoke-NativeCommand -Command "npx wrangler deploy --env production" -FailureMessage "Fallo al desplegar el Worker"
     } catch {
         Write-Host "[ERROR] Fase 4 detenida: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
