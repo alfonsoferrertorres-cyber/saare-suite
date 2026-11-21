@@ -81,14 +81,22 @@ const SAARE_APPROVED_COMMANDS = [
 ];
 
 function getJwtSecret(env) {
-  return env?.JWT_SECRET || "enterprise_oidc_secret_key_v3";
+  if (env?.JWT_SECRET && String(env.JWT_SECRET).trim().length >= 16) {
+    return String(env.JWT_SECRET).trim();
+  }
+  const envName = String(env?.ENVIRONMENT || "").toLowerCase();
+  if (envName === "development" || envName === "test" || envName === "local") {
+    return "dev_only_local_jwt_secret_change_in_prod";
+  }
+  throw new Error("JWT_SECRET no configurado en el entorno de producción.");
 }
 
 function isSafeRegexPattern(pattern = "") {
   if (typeof pattern !== "string") return false;
   const trimmed = pattern.trim();
-  if (!trimmed || trimmed.length > 240) return false;
+  if (!trimmed || trimmed.length > 200) return false;
   if (/(\+|\*|\{\d+,?\d*\})\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
+  if (/\([^)]*(\+|\*|\{\d+,?\d*\})[^)]*\)\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
   try {
     new RegExp(trimmed, "i");
     return true;
@@ -397,6 +405,7 @@ class CPaaSAdapterManager {
     }
     return {
       provider: "SAARE_RESILIENT_FALLBACK",
+      delivered: false,
       messageId: `fb_${Date.now()}`,
       fallbackErrors: errors
     };
@@ -473,12 +482,13 @@ function evaluateSgp1SevenDimensions({
   };
 }
 
-function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, proofBundle, env }) {
-  const timestampUtc = new Date().toISOString();
+function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, proofBundle, tsaSeal = null, env }) {
   const hasRealTsa = Boolean(env?.EIDAS_TSA_URL);
-  const serialId = hasRealTsa
+  const isQualified = Boolean(tsaSeal?.isQualifiedEidas);
+  const timestampUtc = tsaSeal?.timestampUtc || new Date().toISOString();
+  const serialId = tsaSeal?.tsaReference || (hasRealTsa
     ? `EIDAS-TSA-${(ms3vHash || "SAFE").slice(0, 8).toUpperCase()}`
-    : `LOCAL-SEAL-${(ms3vHash || "SAFE").slice(0, 8).toUpperCase()}`;
+    : `LOCAL-SEAL-${(ms3vHash || "SAFE").slice(0, 8).toUpperCase()}`);
   const signature = proofBundle?.proofBundle?.ed25519Signature || `ed25519:sig:${ms3vHash || "resilient"}`;
 
   return {
@@ -492,8 +502,8 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
         serial: serialId,
         gen_time_utc: timestampUtc,
         standard: "RFC 3161 / eIDAS",
-        assurance_level: hasRealTsa ? "CONFIGURED_TSA_PENDING_VERIFY" : "LOCAL_INTEGRITY",
-        is_qualified_eidas: false
+        assurance_level: tsaSeal?.assuranceLevel || (hasRealTsa ? "CONFIGURED_TSA_PENDING_VERIFY" : "LOCAL_INTEGRITY"),
+        is_qualified_eidas: isQualified
       },
       safe_creative_anchor: {
         registry_code: env?.SAFE_CREATIVE_ID || "UNCONFIGURED",
@@ -686,7 +696,9 @@ async function ensureD1TablesExist(db) {
     `).run();
 
     d1TablesInitialized = true;
-  } catch (_e) {}
+  } catch (_e) {
+    d1TablesInitialized = false;
+  }
 }
 
 function getKvBinding(env) {
@@ -905,6 +917,13 @@ function getTitularNif(env) {
   return env?.TITULAR_NIF_SECRET || env?.TITULAR_NIF || env?.AUTHOR_NAME || "UNCONFIGURED";
 }
 
+function unauthorizedResponse(corsHeaders, message = "Autenticación requerida.") {
+  return new Response(JSON.stringify({ error: "UNAUTHORIZED", message }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
 async function hashPasswordPbkdf2(password) {
   try {
     const iterations = 100000;
@@ -920,7 +939,7 @@ async function hashPasswordPbkdf2(password) {
     const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
     return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
   } catch (_e) {
-    return `pbkdf2$100000$fallback$${password}`;
+    throw new Error("No se pudo derivar el hash PBKDF2 de forma segura.");
   }
 }
 
@@ -956,12 +975,12 @@ async function verifyPassword(stored, candidate) {
     }
     return result === 0;
   } catch (_e) {
-    return stored === candidate;
+    return false;
   }
 }
 
 async function generateDeterministicEvidenceId(user, prompt, customId) {
-  if (customId) return customId;
+  if (customId) return String(customId).slice(0, 64);
   const cleanUser = sanitizeEmail(user) || "operator_anonymous";
   const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
   const timeBucket = new Date().toISOString().substring(0, 16);
@@ -1173,8 +1192,6 @@ export default {
         cfIdentity = await zeroTrust.verifyCloudflareAccessHeader(request);
       } catch (_e) {}
 
-      const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified);
-
       const kv = getKvBinding(env);
       let kvLicenseTenant = null;
       try {
@@ -1183,6 +1200,8 @@ export default {
         }
       } catch (_e) {}
 
+      const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified || kvLicenseTenant);
+
       const boundTenant =
         kvLicenseTenant ||
         (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
@@ -1190,7 +1209,7 @@ export default {
 
       const requestedTenantHeader = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant");
       const activeUserRole = isAuthenticated
-        ? (identity?.role || "TENANT_ADMIN")
+        ? (identity?.role || (kvLicenseTenant ? "TENANT_API_KEY" : "TENANT_ADMIN"))
         : "OPERATOR_UNAUTHENTICATED";
 
       const isGlobalAdmin = isAuthenticated && activeUserRole === "CISO_ADMIN" && !boundTenant;
@@ -1210,6 +1229,7 @@ export default {
       // SELLADO DE LOTE FORENSE (MERKLE + EIDAS + CUSTODIA 2-DE-3) Y VERIFICACIÓN DE INCLUSIÓN
       // ==========================================
       if ((path === "/api/v1/forensics/batch/seal" || path === "/v1/forensics/batch/seal") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         const targetTenant = String(
           isGlobalAdmin ? (body.tenantId || scopedTenantId) : scopedTenantId
@@ -1299,6 +1319,7 @@ export default {
       }
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const targetTenant = isGlobalAdmin
           ? (urlObj.searchParams.get("tenant") || scopedTenantId)
           : scopedTenantId;
@@ -1553,6 +1574,7 @@ export default {
       } catch (_e) {}
 
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const targetTenant = isGlobalAdmin
           ? (urlObj.searchParams.get("tenant") || scopedTenantId)
           : scopedTenantId;
@@ -1585,12 +1607,13 @@ export default {
       }
 
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         const targetTenant = isGlobalAdmin ? (body.tenant || scopedTenantId) : scopedTenantId;
         const roleType = String(body.roleType || "INTEGRADOR_DESARROLLADOR").slice(0, 80);
         const aiActScope = String(body.aiActScope || "ALTO_RIESGO_Y_TRANSPARENCIA").slice(0, 80);
         const organizationName = String(body.organizationName || targetTenant).slice(0, 160);
-        const approverEmail = sanitizeEmail(body.approverEmail || headerUser || "");
+        const approverEmail = sanitizeEmail(body.approverEmail || identity?.email || headerUser || "");
         const controls = Array.isArray(body.controls) ? body.controls.slice(0, 120) : [];
         const updatedAt = new Date().toISOString();
 
@@ -1635,6 +1658,7 @@ export default {
       }
 
       if ((path === "/api/v1/billing/usage" || path === "/v1/billing/usage" || path === "/billing/usage") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         await ensureD1TablesExist(env.DB);
         let tenantRow = null;
         try {
@@ -1674,6 +1698,7 @@ export default {
       }
 
       if ((path === "/api/v1/billing/portal" || path === "/v1/billing/portal" || path === "/billing/portal") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         if (!env?.STRIPE_SECRET_KEY) {
           return new Response(JSON.stringify({ error: "BILLING_NOT_CONFIGURED", message: "STRIPE_SECRET_KEY no configurada." }), {
             status: 503,
@@ -1716,6 +1741,7 @@ export default {
       }
 
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const targetTenant = isGlobalAdmin ? (urlObj.searchParams.get("tenant") || tenantId) : tenantId;
         const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
         const apiOrigin = urlObj.origin;
@@ -1880,6 +1906,7 @@ export default {
       }
 
       if ((path === "/metrics/tenants" || path === "/v1/metrics/tenants" || path === "/api/v1/metrics/tenants") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         let metricsData = [];
         if (env?.DB) {
           try {
@@ -1926,6 +1953,7 @@ export default {
       }
 
       if ((path === "/cpaas/send" || path === "/api/v1/cpaas/send" || path === "/v1/cpaas/send") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         if (!body.to || !body.body) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), {
@@ -1947,13 +1975,14 @@ export default {
                 await ensureD1TablesExist(env.DB);
                 await env.DB.prepare(`
                   INSERT INTO cpaas_audit_logs (id, tenant_id, provider, message_id, recipient, status, evidence_hash, created_at)
-                  VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?, ?)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(
                   `cpaas_${crypto.randomUUID().substring(0, 8)}`,
                   auditTenantId,
                   cpaasResult.provider,
                   cpaasResult.messageId,
                   body.to,
+                  cpaasResult.delivered === false ? "FALLBACK_UNSENT" : "SUCCESS",
                   evidenceHash,
                   new Date().toISOString()
                 ).run();
@@ -1968,7 +1997,7 @@ export default {
           }
 
           return new Response(JSON.stringify({
-            success: true,
+            success: cpaasResult.delivered !== false,
             provider: cpaasResult.provider,
             messageId: cpaasResult.messageId,
             evidenceHash,
@@ -1976,7 +2005,7 @@ export default {
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         } catch (_err) {
           return new Response(JSON.stringify({
-            success: true,
+            success: false,
             resilientFallback: true,
             provider: "SAARE_RESILIENT_FALLBACK",
             messageId: `fb_${Date.now()}`,
@@ -2025,6 +2054,7 @@ export default {
       }
 
       if ((path === "/telemetry/stream" || path === "/api/v1/telemetry/stream" || path === "/v1/telemetry/stream") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         try {
           const telemetry = new TelemetryServer(env);
           const currentUser = identity?.email || cfIdentity?.userEmail || headerUser || null;
@@ -2041,6 +2071,7 @@ export default {
       }
 
       if ((path === "/executive/seats" || path === "/api/v1/executive/seats" || path === "/v1/executive/seats") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         let usersList = [];
         let activePlan = tenantPlan;
         if (env?.DB) {
@@ -2072,6 +2103,7 @@ export default {
       }
 
       if ((path === "/executive/seats/assign" || path === "/api/v1/executive/seats/assign" || path === "/v1/executive/seats/assign") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         const cleanAssignEmail = sanitizeEmail(body.email);
         const assignRole = body.role || "DPO_GRC_LEVEL_2";
@@ -2090,7 +2122,7 @@ export default {
             await ensureD1TablesExist(env.DB);
             const passwordHash = rawAssignPassword.length >= 6
               ? await hashPasswordPbkdf2(rawAssignPassword)
-              : "pbkdf2$100000$assigned$local";
+              : await hashPasswordPbkdf2(crypto.randomUUID());
 
             await env.DB.prepare(
               "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, ?, 1)"
@@ -2106,6 +2138,7 @@ export default {
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         let rules = [];
         const rulesEnabled = await getTenantRulesEnabled(env, scopedTenantId);
         if (env?.DB) {
@@ -2124,6 +2157,7 @@ export default {
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         const currentEnabled = await getTenantRulesEnabled(env, scopedTenantId);
         const nextEnabled = typeof body?.enabled === "boolean" ? body.enabled : currentEnabled;
@@ -2171,6 +2205,7 @@ export default {
       }
 
       if ((path === "/subsidies/export-package" || path === "/v1/subsidies/export-package" || path === "/api/v1/subsidies/export-package") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         const grantType = body.grantType || "KIT_CONSULTING";
         const docType = body.documentType || "ALL";
@@ -2187,6 +2222,7 @@ export default {
       }
 
       if ((path === "/integrations/siem" || path === "/api/v1/integrations/siem") && method === "POST") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         return new Response(JSON.stringify({
           status: "SIEM_EVENT_DISPATCHED",
@@ -2197,6 +2233,7 @@ export default {
       }
 
       if ((path === "/vault/sync" || path === "/api/v1/vault/sync") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -2204,7 +2241,8 @@ export default {
       }
 
       if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
-        const hash = path.split("/verify/")[1] || "";
+        const rawTarget = path.replace(/^\/(api\/v1\/)?verify\//, "");
+        const hash = rawTarget && !rawTarget.includes("/") ? decodeURIComponent(rawTarget).trim() : "";
         let foundAnchor = null;
         if (env?.DB && hash) {
           try {
@@ -2230,6 +2268,7 @@ export default {
       }
 
       if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
+        if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const limitParam = parseInt(urlObj.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
         const activeTenant = isGlobalAdmin
