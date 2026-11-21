@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import * as CryptoModule from '../services/cryptoService';
 import { apiService, saareFetch } from '../services/apiService';
+import { api } from '../utils/api';
 
 export const SubsidiesHub = ({ tenantId, currentEvidences = [] }) => {
   const currentUser = api?.getCurrentUser?.() || {};
