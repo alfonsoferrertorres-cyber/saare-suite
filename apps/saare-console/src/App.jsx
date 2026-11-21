@@ -101,6 +101,23 @@ const triggerBlobDownload = (content, filename, mimeType = 'application/json;cha
   URL.revokeObjectURL(url);
 };
 
+const triggerBase64Download = (base64Data, filename, mimeType = 'application/timestamp-reply') => {
+  const binary = atob(base64Data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export default function App() {
   const queryParams = new URLSearchParams(window.location.search);
   const urlTenant = queryParams.get('tenant') ? normalizeTenantId(queryParams.get('tenant')) : null;
@@ -590,22 +607,26 @@ export default function App() {
       return;
     }
 
+    if (!authToken) {
+      setAuthError('Introduce un Token Bearer o inicia sesión para sellar lotes forenses.');
+      setAuthTab('TOKEN');
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsSealingBatch(true);
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'x-saare-tenant': tenantId
-      };
-      if (authToken) {
-        headers.Authorization = `Bearer ${authToken}`;
-      }
-
       const res = await fetch(getApiEndpoint('/api/v1/forensics/batch/seal'), {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-saare-tenant': tenantId,
+          Authorization: `Bearer ${authToken}`
+        },
         body: JSON.stringify({
           tenantId,
-          enable2of3Custody: true
+          enable2of3Custody: true,
+          limit: 100
         })
       });
 
@@ -616,15 +637,35 @@ export default function App() {
 
       setForensicBatch(data);
       setInclusionStatusByEvidence({});
-      triggerGovernance(
-        `Lote ${data.batchId} sellado (${data.isQualifiedEidas ? 'eIDAS Cualificado' : data.assuranceLevel}).`
-      );
+      const sealLabel = data.timestampSeal?.status || (data.isQualifiedEidas ? 'eIDAS Cualificado' : data.assuranceLevel);
+      triggerGovernance(`Lote ${data.batchId} sellado (${sealLabel}).`);
     } catch (err) {
       triggerGovernance(err?.message || 'Error al sellar el lote forense.');
     } finally {
       setIsSealingBatch(false);
     }
   }, [tenantId, authToken, triggerGovernance]);
+
+  const handleDownloadForensicBatchBundle = useCallback(() => {
+    if (!forensicBatch) return;
+    triggerBlobDownload(
+      JSON.stringify(forensicBatch, null, 2),
+      `lote-forense-merkle-${(forensicBatch.batchId || tenantId || 'batch').toLowerCase()}.json`,
+      'application/json;charset=utf-8'
+    );
+    triggerGovernance(`Comprobante completo del lote ${forensicBatch.batchId} descargado.`);
+  }, [forensicBatch, tenantId, triggerGovernance]);
+
+  const handleDownloadTsaToken = useCallback(() => {
+    const tsrBase64 = forensicBatch?.timestampSeal?.tsrBase64;
+    if (!tsrBase64) return;
+    triggerBase64Download(
+      tsrBase64,
+      `sello-rfc3161-${(forensicBatch.batchId || tenantId || 'tsa').toLowerCase()}.tsr`,
+      'application/timestamp-reply'
+    );
+    triggerGovernance(`Archivo binario RFC 3161 (.tsr) descargado para ${forensicBatch.batchId}.`);
+  }, [forensicBatch, tenantId, triggerGovernance]);
 
   const handleVerifyEvidenceInclusion = useCallback(async (ev) => {
     if (!forensicBatch?.merkleRoot || !forensicBatch?.proofsByEvidenceId) {
@@ -990,7 +1031,9 @@ export default function App() {
             leafCount: forensicBatch.leafCount,
             isQualifiedEidas: forensicBatch.isQualifiedEidas,
             assuranceLevel: forensicBatch.assuranceLevel,
+            tsaStatus: forensicBatch.timestampSeal?.status || null,
             tsaReference: forensicBatch.timestampSeal?.tsaReference || null,
+            hasTsrBase64: Boolean(forensicBatch.timestampSeal?.tsrBase64),
             custody2of3Enabled: Boolean(forensicBatch.custody2of3)
           }
         : null,
@@ -1181,6 +1224,24 @@ export default function App() {
             <button type="button" onClick={() => setShowFriaModal(true)} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0284c7', color: '#fff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               AUDITORÍA FRIA
             </button>
+            <button
+              type="button"
+              onClick={handleSealForensicBatch}
+              disabled={isSealingBatch || !tenantId}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '6px',
+                border: '1px solid #38bdf8',
+                background: '#0369a1',
+                color: '#e0f2fe',
+                fontWeight: '800',
+                fontSize: '0.75rem',
+                cursor: tenantId && !isSealingBatch ? 'pointer' : 'not-allowed',
+                opacity: tenantId ? 1 : 0.5
+              }}
+            >
+              {isSealingBatch ? 'SELLANDO LOTE...' : 'SELLAR LOTE RFC-3161'}
+            </button>
             <button type="button" onClick={handleDownloadL7Extension} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               EXTENSIÓN L7 (.ZIP)
             </button>
@@ -1294,15 +1355,16 @@ export default function App() {
             <div style={{ margin: '18px 0', padding: '14px 18px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase' }}>
-                  Lote Forense — Árbol de Merkle + Sellado Temporal + Custodia 2-de-3
+                  Lote Forense — Árbol de Merkle + Sellado Temporal RFC 3161 + Custodia 2-de-3
                 </div>
                 {forensicBatch ? (
                   <div style={{ fontSize: '0.76rem', color: '#cbd5e1', marginTop: '4px', fontFamily: 'monospace' }}>
-                    Root: {forensicBatch.merkleRoot?.slice(0, 24)}... | Hojas: {forensicBatch.leafCount} | Sello:{' '}
-                    <span style={{ color: forensicBatch.isQualifiedEidas ? '#34d399' : '#fbbf24' }}>
-                      {forensicBatch.isQualifiedEidas ? 'QUALIFIED_EIDAS' : forensicBatch.assuranceLevel}
-                    </span>{' '}
-                    | Custodia: {forensicBatch.custody2of3 ? '2-DE-3 ACTIVA' : 'DESACTIVADA'}
+                    Lote: <span style={{ color: '#38bdf8' }}>{forensicBatch.batchId}</span> | Root: {forensicBatch.merkleRoot?.slice(0, 20)}... | Hojas: {forensicBatch.leafCount} | TSA:{' '}
+                    <span style={{ color: forensicBatch.timestampSeal?.tsrBase64 || forensicBatch.isQualifiedEidas ? '#34d399' : '#fbbf24' }}>
+                      {forensicBatch.timestampSeal?.status || (forensicBatch.isQualifiedEidas ? 'QUALIFIED_EIDAS' : forensicBatch.assuranceLevel)}
+                    </span>
+                    {forensicBatch.timestampSeal?.tsaReference ? ` (${forensicBatch.timestampSeal.tsaReference})` : ''} | Custodia:{' '}
+                    {forensicBatch.custody2of3 ? '2-DE-3 ACTIVA' : 'DESACTIVADA'}
                   </div>
                 ) : (
                   <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
@@ -1310,14 +1372,34 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleSealForensicBatch}
-                disabled={isSealingBatch || !tenantId}
-                style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: tenantId ? 'pointer' : 'not-allowed', opacity: tenantId ? 1 : 0.5 }}
-              >
-                {isSealingBatch ? 'Sellando Lote...' : 'Sellar Lote Merkle + 2-de-3'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {forensicBatch && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadForensicBatchBundle}
+                    style={{ padding: '8px 12px', background: '#0f172a', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer' }}
+                  >
+                    Descargar Lote (.JSON)
+                  </button>
+                )}
+                {forensicBatch?.timestampSeal?.tsrBase64 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadTsaToken}
+                    style={{ padding: '8px 12px', background: '#064e3b', color: '#34d399', border: '1px solid #10b981', borderRadius: '6px', fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer' }}
+                  >
+                    Descargar Sello (.TSR)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSealForensicBatch}
+                  disabled={isSealingBatch || !tenantId}
+                  style={{ padding: '8px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '800', fontSize: '0.75rem', cursor: tenantId && !isSealingBatch ? 'pointer' : 'not-allowed', opacity: tenantId ? 1 : 0.5 }}
+                >
+                  {isSealingBatch ? 'Sellando Lote...' : 'Sellar Lote Merkle + RFC 3161'}
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
