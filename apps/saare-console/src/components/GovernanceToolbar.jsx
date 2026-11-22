@@ -66,8 +66,8 @@ export default function GovernanceToolbar({
       ? `Activando reglas DLP / políticas del tenant${tenantLabel}...`
       : `Desactivando reglas DLP / políticas del tenant${tenantLabel} (modo permisivo)...`;
 
+    setLocalRulesEnabled(nextState);
     triggerAction(actionMsg, () => {
-      setLocalRulesEnabled(nextState);
       if (typeof onToggleTenantRules === 'function') {
         onToggleTenantRules(nextState);
       }
@@ -75,9 +75,10 @@ export default function GovernanceToolbar({
   };
 
   const handleVerify = (customHash) => {
-    const hashToVerify = typeof customHash === 'string' && customHash.trim()
-      ? customHash.trim()
-      : String(targetHash || '').trim();
+    const hashToVerify =
+      typeof customHash === 'string' && customHash.trim()
+        ? customHash.trim()
+        : String(targetHash || '').trim();
 
     if (!hashToVerify) {
       triggerAction('No hay ningún hash de evidencia disponible para verificar.');
@@ -112,8 +113,25 @@ export default function GovernanceToolbar({
   };
 
   return (
-    <section style={{ padding: '16px', background: '#020617', borderRadius: '8px', border: '1px solid #1e293b', marginBottom: '20px' }}>
-      <h3 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <section
+      style={{
+        padding: '16px',
+        background: '#020617',
+        borderRadius: '8px',
+        border: '1px solid #1e293b',
+        marginBottom: '20px'
+      }}
+    >
+      <h3
+        style={{
+          margin: '0 0 12px 0',
+          fontSize: '11px',
+          fontWeight: '800',
+          color: '#94a3b8',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }}
+      >
         Acciones de Gobernanza &amp; Auditoría Operativa
       </h3>
 
@@ -137,7 +155,12 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Generando expediente de justificación...', onExportGrantDossier)}
-          style={{ ...btnBase, background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', border: 'none' }}
+          style={{
+            ...btnBase,
+            background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+            color: '#ffffff',
+            border: 'none'
+          }}
         >
           Dossier Subvenciones
         </button>
@@ -161,7 +184,12 @@ export default function GovernanceToolbar({
         <button
           type="button"
           onClick={() => triggerAction('Generando paquete de 4 plantillas GRC...', onExportGovernancePackage)}
-          style={{ ...btnBase, background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)', color: '#ffffff', border: 'none' }}
+          style={{
+            ...btnBase,
+            background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)',
+            color: '#ffffff',
+            border: 'none'
+          }}
         >
           4 Plantillas GRC
         </button>
@@ -192,8 +220,15 @@ export default function GovernanceToolbar({
 
         <button
           type="button"
-          onClick={() => triggerAction('Generando acta probatoria Art. 326 LEC / ISO 27037...', onExportLecActa)}
-          style={{ ...btnBase, background: '#312e81', color: '#e0e7ff', border: '1px solid #6366f1' }}
+          onClick={() =>
+            triggerAction('Generando acta probatoria Art. 326 LEC / ISO 27037...', onExportLecActa)
+          }
+          style={{
+            ...btnBase,
+            background: '#312e81',
+            color: '#e0e7ff',
+            border: '1px solid #6366f1'
+          }}
         >
           Acta LEC / ISO 27037
         </button>
@@ -213,7 +248,18 @@ export default function GovernanceToolbar({
       </div>
 
       {status && (
-        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#090d16', borderLeft: '3px solid #38bdf8', borderRadius: '4px', fontSize: '0.75rem', color: '#38bdf8', fontWeight: '600' }}>
+        <div
+          style={{
+            marginTop: '12px',
+            padding: '10px 14px',
+            background: '#090d16',
+            borderLeft: '3px solid #38bdf8',
+            borderRadius: '4px',
+            fontSize: '0.75rem',
+            color: '#38bdf8',
+            fontWeight: '600'
+          }}
+        >
           System Log: {status}
         </div>
       )}

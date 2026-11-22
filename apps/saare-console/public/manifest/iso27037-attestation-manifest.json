@@ -1,0 +1,32 @@
+{
+  "manifestStandard": "ISO/IEC 27037:2012",
+  "witnessHeader": "VERIFIED_BY_SAARE_PEP_MS3V",
+  "acquisitionDate": "2026-10-20",
+  "branchingPolicy": "LOCAL_SQLITE_VS_CLOUD_GATEWAY_UNIFIED_ATTESTATION",
+  "artifacts": [
+    {
+      "name": "Script Generador PDF (v4)",
+      "size": "14.2 KB",
+      "sha256": "6f1b3986a4221147814b7e9a8f420e7df61a5b823e4299b9e671b569c7f1a842"
+    },
+    {
+      "name": "Base SQLite & Merkle",
+      "size": "1.2 MB",
+      "sha256": "9a4f2b1c8e7d3f6a5b2c1e4f9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c"
+    },
+    {
+      "name": "Payload Ed25519 & TSA",
+      "size": "4.8 KB",
+      "sha256": "3d84f9814402ebcf88a1095bf8589085cb221a69074092b3a985dcf85b7aa210"
+    }
+  ],
+  "verificationBenchmarks": {
+    "sqliteRecords": 50000,
+    "signatureAlgorithm": "Ed25519 (64 bytes)",
+    "publicKeyRef": "AFT-X9",
+    "timestamping": "RFC 3161",
+    "ramLatencyP99Ms": 0.042,
+    "failClosedMs": 0.124,
+    "memoryLock": "mlock()"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://saare.es/schemas/evidence-root-seal-v2.json",
+  "clasificacion_probatoria": "V4_READY_APTO_PARA_VERIFICACION_INDEPENDIENTE",
+  "identificador_maestro": "MS3V-RECON-VALID-2026-ALF-0521",
+  "orden_auditoria": "IA-2026-VAL-AUD-8842-XF",
+  "huella_raiz_canonica_sha256": "195cd0b59b7fb67b5d17d27e588def368ded68c15f54f2c891b049c7e0fbb019",
+  "manifiesto_evaluado": "hashes.sha256",
+  "anclaje_repositorio": {
+    "proveedor": "GitHub / Git SCM",
+    "commit_hash_referencia": "04da196902ebf5c5e089d4ee6becd90275210061",
+    "rama": "main"
+  },
+  "resultados_estadisticos_verificados": {
+    "tamano_muestra_N": 10000,
+    "latencia_media_ms": 0.017637,
+    "desviacion_estandar_sigma_ms": 0.026074,
+    "percentil_95_ms": 0.032600,
+    "percentil_99_ms": 0.058800,
+    "metodologia_recalculo": "Determinista a partir del dataset bruto sellado raw_samples_dataset.json"
+  },
+  "inspeccion_memoria_espacio_usuario": {
+    "protocolo": "Comprobación posicional de buffer de prueba sintético tras Buffer.fill(0x00)",
+    "resultado_observado": "100% de las posiciones del buffer de prueba verificadas como 0x00"
+  },
+  "declaracion_metodologica_normativa": {
+    "une_en_iso_iec_17025": "La metodología documentada incorpora controles de trazabilidad, reproducibilidad e integridad compatibles con principios aplicables de UNE-EN ISO/IEC 17025, sin que esta referencia implique por sí sola acreditación o certificación formal bajo dicha norma.",
+    "eu_ai_act_art12_art15": "Evidencias técnicas alineadas con los controles de trazabilidad de registros y resiliencia operativa en Capa 7.",
+    "rgpd_art5_art25": "Minimización y neutralización de buffer ex-ante antes de persistencia o transmisión."
+  },
+  "timestamp_utc": "2026-08-24T03:46:47Z"
+}

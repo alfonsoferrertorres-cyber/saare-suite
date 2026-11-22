@@ -14,7 +14,12 @@ export function generateVirginizedGovernancePackage({
   const safeCustomFilters = Array.isArray(customFilters) ? customFilters : [];
 
   const deniedEvidences = safeEvidences.filter(
-    (e) => e && (e.decision === 'DENY' || e.verdict === 'RECHAZADO' || e.verdict === 'REJECTED' || e.final_decision === 'DENY')
+    (e) =>
+      e &&
+      (e.decision === 'DENY' ||
+        e.verdict === 'RECHAZADO' ||
+        e.verdict === 'REJECTED' ||
+        e.final_decision === 'DENY')
   );
 
   const sampleMerkle =

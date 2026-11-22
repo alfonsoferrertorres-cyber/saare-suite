@@ -1,7 +1,17 @@
 // saare-console/src/utils/api.js
 import { SAARE_CONFIG } from '../config/saareState';
 
-export const API_HOST = SAARE_CONFIG?.CONTROL_PLANE_URL || 'https://api.saare.es';
+const rawHost =
+  SAARE_CONFIG?.CONTROL_PLANE_URL ||
+  SAARE_CONFIG?.API_BASE_URL ||
+  'https://api.saare.es';
+
+export const API_HOST = String(rawHost)
+  .trim()
+  .replace(/\/+$/, '')
+  .replace(/\/api\/v1$/i, '')
+  .replace(/\/api$/i, '')
+  .replace(/\/v1$/i, '');
 
 const readStorageValue = (keys = []) => {
   if (typeof window === 'undefined') return '';
@@ -40,8 +50,13 @@ export const saareFetch = async (endpoint, options = {}) => {
     const user = options.overrideUser ?? currentUser.email;
     const role = options.overrideRole ?? currentUser.role;
 
-    const cleanBase = String(API_HOST || '').trim().replace(/\/+$/, '');
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const cleanBase = String(API_HOST || 'https://api.saare.es')
+      .trim()
+      .replace(/\/+$/, '')
+      .replace(/\/api\/v1$/i, '')
+      .replace(/\/api$/i, '')
+      .replace(/\/v1$/i, '');
+    const cleanEndpoint = String(endpoint || '').startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${cleanBase}${cleanEndpoint}`;
 
     const headers = {

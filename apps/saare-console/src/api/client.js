@@ -9,18 +9,32 @@ export async function saareFetch(endpoint, options = {}) {
     session = {};
   }
 
-  const token = session.token || localStorage.getItem('saare_token') || localStorage.getItem('saare_auth_token') || '';
-  const tenant = session.tenantId || localStorage.getItem('saare_tenant_domain') || SAARE_CONFIG?.DEFAULT_TENANT || '';
-  const role = session.role || localStorage.getItem('saare_user_role') || SAARE_CONFIG?.DEFAULT_ROLE || '';
+  const token =
+    session.token ||
+    localStorage.getItem('saare_token') ||
+    localStorage.getItem('saare_auth_token') ||
+    '';
+  const tenant =
+    session.tenantId ||
+    localStorage.getItem('saare_tenant_domain') ||
+    SAARE_CONFIG?.DEFAULT_TENANT ||
+    '';
+  const role =
+    session.role ||
+    localStorage.getItem('saare_user_role') ||
+    SAARE_CONFIG?.DEFAULT_ROLE ||
+    '';
 
-  const baseUrl = String(SAARE_CONFIG?.CONTROL_PLANE_URL || SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es')
+  const baseUrl = String(
+    SAARE_CONFIG?.CONTROL_PLANE_URL || SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es'
+  )
     .trim()
     .replace(/\/+$/, '')
     .replace(/\/api\/v1$/i, '')
     .replace(/\/api$/i, '')
     .replace(/\/v1$/i, '');
 
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const cleanEndpoint = String(endpoint || '').startsWith('/') ? endpoint : `/${endpoint}`;
 
   const headers = {
     'Content-Type': 'application/json',

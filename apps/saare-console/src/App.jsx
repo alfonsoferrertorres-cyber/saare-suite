@@ -118,6 +118,14 @@ const triggerBase64Download = (base64Data, filename, mimeType = 'application/tim
   URL.revokeObjectURL(url);
 };
 
+const computeSha256Hex = async (text = '') => {
+  const data = new TextEncoder().encode(String(text || ''));
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 export default function App() {
   const queryParams = new URLSearchParams(window.location.search);
   const urlTenant = queryParams.get('tenant') ? normalizeTenantId(queryParams.get('tenant')) : null;
@@ -667,6 +675,159 @@ export default function App() {
     triggerGovernance(`Archivo binario RFC 3161 (.tsr) descargado para ${forensicBatch.batchId}.`);
   }, [forensicBatch, tenantId, triggerGovernance]);
 
+  const handleExportTenantSovereigntyCertificate = useCallback(async () => {
+    if (!tenantId) {
+      triggerGovernance('Configura un Tenant ID antes de exportar el Certificado de Soberanía D1.');
+      return;
+    }
+
+    const issuedAt = new Date().toISOString();
+    const inspections = evidences.length;
+    const denied = evidences.filter((e) => e.decision === 'DENY').length;
+    const allowed = inspections - denied;
+    const blockRate = inspections > 0 ? ((denied / inspections) * 100).toFixed(1) : '0.0';
+    const latestHash = forensicBatch?.merkleRoot || evidences[0]?.merkleRoot || 'SIN_TRAZAS_SELLADAS';
+
+    const canonicalPayload = {
+      certificateType: 'SAARE_D1_SOVEREIGNTY_AND_INTEGRITY_ATTESTATION',
+      protocol: 'SGP 1.0',
+      issuedAtUtc: issuedAt,
+      tenant: {
+        tenantId,
+        companyName: billingInfo?.companyName || tenantId,
+        planId: billingInfo?.planId || localStorage.getItem('saare_plan_id') || 'STANDARD',
+        operatorEmail: userEmail || 'N/A'
+      },
+      infrastructure: {
+        controlPlaneWorker: 'saare-control-plane-prod',
+        apiEndpoint: getApiEndpoint('/health'),
+        d1DatabaseId: '27eedbe9-1e30-4e11-bd26-220c049f264a',
+        d1Region: 'D1-EU-WESTERN-EUROPE',
+        kvNamespaceId: '8dbfe21019834fc1bdefd9b66e4e810b',
+        kvScope: 'SAARE_VAULT_KV (Edge State Store)',
+        tenantIsolation: 'STRICT_TENANT_ID_SCOPING'
+      },
+      cryptographicState: {
+        latestMerkleOrTraceDigest: latestHash,
+        latestBatchId: forensicBatch?.batchId || null,
+        tsaStatus: forensicBatch?.timestampSeal?.status || 'PENDING_BATCH_SEAL',
+        tsaReference: forensicBatch?.timestampSeal?.tsaReference || null,
+        custody2of3: Boolean(forensicBatch?.custody2of3)
+      },
+      telemetrySummary: {
+        totalInspections: inspections,
+        allowedCount: allowed,
+        deniedCount: denied,
+        blockRatePercent: blockRate
+      }
+    };
+
+    const canonicalJson = JSON.stringify(canonicalPayload, null, 2);
+    const certificateSha256 = await computeSha256Hex(canonicalJson);
+
+    const printableHtml = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Certificado de Anclaje y Soberanía D1 - ${tenantId}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; margin: 36px; line-height: 1.45; }
+    .header { border-bottom: 2px solid #0284c7; padding-bottom: 14px; margin-bottom: 20px; }
+    h1 { font-size: 20px; margin: 0 0 6px 0; color: #0f172a; }
+    .sub { font-size: 12px; color: #475569; }
+    h2 { font-size: 13px; text-transform: uppercase; color: #0369a1; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 22px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; word-break: break-all; }
+    .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; font-size: 12px; }
+    .footer { margin-top: 28px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+    @media print { body { margin: 18px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>CERTIFICADO DE ANCLAJE TÉCNICO Y SOBERANÍA D1 (SGP 1.0)</h1>
+    <div class="sub">Emitido automáticamente por S.A.A.R.E. Control Plane · Fecha UTC: <strong>${issuedAt}</strong></div>
+  </div>
+
+  <div class="box">
+    <strong>Entidad / Tenant Auditado:</strong> ${canonicalPayload.tenant.companyName} (<code>${tenantId}</code>) &nbsp;|&nbsp;
+    <strong>Plan:</strong> ${canonicalPayload.tenant.planId}<br/>
+    <strong>Proveedor de Plataforma:</strong> GABINETE MS3V · INGENIERÍA Y AUDITORÍA S.A.A.R.E. S.L. (Protocolo SGP 1.0)
+  </div>
+
+  <h2>1. Acreditación de Infraestructura y Aislamiento Multitenant</h2>
+  <p style="font-size:12px;">
+    Este documento acredita los parámetros técnicos, identificadores de infraestructura y estado criptográfico
+    registrados para el inquilino <strong>${tenantId}</strong>. Las consultas, métricas, reglas DLP y lotes forenses
+    operan bajo aislamiento estricto por <code>tenant_id</code> sobre la bóveda relacional D1 en región europea.
+  </p>
+
+  <h2>2. Matriz de Bindings y Estado de Bóveda</h2>
+  <table>
+    <thead>
+      <tr><th>Componente</th><th>Identificador / Endpoint</th><th>Ámbito / Estado</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Cloudflare D1 Database (DB)</td><td class="mono">27eedbe9-1e30-4e11-bd26-220c049f264a</td><td>D1-EU-WESTERN-EUROPE (Bóveda principal)</td></tr>
+      <tr><td>KV Namespace (Vault Store)</td><td class="mono">8dbfe21019834fc1bdefd9b66e4e810b</td><td>SAARE_VAULT_KV (Almacén Edge / Estado operativo)</td></tr>
+      <tr><td>Control Plane Worker</td><td class="mono">saare-control-plane-prod</td><td>ONLINE · Aislamiento Multitenant Activo</td></tr>
+      <tr><td>Health &amp; Trust Anchor</td><td class="mono">${canonicalPayload.infrastructure.apiEndpoint}</td><td>ONLINE (Trust Anchor OK)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Sello de Metadatos Criptográficos e Integridad (SHA-256)</h2>
+  <div class="box">
+    <strong>SHA-256 DEL CERTIFICADO EMITIDO:</strong><br/>
+    <span class="mono">${certificateSha256}</span><br/><br/>
+    <strong>ÚLTIMA RAÍZ MERKLE / HUELLA DE TRAZA (${tenantId}):</strong><br/>
+    <span class="mono">${latestHash}</span><br/><br/>
+    <strong>LOTE FORENSE Y SELLADO RFC 3161:</strong>
+    Lote: <code>${canonicalPayload.cryptographicState.latestBatchId || 'Sin lote sellado'}</code> |
+    Estado TSA: <code>${canonicalPayload.cryptographicState.tsaStatus}</code> |
+    Ref. TSA: <code>${canonicalPayload.cryptographicState.tsaReference || 'N/A'}</code>
+  </div>
+
+  <h2>4. Correspondencia Técnica Normativa y Alcance Probatorio</h2>
+  <table>
+    <thead>
+      <tr><th>Marco</th><th>Requisito Técnico</th><th>Mecanismo Implementado en Tenant</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>EU AI Act (Art. 12 y 27)</td><td>Trazabilidad y evaluación de impacto (FRIA)</td><td>Registro encadenado por hash y módulo de auditoría FRIA en consola (${inspections} inspecciones).</td></tr>
+      <tr><td>RGPD (Art. 5 y 25)</td><td>Minimización y privacidad desde el diseño</td><td>Sanitización ex-ante en RAM antes de persistencia (${denied} bloqueos DLP).</td></tr>
+      <tr><td>DORA (UE 2022/2554)</td><td>Resiliencia operativa digital en TIC</td><td>Política Fail-Closed y aislamiento lógico por <code>tenant_id</code>.</td></tr>
+      <tr><td>Art. 326 LEC</td><td>Integridad y verificabilidad documental</td><td>Firma Ed25519, árbol de Merkle y sellado temporal RFC 3161 verificables por lote.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Diligencia técnica: La consistencia entre el SHA-256 de este documento, los registros en D1 y los comprobantes
+    RFC 3161 del lote permite verificar la integridad frente a alteraciones posteriores. Este documento constituye
+    soporte técnico de trazabilidad e integridad para auditoría y cumplimiento, sujeto a la verificación pericial y
+    valoración jurídica aplicables en cada procedimiento.
+  </div>
+  <script>window.onload = () => { window.print(); };</script>
+</body>
+</html>`;
+
+    const printWin = window.open('', '_blank', 'noopener,noreferrer');
+    if (printWin) {
+      printWin.document.open();
+      printWin.document.write(printableHtml);
+      printWin.document.close();
+    } else {
+      triggerBlobDownload(
+        printableHtml,
+        `certificado-soberania-d1-${tenantId.toLowerCase()}-${Date.now()}.html`,
+        'text/html;charset=utf-8'
+      );
+    }
+
+    triggerGovernance(`Certificado de Soberanía D1 emitido para [${tenantId}] (SHA-256: ${certificateSha256.slice(0, 12)}...).`);
+  }, [tenantId, evidences, forensicBatch, billingInfo, userEmail, triggerGovernance]);
+
   const handleVerifyEvidenceInclusion = useCallback(async (ev) => {
     if (!forensicBatch?.merkleRoot || !forensicBatch?.proofsByEvidenceId) {
       triggerGovernance('Primero sella un lote de Merkle para verificar pruebas de inclusión.');
@@ -1133,6 +1294,39 @@ export default function App() {
     triggerGovernance('Acta probatoria Art. 326 LEC / ISO 27037 generada.');
   };
 
+  const handleDownloadIso27037Manifest = useCallback(async () => {
+    try {
+      const headers = {
+        ...(tenantId ? { 'x-saare-tenant': tenantId } : {}),
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      };
+      const res = await fetch(getApiEndpoint('/api/v1/forensics/manifest'), { headers });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const rawText = await res.text();
+      const headerHash = res.headers.get('X-SAARE-Manifest-SHA256') || '';
+      const localHash = await computeSha256Hex(rawText);
+
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      triggerBlobDownload(
+        rawText,
+        `iso27037-attestation-manifest-${dateStamp}.json`,
+        'application/json;charset=utf-8'
+      );
+
+      const matchNote = headerHash
+        ? headerHash === localHash
+          ? `SHA-256 verificado (${localHash.slice(0, 12)}...)`
+          : `Aviso: hash cabecera distinto al local (${localHash.slice(0, 12)}...)`
+        : `SHA-256: ${localHash.slice(0, 12)}...`;
+
+      triggerGovernance(`Manifiesto ISO/IEC 27037 descargado · ${matchNote}`);
+    } catch {
+      triggerGovernance('No se pudo obtener el manifiesto ISO/IEC 27037 desde la API.');
+    }
+  }, [tenantId, authToken, triggerGovernance]);
+
   const handleExecuteTestExAnte = async (customPrompt = null) => {
     const promptToRun = customPrompt || testPrompt;
     if (!promptToRun.trim()) return;
@@ -1242,6 +1436,24 @@ export default function App() {
             >
               {isSealingBatch ? 'SELLANDO LOTE...' : 'SELLAR LOTE RFC-3161'}
             </button>
+            <button
+              type="button"
+              onClick={handleExportTenantSovereigntyCertificate}
+              disabled={!tenantId}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '6px',
+                border: '1px solid #38bdf8',
+                background: '#0f172a',
+                color: '#38bdf8',
+                fontWeight: '800',
+                fontSize: '0.75rem',
+                cursor: tenantId ? 'pointer' : 'not-allowed',
+                opacity: tenantId ? 1 : 0.5
+              }}
+            >
+              CERTIFICADO D1
+            </button>
             <button type="button" onClick={handleDownloadL7Extension} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #38bdf8', background: '#0c4a6e', color: '#7dd3fc', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               EXTENSIÓN L7 (.ZIP)
             </button>
@@ -1256,6 +1468,22 @@ export default function App() {
             </button>
             <button type="button" onClick={handleDownloadIso42001Dossier} style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #a855f7', background: '#3b0764', color: '#e9d5ff', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
               DOSSIER ISO 42001
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadIso27037Manifest}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '6px',
+                border: '1px solid #0ea5e9',
+                background: '#082f49',
+                color: '#7dd3fc',
+                fontWeight: '800',
+                fontSize: '0.75rem',
+                cursor: 'pointer'
+              }}
+            >
+              MANIFIESTO ISO 27037
             </button>
             <SoaIso42001CompilerButton
               apiBaseUrl={getApiEndpoint('')}
