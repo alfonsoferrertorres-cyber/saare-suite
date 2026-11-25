@@ -4,6 +4,8 @@
 param(
     [string]$SmokeTenant = "",
     [string]$SmokeToken = "",
+    [string]$MasterTestPassword = "",
+    [switch]$RemoveMasterTestPassword,
     [switch]$SkipSmokeTests
 )
 
@@ -213,7 +215,7 @@ if ($suiteDist) {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 4: MIGRACIONES DE BASE DE DATOS & CONTROL PLANE WORKER
+# FASE 4: MIGRACIONES DE BASE DE DATOS, SECRETOS & CONTROL PLANE WORKER
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [4/7] Desplegando Control Plane Worker y Esquemas D1..." -ForegroundColor Cyan
 $controlPlanePath = if (Test-Path "control-plane") {
@@ -258,6 +260,20 @@ if ($controlPlanePath) {
 
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
         Invoke-NativeCommand -Command "npx wrangler deploy --env production" -FailureMessage "Fallo al desplegar el Worker"
+
+        # Gestion de secreto temporal MASTER_TEST_PASSWORD en produccion
+        if ($RemoveMasterTestPassword) {
+            Write-Host " -> Eliminando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
+            Invoke-NativeCommand -Command "npx wrangler secret delete MASTER_TEST_PASSWORD --env production --force" -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
+            Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD eliminado." -ForegroundColor Green
+        } elseif (-not [string]::IsNullOrWhiteSpace($MasterTestPassword)) {
+            Write-Host " -> Configurando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
+            $MasterTestPassword | npx wrangler secret put MASTER_TEST_PASSWORD --env production
+            if ($LASTEXITCODE -ne 0) {
+                throw "Fallo al configurar MASTER_TEST_PASSWORD (ExitCode=$LASTEXITCODE)"
+            }
+            Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD actualizado en produccion." -ForegroundColor Green
+        }
     } catch {
         Write-Host "[ERROR] Fase 4 detenida: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
@@ -281,7 +297,7 @@ if ($gitStatus) {
         $currentBranch = "main"
     }
 
-    git commit -m "chore(release): despliegue maestro verificado v8.9"
+    git commit -m "chore(release): despliegue maestro v8.9"
     git push origin HEAD
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
@@ -413,3 +429,10 @@ if ($testFailureCount -gt 0) {
 }
 
 Write-Host "`n==> [OK] Despliegue maestro completado." -ForegroundColor Green
+```[cite: 12, 16]
+
+### Cómo ejecutarlo
+
+* **Activar la clave maestra durante el despliegue:**
+  ```powershell
+  .\despliegue_maestro.ps1 -MasterTestPassword "tu-clave-temporal"
