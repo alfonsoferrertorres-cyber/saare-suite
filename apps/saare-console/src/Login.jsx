@@ -26,6 +26,16 @@ const getDualStorage = (key) => {
   }
 };
 
+const parseJsonSafely = async (response) => {
+  const rawText = await response.text();
+  if (!rawText) return {};
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return { message: rawText };
+  }
+};
+
 export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
   const [authMode, setAuthMode] = useState('SANDBOX');
   const [email, setEmail] = useState(() => getDualStorage('saare_user_email') || '');
@@ -100,9 +110,9 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
           })
         });
 
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok || !data.success || !data.token) {
-          throw new Error(data.message || data.error || 'No se pudo aprovisionar el entorno.');
+          throw new Error(data.message || data.error || `Error ${res.status} al aprovisionar el entorno.`);
         }
 
         const provisionedTenant = data.user?.tenantId || cleanTenant;
@@ -131,11 +141,15 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
       }
 
       const authResponse = await api.login(cleanEmail, password, cleanTenant);
-      const token = authResponse.token || getDualStorage('saare_token') || '';
-      const verifiedEmail = authResponse.user?.email || cleanEmail;
-      const verifiedTenant = authResponse.user?.tenantId || cleanTenant;
-      const verifiedRole = authResponse.user?.role || role;
-      const verifiedPlan = authResponse.user?.planId || selectedPlan;
+      const token = authResponse?.token || getDualStorage('saare_token') || '';
+      if (!token) {
+        throw new Error('La respuesta de autenticación no incluyó un token válido.');
+      }
+
+      const verifiedEmail = authResponse?.user?.email || cleanEmail;
+      const verifiedTenant = authResponse?.user?.tenantId || cleanTenant;
+      const verifiedRole = authResponse?.user?.role || role;
+      const verifiedPlan = authResponse?.user?.planId || selectedPlan;
 
       persistSession({
         token,
@@ -143,7 +157,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         userRole: verifiedRole,
         tenantDomain: verifiedTenant,
         planId: verifiedPlan,
-        apiKey: authResponse.user?.apiKey
+        apiKey: authResponse?.user?.apiKey
       });
 
       setLoading(false);
@@ -152,11 +166,16 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         email: verifiedEmail,
         role: verifiedRole,
         tenantName: verifiedTenant,
-        apiKey: authResponse.user?.apiKey,
+        apiKey: authResponse?.user?.apiKey,
         plan: verifiedPlan
       });
     } catch (err) {
-      setErrorMsg(err.message || 'Error en el proceso de autenticación.');
+      const rawMessage = String(err?.message || '');
+      const friendlyMessage =
+        rawMessage.includes('401') || rawMessage.toLowerCase().includes('unauthorized')
+          ? 'Credenciales inválidas o sesión no autorizada para el tenant indicado (HTTP 401).'
+          : rawMessage || 'Error en el proceso de autenticación.';
+      setErrorMsg(friendlyMessage);
       setLoading(false);
     }
   };

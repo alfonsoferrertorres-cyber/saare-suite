@@ -16,6 +16,7 @@ const ConsoleContext = createContext(null);
 
 const TENANT_STORAGE_KEYS = ['saare_tenant_domain', 'saare_tenant'];
 const TOKEN_STORAGE_KEYS = ['saare_token', 'saare_auth_token'];
+const EXTRA_SESSION_KEYS = ['saare_api_key', 'saare_plan_id', 'saare_session', 'saare_consent_accepted'];
 const USER_STORAGE_KEY = 'saare_user_email';
 const ROLE_STORAGE_KEY = 'saare_user_role';
 
@@ -27,14 +28,27 @@ export function normalizeConsoleTenantId(id = '') {
     .slice(0, 32);
 }
 
-function readStoredValue(keys = []) {
+function sanitizeTokenString(raw = '') {
+  const clean = String(raw || '')
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+  if (!clean || clean.toLowerCase() === 'null' || clean.toLowerCase() === 'undefined') {
+    return '';
+  }
+  return clean;
+}
+
+function readStoredValue(keys = [], { isToken = false } = {}) {
   if (typeof window === 'undefined') return '';
   for (const key of keys) {
     try {
       const sessionVal = window.sessionStorage?.getItem(key) || '';
-      if (sessionVal && sessionVal.trim()) return sessionVal.trim();
+      const cleanSession = isToken ? sanitizeTokenString(sessionVal) : sessionVal.trim();
+      if (cleanSession) return cleanSession;
+
       const localVal = window.localStorage?.getItem(key) || '';
-      if (localVal && localVal.trim()) return localVal.trim();
+      const cleanLocal = isToken ? sanitizeTokenString(localVal) : localVal.trim();
+      if (cleanLocal) return cleanLocal;
     } catch {
       // Ignorar restricciones de almacenamiento del navegador
     }
@@ -62,7 +76,7 @@ function writeStoredValue(keys = [], value = '') {
 
 function readInitialSession() {
   const rawTenant = readStoredValue(TENANT_STORAGE_KEYS);
-  const rawToken = readStoredValue(TOKEN_STORAGE_KEYS);
+  const rawToken = readStoredValue(TOKEN_STORAGE_KEYS, { isToken: true });
   const rawEmail = readStoredValue([USER_STORAGE_KEY]);
   const rawRole = readStoredValue([ROLE_STORAGE_KEY]);
 
@@ -124,9 +138,10 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
   const [activityLog, setActivityLog] = useState([]);
 
   const syncSessionTokenState = useCallback(() => {
-    const token = readStoredValue(TOKEN_STORAGE_KEYS);
-    setHasSessionToken(Boolean(token));
-    return Boolean(token);
+    const token = readStoredValue(TOKEN_STORAGE_KEYS, { isToken: true });
+    const present = Boolean(token);
+    setHasSessionToken(present);
+    return present;
   }, []);
 
   const setUserEmail = useCallback((nextEmail = '') => {
@@ -157,6 +172,37 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
   const clearActivityLog = useCallback(() => {
     setActivityLog([]);
   }, []);
+
+  const clearSession = useCallback(
+    (reason = 'Sesión cerrada.') => {
+      writeStoredValue(TOKEN_STORAGE_KEYS, '');
+      writeStoredValue(TENANT_STORAGE_KEYS, '');
+      writeStoredValue([USER_STORAGE_KEY], '');
+      writeStoredValue([ROLE_STORAGE_KEY], '');
+      writeStoredValue(EXTRA_SESSION_KEYS, '');
+
+      setHasSessionToken(false);
+      setTenantId('');
+      setUserEmailState('');
+      setRoleState(ROLES.READ_ONLY);
+      setLastVerification({
+        status: EXECUTION_STATUS.NOT_RUN,
+        verified: false,
+        traceId: '',
+        payloadDigest: '',
+        verifiedAt: '',
+        error: ''
+      });
+
+      pushActivity({
+        module: 'SESSION',
+        action: 'CLEAR_SESSION',
+        status: EXECUTION_STATUS.VERIFIED,
+        summary: reason
+      });
+    },
+    [pushActivity]
+  );
 
   const navigateTo = useCallback((routeOrPath) => {
     const target =
@@ -202,10 +248,13 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       setTenantId(clean);
       writeStoredValue(TENANT_STORAGE_KEYS, clean);
 
-      if (clean && role === ROLES.READ_ONLY) {
-        setRole(ROLES.TENANT_ADMIN);
-      } else if (!clean && !hasToken) {
-        setRole(ROLES.READ_ONLY);
+      const storedExplicitRole = readStoredValue([ROLE_STORAGE_KEY]);
+      if (!storedExplicitRole) {
+        if (clean && role === ROLES.READ_ONLY) {
+          setRoleState(ROLES.TENANT_ADMIN);
+        } else if (!clean && !hasToken) {
+          setRoleState(ROLES.READ_ONLY);
+        }
       }
 
       setLastVerification({
@@ -224,7 +273,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
         summary: clean ? `Contexto cambiado a tenant [${clean}].` : 'Contexto de tenant limpiado.'
       });
     },
-    [tenantId, role, setRole, pushActivity, syncSessionTokenState]
+    [tenantId, role, pushActivity, syncSessionTokenState]
   );
 
   const changeRouteMode = useCallback(
@@ -311,6 +360,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       setRole,
       selectTenant,
       syncSessionTokenState,
+      clearSession,
       can,
       routes: CONSOLE_ROUTES,
       routeList: ROUTE_LIST,
@@ -339,6 +389,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       setRole,
       selectTenant,
       syncSessionTokenState,
+      clearSession,
       can,
       activeRoute,
       navigateTo,

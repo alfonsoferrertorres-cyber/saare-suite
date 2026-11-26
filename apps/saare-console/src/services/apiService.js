@@ -12,6 +12,11 @@ import {
 const DEFAULT_LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
 const ROUTE_MODE_KEY = 'SAARE_ROUTE_MODE'; // 'CLOUD_EDGE' | 'LOCAL_SIDECAR'
 
+const TOKEN_KEYS = ['saare_auth_token', 'saare_token'];
+const TENANT_KEYS = ['saare_tenant_domain', 'saare_tenant'];
+const USER_KEYS = ['saare_user_email'];
+const ROLE_KEYS = ['saare_user_role'];
+
 const readStorage = (keys = []) => {
   if (typeof window === 'undefined') return '';
   for (const key of keys) {
@@ -39,6 +44,12 @@ const writeStorage = (key, value) => {
     }
   } catch {
     // Ignorar restricciones de almacenamiento
+  }
+};
+
+const writeStorageKeys = (keys = [], value = '') => {
+  for (const key of keys) {
+    writeStorage(key, value);
   }
 };
 
@@ -76,10 +87,10 @@ function normalizeControlPlaneEndpoint(endpoint = '') {
 }
 
 function getAuthContext() {
-  const token = readStorage(['saare_auth_token', 'saare_token']);
-  const tenant = readStorage(['saare_tenant_domain', 'saare_tenant']) || '';
-  const user = readStorage(['saare_user_email']) || '';
-  const role = readStorage(['saare_user_role']) || '';
+  const token = readStorage(TOKEN_KEYS).replace(/^Bearer\s+/i, '').trim();
+  const tenant = readStorage(TENANT_KEYS).trim();
+  const user = readStorage(USER_KEYS).trim();
+  const role = readStorage(ROLE_KEYS).trim();
   const cleanRoot = resolveControlPlaneRoot();
   const baseUrl = `${cleanRoot}/api/v1`;
 
@@ -91,10 +102,20 @@ export async function saareFetch(endpoint, options = {}) {
   const normalizedEndpoint = normalizeControlPlaneEndpoint(endpoint);
   const url = `${cleanRoot}${normalizedEndpoint}`;
 
-  const activeToken = options.overrideToken !== undefined ? options.overrideToken : token;
-  const activeTenant = options.overrideTenant !== undefined ? options.overrideTenant : tenant;
-  const activeUser = options.overrideUser !== undefined ? options.overrideUser : user;
-  const activeRole = options.overrideRole !== undefined ? options.overrideRole : role;
+  const activeToken = String(
+    options.overrideToken !== undefined ? options.overrideToken : token
+  )
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+  const activeTenant = String(
+    options.overrideTenant !== undefined ? options.overrideTenant : tenant
+  ).trim();
+  const activeUser = String(
+    options.overrideUser !== undefined ? options.overrideUser : user
+  ).trim();
+  const activeRole = String(
+    options.overrideRole !== undefined ? options.overrideRole : role
+  ).trim();
 
   const headers = {
     'Content-Type': 'application/json',
@@ -121,6 +142,64 @@ export const apiService = {
       tenantId: tenant,
       tenantName: tenant,
       role
+    };
+  },
+
+  clearSession() {
+    writeStorageKeys(TOKEN_KEYS, '');
+    writeStorageKeys(TENANT_KEYS, '');
+    writeStorageKeys(USER_KEYS, '');
+    writeStorageKeys(ROLE_KEYS, '');
+  },
+
+  async login(email, password, tenantId = '') {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanTenant = String(tenantId || '').trim();
+    const { cleanRoot } = getAuthContext();
+
+    const res = await fetch(`${cleanRoot}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cleanTenant ? { 'x-saare-tenant': cleanTenant } : {})
+      },
+      body: JSON.stringify({
+        email: cleanEmail,
+        password,
+        ...(cleanTenant ? { tenantId: cleanTenant, tenant: cleanTenant } : {})
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(
+        data?.message || data?.error || `Credenciales no autorizadas (HTTP ${res.status}).`
+      );
+      err.status = res.status;
+      throw err;
+    }
+
+    const token = String(data?.token || data?.access_token || '')
+      .replace(/^Bearer\s+/i, '')
+      .trim();
+    const resolvedTenant = String(data?.user?.tenantId || data?.tenantId || cleanTenant).trim();
+    const resolvedEmail = String(data?.user?.email || cleanEmail).trim();
+    const resolvedRole = String(data?.user?.role || '').trim();
+
+    if (token) writeStorageKeys(TOKEN_KEYS, token);
+    if (resolvedTenant) writeStorageKeys(TENANT_KEYS, resolvedTenant);
+    if (resolvedEmail) writeStorageKeys(USER_KEYS, resolvedEmail);
+    if (resolvedRole) writeStorageKeys(ROLE_KEYS, resolvedRole);
+
+    return {
+      ...data,
+      token,
+      user: {
+        ...(data?.user || {}),
+        email: resolvedEmail,
+        tenantId: resolvedTenant,
+        ...(resolvedRole ? { role: resolvedRole } : {})
+      }
     };
   },
 
@@ -156,7 +235,7 @@ export const apiService = {
 
   downloadNativeSidecar(overrideTenant) {
     const { tenant, cleanRoot } = getAuthContext();
-    const targetTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    const targetTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
     const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
@@ -172,7 +251,7 @@ export const apiService = {
 
   async getKpis(startDate, endDate, overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
@@ -184,6 +263,10 @@ export const apiService = {
         method: 'GET',
         overrideTenant: activeTenant
       });
+      if (res && res.status === 401) {
+        console.warn('[SAARE API] Sesión no autorizada (401) en /metrics/tenants.');
+        return { unauthorized: true, status: 401 };
+      }
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data?.data) ? data.data : [];
@@ -211,8 +294,8 @@ export const apiService = {
     try {
       const { tenant, user } = getAuthContext();
       const limit = Number(params.limit) > 0 ? Number(params.limit) : 100;
-      const activeTenant = params.tenant !== undefined ? params.tenant : tenant;
-      const activeUser = params.user !== undefined ? params.user : user;
+      const activeTenant = String(params.tenant !== undefined ? params.tenant : tenant).trim();
+      const activeUser = String(params.user !== undefined ? params.user : user).trim();
 
       const searchParams = new URLSearchParams({ limit: String(limit) });
       if (activeTenant) searchParams.set('tenant', activeTenant);
@@ -226,6 +309,10 @@ export const apiService = {
         overrideToken: params.token
       });
 
+      if (res && res.status === 401) {
+        console.warn('[SAARE API] Sesión no autorizada (401) en /traces.');
+        return [];
+      }
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
         const list = Array.isArray(data)
@@ -245,7 +332,7 @@ export const apiService = {
 
   async getNodeStatus(overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
     try {
       const res = await saareFetch('/health', {
         method: 'GET',
@@ -305,7 +392,9 @@ export const apiService = {
     );
     const activeToken = bodyData.token !== undefined ? bodyData.token : token;
     const { token: _omitToken, ...rawBody } = bodyData;
-    const resolvedTenant = rawBody.tenant !== undefined ? rawBody.tenant : tenant;
+    const resolvedTenant = String(
+      rawBody.tenant !== undefined ? rawBody.tenant : tenant
+    ).trim();
     const cleanBody = {
       ...rawBody,
       ...(resolvedTenant
@@ -402,12 +491,20 @@ export const apiService = {
         });
       }
 
-      const errMsg = data.message || data.error || `HTTP ${res?.status}: Acceso bloqueado.`;
+      const isAuthError = res?.status === 401;
+      const errMsg =
+        data.message ||
+        data.error ||
+        (isAuthError
+          ? 'HTTP 401: Sesión no autorizada o token inválido.'
+          : `HTTP ${res?.status}: Acceso bloqueado.`);
+
       return normalizeVerdictResponse(
         {
           ...data,
           decision: 'DENY',
-          verdict: 'FAIL_CLOSED_BLOCKED',
+          verdict: isAuthError ? 'UNAUTHORIZED_401' : 'FAIL_CLOSED_BLOCKED',
+          httpStatus: res?.status || 0,
           error: errMsg,
           message: errMsg
         },
@@ -504,7 +601,7 @@ export const apiService = {
 
   async syncVault(overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
     try {
       let res = await saareFetch('/vault/sync', {
         method: 'GET',

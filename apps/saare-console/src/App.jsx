@@ -349,6 +349,18 @@ function SaareConsoleInner() {
     }, 4500);
   }, []);
 
+  const handleUnauthorizedSession = useCallback(
+    (contextLabel = 'sesión') => {
+      writeStorageItem('saare_token', '');
+      writeStorageItem('saare_auth_token', '');
+      setAuthToken('');
+      triggerGovernance(
+        `Sesión no autorizada o caducada (HTTP 401) en ${contextLabel}. Vuelve a cargar el token o iniciar sesión.`
+      );
+    },
+    [triggerGovernance]
+  );
+
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) {
@@ -454,7 +466,7 @@ function SaareConsoleInner() {
   const fetchBillingUsage = useCallback(
     async (overrideTenant = null, overrideToken = null) => {
       const targetTenant = normalizeTenantId(overrideTenant || tenantId);
-      const activeTok = overrideToken !== null ? overrideToken : authToken;
+      const activeTok = String(overrideToken !== null ? overrideToken : authToken).trim();
       if (!targetTenant) {
         setBillingInfo(null);
         return;
@@ -463,6 +475,11 @@ function SaareConsoleInner() {
         const headers = { 'x-saare-tenant': targetTenant };
         if (activeTok) headers.Authorization = `Bearer ${activeTok}`;
         const res = await fetch(getApiEndpoint('/api/v1/billing/usage'), { headers });
+        if (res.status === 401) {
+          setBillingInfo(null);
+          handleUnauthorizedSession('facturación');
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           setBillingInfo(data);
@@ -473,13 +490,13 @@ function SaareConsoleInner() {
         setBillingInfo(null);
       }
     },
-    [tenantId, authToken]
+    [tenantId, authToken, handleUnauthorizedSession]
   );
 
   const fetchCustomRules = useCallback(
     async (overrideTenant = null, overrideToken = null) => {
       const targetTenant = normalizeTenantId(overrideTenant || tenantId);
-      const activeTok = overrideToken !== null ? overrideToken : authToken;
+      const activeTok = String(overrideToken !== null ? overrideToken : authToken).trim();
       if (!targetTenant) {
         setCustomRules([]);
         return;
@@ -489,6 +506,10 @@ function SaareConsoleInner() {
         const headers = { 'x-saare-tenant': targetTenant, 'Content-Type': 'application/json' };
         if (activeTok) headers.Authorization = `Bearer ${activeTok}`;
         const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), { headers });
+        if (res.status === 401) {
+          handleUnauthorizedSession('reglas de gobernanza');
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           setCustomRules(Array.isArray(data?.rules) ? data.rules : []);
@@ -512,7 +533,7 @@ function SaareConsoleInner() {
         setIsRulesLoading(false);
       }
     },
-    [tenantId, authToken, triggerGovernance]
+    [tenantId, authToken, handleUnauthorizedSession, triggerGovernance]
   );
 
   const syncProtocolCommandsConfig = useCallback(
@@ -600,6 +621,11 @@ function SaareConsoleInner() {
           })
         });
 
+        if (res.status === 401) {
+          handleUnauthorizedSession('actualización de reglas');
+          return;
+        }
+
         const data = res.ok ? await res.json().catch(() => null) : null;
         const effectiveEnabled = typeof data?.enabled === 'boolean' ? data.enabled : desiredState;
         setTenantRulesEnabled(effectiveEnabled);
@@ -624,7 +650,7 @@ function SaareConsoleInner() {
         setIsRulesLoading(false);
       }
     },
-    [tenantId, authToken, customRules, protocolCommandsEnabled, triggerGovernance]
+    [tenantId, authToken, customRules, protocolCommandsEnabled, handleUnauthorizedSession, triggerGovernance]
   );
 
   const handleApplyIso42001Governance = async () => {
@@ -654,6 +680,11 @@ function SaareConsoleInner() {
           protocolCommands: protocolCommandsEnabled
         })
       });
+
+      if (res.status === 401) {
+        handleUnauthorizedSession('políticas ISO 42001');
+        return;
+      }
 
       const data = res.ok ? await res.json().catch(() => null) : null;
       setCustomRules(Array.isArray(data?.rules) ? data.rules : finalRules);
@@ -705,6 +736,11 @@ function SaareConsoleInner() {
         })
       });
 
+      if (res.status === 401) {
+        handleUnauthorizedSession('guardado de regla DLP');
+        return;
+      }
+
       if (!res.ok) {
         throw new Error('Error al sincronizar regla en Bóveda D1');
       }
@@ -737,6 +773,11 @@ function SaareConsoleInner() {
           protocolCommands: protocolCommandsEnabled
         })
       });
+
+      if (res.status === 401) {
+        handleUnauthorizedSession('eliminación de regla DLP');
+        return;
+      }
 
       if (!res.ok) {
         throw new Error('Error al eliminar regla en Bóveda D1');
@@ -799,7 +840,7 @@ function SaareConsoleInner() {
   const fetchTenantMetrics = useCallback(
     async (overrideTenant = null, overrideToken = null, overrideRole = null) => {
       const targetTenant = normalizeTenantId(overrideTenant || tenantId);
-      const activeTok = overrideToken !== null ? overrideToken : authToken;
+      const activeTok = String(overrideToken !== null ? overrideToken : authToken).trim();
       const activeRole = overrideRole || role;
       if (!targetTenant) {
         setTenantMetrics([]);
@@ -809,7 +850,7 @@ function SaareConsoleInner() {
       setIsFetchingMetrics(true);
       setMetricsError('');
       try {
-        const endpoint = getApiEndpoint('/v1/metrics/tenants');
+        const endpoint = getApiEndpoint('/api/v1/metrics/tenants');
         const headers = {
           'x-saare-tenant': targetTenant,
           ...(activeRole ? { 'x-saare-role': activeRole } : {}),
@@ -820,6 +861,12 @@ function SaareConsoleInner() {
         }
 
         const res = await fetch(endpoint, { method: 'GET', headers });
+        if (res.status === 401) {
+          setTenantMetrics([]);
+          setMetricsError('Sesión no autorizada (HTTP 401) al consultar métricas de tenants.');
+          handleUnauthorizedSession('métricas de tenants');
+          return;
+        }
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} al consultar métricas multi-tenant`);
         }
@@ -840,13 +887,13 @@ function SaareConsoleInner() {
         setIsFetchingMetrics(false);
       }
     },
-    [tenantId, role, authToken]
+    [tenantId, role, authToken, handleUnauthorizedSession]
   );
 
   const fetchTelemetryDirectFromVault = useCallback(
     async (overrideTenant = null, overrideToken = null) => {
       const targetTenant = normalizeTenantId(overrideTenant || tenantId);
-      const activeTok = overrideToken !== null ? overrideToken : authToken;
+      const activeTok = String(overrideToken !== null ? overrideToken : authToken).trim();
       if (!targetTenant) {
         setEvidences([]);
         setTenantMetrics([]);
@@ -921,6 +968,11 @@ function SaareConsoleInner() {
         })
       });
 
+      if (res.status === 401) {
+        handleUnauthorizedSession('sellado de lote forense');
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
@@ -943,7 +995,7 @@ function SaareConsoleInner() {
     } finally {
       setIsSealingBatch(false);
     }
-  }, [tenantId, authToken, triggerGovernance, pushActivity]);
+  }, [tenantId, authToken, handleUnauthorizedSession, triggerGovernance, pushActivity]);
 
   const handleDownloadForensicBatchBundle = useCallback(() => {
     if (!forensicBatch) return;
@@ -1275,6 +1327,7 @@ function SaareConsoleInner() {
         return;
       }
 
+      const targetTenant = normalizeTenantId(authForm.tenantId || tenantId || '');
       const endpoint =
         authTab === 'SANDBOX'
           ? getApiEndpoint('/api/v1/sandbox/provision')
@@ -1286,16 +1339,21 @@ function SaareConsoleInner() {
               email: authForm.email,
               companyName: authForm.companyName,
               name: authForm.name || authForm.email.split('@')[0],
-              password: authForm.password
+              password: authForm.password,
+              ...(targetTenant ? { tenantId: targetTenant } : {})
             }
           : {
               email: authForm.email,
-              password: authForm.password
+              password: authForm.password,
+              ...(targetTenant ? { tenantId: targetTenant, tenant: targetTenant } : {})
             };
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(targetTenant ? { 'x-saare-tenant': targetTenant } : {})
+        },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -1631,6 +1689,10 @@ function SaareConsoleInner() {
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
       };
       const res = await fetch(getApiEndpoint('/api/v1/forensics/manifest'), { headers });
+      if (res.status === 401) {
+        handleUnauthorizedSession('manifiesto ISO/IEC 27037');
+        return;
+      }
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -1655,7 +1717,7 @@ function SaareConsoleInner() {
     } catch {
       triggerGovernance('No se pudo obtener el manifiesto ISO/IEC 27037 desde la API.');
     }
-  }, [tenantId, authToken, triggerGovernance]);
+  }, [tenantId, authToken, handleUnauthorizedSession, triggerGovernance]);
 
   const runProtocolCommandNow = useCallback(
     async (cmd) => {
@@ -1680,9 +1742,13 @@ function SaareConsoleInner() {
           role
         });
         const latencyMs = `${(performance.now() - t0).toFixed(2)} ms`;
+        if (data?.httpStatus === 401 || data?.verdict === 'UNAUTHORIZED_401') {
+          handleUnauthorizedSession(`comando ${cmd.code}`);
+        }
         const isDeny =
           data?.decision === 'DENY' ||
           data?.verdict === 'FAIL_CLOSED_BLOCKED' ||
+          data?.verdict === 'UNAUTHORIZED_401' ||
           data?.verdict === 'RECHAZADO';
 
         setProtocolOutput({
@@ -1723,6 +1789,7 @@ function SaareConsoleInner() {
       authToken,
       userEmail,
       role,
+      handleUnauthorizedSession,
       triggerGovernance,
       fetchTelemetryDirectFromVault
     ]
@@ -1763,13 +1830,22 @@ function SaareConsoleInner() {
         role
       });
       const latencyMs = `${(performance.now() - t0).toFixed(2)} ms`;
+      if (data?.httpStatus === 401 || data?.verdict === 'UNAUTHORIZED_401') {
+        handleUnauthorizedSession('evaluación ex-ante');
+      }
       const isDeny =
         data?.decision === 'DENY' ||
         data?.verdict === 'FAIL_CLOSED_BLOCKED' ||
+        data?.verdict === 'UNAUTHORIZED_401' ||
         data?.verdict === 'RECHAZADO';
 
       const evalResult = {
-        verdict: isDeny ? 'RECHAZADO / SANITIZADO EN RAM' : 'PERMITIDO CONFORME',
+        verdict:
+          data?.verdict === 'UNAUTHORIZED_401'
+            ? 'NO AUTORIZADO (HTTP 401)'
+            : isDeny
+              ? 'RECHAZADO / SANITIZADO EN RAM'
+              : 'PERMITIDO CONFORME',
         decision: isDeny ? 'DENY' : 'ALLOW',
         sanitizedPrompt: isDeny
           ? '[PAYLOAD BLOQUEADO Y REDACTADO EN RAM]'
@@ -2449,6 +2525,20 @@ function SaareConsoleInner() {
                       border: '1px solid #334155',
                       color: '#fff',
                       borderRadius: '6px'
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tenant ID (opcional)"
+                    value={authForm.tenantId}
+                    onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
+                    style={{
+                      padding: '10px',
+                      background: '#020617',
+                      border: '1px solid #334155',
+                      color: '#fff',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem'
                     }}
                   />
                 </>

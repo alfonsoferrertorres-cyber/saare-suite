@@ -447,12 +447,21 @@ export function normalizeVerdictResponse(raw = {}, options = {}) {
     raw.evidence_hash
   );
 
-  const hasError = Boolean(raw.error) && verdict === L7_VERDICTS.DENY && !traceId;
+  const rawVerdictUpper = String(raw.verdict || enforcement.verdict || '').trim().toUpperCase();
+  const httpStatus = Number(raw.httpStatus ?? 0) || 0;
+  const isTransportOrAuthFailure =
+    httpStatus === 401 ||
+    httpStatus >= 500 ||
+    rawVerdictUpper === 'UNAUTHORIZED_401' ||
+    rawVerdictUpper === 'FAIL_CLOSED' ||
+    rawVerdictUpper === 'LOCAL_SIDECAR_UNREACHABLE' ||
+    (Boolean(raw.error) && verdict === L7_VERDICTS.DENY && !traceId);
 
   return {
-    ok: !hasError && verdict !== L7_VERDICTS.DENY,
+    ok: !isTransportOrAuthFailure && verdict !== L7_VERDICTS.DENY,
     simulation: isSimulation,
-    executionStatus: hasError ? EXECUTION_STATUS.FAILED : EXECUTION_STATUS.VERIFIED,
+    executionStatus: isTransportOrAuthFailure ? EXECUTION_STATUS.FAILED : EXECUTION_STATUS.VERIFIED,
+    httpStatus,
     verdict,
     rawDecision: pickFirstString(raw.decision, enforcement.verdict, verdict),
     traceId,
@@ -469,7 +478,7 @@ export function normalizeVerdictResponse(raw = {}, options = {}) {
       : Array.isArray(enforcement.rulesApplied)
       ? enforcement.rulesApplied
       : [],
-    error: pickFirstString(raw.error, hasError ? raw.message : ''),
+    error: pickFirstString(raw.error, isTransportOrAuthFailure ? raw.message : ''),
     message: pickFirstString(raw.message, raw.error)
   };
 }

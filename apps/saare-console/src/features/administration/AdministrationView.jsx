@@ -38,6 +38,7 @@ export default function AdministrationView({
 
   const [tenantDraft, setTenantDraft] = useState(tenantId || '');
   const [licenseBusy, setLicenseBusy] = useState(false);
+  const [manifestBusy, setManifestBusy] = useState(false);
   const [licenseSummary, setLicenseSummary] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusTone, setStatusTone] = useState('info'); // 'info' | 'success' | 'error'
@@ -106,7 +107,11 @@ export default function AdministrationView({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Error HTTP ${res.status}`);
+        const defaultMsg =
+          res.status === 401
+            ? 'Sesión no autorizada o token inválido (HTTP 401).'
+            : `Error HTTP ${res.status}`;
+        throw new Error(data?.message || data?.error || defaultMsg);
       }
 
       const summary = {
@@ -164,38 +169,58 @@ export default function AdministrationView({
   };
 
   const handleDownloadManifest = async () => {
+    if (manifestBusy) return;
     if (!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)) {
       setFeedback('Permiso denegado para descargar manifiestos.', 'error');
       return;
     }
 
-    if (typeof onDownloadIso27037Manifest === 'function') {
-      await onDownloadIso27037Manifest();
-      const msg = `Manifiesto ISO/IEC 27037 solicitado para ${tenantLabel}.`;
-      setFeedback(msg, 'success');
-      pushActivity({
-        module: 'ADMINISTRATION',
-        action: 'DOWNLOAD_MANIFEST',
-        status: EXECUTION_STATUS.VERIFIED,
-        summary: msg
-      });
-      return;
-    }
+    setManifestBusy(true);
+    setFeedback(`Solicitando manifiesto técnico ISO/IEC 27037 para ${tenantLabel}...`, 'info');
 
-    setFeedback(`Solicitando manifiesto técnico para ${tenantLabel}...`, 'info');
     try {
+      if (typeof onDownloadIso27037Manifest === 'function') {
+        const result = await onDownloadIso27037Manifest();
+        if (result && result.ok === false) {
+          throw new Error(result.error || 'No se pudo descargar el manifiesto ISO/IEC 27037');
+        }
+        const msg = `Manifiesto ISO/IEC 27037 descargado para ${tenantLabel}.`;
+        setFeedback(msg, 'success');
+        pushActivity({
+          module: 'ADMINISTRATION',
+          action: 'DOWNLOAD_MANIFEST',
+          status: EXECUTION_STATUS.VERIFIED,
+          summary: msg
+        });
+        return;
+      }
+
       const res = await saareFetch('/forensics/manifest', {
         method: 'GET',
         overrideTenant: activeTenant || undefined
       });
-      const data = await res.json().catch(() => ({}));
+      const rawText = await res.text().catch(() => '');
+      let parsedData = null;
+      try {
+        parsedData = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        parsedData = null;
+      }
+
       if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Error HTTP ${res.status}`);
+        const defaultMsg =
+          res.status === 401
+            ? 'Sesión no autorizada o token inválido (HTTP 401).'
+            : `Error HTTP ${res.status}`;
+        throw new Error(parsedData?.message || parsedData?.error || defaultMsg);
       }
 
       if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const fileSlug = activeTenant || 'CONTEXTO';
-        const blob = new Blob([JSON.stringify(data, null, 2)], {
+        const contentToSave = parsedData
+          ? JSON.stringify(parsedData, null, 2)
+          : rawText;
+        const blob = new Blob([contentToSave], {
           type: 'application/json;charset=utf-8'
         });
         const url = URL.createObjectURL(blob);
@@ -225,6 +250,8 @@ export default function AdministrationView({
         status: EXECUTION_STATUS.FAILED,
         summary: errMsg
       });
+    } finally {
+      setManifestBusy(false);
     }
   };
 
@@ -509,14 +536,18 @@ export default function AdministrationView({
 
           <button
             type="button"
-            disabled={!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
+            disabled={manifestBusy || !can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
             onClick={handleDownloadManifest}
             style={{
               ...buttonSecondaryStyle,
-              cursor: can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS) ? 'pointer' : 'not-allowed'
+              cursor: manifestBusy
+                ? 'wait'
+                : can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)
+                  ? 'pointer'
+                  : 'not-allowed'
             }}
           >
-            Manifiesto ISO 27037 (.JSON)
+            {manifestBusy ? 'Descargando...' : 'Manifiesto ISO 27037 (.JSON)'}
           </button>
         </div>
       </section>
