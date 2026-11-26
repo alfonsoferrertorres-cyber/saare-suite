@@ -30,7 +30,6 @@ import {
   getPlanEntitlements
 } from "./src/packages/entitlements.js";
 
-const DEFAULT_ACTIVE_TENANT = "DEMO_ENTERPRISE";
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const semanticDetox = new SemanticDetoxEngine();
 let d1TablesInitialized = false;
@@ -133,6 +132,18 @@ function getJwtSecret(env) {
     return "dev_only_local_jwt_secret_change_in_prod";
   }
   throw new Error("JWT_SECRET no configurado en el entorno de producción.");
+}
+
+function normalizeTenantCode(rawTenant = "") {
+  return String(rawTenant || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "_")
+    .slice(0, 32);
+}
+
+function resolveConfiguredDefaultTenant(env) {
+  return normalizeTenantCode(env?.DEFAULT_TENANT || "");
 }
 
 function isSafeRegexPattern(pattern = "") {
@@ -647,7 +658,7 @@ async function ensureD1TablesExist(db) {
           decision TEXT NOT NULL DEFAULT 'ALLOW',
           verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
           user TEXT NOT NULL DEFAULT 'anonymous',
-          tenant TEXT NOT NULL DEFAULT 'DEMO_ENTERPRISE',
+          tenant TEXT NOT NULL DEFAULT '',
           prompt TEXT DEFAULT '',
           responseOutput TEXT DEFAULT '',
           payload_json TEXT NOT NULL,
@@ -759,11 +770,6 @@ async function ensureD1TablesExist(db) {
     try {
       await db.prepare("ALTER TABLE forensic_batches ADD COLUMN tsr_base64 TEXT DEFAULT ''").run();
     } catch (_altErr4) {}
-
-    await db.prepare(`
-      INSERT OR IGNORE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json)
-      VALUES ('DEMO_ENTERPRISE', 'Demo Enterprise Multi-Profile Tenant', 'ENTERPRISE_1990', 'ACTIVE', 1000000, NULL, '{"multiBrowserProfile":true}')
-    `).run();
 
     d1TablesInitialized = true;
   } catch (_e) {
@@ -1001,7 +1007,7 @@ async function getOrCreateTenantLicenseKey(tenantId, env) {
 }
 
 async function processBatchMerkleAnchor(tenantId, env) {
-  if (!env || !env.DB) return;
+  if (!env || !env.DB || !tenantId) return;
   try {
     await ensureD1TablesExist(env.DB);
     const pendingRes = await env.DB.prepare(
@@ -1061,12 +1067,13 @@ async function processBatchMerkleAnchor(tenantId, env) {
 function getFallbackUserVault(env) {
   const primaryAdmin = sanitizeEmail(env?.ADMIN_EMAIL);
   const demoPassword = env?.ADMIN_DEMO_PASSWORD;
+  const fallbackTenant = resolveConfiguredDefaultTenant(env);
   if (!primaryAdmin || !demoPassword) return {};
 
   return {
     [primaryAdmin]: {
       name: "System Administrator",
-      company: DEFAULT_ACTIVE_TENANT,
+      company: fallbackTenant,
       password_hash: demoPassword,
       is_verified: 1,
       role: "CISO_ADMIN"
@@ -1218,6 +1225,7 @@ export default {
     try {
       const urlObj = new URL(request.url);
       const lowerPath = urlObj.pathname.toLowerCase();
+      const configuredDefaultTenant = resolveConfiguredDefaultTenant(env);
 
       if (request.method === "GET" && (lowerPath === "/" || lowerPath === "")) {
         return new Response(
@@ -1227,7 +1235,7 @@ export default {
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
             engine: "BLOCK LOGIC + SEMANTIC DETOX RAM + MERKLE + EIDAS + SHAMIR 2-OF-3",
             status: "ONLINE",
-            defaultTenant: DEFAULT_ACTIVE_TENANT,
+            defaultTenant: configuredDefaultTenant || null,
             multiProfileInterception: true,
             resilience: "MAX_AVAILABILITY_FAIL_SAFE",
             billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
@@ -1261,7 +1269,7 @@ export default {
           JSON.stringify({
             status: "ACTIVE",
             protocol: "SGP-1.0",
-            defaultTenant: DEFAULT_ACTIVE_TENANT,
+            defaultTenant: configuredDefaultTenant || null,
             expediente: env?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE",
             structuralDeltaRule: "|psi_Esperado - psi_Observado| < 0.01%",
             latencyTargetMs: "<1.16",
@@ -1322,7 +1330,7 @@ export default {
             version: env?.SGP_SPEC_VERSION || "SGP 1.0",
             author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
             engine: "BLOCK LOGIC + SemanticDetox",
-            defaultTenant: DEFAULT_ACTIVE_TENANT,
+            defaultTenant: configuredDefaultTenant || null,
             activeScenarios: ScenarioRegistry?.length || 10,
             trustAnchor: env?.TRUST_ANCHOR || null,
             timestamp: new Date().toISOString()
@@ -1367,25 +1375,28 @@ export default {
 
       const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified || kvLicenseTenant);
 
-      const boundTenant =
+      const boundTenant = normalizeTenantCode(
         kvLicenseTenant ||
-        (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : null) ||
-        null;
+          (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : "") ||
+          ""
+      );
 
-      const requestedTenantHeader = request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant");
+      const requestedTenantHeader = normalizeTenantCode(
+        request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || ""
+      );
       const activeUserRole = isAuthenticated
         ? (identity?.role || (kvLicenseTenant ? "TENANT_API_KEY" : "TENANT_ADMIN"))
         : "OPERATOR_UNAUTHENTICATED";
 
       const isGlobalAdmin = isAuthenticated && activeUserRole === "CISO_ADMIN" && !boundTenant;
       const tenantId = isGlobalAdmin
-        ? (requestedTenantHeader || DEFAULT_ACTIVE_TENANT)
-        : (boundTenant || requestedTenantHeader || DEFAULT_ACTIVE_TENANT);
+        ? (requestedTenantHeader || configuredDefaultTenant)
+        : (boundTenant || requestedTenantHeader || configuredDefaultTenant);
 
       const tenantPlan = sanitizePlanId(
         identity?.planId ||
         request.headers.get("x-saare-plan") ||
-        (tenantId === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649)
+        PLAN_IDS.PROFESSIONAL_649
       );
 
       const scopedTenantId = tenantId;
@@ -1393,12 +1404,12 @@ export default {
       if ((path === "/api/v1/forensics/batch/seal" || path === "/v1/forensics/batch/seal") && method === "POST") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
-        const targetTenant = String(
+        const targetTenant = normalizeTenantCode(
           isGlobalAdmin ? (body.tenantId || scopedTenantId) : scopedTenantId
-        ).trim().toUpperCase();
+        );
 
         let evidences = Array.isArray(body.evidences) ? body.evidences : [];
-        if (evidences.length === 0) {
+        if (evidences.length === 0 && targetTenant) {
           try {
             const vaultEngine = new EvidenceVaultEngine(env);
             const traces = await vaultEngine.getTenantTraces(targetTenant, Number(body.limit) || 100);
@@ -1423,7 +1434,7 @@ export default {
           env
         );
 
-        if (env?.DB) {
+        if (env?.DB && bundle.tenantId) {
           try {
             await ensureD1TablesExist(env.DB);
             await env.DB.prepare(`
@@ -1455,7 +1466,7 @@ export default {
         }
 
         const kvBatch = getKvBinding(env);
-        if (kvBatch) {
+        if (kvBatch && bundle.tenantId) {
           try {
             await kvBatch.put(`forensic_batch:latest:${bundle.tenantId}`, JSON.stringify(bundle), {
               expirationTtl: 86400 * 90
@@ -1485,10 +1496,12 @@ export default {
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
-        const targetTenant = isGlobalAdmin
-          ? (urlObj.searchParams.get("tenant") || scopedTenantId)
-          : scopedTenantId;
-        const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
+        const targetTenant = normalizeTenantCode(
+          isGlobalAdmin
+            ? (urlObj.searchParams.get("tenant") || scopedTenantId)
+            : scopedTenantId
+        );
+        const licenseKey = targetTenant ? await getOrCreateTenantLicenseKey(targetTenant, env) : "";
         const extId = env?.CHROME_EXTENSION_ID || "EXTENSION_ID_UNCONFIGURED";
         const gatewayUrl = env?.PUBLIC_API_URL || "https://api.saare.es/v1/chat/completions";
 
@@ -1520,7 +1533,7 @@ export default {
           headers: {
             ...corsHeaders,
             "Content-Type": "text/plain; charset=utf-8",
-            "Content-Disposition": `attachment; filename="saare_gpo_${targetTenant.toLowerCase()}.reg"`
+            "Content-Disposition": `attachment; filename="saare_gpo_${(targetTenant || "tenant").toLowerCase()}.reg"`
           }
         });
       }
@@ -1551,8 +1564,8 @@ export default {
         try {
           return await handleStripeWebhook(request, env);
         } catch (stripeErr) {
-          return new Response(JSON.stringify({ status: "RECEIVED_WITH_RESILIENCE_WARNING", error: stripeErr.message }), {
-            status: 200,
+          return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_ERROR", message: stripeErr.message }), {
+            status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
         }
@@ -1571,7 +1584,10 @@ export default {
           });
         }
 
-        const cleanTenant = `TNT_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20)}_${Date.now().toString(36).toUpperCase()}`;
+        const cleanTenant = normalizeTenantCode(
+          body.tenantId ||
+            `TNT_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20)}_${Date.now().toString(36).toUpperCase()}`
+        );
         const priceMap = {
           STARTER_199: env?.STRIPE_PRICE_STARTER,
           COMPLIANCE_249: env?.STRIPE_PRICE_STARTER,
@@ -1672,7 +1688,9 @@ export default {
           const maxSeats = sandboxEntitlements?.maxSeats || 2;
           const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
 
-          const sandboxTenantId = `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`;
+          const sandboxTenantId = normalizeTenantCode(
+            `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`
+          );
           const passwordHash = await hashPasswordPbkdf2(rawPassword);
           const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
 
@@ -1727,7 +1745,7 @@ export default {
 
       try {
         if (typeof rateLimiter.check === "function") {
-          const rateResult = await rateLimiter.check(tenantId);
+          const rateResult = await rateLimiter.check(tenantId || clientIp);
           if (rateResult && rateResult.allowed === false) {
             return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
               status: 429,
@@ -1739,11 +1757,13 @@ export default {
 
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
-        const targetTenant = isGlobalAdmin
-          ? (urlObj.searchParams.get("tenant") || scopedTenantId)
-          : scopedTenantId;
+        const targetTenant = normalizeTenantCode(
+          isGlobalAdmin
+            ? (urlObj.searchParams.get("tenant") || scopedTenantId)
+            : scopedTenantId
+        );
         let soaRecord = null;
-        if (env?.DB) {
+        if (env?.DB && targetTenant) {
           try {
             await ensureD1TablesExist(env.DB);
             const row = await env.DB.prepare(
@@ -1773,7 +1793,15 @@ export default {
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "POST") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
-        const targetTenant = isGlobalAdmin ? (body.tenant || scopedTenantId) : scopedTenantId;
+        const targetTenant = normalizeTenantCode(
+          isGlobalAdmin ? (body.tenant || scopedTenantId) : scopedTenantId
+        );
+        if (!targetTenant) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Se requiere un tenant válido." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         const roleType = String(body.roleType || "INTEGRADOR_DESARROLLADOR").slice(0, 80);
         const aiActScope = String(body.aiActScope || "ALTO_RIESGO_Y_TRANSPARENCIA").slice(0, 80);
         const organizationName = String(body.organizationName || targetTenant).slice(0, 160);
@@ -1823,6 +1851,12 @@ export default {
 
       if ((path === "/api/v1/billing/usage" || path === "/v1/billing/usage" || path === "/billing/usage") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
+        if (!tenantId) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "No se ha especificado un tenant." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         await ensureD1TablesExist(env.DB);
         let tenantRow = null;
         try {
@@ -1873,7 +1907,9 @@ export default {
         await ensureD1TablesExist(env.DB);
         let tenantRow = null;
         try {
-          tenantRow = env?.DB ? await env.DB.prepare("SELECT config_json FROM tenants WHERE tenant_id = ?").bind(tenantId).first() : null;
+          tenantRow = env?.DB && tenantId
+            ? await env.DB.prepare("SELECT config_json FROM tenants WHERE tenant_id = ?").bind(tenantId).first()
+            : null;
         } catch (_e) {}
         const cfg = tenantRow?.config_json ? JSON.parse(tenantRow.config_json) : {};
 
@@ -1906,8 +1942,10 @@ export default {
 
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
-        const targetTenant = isGlobalAdmin ? (urlObj.searchParams.get("tenant") || tenantId) : tenantId;
-        const licenseKey = await getOrCreateTenantLicenseKey(targetTenant, env);
+        const targetTenant = normalizeTenantCode(
+          isGlobalAdmin ? (urlObj.searchParams.get("tenant") || tenantId) : tenantId
+        );
+        const licenseKey = targetTenant ? await getOrCreateTenantLicenseKey(targetTenant, env) : "";
         const apiOrigin = urlObj.origin;
 
         const envContent = [
@@ -1925,7 +1963,7 @@ export default {
           headers: {
             ...corsHeaders,
             "Content-Type": "text/plain; charset=utf-8",
-            "Content-Disposition": `attachment; filename="saare_${targetTenant.toLowerCase()}.env"`
+            "Content-Disposition": `attachment; filename="saare_${(targetTenant || "tenant").toLowerCase()}.env"`
           }
         });
       }
@@ -1933,7 +1971,9 @@ export default {
       if ((path === "/api/v1/ingest-trace" || path === "/v1/ingest-trace" || path === "/ingest-trace") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const profileContext = resolveClientProfileContext(request, body, identity, cfIdentity);
-        const resolvedTenant = isGlobalAdmin ? (body.tenant_id || tenantId) : scopedTenantId;
+        const resolvedTenant = normalizeTenantCode(
+          isGlobalAdmin ? (body.tenant_id || tenantId) : scopedTenantId
+        );
 
         const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, resolvedTenant, tenantPlan);
         if (!quotaCheck.allowed) {
@@ -2134,7 +2174,7 @@ export default {
           const cpaasResult = await CPaaSAdapterManager.sendWithFailover(body, env, priorityOrder);
           const evidenceHash = await computeSha256(`${auditTenantId}:${cpaasResult.provider}:${cpaasResult.messageId}:${Date.now()}`);
 
-          if (env?.DB) {
+          if (env?.DB && auditTenantId) {
             const auditInsert = async () => {
               try {
                 await ensureD1TablesExist(env.DB);
@@ -2183,8 +2223,10 @@ export default {
         const profileContext = resolveClientProfileContext(request, {}, identity, cfIdentity);
         let tenantInfo = { status: "ACTIVE" };
         try {
-          const tenantMgr = new TenantManager(env);
-          tenantInfo = await tenantMgr.getTenant(tenantId) || { status: "ACTIVE" };
+          if (tenantId) {
+            const tenantMgr = new TenantManager(env);
+            tenantInfo = await tenantMgr.getTenant(tenantId) || { status: "ACTIVE" };
+          }
         } catch (_e) {}
 
         const activePlan = sanitizePlanId(tenantInfo?.planId || tenantPlan);
@@ -2240,7 +2282,7 @@ export default {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         let usersList = [];
         let activePlan = tenantPlan;
-        if (env?.DB) {
+        if (env?.DB && tenantId) {
           try {
             await ensureD1TablesExist(env.DB);
             const tenantRow = await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantId).first();
@@ -2283,7 +2325,7 @@ export default {
           });
         }
 
-        if (env?.DB) {
+        if (env?.DB && scopedTenantId) {
           try {
             await ensureD1TablesExist(env.DB);
             const passwordHash = rawAssignPassword.length >= 6
@@ -2308,7 +2350,7 @@ export default {
         let rules = [];
         const rulesEnabled = await getTenantRulesEnabled(env, scopedTenantId);
         const protocolCommands = await getTenantProtocolCommands(env, scopedTenantId);
-        if (env?.DB) {
+        if (env?.DB && scopedTenantId) {
           try {
             await ensureD1TablesExist(env.DB);
             const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).all();
@@ -2331,7 +2373,7 @@ export default {
         const nextEnabled = typeof body?.enabled === "boolean" ? body.enabled : currentEnabled;
 
         let rules = [];
-        if (env?.DB) {
+        if (env?.DB && scopedTenantId) {
           try {
             await ensureD1TablesExist(env.DB);
             const { results } = await env.DB.prepare("SELECT * FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).all();
@@ -2347,7 +2389,7 @@ export default {
 
           const validRules = candidateRules.filter((r) => r?.name && isSafeRegexPattern(r?.pattern));
 
-          if (env?.DB) {
+          if (env?.DB && scopedTenantId) {
             try {
               await ensureD1TablesExist(env.DB);
               await env.DB.prepare("DELETE FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).run();
@@ -2448,14 +2490,18 @@ export default {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const limitParam = parseInt(urlObj.searchParams.get("limit") || "100", 10);
         const safeLimit = Math.min(Math.max(limitParam, 1), 500);
-        const activeTenant = isGlobalAdmin
-          ? (request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId)
-          : scopedTenantId;
+        const activeTenant = normalizeTenantCode(
+          isGlobalAdmin
+            ? (request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || tenantId)
+            : scopedTenantId
+        );
 
         let tracesList = [];
         try {
-          const vaultEngine = new EvidenceVaultEngine(env);
-          tracesList = await vaultEngine.getTenantTraces(activeTenant, safeLimit);
+          if (activeTenant) {
+            const vaultEngine = new EvidenceVaultEngine(env);
+            tracesList = await vaultEngine.getTenantTraces(activeTenant, safeLimit);
+          }
         } catch (_tErr) {}
 
         return new Response(JSON.stringify({
@@ -2567,9 +2613,11 @@ export default {
         }
 
         const profileContext = resolveClientProfileContext(request, payloadBody, identity, cfIdentity);
-        const tenant = isGlobalAdmin
-          ? (request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId)
-          : scopedTenantId;
+        const tenant = normalizeTenantCode(
+          isGlobalAdmin
+            ? (request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId)
+            : scopedTenantId
+        );
 
         const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, tenant, tenantPlan);
         if (!quotaCheck.allowed) {
@@ -2635,7 +2683,7 @@ export default {
 
         const rulesEnabled = await getTenantRulesEnabled(env, tenant);
         let tenantCustomRules = [];
-        if (rulesEnabled && env?.DB) {
+        if (rulesEnabled && env?.DB && tenant) {
           try {
             const { results } = await env.DB.prepare("SELECT name, pattern FROM custom_rules WHERE tenant_id = ?").bind(tenant).all();
             if (results) tenantCustomRules = results.filter((r) => isSafeRegexPattern(r?.pattern));
@@ -2693,7 +2741,7 @@ export default {
           const alarmDispatch = async () => {
             try {
               const evidenceHash = await computeSha256(`${tenant}:${user}:${rulesTriggered.join("|")}:${Date.now()}`);
-              if (env?.DB) {
+              if (env?.DB && tenant) {
                 await ensureD1TablesExist(env.DB);
                 await env.DB.prepare(`
                   INSERT INTO cpaas_audit_logs (id, tenant_id, provider, message_id, recipient, status, evidence_hash, created_at)
@@ -2977,8 +3025,15 @@ export default {
 
       if ((path === "/auth/login" || path === "/v1/auth/login" || path === "/api/v1/auth/login") && method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const cleanEmail = sanitizeEmail(body.email) || "auditor@saare.es";
+        const cleanEmail = sanitizeEmail(body.email);
         const cleanPassword = body.password ? body.password.trim() : "";
+
+        if (!cleanEmail || !cleanPassword) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Indica correo y contraseña." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
 
         const masterSecret = !isProductionEnv(env) && env?.MASTER_TEST_PASSWORD
           ? String(env.MASTER_TEST_PASSWORD).trim()
@@ -2988,7 +3043,7 @@ export default {
         let userRecord = null;
 
         if (!isMasterLogin) {
-          if (env?.DB && cleanEmail) {
+          if (env?.DB) {
             try {
               await ensureD1TablesExist(env.DB);
               userRecord = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
@@ -3007,7 +3062,7 @@ export default {
               userRecord = {
                 email: cleanEmail,
                 name: "System Administrator",
-                company: DEFAULT_ACTIVE_TENANT,
+                company: configuredDefaultTenant,
                 role: "CISO_ADMIN"
               };
             } else {
@@ -3021,21 +3076,23 @@ export default {
           userRecord = {
             email: cleanEmail,
             name: "Operador Master (Modo Pruebas)",
-            company: body.tenant || body.tenantId || DEFAULT_ACTIVE_TENANT,
+            company: normalizeTenantCode(body.tenant || body.tenantId || configuredDefaultTenant),
             role: "CISO_ADMIN"
           };
         }
 
-        const tenantName = body.tenant || body.tenantId || userRecord.company || DEFAULT_ACTIVE_TENANT;
+        const tenantName = normalizeTenantCode(
+          body.tenant || body.tenantId || userRecord.company || configuredDefaultTenant
+        );
         const userRole = isMasterLogin ? "CISO_ADMIN" : (userRecord.role || "DPO_GRC_LEVEL_2");
         const browserProfile = sanitizeProfileTag(body.browserProfile || request.headers.get("x-saare-browser-profile"), "BROWSER_PROFILE_UNSPECIFIED");
         const clientProfile = sanitizeProfileTag(body.clientProfile || request.headers.get("x-saare-client-profile"), "CLIENT_PROFILE_STANDARD");
 
-        const tenantRow = env?.DB
+        const tenantRow = env?.DB && tenantName
           ? await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantName).first().catch(() => null)
           : null;
-        const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || (tenantName === DEFAULT_ACTIVE_TENANT ? PLAN_IDS.ENTERPRISE_1990 : PLAN_IDS.PROFESSIONAL_649));
-        const realApiKey = await getOrCreateTenantLicenseKey(tenantName, env);
+        const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || PLAN_IDS.PROFESSIONAL_649);
+        const realApiKey = tenantName ? await getOrCreateTenantLicenseKey(tenantName, env) : "";
 
         const auth = new AuthMiddleware(getJwtSecret(env), env);
         const jwtToken = await auth.signToken({
@@ -3093,7 +3150,7 @@ export default {
           "SELECT DISTINCT tenant_id FROM consolidated_traces WHERE anchored = 0 LIMIT 100"
         ).all();
         if (results && results.length > 0) {
-          targetTenants = results.map(r => r.tenant_id);
+          targetTenants = results.map(r => r.tenant_id).filter(Boolean);
         }
       }
     } catch (_e) {}
