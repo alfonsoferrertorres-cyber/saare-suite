@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS runs (
   user TEXT NOT NULL DEFAULT 'anonymous',
   created_at TEXT DEFAULT (datetime('now')),
   verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-  tenant TEXT NOT NULL DEFAULT 'ENTERPRISE',
+  tenant TEXT NOT NULL DEFAULT '',
   prompt TEXT DEFAULT '',
   responseOutput TEXT DEFAULT '',
   payload_json TEXT DEFAULT '{}'
@@ -84,12 +84,14 @@ CREATE TABLE IF NOT EXISTS forensic_batches (
   is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
   assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
   tsa_reference TEXT DEFAULT '',
+  tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY',
+  tsr_base64 TEXT DEFAULT '',
   batch_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS custom_rules (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,
   name TEXT NOT NULL,
   pattern TEXT NOT NULL,
@@ -98,12 +100,19 @@ CREATE TABLE IF NOT EXISTS custom_rules (
   priority INTEGER NOT NULL DEFAULT 100,
   action TEXT NOT NULL DEFAULT 'BLOCK',
   description TEXT,
-  updated_at TEXT
+  updated_at TEXT,
+  PRIMARY KEY (tenant_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS tenant_rule_settings (
   tenant_id TEXT PRIMARY KEY,
   rules_enabled INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS tenant_protocol_settings (
+  tenant_id TEXT PRIMARY KEY,
+  commands_json TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -153,6 +162,3 @@ CREATE INDEX IF NOT EXISTS idx_custom_rules_tenant_enabled
 
 CREATE INDEX IF NOT EXISTS idx_cpaas_audit_logs_tenant_created
   ON cpaas_audit_logs (tenant_id, created_at DESC);
-
-INSERT OR IGNORE INTO tenants (id, tenant_id, name, plan, plan_id, status, quota, monthly_quota, config_json)
-VALUES ('DEMO_ENTERPRISE', 'DEMO_ENTERPRISE', 'Demo Enterprise Multi-Profile Tenant', 'ENTERPRISE', 'ENTERPRISE_1990', 'ACTIVE', 1000000, 1000000, '{"multiBrowserProfile":true}');
