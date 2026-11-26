@@ -101,3 +101,4 @@ $sealRecord | ConvertTo-Json -Depth 5 | Set-Content -Path $manifestPath -Encodin
 Write-Host "[+] Manifiesto de sello generado en: $manifestPath" -ForegroundColor Green
 Write-Host "[+] SHA-256 vinculado: $computedSha256" -ForegroundColor Yellow
 Write-Host "[+] Estado RFC 3161: $tsaStatus" -ForegroundColor Cyan
+*.egg-info/
