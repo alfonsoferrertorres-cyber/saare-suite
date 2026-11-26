@@ -6,7 +6,7 @@ const ALLOWED_TOOL_GRAMMAR = /^[a-zA-Z0-9_.:-]{1,64}$/;
 const FORBIDDEN_AST_PATTERNS = [
   /\b(eval|exec|execSync|spawn|spawnSync|fork|Function|setTimeout|setInterval)\s*\(/i,
   /\b(child_process|os\.system|subprocess|pickle\.loads|yaml\.load|__import__)\b/i,
-  /(\bDROP\s+TABLE\b|\bTRUNCATE\s+TABLE\b|\bDELETE\s+FROM\b|\bUNION\s+SELECT\b|--\s*$)/i,
+  /(\bDROP\s+TABLE\b|\bTRUNCATE\s+TABLE\b|\bDELETE\s+FROM\b|\bUNION\s+SELECT\b|--\s*$)/im,
   /(\$\(.*\)|`[^`]+`|\|\|\s*rm\s+-rf|;\s*rm\s+-rf|\bcurl\s+http|\bwget\s+http)/i,
   /(ignore\s+all\s+previous\s+instructions|system\s+override|developer\s+mode|jailbreak)/i
 ];

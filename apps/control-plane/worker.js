@@ -544,9 +544,12 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
 const MERKLE_BATCH_THRESHOLD = 1000;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 
-function parseSemanticCommand(promptText, env = {}) {
-  if (typeof promptText !== "string") return null;
-  const upper = promptText.toUpperCase();
+function parseSemanticCommand(promptText, env = {}, explicitCode = "") {
+  const cleanExplicit = typeof explicitCode === "string" ? explicitCode.trim().toUpperCase() : "";
+  const upper = typeof promptText === "string" ? promptText.toUpperCase() : "";
+  const combined = `${cleanExplicit} ${upper}`;
+  if (!combined.trim()) return null;
+
   const authorName = env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane";
   const baseIdentity = {
     nodeIdentity: "NATIVE_MS3V_BLOCK_LOGIC_PEP_L7",
@@ -554,22 +557,26 @@ function parseSemanticCommand(promptText, env = {}) {
     author: authorName
   };
 
-  if (upper.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || upper.includes("[MS3V-COMPLIANCE-L7-OK]")) {
-    return { type: "MODULE_5_BOOTSTRAP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "MODULE_5_EX_ANTE_COMPLIANCE", norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)", witness: "[MS3V-COMPLIANCE-L7-OK]", vaultTarget: "D1_WORM", ...baseIdentity };
+  if (combined.includes("INICIAR_CUMPLIMIENTO_EXANTE_SAARE") || combined.includes("[MS3V-COMPLIANCE-L7-OK]")) {
+    return { code: "INICIAR_CUMPLIMIENTO_EXANTE_SAARE", type: "MODULE_5_BOOTSTRAP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "MODULE_5_EX_ANTE_COMPLIANCE", norma: "EU AI Act Art. 27 / RGPD Art. 25 (k>=5)", witness: "[MS3V-COMPLIANCE-L7-OK]", vaultTarget: "D1_WORM", ...baseIdentity };
   }
-  if (upper.includes("SAARE_CONTROL.PY --KILL") || upper.includes("KILL-SWITCH")) {
-    return { type: "KILL_SWITCH_TRIGGERED", verdict: "RECHAZADO", decision: "DENY", scenarioId: "razonamiento_activo_l7", category: "EMERGENCY_DEACTIVATION", norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico", witness: "[KILL-SWITCH-ENFORCED]", vaultTarget: "RAM", ...baseIdentity };
+  if (combined.includes("SAARE_CONTROL.PY --KILL") || combined.includes("KILL-SWITCH")) {
+    return { code: cleanExplicit === "KILL-SWITCH" ? "KILL-SWITCH" : "SAARE_CONTROL.PY --KILL", type: "KILL_SWITCH_TRIGGERED", verdict: "RECHAZADO", decision: "DENY", scenarioId: "razonamiento_activo_l7", category: "EMERGENCY_DEACTIVATION", norma: "S.A.A.R.E. Core Security Protocol / MS3V Disyuntor Lógico", witness: "[KILL-SWITCH-ENFORCED]", vaultTarget: "RAM", ...baseIdentity };
   }
-  if (upper.includes("SAARE-MD-FOR")) return { type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
-  if (upper.includes("SAARE-MD-CORP")) return { type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
-  if (upper.includes("SAARE-MD-SECU")) return { type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "razonamiento_activo_l7", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
-  if (upper.includes("SAARE-MD-VERD")) return { type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
-  if (upper.includes("SAARE-MD-LEGAL")) return { type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
-  if (upper.includes("SAARE-MD-IPRES")) return { type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "SECRETO_INDUSTRIAL", norma: "ISO/IEC 27037 / Marco de Propiedad Intelectual", ...baseIdentity };
-  if (upper.includes("SAARE-MD-CUST")) return { type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
-  if (upper.includes("SAARE-MD-COMPLIANCE")) return { type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CUMPLIMIENTO_LLM", norma: "[MS3V-COMPLIANCE-L7-OK]", ...baseIdentity };
-  if (upper.includes("SAARE-MD-DEEP")) return { type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
-  if (upper.includes("SAARE-MD-FRIA")) return { type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
+  if (combined.includes("SAARE-MD-FOR")) return { code: "SAARE-MD-FOR", type: "MODE_FORENSIC", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "AUDITORIA_FORENSE", norma: "ISO 27037 / Art. 326 LEC", ...baseIdentity };
+  if (combined.includes("SAARE-MD-CORP")) return { code: "SAARE-MD-CORP", type: "MODE_CORPORATE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CERTIFICACION_CORPORATIVA", norma: "EU AI Act / DORA", ...baseIdentity };
+  if (combined.includes("SAARE-MD-SECU")) return { code: "SAARE-MD-SECU", type: "MODE_SECURITY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "razonamiento_activo_l7", category: "BLINDAJE_PERIMETRAL", norma: "NIS2 / ISO 27001", ...baseIdentity };
+  if (combined.includes("SAARE-MD-VERD")) return { code: "SAARE-MD-VERD", type: "MODE_VERDICT", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "VEREDICTO_INTEGRIDAD", norma: "A_Estructural < 0.01%", ...baseIdentity };
+  if (combined.includes("SAARE-MD-LEGAL")) return { code: "SAARE-MD-LEGAL", type: "MODE_LEGAL", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "AUDITORIA_JURIDICA", norma: "RGPD / EU AI Act", ...baseIdentity };
+  if (combined.includes("SAARE-MD-IPRES")) return { code: "SAARE-MD-IPRES", type: "MODE_IP", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "SECRETO_INDUSTRIAL", norma: "ISO/IEC 27037 / Marco de Propiedad Intelectual", ...baseIdentity };
+  if (combined.includes("SAARE-MD-CUST")) return { code: "SAARE-MD-CUST", type: "MODE_CUSTODY", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "auditoria_dictamen_normativo", category: "CADENA_CUSTODIA", norma: "Art. 326 LEC / eIDAS RFC 3161", ...baseIdentity };
+  if (combined.includes("SAARE-MD-COMPLIANCE")) return { code: "SAARE-MD-COMPLIANCE", type: "MODE_COMPLIANCE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "CUMPLIMIENTO_LLM", norma: "[MS3V-COMPLIANCE-L7-OK]", ...baseIdentity };
+  if (combined.includes("SAARE-MD-DEEP")) return { code: "SAARE-MD-DEEP", type: "MODE_DEEPFAKE", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "deepfake_fake_disprover", category: "DETECCION_DEEPFAKES", norma: "Análisis Espectral RAM", ...baseIdentity };
+  if (combined.includes("SAARE-MD-FRIA")) return { code: "SAARE-MD-FRIA", type: "MODE_FRIA", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "EXPEDIENTE_FRIA", norma: "EU AI Act Art. 27", ...baseIdentity };
+
+  if (cleanExplicit) {
+    return { code: cleanExplicit, type: "EXPLICIT_PROTOCOL_COMMAND", verdict: "PERMITIDO", decision: "ALLOW", scenarioId: "cumplimiento_corporativo_integral", category: "PROTOCOL_COMMAND", norma: "SGP 1.0", ...baseIdentity };
+  }
 
   return null;
 }
@@ -687,6 +694,13 @@ async function ensureD1TablesExist(db) {
         CREATE TABLE IF NOT EXISTS tenant_rule_settings (
           tenant_id TEXT PRIMARY KEY,
           rules_enabled INTEGER NOT NULL DEFAULT 1,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS tenant_protocol_settings (
+          tenant_id TEXT PRIMARY KEY,
+          commands_json TEXT NOT NULL DEFAULT '{}',
           updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `),
@@ -816,6 +830,78 @@ async function setTenantRulesEnabled(env, tenantId, enabled) {
       `).bind(tenantId, normalized ? 1 : 0, new Date().toISOString()).run();
     } catch (_dbErr) {}
   }
+}
+
+function sanitizeProtocolCommandsMap(rawMap) {
+  if (!rawMap || typeof rawMap !== "object" || Array.isArray(rawMap)) return {};
+  const clean = {};
+  for (const [k, v] of Object.entries(rawMap)) {
+    const codeKey = String(k || "").trim().toUpperCase().slice(0, 80);
+    if (!codeKey) continue;
+    if (typeof v === "boolean") {
+      clean[codeKey] = v;
+    }
+  }
+  return clean;
+}
+
+async function getTenantProtocolCommands(env, tenantId) {
+  if (!tenantId) return {};
+  const kv = getKvBinding(env);
+  if (kv) {
+    try {
+      const raw = await kv.get(`protocol_cmds:${tenantId}`);
+      if (raw) {
+        return sanitizeProtocolCommandsMap(JSON.parse(raw));
+      }
+    } catch (_kvErr) {}
+  }
+  if (env?.DB) {
+    try {
+      await ensureD1TablesExist(env.DB);
+      const row = await env.DB.prepare(
+        "SELECT commands_json FROM tenant_protocol_settings WHERE tenant_id = ?"
+      ).bind(tenantId).first();
+      if (row?.commands_json) {
+        return sanitizeProtocolCommandsMap(JSON.parse(row.commands_json));
+      }
+    } catch (_dbErr) {}
+  }
+  return {};
+}
+
+async function setTenantProtocolCommands(env, tenantId, commandsMap) {
+  if (!tenantId) return {};
+  const cleanMap = sanitizeProtocolCommandsMap(commandsMap);
+  const serialized = JSON.stringify(cleanMap);
+  const kv = getKvBinding(env);
+  if (kv) {
+    try {
+      await kv.put(`protocol_cmds:${tenantId}`, serialized);
+    } catch (_kvErr) {}
+  }
+  if (env?.DB) {
+    try {
+      await ensureD1TablesExist(env.DB);
+      await env.DB.prepare(`
+        INSERT OR REPLACE INTO tenant_protocol_settings (tenant_id, commands_json, updated_at)
+        VALUES (?, ?, ?)
+      `).bind(tenantId, serialized, new Date().toISOString()).run();
+    } catch (_dbErr) {}
+  }
+  return cleanMap;
+}
+
+function isProtocolCommandEnabled(protocolCommandsMap, code) {
+  if (!code || !protocolCommandsMap || typeof protocolCommandsMap !== "object") return true;
+  const upperCode = String(code).trim().toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(protocolCommandsMap, upperCode)) {
+    return protocolCommandsMap[upperCode] !== false;
+  }
+  for (const [k, v] of Object.entries(protocolCommandsMap)) {
+    if (k.toUpperCase() === upperCode) return v !== false;
+  }
+  return true;
 }
 
 function getCurrentBillingPeriod() {
@@ -1311,7 +1397,7 @@ export default {
             tenantId: targetTenant,
             evidences,
             enable2of3Custody: body.enable2of3Custody !== false,
-            expedienteId: body.expedienteId || null
+            expedienteId: body.expedienteId || body.dossierRef || null
           },
           env
         );
@@ -1835,7 +1921,7 @@ export default {
             message: quotaCheck.reason === "MONTHLY_QUOTA_EXCEEDED"
               ? "Cuota mensual de veredictos agotada para este tenant."
               : "La suscripción del tenant no está activa.",
-            tenant,
+            tenant: resolvedTenant,
             usage: { used: quotaCheck.used, quota: quotaCheck.quota, status: quotaCheck.status }
           }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -2083,6 +2169,7 @@ export default {
         const activePlan = sanitizePlanId(tenantInfo?.planId || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
+        const protocolCommands = await getTenantProtocolCommands(env, tenantId);
 
         return new Response(JSON.stringify({
           valid: true,
@@ -2091,6 +2178,7 @@ export default {
           planId: activePlan,
           entitlements,
           monthlyUsage: used,
+          protocolCommands,
           role: activeUserRole,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           protocol: "SGP 1.0 / Protocolo MS3V / Motor BLOCK LOGIC",
@@ -2198,6 +2286,7 @@ export default {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         let rules = [];
         const rulesEnabled = await getTenantRulesEnabled(env, scopedTenantId);
+        const protocolCommands = await getTenantProtocolCommands(env, scopedTenantId);
         if (env?.DB) {
           try {
             await ensureD1TablesExist(env.DB);
@@ -2209,6 +2298,7 @@ export default {
           status: "SUCCESS",
           tenant: scopedTenantId,
           enabled: rulesEnabled,
+          protocolCommands,
           rules
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -2239,6 +2329,7 @@ export default {
           if (env?.DB) {
             try {
               await ensureD1TablesExist(env.DB);
+              await env.DB.prepare("DELETE FROM custom_rules WHERE tenant_id = ?").bind(scopedTenantId).run();
               for (const r of validRules) {
                 await env.DB.prepare("INSERT OR REPLACE INTO custom_rules (id, tenant_id, name, pattern) VALUES (?, ?, ?, ?)")
                   .bind(r.id || `RULE-${Date.now()}`, scopedTenantId, String(r.name).slice(0, 120), String(r.pattern).trim())
@@ -2251,11 +2342,20 @@ export default {
 
         await setTenantRulesEnabled(env, scopedTenantId, nextEnabled);
 
+        const currentCommands = await getTenantProtocolCommands(env, scopedTenantId);
+        const incomingCommands = body?.protocolCommands && typeof body.protocolCommands === "object"
+          ? body.protocolCommands
+          : null;
+        const nextProtocolCommands = incomingCommands
+          ? await setTenantProtocolCommands(env, scopedTenantId, { ...currentCommands, ...incomingCommands })
+          : currentCommands;
+
         return new Response(JSON.stringify({
           success: true,
           status: "SUCCESS",
           tenant: scopedTenantId,
           enabled: nextEnabled,
+          protocolCommands: nextProtocolCommands,
           presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
           rules
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -2413,6 +2513,8 @@ export default {
             provider: formData.get("provider") || "GEMINI",
             model: formData.get("model") || "gpt-4o",
             userAction: formData.get("userAction") || "DEFAULT_POLICY",
+            commandCode: formData.get("commandCode") || undefined,
+            dossierRef: formData.get("dossierRef") || undefined,
             browserProfile: formData.get("browserProfile") || undefined,
             clientProfile: formData.get("clientProfile") || undefined
           };
@@ -2460,6 +2562,34 @@ export default {
           }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
+        const effectiveEnv = payloadBody.dossierRef
+          ? { ...env, EXPEDIENTE_ID: String(payloadBody.dossierRef).trim().slice(0, 80) }
+          : env;
+
+        const semanticCmd = parseSemanticCommand(rawPrompt, effectiveEnv, payloadBody.commandCode);
+        const protocolCommandsMap = await getTenantProtocolCommands(env, tenant);
+        const commandCodeToCheck = semanticCmd?.code || (payloadBody.commandCode ? String(payloadBody.commandCode).trim().toUpperCase() : "");
+
+        if (commandCodeToCheck && !isProtocolCommandEnabled(protocolCommandsMap, commandCodeToCheck)) {
+          return new Response(JSON.stringify({
+            error: "PROTOCOL_COMMAND_DISABLED",
+            message: `El comando de protocolo [${commandCodeToCheck}] está desactivado para el tenant [${tenant}].`,
+            commandCode: commandCodeToCheck,
+            tenant,
+            dossierRef: payloadBody.dossierRef || null,
+            decision: "DENY",
+            verdict: "RECHAZADO"
+          }), {
+            status: 403,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "X-SAARE-Verdict": "DENY",
+              "X-SAARE-Tenant": tenant
+            }
+          });
+        }
+
         const targetProvider = (payloadBody.provider || request.headers.get("x-saare-provider") || "GEMINI").toUpperCase();
         const providerMeta = LLM_AGNOSTIC_PROVIDERS[targetProvider] || LLM_AGNOSTIC_PROVIDERS.GEMINI;
 
@@ -2468,7 +2598,7 @@ export default {
 
         let ms3vVerdict = { HASH: await computeSha256(rawPrompt || "resilient"), TS: `${Date.now()}000000`, EXECUTE: "EXEC_RESILIENT_OK", STATUS: "ALLOW" };
         try {
-          ms3vVerdict = await engineBlockLogic(rawPrompt, SAARE_APPROVED_COMMANDS, env);
+          ms3vVerdict = await engineBlockLogic(rawPrompt, SAARE_APPROVED_COMMANDS, effectiveEnv);
         } catch (_e) {}
 
         if (ms3vVerdict.STATUS === "ABORT_SEQUENCE") {
@@ -2478,7 +2608,7 @@ export default {
             ms3vStatus: "ABORT_SEQUENCE",
             tenant,
             profile_context: profileContext,
-            author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
+            author: effectiveEnv?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
           }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
@@ -2491,7 +2621,6 @@ export default {
           } catch (_rErr) {}
         }
 
-        const semanticCmd = parseSemanticCommand(rawPrompt, env);
         const detoxResult = semanticDetox.detoxify(rawPrompt, tenantCustomRules, { wrapUntrusted: true });
         const piiPass = sanitizePiiAndCustomRules(detoxResult.sanitizedText || rawPrompt, tenantCustomRules);
         const sanitizedText = piiPass.sanitizedText;
@@ -2636,7 +2765,7 @@ export default {
 
         const rawOutput = isBlocked
           ? "[BLOQUEO EX-ANTE L7] Petición y archivos interceptados y neutralizados en RAM antes de contactar con el proveedor LLM."
-          : await invokeAgnosticLlmProvider(targetProvider, promptForLlm, payloadBody.model, env);
+          : await invokeAgnosticLlmProvider(targetProvider, promptForLlm, payloadBody.model, effectiveEnv);
 
         const outputSanitized = sanitizePiiAndCustomRules(rawOutput, tenantCustomRules);
         const llmOutputContent = outputSanitized.sanitizedText;
@@ -2663,7 +2792,7 @@ export default {
         });
 
         try {
-          const vaultEngine = new EvidenceVaultEngine(env);
+          const vaultEngine = new EvidenceVaultEngine(effectiveEnv);
           await vaultEngine.recordNodeEvidence({
             trace_id: traceId,
             evidence_id: runId,
@@ -2716,12 +2845,12 @@ export default {
               engineHash: ms3vVerdict.HASH,
               timestampNs: ms3vVerdict.TS,
               executedCommand: ms3vVerdict.EXECUTE,
-              author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
+              author: effectiveEnv?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
               protocol: "SGP 1.0 / MS3V / BLOCK LOGIC"
             },
             complianceImpact: complianceAssessment.compliance_impact,
             doubleChainOfCustody: { doubleChainOfCustody: true }
-          }, env);
+          }, effectiveEnv);
         } catch (_e) {}
 
         const sgp1ProofContract = buildSgp1ProofContract({
@@ -2730,7 +2859,7 @@ export default {
           structuralDelta: sgp7Dims.structural_delta,
           ms3vHash: traceIntegrityHash,
           proofBundle,
-          env
+          env: effectiveEnv
         });
 
         const xSaarePermitHeader = btoa(JSON.stringify({
@@ -2750,8 +2879,8 @@ export default {
         return new Response(JSON.stringify({
           success: true,
           spec: "SGP-1.0 MS3V + V6 Automata + Semantic Detox RAM",
-          expediente: env?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE",
-          author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
+          expediente: effectiveEnv?.EXPEDIENTE_ID || "DEFAULT-EXPEDIENTE",
+          author: effectiveEnv?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           tenant,
           profile_context: profileContext,
           evidence_id: runId,

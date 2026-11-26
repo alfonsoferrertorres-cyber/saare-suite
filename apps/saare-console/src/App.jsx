@@ -13,6 +13,61 @@ import apiService from './services/apiService';
 
 const EXTENSION_ID = 'jmlakofckaafjpjnfbihgchkeiglamme';
 
+const SAARE_PROTOCOL_COMMANDS = [
+  {
+    label: 'Auditoría Forense',
+    code: 'SAARE-MD-FOR',
+    prompt:
+      'SAARE-MD-FOR — Ejecuta el protocolo S.A.A.R.E. en formato de Auditoría Forense sobre los logs del sistema. Incluye identificadores CRYPTO-ID y marcas de tiempo de los nodos.'
+  },
+  {
+    label: 'Certificación Corporativa',
+    code: 'SAARE-MD-CORP',
+    prompt:
+      'SAARE-MD-CORP — Genera un informe oficial de S.A.A.R.E. con formato de Certificación Corporativa. Incluye matriz de KPIs de resiliencia y el resumen ejecutivo orientado a negocio.'
+  },
+  {
+    label: 'Blindaje Activo',
+    code: 'SAARE-MD-SECU',
+    prompt:
+      'SAARE-MD-SECU — Activa el protocolo S.A.A.R.E. en Modo Seguridad. Despliega filtros perimetrales y de mitigación en tiempo real para contrarrestar vulnerabilidades lógicas.'
+  },
+  {
+    label: 'Veredicto de Integridad',
+    code: 'SAARE-MD-VERD',
+    prompt:
+      'SAARE-MD-VERD — Ejecuta el Veredicto de Integridad del Protocolo S.A.A.R.E. sobre el flujo de datos. Clasifica cada componente como VALIDADO o RECHAZADO y proporciona la justificación forense.'
+  },
+  {
+    label: 'Auditoría Jurídica',
+    code: 'SAARE-MD-LEGAL',
+    prompt:
+      'SAARE-MD-LEGAL — Ejecuta la Auditoría Jurídica del Protocolo S.A.A.R.E. sobre el contexto legal/procesal provisto. Contrasta las variables frente a marcos normativos vigentes.'
+  },
+  {
+    label: 'Propiedad Intelectual (IP)',
+    code: 'SAARE-MD-IPRES',
+    prompt:
+      'SAARE-MD-IPRES — Ejecuta la Auditoría de Propiedad Intelectual (IP) del Protocolo S.A.A.R.E. sobre el activo/código del expediente para emitir la tasa de similitud y blindaje industrial.'
+  },
+  {
+    label: 'Cumplimiento Ex-Ante',
+    code: 'INICIAR_CUMPLIMIENTO_EXANTE_SAARE',
+    prompt: 'INICIAR_CUMPLIMIENTO_EXANTE_SAARE'
+  },
+  {
+    label: 'Kill-Switch L7',
+    code: 'SAARE_CONTROL.PY --KILL',
+    danger: true,
+    prompt: 'SAARE_CONTROL.PY --KILL'
+  }
+];
+
+const DEFAULT_PROTOCOL_COMMANDS_STATE = SAARE_PROTOCOL_COMMANDS.reduce((acc, cmd) => {
+  acc[cmd.code] = true;
+  return acc;
+}, {});
+
 const ISO_42001_PRESET_RULES = [
   {
     id: 'ISO42001-DLP-DNI-NIE',
@@ -54,6 +109,25 @@ const readStoredRulesEnabled = (tenant = '') => {
   const raw = localStorage.getItem(getRulesEnabledStorageKey(tenant));
   if (raw === null) return true;
   return raw !== 'false';
+};
+
+const getProtocolCommandsStorageKey = (tenant = '') => {
+  const clean = normalizeTenantId(tenant);
+  return `saare_protocol_cmds_${clean || 'default'}`;
+};
+
+const readStoredProtocolCommands = (tenant = '') => {
+  try {
+    const raw = localStorage.getItem(getProtocolCommandsStorageKey(tenant));
+    if (!raw) return { ...DEFAULT_PROTOCOL_COMMANDS_STATE };
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_PROTOCOL_COMMANDS_STATE,
+      ...(parsed && typeof parsed === 'object' ? parsed : {})
+    };
+  } catch {
+    return { ...DEFAULT_PROTOCOL_COMMANDS_STATE };
+  }
 };
 
 const getApiEndpoint = (path = '') => {
@@ -196,6 +270,14 @@ export default function App() {
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
+  const [runningProtocolCode, setRunningProtocolCode] = useState('');
+  const [protocolOutput, setProtocolOutput] = useState(null);
+  const [dossierRef, setDossierRef] = useState('030926-1SAA');
+  const [protocolCommandsEnabled, setProtocolCommandsEnabled] = useState(() => {
+    const candidate = urlTenant || normalizeTenantId(localStorage.getItem('saare_tenant_domain') || '');
+    return readStoredProtocolCommands(isValidTenantId(candidate) ? candidate : '');
+  });
+
   const [customRules, setCustomRules] = useState([]);
   const [tenantRulesEnabled, setTenantRulesEnabled] = useState(() => {
     const candidate = urlTenant || normalizeTenantId(localStorage.getItem('saare_tenant_domain') || '');
@@ -245,6 +327,7 @@ export default function App() {
       sessionStorage.setItem('saare_tenant_domain', cleanTenant);
       setTenantId(cleanTenant);
       setTenantRulesEnabled(readStoredRulesEnabled(cleanTenant));
+      setProtocolCommandsEnabled(readStoredProtocolCommands(cleanTenant));
       setAvailableTenants((prev) =>
         prev.some((t) => t.id === cleanTenant)
           ? prev
@@ -318,6 +401,11 @@ export default function App() {
         } else {
           setTenantRulesEnabled(readStoredRulesEnabled(targetTenant));
         }
+        if (data?.protocolCommands && typeof data.protocolCommands === 'object') {
+          const mergedCmds = { ...DEFAULT_PROTOCOL_COMMANDS_STATE, ...data.protocolCommands };
+          setProtocolCommandsEnabled(mergedCmds);
+          localStorage.setItem(getProtocolCommandsStorageKey(targetTenant), JSON.stringify(mergedCmds));
+        }
       } else {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -327,6 +415,56 @@ export default function App() {
       setIsRulesLoading(false);
     }
   }, [tenantId, authToken, triggerGovernance]);
+
+  const syncProtocolCommandsConfig = useCallback(async (nextCommandsMap) => {
+    const storageKey = getProtocolCommandsStorageKey(tenantId);
+    localStorage.setItem(storageKey, JSON.stringify(nextCommandsMap));
+
+    if (!tenantId || !authToken) return;
+    try {
+      await fetch(getApiEndpoint('/api/v1/custom-rules'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-saare-tenant': tenantId,
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          enabled: tenantRulesEnabled,
+          rules: customRules,
+          protocolCommands: nextCommandsMap
+        })
+      });
+    } catch {
+      // Mantiene el estado local aunque la sincronización remota falle
+    }
+  }, [tenantId, authToken, tenantRulesEnabled, customRules]);
+
+  const handleToggleProtocolCommand = useCallback(async (code) => {
+    const nextValue = !(protocolCommandsEnabled[code] !== false);
+    const updated = {
+      ...protocolCommandsEnabled,
+      [code]: nextValue
+    };
+    setProtocolCommandsEnabled(updated);
+    await syncProtocolCommandsConfig(updated);
+    triggerGovernance(`Comando ${code} ${nextValue ? 'ACTIVADO' : 'DESACTIVADO'}.`);
+  }, [protocolCommandsEnabled, syncProtocolCommandsConfig, triggerGovernance]);
+
+  const handleSetAllProtocolCommands = useCallback(async (enabledValue) => {
+    const nextState = Boolean(enabledValue);
+    const updated = SAARE_PROTOCOL_COMMANDS.reduce((acc, cmd) => {
+      acc[cmd.code] = nextState;
+      return acc;
+    }, {});
+    setProtocolCommandsEnabled(updated);
+    await syncProtocolCommandsConfig(updated);
+    triggerGovernance(
+      nextState
+        ? 'Todos los botones de protocolo ACTIVADOS.'
+        : 'Todos los botones de protocolo DESACTIVADOS.'
+    );
+  }, [syncProtocolCommandsConfig, triggerGovernance]);
 
   const handleToggleTenantRules = useCallback(async (nextEnabled) => {
     if (!tenantId) {
@@ -348,7 +486,8 @@ export default function App() {
         headers,
         body: JSON.stringify({
           enabled: desiredState,
-          rules: customRules
+          rules: customRules,
+          protocolCommands: protocolCommandsEnabled
         })
       });
 
@@ -375,7 +514,7 @@ export default function App() {
     } finally {
       setIsRulesLoading(false);
     }
-  }, [tenantId, authToken, customRules, triggerGovernance]);
+  }, [tenantId, authToken, customRules, protocolCommandsEnabled, triggerGovernance]);
 
   const handleApplyIso42001Governance = async () => {
     if (!tenantId) {
@@ -397,7 +536,12 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ preset: 'ISO_42001', enabled: tenantRulesEnabled, rules: finalRules })
+        body: JSON.stringify({
+          preset: 'ISO_42001',
+          enabled: tenantRulesEnabled,
+          rules: finalRules,
+          protocolCommands: protocolCommandsEnabled
+        })
       });
 
       const data = res.ok ? await res.json().catch(() => null) : null;
@@ -443,7 +587,11 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ enabled: tenantRulesEnabled, rules: updatedRules })
+        body: JSON.stringify({
+          enabled: tenantRulesEnabled,
+          rules: updatedRules,
+          protocolCommands: protocolCommandsEnabled
+        })
       });
 
       if (!res.ok) {
@@ -472,7 +620,11 @@ export default function App() {
       const res = await fetch(getApiEndpoint('/api/v1/custom-rules'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ enabled: tenantRulesEnabled, rules: updatedRules })
+        body: JSON.stringify({
+          enabled: tenantRulesEnabled,
+          rules: updatedRules,
+          protocolCommands: protocolCommandsEnabled
+        })
       });
 
       if (!res.ok) {
@@ -882,7 +1034,9 @@ export default function App() {
     const newTenant = normalizeTenantId(rawTenant);
     setTenantId(newTenant);
     setTenantRulesEnabled(readStoredRulesEnabled(newTenant));
+    setProtocolCommandsEnabled(readStoredProtocolCommands(newTenant));
     setTestResult(null);
+    setProtocolOutput(null);
     setCustomRules([]);
     setBillingInfo(null);
     setTenantMetrics([]);
@@ -928,7 +1082,9 @@ export default function App() {
     setInclusionStatusByEvidence({});
     setCustomRules([]);
     setTenantRulesEnabled(true);
+    setProtocolCommandsEnabled({ ...DEFAULT_PROTOCOL_COMMANDS_STATE });
     setTestResult(null);
+    setProtocolOutput(null);
     triggerGovernance('Sesión cerrada. Consola restablecida en estado virgen.');
   };
 
@@ -1201,6 +1357,7 @@ export default function App() {
       rulesEnabled: tenantRulesEnabled,
       activeCustomRulesCount: customRules.length,
       customRules,
+      protocolCommandsEnabled,
       iso42001BaselineControls: ISO_42001_PRESET_RULES.map((r) => r.id),
       recentEvidenceHashes: evidences.slice(0, 25).map((e) => ({
         id: e.id,
@@ -1326,6 +1483,71 @@ export default function App() {
       triggerGovernance('No se pudo obtener el manifiesto ISO/IEC 27037 desde la API.');
     }
   }, [tenantId, authToken, triggerGovernance]);
+
+  const handleExecuteProtocolCommand = useCallback(async (cmd) => {
+    if (!cmd?.prompt) return;
+
+    if (protocolCommandsEnabled[cmd.code] === false) {
+      triggerGovernance(`El comando ${cmd.code} está desactivado en la consola.`);
+      return;
+    }
+
+    if (cmd.danger) {
+      const confirmed = window.confirm(
+        `Vas a ejecutar ${cmd.code} sobre el tenant [${tenantId || 'SIN_TENANT'}]. ¿Deseas continuar?`
+      );
+      if (!confirmed) return;
+    }
+
+    const cleanRef = String(dossierRef || '').trim();
+    const effectivePrompt = cleanRef
+      ? `${cmd.prompt} [Expediente/Activo: ${cleanRef}]`
+      : cmd.prompt;
+
+    setRunningProtocolCode(cmd.code);
+    const t0 = performance.now();
+
+    try {
+      const data = await apiService.interceptPrompt({
+        prompt: effectivePrompt,
+        commandCode: cmd.code,
+        ...(cleanRef ? { dossierRef: cleanRef } : {}),
+        user: userEmail,
+        tenant: tenantId,
+        token: authToken,
+        role: userRole
+      });
+      const latencyMs = `${(performance.now() - t0).toFixed(2)} ms`;
+      const isDeny = data?.decision === 'DENY' || data?.verdict === 'FAIL_CLOSED_BLOCKED' || data?.verdict === 'RECHAZADO';
+
+      setProtocolOutput({
+        code: cmd.code,
+        label: cmd.label,
+        dossierRef: cleanRef || 'N/A',
+        decision: isDeny ? 'DENY' : 'ALLOW',
+        verdict: data?.verdict || (isDeny ? 'RECHAZADO' : 'PERMITIDO'),
+        evidenceId: data?.evidence_id || data?.trace_id || 'N/A',
+        hash: data?.chainHash || data?.enforcement?.ms3vIntegrityHash || data?.proofBundle?.ms3vAudit?.hash || 'N/A',
+        latency: latencyMs,
+        content:
+          data?.inference?.responseContent ||
+          data?.sanitizedOutput ||
+          data?.sanitizedPrompt ||
+          data?.message ||
+          data?.error ||
+          ''
+      });
+
+      triggerGovernance(`Comando ${cmd.code} ejecutado (${isDeny ? 'DENY' : 'ALLOW'}).`);
+      if (tenantId) {
+        await fetchTelemetryDirectFromVault(tenantId, authToken);
+      }
+    } catch (err) {
+      triggerGovernance(err?.message || `Error al ejecutar ${cmd.code}.`);
+    } finally {
+      setRunningProtocolCode('');
+    }
+  }, [protocolCommandsEnabled, dossierRef, tenantId, authToken, userEmail, userRole, triggerGovernance, fetchTelemetryDirectFromVault]);
 
   const handleExecuteTestExAnte = async (customPrompt = null) => {
     const promptToRun = customPrompt || testPrompt;
@@ -1579,6 +1801,130 @@ export default function App() {
               onExportLecActa={handleExportLecActa}
               onExportClick={() => setShowExportModal(true)}
             />
+
+            <div style={{ margin: '18px 0', padding: '14px 18px', background: '#020617', border: '1px solid #1e293b', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase' }}>
+                  Comandos de Protocolo S.A.A.R.E. (MS3V / SGP 1.0)
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={dossierRef}
+                    onChange={(e) => setDossierRef(e.target.value)}
+                    placeholder="Expediente / Activo (ej: 030926-1SAA)"
+                    style={{ padding: '5px 9px', background: '#0b0f19', border: '1px solid #334155', color: '#38bdf8', borderRadius: '5px', fontSize: '0.72rem', fontFamily: 'monospace' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDossierRef('030926-1SAA')}
+                    style={{ padding: '5px 8px', background: '#0f172a', color: '#94a3b8', border: '1px solid #334155', borderRadius: '5px', fontSize: '0.68rem', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    030926-1SAA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetAllProtocolCommands(true)}
+                    style={{ padding: '5px 9px', background: '#064e3b', color: '#6ee7b7', border: '1px solid #10b981', borderRadius: '5px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    Activar Todos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetAllProtocolCommands(false)}
+                    style={{ padding: '5px 9px', background: '#450a0a', color: '#fca5a5', border: '1px solid #dc2626', borderRadius: '5px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    Desactivar Todos
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+                {SAARE_PROTOCOL_COMMANDS.map((cmd) => {
+                  const isEnabled = protocolCommandsEnabled[cmd.code] !== false;
+                  const isRunning = runningProtocolCode === cmd.code;
+
+                  return (
+                    <div
+                      key={cmd.code}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        background: '#0b0f19',
+                        border: `1px solid ${!isEnabled ? '#1e293b' : cmd.danger ? '#ef4444' : '#334155'}`,
+                        opacity: isEnabled ? 1 : 0.65
+                      }}
+                    >
+                      <button
+                        type="button"
+                        disabled={!isEnabled || Boolean(runningProtocolCode)}
+                        onClick={() => handleExecuteProtocolCommand(cmd)}
+                        title={cmd.code}
+                        style={{
+                          flex: 1,
+                          textAlign: 'left',
+                          padding: '5px 8px',
+                          borderRadius: '5px',
+                          border: 'none',
+                          background: !isEnabled ? '#1e293b' : cmd.danger ? '#7f1d1d' : '#0f172a',
+                          color: !isEnabled ? '#64748b' : cmd.danger ? '#fecaca' : '#e2e8f0',
+                          fontWeight: '800',
+                          fontSize: '0.72rem',
+                          cursor: !isEnabled || runningProtocolCode ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {isRunning ? `Ejecutando ${cmd.code}...` : cmd.label}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleProtocolCommand(cmd.code)}
+                        title={isEnabled ? `Desactivar ${cmd.code}` : `Activar ${cmd.code}`}
+                        style={{
+                          padding: '4px 7px',
+                          borderRadius: '4px',
+                          border: `1px solid ${isEnabled ? '#10b981' : '#64748b'}`,
+                          background: isEnabled ? 'rgba(16, 185, 129, 0.14)' : '#1e293b',
+                          color: isEnabled ? '#34d399' : '#94a3b8',
+                          fontWeight: '800',
+                          fontSize: '0.64rem',
+                          fontFamily: 'monospace',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {protocolOutput && (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#0b0f19', border: `1px solid ${protocolOutput.decision === 'DENY' ? '#ef4444' : '#10b981'}`, borderRadius: '6px', fontSize: '0.76rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontWeight: '800' }}>
+                    <span style={{ color: '#38bdf8' }}>
+                      {protocolOutput.label} ({protocolOutput.code}) · Exp: {protocolOutput.dossierRef}
+                    </span>
+                    <span style={{ color: protocolOutput.decision === 'DENY' ? '#f87171' : '#34d399' }}>
+                      {protocolOutput.decision} · {protocolOutput.verdict} · {protocolOutput.latency}
+                    </span>
+                  </div>
+                  <div style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.7rem', marginTop: '4px' }}>
+                    Evidencia: {protocolOutput.evidenceId} | Hash: {protocolOutput.hash}
+                  </div>
+                  {protocolOutput.content && (
+                    <div style={{ color: '#cbd5e1', marginTop: '8px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.73rem' }}>
+                      {protocolOutput.content}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div style={{ margin: '18px 0', padding: '14px 18px', background: '#020617', border: '1px solid #334155', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>

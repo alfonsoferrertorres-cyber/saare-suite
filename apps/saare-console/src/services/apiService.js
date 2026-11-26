@@ -29,25 +29,51 @@ const writeStorage = (key, value) => {
   }
 };
 
+function resolveControlPlaneRoot() {
+  const envUrl = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_URL : '';
+  const rawBase = String(
+    envUrl ||
+      SAARE_CONFIG?.API_BASE_URL ||
+      (typeof window !== 'undefined' ? window.location?.origin : '') ||
+      'https://api.saare.es'
+  )
+    .trim()
+    .replace(/\/+$/, '');
+
+  return rawBase
+    .replace(/\/api\/v1$/i, '')
+    .replace(/\/api$/i, '')
+    .replace(/\/v1$/i, '');
+}
+
+function normalizeControlPlaneEndpoint(endpoint = '') {
+  const trimmed = String(endpoint || '').trim();
+  const cleanEndpoint = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  if (cleanEndpoint.startsWith('/api/v1/') || cleanEndpoint === '/api/v1') {
+    return cleanEndpoint;
+  }
+  if (cleanEndpoint.startsWith('/v1/') || cleanEndpoint === '/v1') {
+    return `/api${cleanEndpoint}`;
+  }
+  return `/api/v1${cleanEndpoint}`;
+}
+
 function getAuthContext() {
   const token = readStorage(['saare_auth_token', 'saare_token']);
   const tenant = readStorage(['saare_tenant_domain', 'saare_tenant']) || SAARE_CONFIG?.DEFAULT_TENANT || '';
   const user = readStorage(['saare_user_email']) || SAARE_CONFIG?.DEFAULT_USER || '';
   const role = readStorage(['saare_user_role']) || SAARE_CONFIG?.DEFAULT_ROLE || '';
-
-  const rawBase = String(SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
-  const cleanRoot = rawBase.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
-  const baseUrl = `${cleanRoot}/v1`;
+  const cleanRoot = resolveControlPlaneRoot();
+  const baseUrl = `${cleanRoot}/api/v1`;
 
   return { token, tenant, user, role, baseUrl, cleanRoot };
 }
 
 export async function saareFetch(endpoint, options = {}) {
-  const { token, tenant, user, role, baseUrl } = getAuthContext();
-
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = `${cleanBaseUrl}${cleanEndpoint}`;
+  const { token, tenant, user, role, cleanRoot } = getAuthContext();
+  const normalizedEndpoint = normalizeControlPlaneEndpoint(endpoint);
+  const url = `${cleanRoot}${normalizedEndpoint}`;
 
   const activeToken = options.overrideToken !== undefined ? options.overrideToken : token;
   const activeTenant = options.overrideTenant !== undefined ? options.overrideTenant : tenant;
@@ -88,7 +114,7 @@ export const apiService = {
   },
 
   async setRouteMode(targetMode) {
-    const { token, tenant } = getAuthContext();
+    const { token, tenant, cleanRoot } = getAuthContext();
     if (targetMode === 'LOCAL_SIDECAR') {
       const probe = await fetch(LOCAL_SIDECAR_URL, {
         method: 'POST',
@@ -107,7 +133,7 @@ export const apiService = {
     }
 
     writeStorage(ROUTE_MODE_KEY, 'CLOUD_EDGE');
-    return { mode: 'CLOUD_EDGE', endpoint: `${getAuthContext().baseUrl}/chat/completions` };
+    return { mode: 'CLOUD_EDGE', endpoint: `${cleanRoot}/api/v1/chat/completions` };
   },
 
   downloadNativeSidecar(overrideTenant) {
@@ -115,14 +141,16 @@ export const apiService = {
     const targetTenant = overrideTenant !== undefined ? overrideTenant : tenant;
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
+    const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
+    const sidecarUrl = `${cleanRoot}/api/v1/deploy/sidecar-zip${query}`;
+
     const link = document.createElement('a');
-    link.href = '/deploy/saare_native_sidecar.zip';
+    link.href = sidecarUrl;
     link.download = `saare_native_sidecar_${targetTenant || 'tenant'}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
     window.open(`${cleanRoot}/api/v1/agent/bootstrap${query}`, '_blank', 'noopener,noreferrer');
   },
 
@@ -133,21 +161,22 @@ export const apiService = {
     const query = params.toString() ? `?${params.toString()}` : '';
 
     try {
-      const res = await saareFetch(`/metrics/kpis${query}`, { method: 'GET' });
+      const res = await saareFetch(`/metrics/tenants${query}`, { method: 'GET' });
       if (res && res.ok) {
         const data = await res.json();
-        const total = Number(data.totalInspections ?? data.total ?? 0);
-        const denied = Number(data.deniedActions ?? data.deniedCount ?? data.denied ?? 0);
-        const allowed = Number(data.allowedActions ?? (total >= denied ? total - denied : 0));
+        const rows = Array.isArray(data?.data) ? data.data : [];
+        const total = rows.reduce((acc, r) => acc + Number(r.total_prompts ?? 0), 0);
+        const denied = rows.reduce((acc, r) => acc + Number(r.bloqueados_pii ?? 0), 0);
+        const allowed = rows.reduce((acc, r) => acc + Number(r.aprobados ?? 0), 0);
 
         return {
           totalInterceptions: total,
-          allowedActions: allowed,
+          allowedActions: allowed || (total >= denied ? total - denied : 0),
           deniedActions: denied,
-          reviewActions: Number(data.reviewActions ?? 0),
-          averageLatencyMs: Number(data.averageLatencyMs ?? 0),
-          activeSellersCount: Number(data.activeSellersCount ?? 0),
-          activeTenantsCount: Number(data.activeTenantsCount ?? 0)
+          reviewActions: 0,
+          averageLatencyMs: 0,
+          activeSellersCount: 0,
+          activeTenantsCount: rows.length
         };
       }
     } catch (e) {
@@ -200,7 +229,7 @@ export const apiService = {
           tenantId: tenant,
           mode: data.mode || 'FAIL-CLOSED',
           latencyP99Ms: Number(data.latencyP99Ms ?? 0),
-          activePolicies: Number(data.activePolicies ?? 0),
+          activePolicies: Number(data.activePolicies ?? data.activeScenarios ?? 0),
           status: data.status || 'HEALTHY',
           trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || '',
           vaultSource: data.vaultSource || ''
@@ -246,7 +275,12 @@ export const apiService = {
     }
 
     const activeToken = bodyData.token !== undefined ? bodyData.token : token;
-    const { token: _omitToken, ...cleanBody } = bodyData;
+    const { token: _omitToken, ...rawBody } = bodyData;
+    const resolvedTenant = rawBody.tenant !== undefined ? rawBody.tenant : tenant;
+    const cleanBody = {
+      ...rawBody,
+      ...(resolvedTenant ? { tenant: resolvedTenant, tenant_id: rawBody.tenant_id || resolvedTenant } : {})
+    };
 
     if (routeMode === 'LOCAL_SIDECAR') {
       try {
@@ -291,7 +325,8 @@ export const apiService = {
         return {
           decision: 'DENY',
           verdict: 'LOCAL_SIDECAR_UNREACHABLE',
-          error: e.message
+          error: e.message,
+          message: e.message
         };
       }
     }
@@ -311,13 +346,21 @@ export const apiService = {
       }
 
       const errData = await res?.json().catch(() => ({}));
+      const errMsg = errData.message || errData.error || `HTTP ${res?.status}: Acceso bloqueado.`;
       return {
         decision: 'DENY',
         verdict: 'FAIL_CLOSED_BLOCKED',
-        error: errData.message || `HTTP ${res?.status}: Acceso bloqueado.`
+        status: res?.status || 0,
+        error: errMsg,
+        message: errMsg
       };
     } catch (e) {
-      return { decision: 'DENY', verdict: 'FAIL_CLOSED', error: e.message };
+      return {
+        decision: 'DENY',
+        verdict: 'FAIL_CLOSED',
+        error: e.message,
+        message: e.message
+      };
     }
   },
 
