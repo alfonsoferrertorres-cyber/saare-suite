@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v8.9 - Clean)
+# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.0 - Unified)
 # ==============================================================================
 param(
     [string]$SmokeTenant = "ENTERPRISE",
@@ -202,10 +202,10 @@ Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
 if (-not [string]::IsNullOrWhiteSpace($env:CLOUDFLARE_API_TOKEN)) {
     Write-Host " -> Usando autenticacion mediante CLOUDFLARE_API_TOKEN env var." -ForegroundColor Green
 } else {
-    $whoamiOutput = & npx wrangler whoami 2>&1
+    $whoamiOutput = & pnpm exec wrangler whoami 2>&1
     $whoamiText = ($whoamiOutput | Out-String)
     if ($LASTEXITCODE -ne 0 -or ($whoamiText -match "You are not logged in|not authenticated|code: 10000")) {
-        throw "No has iniciado sesion en Cloudflare. Ejecuta 'npx wrangler login' o define CLOUDFLARE_API_TOKEN. Detalle: $whoamiText"
+        throw "No has iniciado sesion en Cloudflare. Ejecuta 'pnpm exec wrangler login' o define CLOUDFLARE_API_TOKEN. Detalle: $whoamiText"
     }
     Write-Host " -> Sesion de Wrangler verificada correctamente." -ForegroundColor Green
 }
@@ -338,15 +338,40 @@ if ($sidecarSrc) {
     if ($consolePublicDeploy) {
         $sidecarZipOut = Join-Path $consolePublicDeploy "saare_native_sidecar.zip"
         Write-Host " -> Empaquetando Agente Nativo Python L7 en $sidecarZipOut..." -ForegroundColor Gray
-        $sidecarFiles = Get-ChildItem -Path $sidecarSrc -File | Where-Object { $_.Extension -in @(".py", ".toml", ".md") }
-        if ($sidecarFiles.Count -gt 0) {
-            if (Test-Path $sidecarZipOut) {
-                Remove-Item $sidecarZipOut -Force
+        $sidecarStageDir = Join-Path $env:TEMP ("saare_sidecar_stage_" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $sidecarStageDir | Out-Null
+
+        try {
+            $resolvedSidecarRoot = (Resolve-Path $sidecarSrc).Path
+            $allowedExts = @(".py", ".toml", ".md", ".json", ".txt")
+            $sidecarFiles = Get-ChildItem -Path $resolvedSidecarRoot -Recurse -File | Where-Object {
+                $_.Extension -in $allowedExts -and
+                $_.FullName -notmatch "\\(__pycache__|\.pytest_cache|\.venv|build|dist|[^\\]+\.egg-info)(\\|$)"
             }
-            Compress-Archive -Path $sidecarFiles.FullName -DestinationPath $sidecarZipOut -Force
-            Write-Host " -> [OK] Sidecar Python empaquetado ($($sidecarFiles.Count) archivos limpios)." -ForegroundColor Green
-        } else {
-            Write-Host "[ADVERTENCIA] La carpeta $sidecarSrc no contiene archivos .py/.toml/.md." -ForegroundColor DarkYellow
+
+            if ($sidecarFiles.Count -gt 0) {
+                foreach ($f in $sidecarFiles) {
+                    $relPath = $f.FullName.Substring($resolvedSidecarRoot.Length).TrimStart("\", "/")
+                    $dstFile = Join-Path $sidecarStageDir $relPath
+                    $dstParent = Split-Path $dstFile -Parent
+                    if (-not (Test-Path $dstParent)) {
+                        New-Item -ItemType Directory -Path $dstParent -Force | Out-Null
+                    }
+                    Copy-Item -Path $f.FullName -Destination $dstFile -Force
+                }
+
+                if (Test-Path $sidecarZipOut) {
+                    Remove-Item $sidecarZipOut -Force
+                }
+                Compress-Archive -Path (Join-Path $sidecarStageDir "*") -DestinationPath $sidecarZipOut -Force
+                Write-Host " -> [OK] Sidecar Python empaquetado ($($sidecarFiles.Count) archivos limpios)." -ForegroundColor Green
+            } else {
+                Write-Host "[ADVERTENCIA] La carpeta $sidecarSrc no contiene archivos empaquetables." -ForegroundColor DarkYellow
+            }
+        } finally {
+            if (Test-Path $sidecarStageDir) {
+                Remove-Item $sidecarStageDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 } else {
@@ -392,42 +417,16 @@ try {
         }
     }
     Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
-    npx wrangler types
+    pnpm exec wrangler types
     Assert-LastExitCode -FailureMessage "Fallo al generar tipos con wrangler types"
 } finally {
     Pop-Location
 }
 
 # ------------------------------------------------------------------------------
-# FASE 4: COMMIT Y PUSH A REPOSITORIO GIT ANTES DEL DESPLIEGUE
+# FASE 4: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [4/7] Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
-if ($SkipGitPush) {
-    Write-Host " -> Se omitio la sincronizacion Git por parametro (-SkipGitPush)." -ForegroundColor Yellow
-} else {
-    git add -A
-    Assert-LastExitCode -FailureMessage "Fallo en git add"
-    $gitStatus = git status --porcelain
-    if ($gitStatus) {
-        $currentBranch = (git branch --show-current).Trim()
-        if (-not $currentBranch) {
-            $currentBranch = "main"
-        }
-
-        git commit -m "chore(release): despliegue maestro v8.9"
-        Assert-LastExitCode -FailureMessage "Fallo en git commit"
-        git push origin HEAD
-        Assert-LastExitCode -FailureMessage "Fallo en git push"
-        Write-Host " -> [OK] Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
-    } else {
-        Write-Host " -> No hay cambios pendientes en Git." -ForegroundColor Yellow
-    }
-}
-
-# ------------------------------------------------------------------------------
-# FASE 5: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES
-# ------------------------------------------------------------------------------
-Write-Host "`n==> [5/7] Desplegando Frontends a Cloudflare Pages..." -ForegroundColor Cyan
+Write-Host "`n==> [4/7] Desplegando Frontends a Cloudflare Pages..." -ForegroundColor Cyan
 
 $consoleDist = if (Test-Path "apps/saare-console/dist") {
     "apps/saare-console/dist"
@@ -440,7 +439,7 @@ if (-not $consoleDist) {
     throw "Fallo la compilacion de saare-console. No existe carpeta dist."
 }
 Write-Host " -> Desplegando Consola GRC ($consoleDist)..." -ForegroundColor Gray
-npx wrangler pages deploy "$consoleDist" --project-name=saare-console --branch=main --commit-dirty=true
+pnpm exec wrangler pages deploy "$consoleDist" --project-name=saare-console --branch=main --commit-dirty=true
 Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-console"
 
 $suiteDist = if (Test-Path "apps/saare-suite/dist") {
@@ -454,13 +453,13 @@ if (-not $suiteDist) {
     throw "Fallo la compilacion de saare-suite. No existe carpeta dist."
 }
 Write-Host " -> Desplegando Landing Comercial ($suiteDist)..." -ForegroundColor Gray
-npx wrangler pages deploy "$suiteDist" --project-name=saare-suite --branch=main --commit-dirty=true
+pnpm exec wrangler pages deploy "$suiteDist" --project-name=saare-suite --branch=main --commit-dirty=true
 Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-suite"
 
 # ------------------------------------------------------------------------------
-# FASE 6: MIGRACIONES DE BASE DE DATOS, SECRETOS & CONTROL PLANE WORKER
+# FASE 5: MIGRACIONES DE BASE DE DATOS, SECRETOS & CONTROL PLANE WORKER
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [6/7] Aplicando esquemas D1, secretos y desplegando Control Plane Worker..." -ForegroundColor Cyan
+Write-Host "`n==> [5/7] Aplicando esquemas D1, secretos y desplegando Control Plane Worker..." -ForegroundColor Cyan
 
 Push-Location $controlPlanePath
 try {
@@ -475,7 +474,7 @@ try {
 
     if ($sqlPath) {
         Write-Host " -> Aplicando esquema relacional D1 ($sqlPath) en remoto..." -ForegroundColor Gray
-        npx wrangler d1 execute saare-vault-d1 --remote --file="$sqlPath" --yes
+        pnpm exec wrangler d1 execute saare-vault-d1 --remote --file="$sqlPath" --yes
         Assert-LastExitCode -FailureMessage "Fallo al aplicar schema.sql en D1"
         Write-Host " -> [OK] Esquema D1 aplicado correctamente." -ForegroundColor Green
     } else {
@@ -483,22 +482,48 @@ try {
     }
 
     Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
-    npx wrangler deploy --env production
+    pnpm exec wrangler deploy --env production
     Assert-LastExitCode -FailureMessage "Fallo al desplegar el Worker"
 
     if ($RemoveMasterTestPassword) {
         Write-Host " -> Eliminando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
-        npx wrangler secret delete MASTER_TEST_PASSWORD --env production --force
+        pnpm exec wrangler secret delete MASTER_TEST_PASSWORD --env production --force
         Assert-LastExitCode -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
         Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD eliminado." -ForegroundColor Green
     } elseif ($ConfigureMasterTestPassword) {
         Write-Host " -> Configurando secreto MASTER_TEST_PASSWORD de forma interactiva..." -ForegroundColor Gray
-        npx wrangler secret put MASTER_TEST_PASSWORD --env production
+        pnpm exec wrangler secret put MASTER_TEST_PASSWORD --env production
         Assert-LastExitCode -FailureMessage "Fallo al configurar MASTER_TEST_PASSWORD"
         Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD actualizado en produccion." -ForegroundColor Green
     }
 } finally {
     Pop-Location
+}
+
+# ------------------------------------------------------------------------------
+# FASE 6: SINCRONIZACION DEL RELEASE CON GITHUB (TRAS DESPLIEGUE EXITOSO)
+# ------------------------------------------------------------------------------
+Write-Host "`n==> [6/7] Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
+if ($SkipGitPush) {
+    Write-Host " -> Se omitio la sincronizacion Git por parametro (-SkipGitPush)." -ForegroundColor Yellow
+} else {
+    git add -A
+    Assert-LastExitCode -FailureMessage "Fallo en git add"
+    $gitStatus = git status --porcelain
+    if ($gitStatus) {
+        $currentBranch = (git branch --show-current).Trim()
+        if (-not $currentBranch) {
+            $currentBranch = "main"
+        }
+
+        git commit -m "chore(release): despliegue maestro v9.0"
+        Assert-LastExitCode -FailureMessage "Fallo en git commit"
+        git push origin HEAD
+        Assert-LastExitCode -FailureMessage "Fallo en git push"
+        Write-Host " -> [OK] Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
+    } else {
+        Write-Host " -> No hay cambios pendientes en Git." -ForegroundColor Yellow
+    }
 }
 
 # ------------------------------------------------------------------------------
@@ -546,7 +571,8 @@ foreach ($fe in $frontendsToTest) {
             $testFailureCount++
         }
     } catch {
-        Write-Host " -> [FALLO] No se pudo conectar con $($fe.Name) en $($fe.Url): $($_.Exception.Message)" -ForegroundColor Red
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        Write-Host " -> [FALLO] No se pudo conectar con $($fe.Name) en $($fe.Url) (HTTP $statusCode): $($_.Exception.Message)" -ForegroundColor Red
         $testFailureCount++
     }
 }
@@ -590,7 +616,9 @@ foreach ($origin in $corsOrigins) {
             "Access-Control-Request-Headers" = "content-type,authorization,x-saare-tenant,x-saare-browser-profile,x-saare-client-profile"
         }
         $optResp = Invoke-WebRequest -Uri $chatEndpoint -Method Options -Headers $preflightHeaders -UseBasicParsing -TimeoutSec 10
-        $allowOrigin = $optResp.Headers["Access-Control-Allow-Origin"]
+        $rawAllowOrigin = $optResp.Headers["Access-Control-Allow-Origin"]
+        $allowOrigin = if ($rawAllowOrigin -is [array]) { $rawAllowOrigin -join "," } else { [string]$rawAllowOrigin }
+
         if ($optResp.StatusCode -in @(200, 204) -and ($allowOrigin -eq $origin -or $allowOrigin -eq "*")) {
             Write-Host " -> [OK] CORS Preflight validado para $origin (Allow-Origin: $allowOrigin)" -ForegroundColor Green
         } else {
