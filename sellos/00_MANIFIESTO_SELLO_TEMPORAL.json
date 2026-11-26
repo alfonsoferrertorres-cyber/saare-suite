@@ -1,0 +1,12 @@
+﻿{
+    "expediente":  "EXP-2026-001",
+    "orden_auditoria":  "AUD-2026-001",
+    "entidad":  "S.A.A.R.E.",
+    "timestamp_emision_utc":  "2026-11-26T09:31:28Z",
+    "artefacto_origen":  "C:\\Users\\alfon\\Desktop\\CLOUD_ISV_DESARROLLO_AGOSTO\\apps\\saare-console\\public\\deploy\\saare_native_sidecar.zip",
+    "sha256_digest":  "a666ac8e231e677c96b2b02f8d94c8407021cbe5bf47caa21a0fcb191419d35b",
+    "root_digest_file":  "C:\\Users\\alfon\\Desktop\\CLOUD_ISV_DESARROLLO_AGOSTO\\sellos\\root_digest.sha256",
+    "rfc3161_tsa_url":  "https://freetsa.org/tsr",
+    "rfc3161_tsr_file":  null,
+    "estado_sellado_temporal":  "RFC3161_TSA_REQUEST_FAILED"
+}

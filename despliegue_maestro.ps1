@@ -1,12 +1,14 @@
 ﻿# ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.1 - Hardened)
+# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.2 - Hardened)
 # ==============================================================================
 param(
-    [string]$SmokeTenant = "ENTERPRISE",
+    [string[]]$SmokeTenants = @("ENTERPRISE", "PRO", "STARTER"),
     [string]$SmokeToken = "",
+    [string]$CrossTenantProbeId = "TENANT_ISOLATION_PROBE",
     [switch]$ConfigureMasterTestPassword,
     [switch]$RemoveMasterTestPassword,
     [switch]$SkipSmokeTests,
+    [switch]$SkipMultiTenantChecks,
     [switch]$SkipGitPush,
     [switch]$SkipNativeDeps,
     [switch]$SkipPythonDeps,
@@ -185,6 +187,57 @@ function Get-HttpStatusSafe {
         return [int]$ExceptionRecord.Exception.Response.StatusCode
     }
     return $null
+}
+
+function Invoke-TenantChatProbe {
+    param(
+        [Parameter(Mandatory = $true)][string]$Endpoint,
+        [Parameter(Mandatory = $true)][string]$HeaderTenant,
+        [string]$BodyTenant = "",
+        [string]$Token = "",
+        [string]$PromptText = "Verificacion de conectividad ex-ante multitenant."
+    )
+
+    $headers = @{
+        "Content-Type"            = "application/json"
+        "x-saare-tenant"          = $HeaderTenant
+        "x-saare-browser-profile" = "AUDIT_PROBE"
+        "x-saare-client-profile"  = "DEPLOY_PIPELINE_V9_2"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Token)) {
+        $headers["Authorization"] = "Bearer $Token"
+    }
+
+    $effectiveBodyTenant = if ([string]::IsNullOrWhiteSpace($BodyTenant)) { $HeaderTenant } else { $BodyTenant }
+
+    $payload = @{
+        prompt    = $PromptText
+        messages  = @(@{ role = "user"; content = $PromptText })
+        tenant_id = $effectiveBodyTenant
+        mode      = "EX_ANTE_INSPECTION_ONLY"
+    } | ConvertTo-Json -Depth 4
+
+    try {
+        $resp = Invoke-RestMethod -Uri $Endpoint -Method Post -Headers $headers -Body $payload -TimeoutSec 15
+        return @{
+            Ok          = $true
+            StatusCode  = 200
+            Response    = $resp
+            ErrorText   = ""
+        }
+    } catch {
+        $status = Get-HttpStatusSafe -ExceptionRecord $_
+        $detail = $_.Exception.Message
+        if ($_.ErrorDetails -and -not [string]::IsNullOrWhiteSpace($_.ErrorDetails.Message)) {
+            $detail = "$detail | $($_.ErrorDetails.Message)"
+        }
+        return @{
+            Ok          = $false
+            StatusCode  = $status
+            Response    = $null
+            ErrorText   = $detail
+        }
+    }
 }
 
 # ------------------------------------------------------------------------------
@@ -536,7 +589,7 @@ if ($SkipGitPush) {
             $currentBranch = "main"
         }
 
-        git commit -m "chore(release): despliegue maestro v9.1"
+        git commit -m "chore(release): despliegue maestro v9.2"
         Assert-LastExitCode -FailureMessage "Fallo en git commit"
         git push origin HEAD
         Assert-LastExitCode -FailureMessage "Fallo en git push"
@@ -547,9 +600,9 @@ if ($SkipGitPush) {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS Y HUMO
+# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS, HUMO & MULTITENANT
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS y conectividad en Produccion..." -ForegroundColor Cyan
+Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS, humo y aislacion multitenant..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 
 $testFailureCount = 0
@@ -640,10 +693,15 @@ foreach ($origin in $corsOrigins) {
         $rawAllowOrigin = $optResp.Headers["Access-Control-Allow-Origin"]
         $allowOrigin = if ($rawAllowOrigin -is [array]) { $rawAllowOrigin -join "," } else { [string]$rawAllowOrigin }
 
-        if ($optResp.StatusCode -in @(200, 204) -and ($allowOrigin -eq $origin -or $allowOrigin -eq "*")) {
-            Write-Host " -> [OK] CORS Preflight validado para $origin (Allow-Origin: $allowOrigin)" -ForegroundColor Green
+        $rawAllowHeaders = $optResp.Headers["Access-Control-Allow-Headers"]
+        $allowHeaders = if ($rawAllowHeaders -is [array]) { ($rawAllowHeaders -join ",").ToLowerInvariant() } else { ([string]$rawAllowHeaders).ToLowerInvariant() }
+
+        $tenantHeaderAllowed = ([string]::IsNullOrWhiteSpace($allowHeaders)) -or ($allowHeaders -like "*x-saare-tenant*")
+
+        if ($optResp.StatusCode -in @(200, 204) -and ($allowOrigin -eq $origin -or $allowOrigin -eq "*") -and $tenantHeaderAllowed) {
+            Write-Host " -> [OK] CORS Preflight multitenant validado para $origin (Allow-Origin: $allowOrigin)" -ForegroundColor Green
         } else {
-            Write-Host " -> [FALLO] CORS inesperado para $origin (HTTP $($optResp.StatusCode), Allow-Origin: $allowOrigin)" -ForegroundColor Red
+            Write-Host " -> [FALLO] CORS inesperado para $origin (HTTP $($optResp.StatusCode), Allow-Origin: $allowOrigin, Allow-Headers: $allowHeaders)" -ForegroundColor Red
             $testFailureCount++
         }
     } catch {
@@ -652,33 +710,92 @@ foreach ($origin in $corsOrigins) {
     }
 }
 
-if (-not $SkipSmokeTests -and $SmokeTenant) {
-    try {
-        $reqHeaders = @{
-            "Content-Type"   = "application/json"
-            "x-saare-tenant" = $SmokeTenant
-        }
-        if ($SmokeToken) {
-            $reqHeaders["Authorization"] = "Bearer $SmokeToken"
-        }
+if (-not $SkipSmokeTests) {
+    $tenantsToRun = @($SmokeTenants | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($tenantsToRun.Count -eq 0) {
+        $tenantsToRun = @("ENTERPRISE")
+    }
 
-        $reqBody = @{
-            prompt    = "Verificacion de conectividad ex-ante."
-            messages  = @(@{ role = "user"; content = "Verificacion de conectividad ex-ante." })
-            tenant_id = $SmokeTenant
-            mode      = "EX_ANTE_INSPECTION_ONLY"
-        } | ConvertTo-Json -Depth 4
+    foreach ($tId in $tenantsToRun) {
+        $probe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $tId -BodyTenant $tId -Token $SmokeToken -PromptText "Verificacion de conectividad ex-ante [$tId]."
+        if ($probe.Ok -and $probe.Response -and $probe.Response.success) {
+            $respTenant = $null
+            if ($probe.Response.PSObject.Properties.Match("tenant_id").Count -gt 0) {
+                $respTenant = [string]$probe.Response.tenant_id
+            } elseif ($probe.Response.PSObject.Properties.Match("tenant").Count -gt 0) {
+                $respTenant = [string]$probe.Response.tenant
+            }
 
-        $resp = Invoke-RestMethod -Uri $chatEndpoint -Method Post -Headers $reqHeaders -Body $reqBody -TimeoutSec 15
-        if ($resp.success) {
-            Write-Host " -> [OK] Prueba de humo completada para tenant [$SmokeTenant] (success=True)" -ForegroundColor Green
+            if ($respTenant -and ($respTenant -ne $tId)) {
+                Write-Host " -> [FALLO] Desajuste de tenant en respuesta para [$tId]: recibido '$respTenant'" -ForegroundColor Red
+                $testFailureCount++
+            } else {
+                Write-Host " -> [OK] Prueba de humo completada para tenant [$tId] (success=True)" -ForegroundColor Green
+            }
         } else {
-            Write-Host " -> [FALLO] Prueba de humo devolvio success=False para [$SmokeTenant]" -ForegroundColor Red
+            Write-Host " -> [FALLO] Prueba de humo fallida para tenant [$tId]: $($probe.ErrorText)" -ForegroundColor Red
             $testFailureCount++
         }
-    } catch {
-        Write-Host " -> [ERROR] Fallo prueba de humo para [$SmokeTenant]: $($_.Exception.Message)" -ForegroundColor Red
-        $testFailureCount++
+    }
+
+    if (-not $SkipMultiTenantChecks) {
+        # 7.1 Validacion de rechazo ante ausencia de tenant (si el backend exige tenant explicito)
+        $noTenantHeaders = @{
+            "Content-Type" = "application/json"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($SmokeToken)) {
+            $noTenantHeaders["Authorization"] = "Bearer $SmokeToken"
+        }
+        $noTenantBody = @{
+            prompt   = "Sonda sin cabecera de tenant."
+            messages = @(@{ role = "user"; content = "Sonda sin cabecera de tenant." })
+            mode     = "EX_ANTE_INSPECTION_ONLY"
+        } | ConvertTo-Json -Depth 4
+
+        try {
+            $noTenantResp = Invoke-RestMethod -Uri $chatEndpoint -Method Post -Headers $noTenantHeaders -Body $noTenantBody -TimeoutSec 10
+            if ($noTenantResp -and ($noTenantResp.success -eq $false)) {
+                Write-Host " -> [OK] Sonda sin cabecera de tenant controlada con success=False." -ForegroundColor Green
+            } else {
+                Write-Host " -> [AVISO] Sonda sin cabecera de tenant devolvio respuesta 200 sin rechazo explicito." -ForegroundColor DarkYellow
+            }
+        } catch {
+            $noTenantStatus = Get-HttpStatusSafe -ExceptionRecord $_
+            if ($noTenantStatus -in @(400, 401, 403, 422)) {
+                Write-Host " -> [OK] Sonda sin cabecera de tenant rechazada correctamente (HTTP $noTenantStatus)." -ForegroundColor Green
+            } else {
+                Write-Host " -> [FALLO] Error inesperado en sonda sin cabecera de tenant: $($_.Exception.Message)" -ForegroundColor Red
+                $testFailureCount++
+            }
+        }
+
+        # 7.2 Validacion de coherencia/aislacion cuando x-saare-tenant y body.tenant_id difieren
+        $primaryTenant = $tenantsToRun[0]
+        $mismatchTenant = if ($CrossTenantProbeId -and ($CrossTenantProbeId -ne $primaryTenant)) {
+            $CrossTenantProbeId
+        } else {
+            "TENANT_MISMATCH_PROBE"
+        }
+
+        $mismatchProbe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $primaryTenant -BodyTenant $mismatchTenant -Token $SmokeToken -PromptText "Sonda de coherencia multitenant."
+        if (-not $mismatchProbe.Ok -and ($mismatchProbe.StatusCode -in @(400, 401, 403, 409, 422))) {
+            Write-Host " -> [OK] Conflicto de tenant (header=$primaryTenant vs body=$mismatchTenant) bloqueado (HTTP $($mismatchProbe.StatusCode))." -ForegroundColor Green
+        } elseif ($mismatchProbe.Ok -and $mismatchProbe.Response) {
+            if ($mismatchProbe.Response.success -eq $false) {
+                Write-Host " -> [OK] Conflicto de tenant (header=$primaryTenant vs body=$mismatchTenant) denegado por politica (success=False)." -ForegroundColor Green
+            } else {
+                $leaked = ($mismatchProbe.Response | ConvertTo-Json -Depth 6 -Compress) -like "*$mismatchTenant*"
+                if ($leaked) {
+                    Write-Host " -> [FALLO] Posible fuga o suplantacion de tenant no autorizado ($mismatchTenant) en respuesta." -ForegroundColor Red
+                    $testFailureCount++
+                } else {
+                    Write-Host " -> [OK] Respuesta aislada al contexto del tenant autorizado [$primaryTenant]." -ForegroundColor Green
+                }
+            }
+        } else {
+            Write-Host " -> [FALLO] Fallo inesperado en sonda de coherencia multitenant: $($mismatchProbe.ErrorText)" -ForegroundColor Red
+            $testFailureCount++
+        }
     }
 }
 
