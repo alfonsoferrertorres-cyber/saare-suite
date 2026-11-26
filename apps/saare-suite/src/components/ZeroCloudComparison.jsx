@@ -1,26 +1,26 @@
 import React from 'react';
 
 export default function ZeroCloudComparison() {
-  const trustBadges = [
+  const governanceAreas = [
     {
-      code: "EU AI Act",
-      articles: "Art. 12 & 27",
-      desc: "Automated logging mechanisms, FRIA impact assessments, and ex-ante human oversight."
+      code: 'Gobernanza de IA',
+      articles: 'Control y supervisión',
+      desc: 'Aplicación de políticas preventivas y trazabilidad sobre las interacciones con modelos de IA.'
     },
     {
-      code: "GDPR",
-      articles: "Art. 5 & 25",
-      desc: "Strict data minimization, privacy by design, and in-memory pseudonymization."
+      code: 'Privacidad',
+      articles: 'Minimización de datos',
+      desc: 'Detección y tratamiento de información sensible antes de su envío hacia los modelos.'
     },
     {
-      code: "Trade Secrets",
-      articles: "Directive (EU) 2016/943",
-      desc: "Technical lineage logging, source code isolation, and documented asset protection."
+      code: 'Confidencialidad',
+      articles: 'Protección de activos',
+      desc: 'Control sobre la información corporativa y técnica compartida en los flujos operativos.'
     },
     {
-      code: "Evidence Integrity",
-      articles: "RFC 3161 & eIDAS",
-      desc: "Qualified electronic time-stamping, Ed25519 binding, and non-repudiation ex-Art. 326 LEC."
+      code: 'Integridad de Registros',
+      articles: 'Evidencia verificable',
+      desc: 'Generación de registros estructurados con sellado temporal y comprobación criptográfica.'
     }
   ];
 
@@ -28,10 +28,10 @@ export default function ZeroCloudComparison() {
     <div className="w-full my-16 text-white font-sans">
       <div className="text-center mb-10">
         <h3 className="text-3xl font-bold">
-          Traditional SaaS Audit vs. S.A.A.R.E. Native Audit
+          Auditoría Tradicional vs. Control Preventivo S.A.A.R.E.
         </h3>
         <p className="text-slate-400 mt-2 text-base max-w-2xl mx-auto">
-          Technical comparison between centralized cloud logging and perimeter cryptographic auditing.
+          Comparativa técnica entre el registro posterior centralizado y la evaluación preventiva en el flujo.
         </p>
       </div>
 
@@ -39,52 +39,52 @@ export default function ZeroCloudComparison() {
         <table className="w-full text-left border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400 font-mono text-xs">
-              <th className="p-4 font-semibold">Criterion</th>
-              <th className="p-4 font-semibold text-rose-400">Traditional SaaS Audit</th>
-              <th className="p-4 font-semibold text-emerald-400">S.A.A.R.E. Native Audit (SGP 1.0)</th>
+              <th className="p-4 font-semibold">Criterio</th>
+              <th className="p-4 font-semibold text-rose-400">Registro Posterior Convencional</th>
+              <th className="p-4 font-semibold text-emerald-400">Control Preventivo S.A.A.R.E.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-slate-300">
             <tr>
-              <td className="p-4 font-semibold text-white">Analysis Location</td>
-              <td className="p-4 text-slate-400">External Cloud Server</td>
-              <td className="p-4 text-emerald-300 font-semibold">Local / In-Memory (LLM Perimeter)</td>
+              <td className="p-4 font-semibold text-white">Momento de Evaluación</td>
+              <td className="p-4 text-slate-400">Tras la operación o el incidente</td>
+              <td className="p-4 text-emerald-300 font-semibold">Antes del envío al modelo</td>
             </tr>
             <tr>
-              <td className="p-4 font-semibold text-white">Data Residency Exposure</td>
-              <td className="p-4 text-slate-400">High (Payload & PII Persistence)</td>
-              <td className="p-4 text-emerald-300 font-semibold">Zero-Disk Volatile RAM Isolation (`mlock`)</td>
+              <td className="p-4 font-semibold text-white">Tratamiento de Datos</td>
+              <td className="p-4 text-slate-400">Copia o almacenamiento centralizado</td>
+              <td className="p-4 text-emerald-300 font-semibold">Evaluación en memoria sin persistencia innecesaria</td>
             </tr>
             <tr>
-              <td className="p-4 font-semibold text-white">Infrastructure Model</td>
-              <td className="p-4 text-slate-400">Per-Volume API Subscription</td>
-              <td className="p-4 text-emerald-300 font-semibold">Local Control Plane Edge Execution</td>
+              <td className="p-4 font-semibold text-white">Independencia del Modelo</td>
+              <td className="p-4 text-slate-400">Acoplada al proveedor o aplicación</td>
+              <td className="p-4 text-emerald-300 font-semibold">Políticas separadas del modelo utilizado</td>
             </tr>
             <tr>
-              <td className="p-4 font-semibold text-white">Evaluation Logic</td>
-              <td className="p-4 text-slate-400">Subjective / Ex-Post Logging</td>
-              <td className="p-4 text-emerald-300 font-semibold">Deterministic Ex-Ante Mathematics</td>
+              <td className="p-4 font-semibold text-white">Reglas de Decisión</td>
+              <td className="p-4 text-slate-400">Revisión manual o heurística tardía</td>
+              <td className="p-4 text-emerald-300 font-semibold">Políticas configurables y deterministas</td>
             </tr>
             <tr>
-              <td className="p-4 font-semibold text-white">Evidence Integrity</td>
-              <td className="p-4 text-slate-400">Unsigned Flat Logs</td>
-              <td className="p-4 text-emerald-300 font-semibold">Cryptographically Signed Packages (`.saare-proof`)</td>
+              <td className="p-4 font-semibold text-white">Integridad de Evidencias</td>
+              <td className="p-4 text-slate-400">Registros planos sin verificación</td>
+              <td className="p-4 text-emerald-300 font-semibold">Paquetes de evidencia verificables</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {trustBadges.map((badge, idx) => (
+        {governanceAreas.map((area, idx) => (
           <div key={idx} className="bg-slate-900/60 border border-slate-800 hover:border-slate-700 rounded-xl p-5 transition-all">
             <span className="text-[10px] font-mono text-emerald-400 tracking-wider block uppercase">
-              {badge.articles}
+              {area.articles}
             </span>
             <h4 className="text-base font-bold text-white mt-1 mb-2">
-              {badge.code}
+              {area.code}
             </h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              {badge.desc}
+              {area.desc}
             </p>
           </div>
         ))}

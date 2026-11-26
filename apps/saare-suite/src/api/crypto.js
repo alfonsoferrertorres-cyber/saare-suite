@@ -1,6 +1,5 @@
 /**
- * Utility de Criptografía Client-Side (Web Crypto API)
- * Protocolo SGP 1.0 — S.A.A.R.E. SL
+ * Utilidad de Criptografía Client-Side (Web Crypto API)
  */
 
 export async function sha256Hex(value) {
@@ -12,7 +11,7 @@ export async function sha256Hex(value) {
   const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null;
 
   if (!cryptoObj || !cryptoObj.subtle) {
-    console.warn('[SAARE Crypto] Web Crypto API no disponible en este entorno.');
+    console.warn('[Crypto] Web Crypto API no disponible en este entorno.');
     return '0000000000000000000000000000000000000000000000000000000000000000';
   }
 

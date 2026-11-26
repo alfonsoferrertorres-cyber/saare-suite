@@ -1,4 +1,4 @@
-// saare-suite/src/api/controlPlane.js — Conector L7 Control Plane (SGP 1.0)
+// saare-suite/src/api/controlPlane.js — Conector Control Plane
 import { API_HOST } from './api';
 
 const rawBase = import.meta.env.VITE_CONTROL_PLANE_URL || API_HOST || 'https://api.saare.es';
@@ -18,7 +18,6 @@ export async function callControlPlane(path, payload = {}, options = {}) {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
-        'x-saare-spec': 'SGP-1.0',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(options.headers || {})
       },

@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.0 - Unified)
+# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.1 - Hardened)
 # ==============================================================================
 param(
     [string]$SmokeTenant = "ENTERPRISE",
@@ -34,9 +34,26 @@ function Resolve-ToolInStandardPaths {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName
     )
-    $existing = Get-Command $CommandName -ErrorAction SilentlyContinue
-    if ($existing) {
+    if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
         return $true
+    }
+
+    $knownCandidates = @(
+        "$env:ProgramFiles\Git\cmd\$CommandName.exe",
+        "$env:ProgramFiles\nodejs\$CommandName.exe",
+        "$env:ProgramFiles\OpenSSL-Win64\bin\$CommandName.exe",
+        "C:\Program Files (x86)\OpenSSL-Win32\bin\$CommandName.exe",
+        "$env:LOCALAPPDATA\Microsoft\WinGet\Links\$CommandName.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) }
+
+    foreach ($candidate in $knownCandidates) {
+        $dir = Split-Path $candidate -Parent
+        if ($env:Path -notlike "*$dir*") {
+            $env:Path = "$dir;$env:Path"
+        }
+        if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
+            return $true
+        }
     }
 
     $searchRoots = @(
@@ -77,7 +94,6 @@ function Ensure-NativeTool {
 
     Write-Host " -> Instalando dependencia nativa $DisplayName ($WingetId) via winget..." -ForegroundColor Yellow
     winget install --id $WingetId --exact --source winget --accept-package-agreements --accept-source-agreements --silent
-    # -1978335189 (0x8A15002B): paquete ya instalado sin actualizaciones disponibles
     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne -1978335189) {
         throw "Fallo al instalar $DisplayName con winget (ExitCode=$LASTEXITCODE)"
     }
@@ -163,6 +179,14 @@ for d in deps:
     }
 }
 
+function Get-HttpStatusSafe {
+    param([Parameter(Mandatory = $true)]$ExceptionRecord)
+    if ($ExceptionRecord.Exception -and $ExceptionRecord.Exception.Response) {
+        return [int]$ExceptionRecord.Exception.Response.StatusCode
+    }
+    return $null
+}
+
 # ------------------------------------------------------------------------------
 # FASE 0: PRE-FLIGHT CHECKS, NATIVAS & VERIFICACION DE PERMISOS
 # ------------------------------------------------------------------------------
@@ -199,16 +223,12 @@ if (-not (Resolve-ToolInStandardPaths -CommandName "pnpm")) {
 Write-Host " -> [OK] pnpm disponible ($(pnpm -v))." -ForegroundColor Green
 
 Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
-if (-not [string]::IsNullOrWhiteSpace($env:CLOUDFLARE_API_TOKEN)) {
-    Write-Host " -> Usando autenticacion mediante CLOUDFLARE_API_TOKEN env var." -ForegroundColor Green
-} else {
-    $whoamiOutput = & pnpm exec wrangler whoami 2>&1
-    $whoamiText = ($whoamiOutput | Out-String)
-    if ($LASTEXITCODE -ne 0 -or ($whoamiText -match "You are not logged in|not authenticated|code: 10000")) {
-        throw "No has iniciado sesion en Cloudflare. Ejecuta 'pnpm exec wrangler login' o define CLOUDFLARE_API_TOKEN. Detalle: $whoamiText"
-    }
-    Write-Host " -> Sesion de Wrangler verificada correctamente." -ForegroundColor Green
+$whoamiOutput = & pnpm exec wrangler whoami 2>&1
+$whoamiText = ($whoamiOutput | Out-String)
+if ($LASTEXITCODE -ne 0 -or ($whoamiText -match "You are not logged in|not authenticated|code: 10000")) {
+    throw "No se pudo verificar la sesion en Cloudflare. Ejecuta 'pnpm exec wrangler login' o revisa CLOUDFLARE_API_TOKEN. Detalle: $whoamiText"
 }
+Write-Host " -> Sesion de Wrangler verificada correctamente." -ForegroundColor Green
 
 Write-Host " -> Verificando estado del repositorio Git..." -ForegroundColor Gray
 git rev-parse --is-inside-work-tree | Out-Null
@@ -487,7 +507,7 @@ try {
 
     if ($RemoveMasterTestPassword) {
         Write-Host " -> Eliminando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
-        pnpm exec wrangler secret delete MASTER_TEST_PASSWORD --env production --force
+        pnpm exec wrangler secret delete MASTER_TEST_PASSWORD --env production
         Assert-LastExitCode -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
         Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD eliminado." -ForegroundColor Green
     } elseif ($ConfigureMasterTestPassword) {
@@ -516,7 +536,7 @@ if ($SkipGitPush) {
             $currentBranch = "main"
         }
 
-        git commit -m "chore(release): despliegue maestro v9.0"
+        git commit -m "chore(release): despliegue maestro v9.1"
         Assert-LastExitCode -FailureMessage "Fallo en git commit"
         git push origin HEAD
         Assert-LastExitCode -FailureMessage "Fallo en git push"
@@ -571,8 +591,9 @@ foreach ($fe in $frontendsToTest) {
             $testFailureCount++
         }
     } catch {
-        $statusCode = $_.Exception.Response.StatusCode.value__
-        Write-Host " -> [FALLO] No se pudo conectar con $($fe.Name) en $($fe.Url) (HTTP $statusCode): $($_.Exception.Message)" -ForegroundColor Red
+        $statusCode = Get-HttpStatusSafe -ExceptionRecord $_
+        $codeLabel = if ($statusCode) { "HTTP $statusCode" } else { "Sin respuesta HTTP" }
+        Write-Host " -> [FALLO] No se pudo conectar con $($fe.Name) en $($fe.Url) ($codeLabel): $($_.Exception.Message)" -ForegroundColor Red
         $testFailureCount++
     }
 }

@@ -5,74 +5,74 @@ import { API_HOST } from '../api/api';
 const B2B_PLANS = [
   {
     id: 'SANDBOX_FREE',
-    name: 'Sandbox Evaluador',
+    name: 'Acceso Inicial',
     price: '0',
     period: ' / gratis',
-    description: 'Acceso inmediato sin tarjeta de crédito para CISO, DPO o equipo auditor.',
+    description: 'Entorno inicial sin tarjeta de crédito para evaluación técnica y operativa.',
     badge: 'GRATIS · SIN TARJETA',
     isSandbox: true,
     features: [
-      '2 asientos incluidos (Admin CISO + DPO/Auditor)',
-      'Acceso completo a todos los módulos GRC y Proxy L7',
-      '1.000 inspecciones ex-ante SGP 1.0 / mes incluidas',
-      'Bóveda de evidencias D1 aislada y licencia API real',
-      'Generación de políticas GPO y bootstrap de agente'
+      '2 asientos incluidos',
+      'Acceso a los módulos de gobernanza y control de flujo',
+      'Hasta 1.000 evaluaciones preventivas al mes',
+      'Registro aislado de evidencias y credencial API',
+      'Configuración de políticas y despliegue de agente'
     ],
-    ctaText: 'Probar Sandbox Gratis (2 Asientos)',
+    ctaText: 'Activar Acceso (2 Asientos)',
     stripePaymentLink: ''
   },
   {
     id: 'STARTER_199',
-    name: 'Equipo Ágil / PyME',
+    name: 'Equipo',
     price: '199',
     period: '/mes',
-    description: 'Protección perimetral esencial para equipos que adoptan IA generativa bajo RGPD.',
+    description: 'Control preventivo esencial para equipos que operan sistemas de IA.',
     badge: null,
     features: [
-      'Hasta 10 asientos operativos (RBAC)',
-      'Extensión L7 Proxy (Chrome, Edge, Brave)',
-      'Sanitización automática de PII y API Keys en RAM',
-      '10.000 inspecciones ex-ante / mes',
-      'Bóveda de evidencias D1 aislada por Tenant'
+      'Hasta 10 asientos operativos',
+      'Control en origen para navegadores compatibles',
+      'Detección y tratamiento de datos sensibles en memoria',
+      'Hasta 10.000 evaluaciones preventivas al mes',
+      'Registro de evidencias aislado por organización'
     ],
     ctaText: 'Contratar Plan Equipo',
     stripePaymentLink: import.meta.env.VITE_STRIPE_LINK_STARTER || ''
   },
   {
     id: 'PROFESSIONAL_649',
-    name: 'Corporate GRC',
+    name: 'Corporate',
     price: '649',
     period: '/mes',
-    description: 'Gobernanza integral auditada para cumplimiento EU AI Act, DORA y secretos empresariales.',
+    description: 'Gobernanza y trazabilidad verificable para entornos con mayores requisitos de control.',
     badge: 'MÁS DEMANDADO',
     highlighted: true,
     features: [
-      'Hasta 50 asientos ejecutivos (CISO, DPO, Auditor)',
-      'Despliegue silencioso masivo vía GPO (.reg)',
-      '100.000 inspecciones ex-ante / mes',
-      'Anclaje periódico de Raíces Merkle + Safe Creative',
-      'Generación de informes FRIA y exportación PDF oficial',
-      'Reglas DLP personalizadas por organización'
+      'Hasta 50 asientos ejecutivos y de revisión',
+      'Despliegue centralizado en puestos de trabajo',
+      'Hasta 100.000 evaluaciones preventivas al mes',
+      'Verificación de integridad y sellado de registros',
+      'Generación de informes estructurados y exportación PDF',
+      'Políticas de protección de datos personalizadas'
     ],
-    ctaText: 'Activar Corporate GRC',
+    ctaText: 'Activar Plan Corporate',
     stripePaymentLink: import.meta.env.VITE_STRIPE_LINK_PRO || ''
   },
   {
     id: 'ENTERPRISE_1990',
-    name: 'Enterprise & Sector Público',
+    name: 'Enterprise',
     price: '1.990',
     period: '/mes',
-    description: 'Infraestructura dedicada, integración SIEM y soporte para licitaciones / Kit Consulting.',
+    description: 'Infraestructura dedicada, integración con sistemas corporativos y soporte continuo.',
     badge: 'SOBERANÍA TOTAL',
     features: [
-      'Asientos y volumen de trazas ilimitados',
-      'Enrutamiento hacia modelos On-Premise / Ollama',
-      'Exportación en tiempo real hacia SIEM corporativo',
-      'Alertas críticas multicanal CPaaS con failover',
-      'Paquetes documentales para subvenciones públicas',
-      'SLA garantizado 99.95% y soporte CISO 24/7'
+      'Asientos y volumen de registros adaptados a la operación',
+      'Enrutamiento hacia modelos externos o despliegues propios',
+      'Exportación hacia sistemas de monitorización y SIEM',
+      'Notificaciones y alertas configurables',
+      'Documentación técnica para procesos de auditoría',
+      'Acuerdo de nivel de servicio y soporte dedicado'
     ],
-    ctaText: 'Activar Enterprise Dedicado',
+    ctaText: 'Activar Plan Enterprise',
     stripePaymentLink: import.meta.env.VITE_STRIPE_LINK_ENTERPRISE || ''
   }
 ];
@@ -228,7 +228,7 @@ export const PricingPlans = ({ onSelectPlan }) => {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-extrabold text-cyan-400">
-                Aprovisionar Tenant · {selectedPlan.name}
+                Aprovisionar Entorno · {selectedPlan.name}
               </h3>
               <button
                 type="button"
@@ -240,7 +240,7 @@ export const PricingPlans = ({ onSelectPlan }) => {
             </div>
 
             <p className="text-xs text-slate-400 mb-5">
-              Introduce los datos de tu organización para reservar tu identificador aislado en la Bóveda D1 antes de completar la suscripción en Stripe.
+              Introduce los datos de tu organización para reservar tu identificador aislado antes de continuar con el proceso de contratación.
             </p>
 
             <form onSubmit={handleCheckoutSubmit} className="space-y-4">
@@ -251,7 +251,6 @@ export const PricingPlans = ({ onSelectPlan }) => {
                 <input
                   type="text"
                   required
-                  placeholder="Ej. Finanzas Ibérica S.A."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-500"
@@ -260,12 +259,11 @@ export const PricingPlans = ({ onSelectPlan }) => {
 
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                  Email del Custodio Principal (CISO / Admin)
+                  Correo Corporativo
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="ciso@tuempresa.es"
                   value={corporateEmail}
                   onChange={(e) => setCorporateEmail(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-500"
@@ -291,7 +289,7 @@ export const PricingPlans = ({ onSelectPlan }) => {
                   disabled={isRedirecting}
                   className="w-2/3 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 text-xs font-extrabold uppercase tracking-wider cursor-pointer"
                 >
-                  {isRedirecting ? 'Conectando...' : 'Continuar a Stripe →'}
+                  {isRedirecting ? 'Conectando...' : 'Continuar →'}
                 </button>
               </div>
             </form>

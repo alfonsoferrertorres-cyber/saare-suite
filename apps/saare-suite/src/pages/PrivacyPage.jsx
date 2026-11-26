@@ -14,28 +14,27 @@ export default function PrivacyPage({ onBack }) {
         </button>
 
         <div className="border border-slate-800 bg-[#0A101E] p-8 sm:p-12 rounded-2xl shadow-xl">
-          <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2">Expediente: MS3V-RECON-VALID-2026-ALF-0521</div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mb-6">Política de Privacidad y Protección de Datos</h1>
 
           <div className="space-y-6 text-sm text-slate-300 leading-relaxed">
             <section>
-              <h2 className="text-base font-bold text-white mb-2">1. Responsable del Tratamiento</h2>
-              <p>Alfonso Ferrer Torres (NIF: 48553065L), con domicilio profesional en el marco del expediente marco MS3V-RECON-VALID-2026-ALF-0521 (Safe Creative: SC-REG-2026-1791667481).</p>
+              <h2 className="text-base font-bold text-white mb-2">1. Tratamiento de Datos</h2>
+              <p>El tratamiento de los datos facilitados a través de la plataforma se realiza conforme al RGPD y a la normativa de protección de datos aplicable.</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">2. Finalidad del Tratamiento</h2>
-              <p>Gestión de expedientes de cumplimiento normativo, auditoría perimetral de modelos de inteligencia artificial y justificación de subvenciones públicas (Red.es, INCIBE, NextGen EU / PRTR).</p>
+              <p>Atender solicitudes de acceso o evaluación, gestionar la cuenta de la organización y operar los controles de gobernanza y trazabilidad solicitados.</p>
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-white mb-2">3. Base Jurídica y Minimización</h2>
-              <p>Cumplimiento de obligaciones legales ex-Art. 326 LEC, Reglamento eIDAS (UE 910/2014), EU AI Act (UE 2024/1689) y DORA (UE 2022/2554). La plataforma aplica principios de minimización estricta mediante procesamiento Stateless en memoria RAM efímera (mlock) sin persistencia de datos sensibles en disco.</p>
+              <h2 className="text-base font-bold text-white mb-2">3. Minimización y Seguridad</h2>
+              <p>Las solicitudes se evalúan aplicando criterios de minimización de datos y medidas técnicas orientadas a proteger la información durante su procesamiento.</p>
             </section>
 
             <section>
               <h2 className="text-base font-bold text-white mb-2">4. Ejercicio de Derechos</h2>
-              <p>Los interesados pueden ejercitar sus derechos de acceso, rectificación, supresión y limitación dirigiendo una comunicación por escrito acreditando su identidad a legal@saare.es.</p>
+              <p>Puedes ejercer tus derechos de acceso, rectificación, supresión, limitación u oposición a través de los canales oficiales disponibles en la plataforma.</p>
             </section>
           </div>
         </div>

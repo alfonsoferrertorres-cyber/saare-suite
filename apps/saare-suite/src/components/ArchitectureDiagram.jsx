@@ -2,13 +2,13 @@ import React from 'react';
 
 export default function ArchitectureDiagram() {
   const pipelineSteps = [
-    { step: "01", name: "POLICY", desc: "Versioned Declarative Policies" },
-    { step: "02", name: "RISK", desc: "Threat & Context Assessment" },
-    { step: "03", name: "CONTROL", desc: "L7 Vector Engine (7 Dimensions)" },
-    { step: "04", name: "RUNTIME", desc: "Ex-Ante RAM Interception (`mlock`)" },
-    { step: "05", name: "DECISION", desc: "ALLOW / DENY / REVIEW" },
-    { step: "06", name: "EVIDENCE", desc: "Signed `.saare-proof` Package" },
-    { step: "07", name: "AUDIT", desc: "Independent Client Verification" }
+    { step: '01', name: 'POLÍTICA', desc: 'Reglas y criterios configurados' },
+    { step: '02', name: 'RIESGO', desc: 'Análisis de contexto y sensibilidad' },
+    { step: '03', name: 'CONTROL', desc: 'Evaluación preventiva del flujo' },
+    { step: '04', name: 'EJECUCIÓN', desc: 'Intercepción antes de la inferencia' },
+    { step: '05', name: 'DECISIÓN', desc: 'Permitir, bloquear o revisar' },
+    { step: '06', name: 'EVIDENCIA', desc: 'Registro estructurado con integridad' },
+    { step: '07', name: 'AUDITORÍA', desc: 'Verificación y consulta de trazas' }
   ];
 
   return (
@@ -17,13 +17,13 @@ export default function ArchitectureDiagram() {
 
       <div className="text-center mb-8">
         <span className="inline-block text-[11px] font-mono font-bold text-cyan-400 tracking-widest uppercase bg-cyan-950/60 border border-cyan-500/30 px-3 py-1 rounded-full mb-2">
-          SGP 1.0 Runtime Architecture
+          Arquitectura de Gobernanza
         </span>
         <h3 className="text-2xl md:text-3xl font-extrabold text-white">
-          Perimeter Flow: From Policy to Evidence
+          Flujo Preventivo: De la Política a la Evidencia
         </h3>
         <p className="text-xs text-slate-400 mt-2 max-w-xl mx-auto">
-          L7 deterministic pipeline executed in volatile memory prior to authorizing model inference.
+          Secuencia de evaluación aplicada antes de autorizar el envío de solicitudes a los modelos.
         </p>
       </div>
 
@@ -51,13 +51,13 @@ export default function ArchitectureDiagram() {
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
           <span>
-            <strong className="text-white">L7 Interception:</strong> P99 &lt; 1.12 ms | Zero-Disk RAM isolation (`mlock`)
+            <strong className="text-white">Control Ex Ante:</strong> Evaluación previa al envío con baja latencia operativa
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span>
-            <strong className="text-white">Cryptographic Vault:</strong> Ed25519 + Merkle Root + TSA RFC 3161
+            <strong className="text-white">Evidencia:</strong> Registro íntegro y verificable de cada operación
           </span>
         </div>
       </div>

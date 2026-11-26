@@ -1,4 +1,4 @@
-// saare-suite/src/api/api.js — Cliente API Unificado S.A.A.R.E. (SGP 1.0)
+// saare-suite/src/api/api.js — Cliente API Unificado
 
 const rawEnvUrl = typeof import.meta !== 'undefined' && import.meta.env
   ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_CONTROL_PLANE_URL || import.meta.env.VITE_SAARE_API_HOST)
@@ -22,8 +22,7 @@ export const API_BASE_URL = `${API_HOST}/api/v1`;
 async function apiFetch(endpoint, options = {}) {
   const defaultHeaders = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Accept': 'application/json',
-    'x-saare-spec': 'SGP-1.0'
+    'Accept': 'application/json'
   };
 
   const token = localStorage.getItem('saare_auth_token') || localStorage.getItem('saare_token');
@@ -67,7 +66,7 @@ export const landingApi = {
   registerTrial: (email, company, planType) =>
     apiFetch('/api/v1/trial', {
       method: 'POST',
-      headers: { 'x-saare-tenant': (company || 'ENTERPRISE').toUpperCase() },
+      headers: { 'x-saare-tenant': (company || 'ORGANIZATION').toUpperCase() },
       body: JSON.stringify({ email, company, planType }),
     }),
 

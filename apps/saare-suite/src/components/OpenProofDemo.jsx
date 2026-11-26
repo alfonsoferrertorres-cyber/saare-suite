@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 
 const SAMPLE_PROOF = {
-  protocol: "SGP-1.0",
-  evidence_id: "EV-L7-89A1B2C3D4",
+  protocol: 'SGP-1.0',
+  evidence_id: 'EV-L7-89A1B2C3D4',
   proofBundle: {
-    verdictId: "VRD-2026-89A1B2C3D4",
-    payloadHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    ed25519Signature: "ED25519_SIG_E3B0C44298FC1C14",
-    merkleRoot: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
-    rfc3161Timestamp: "2026-09-30T05:00:00Z"
+    verdictId: 'VRD-2026-89A1B2C3D4',
+    payloadHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    ed25519Signature: 'ED25519_SIG_E3B0C44298FC1C14',
+    merkleRoot: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+    rfc3161Timestamp: '2026-09-30T05:00:00Z'
   }
 };
 
@@ -20,10 +20,10 @@ export default function OpenProofDemo() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-slate-800 gap-3">
         <div>
           <h4 className="font-bold text-sm text-white font-sans">
-            Open Proof: Verificación de Integridad
+            Verificación de Integridad de Evidencias
           </h4>
           <p className="text-slate-400 font-sans text-xs mt-0.5">
-            Comprueba la validación criptográfica ante la alteración de un byte del paquete de evidencia.
+            Comprueba cómo se detecta la alteración de un dato dentro del paquete de evidencia.
           </p>
         </div>
         <button
@@ -35,13 +35,13 @@ export default function OpenProofDemo() {
               : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
           }`}
         >
-          {tampered ? 'Restaurar Evidencia Original' : 'Alterar 1 Byte Payload'}
+          {tampered ? 'Restaurar Evidencia Original' : 'Simular Alteración en Hash'}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-slate-950 p-4 rounded border border-slate-800">
-          <span className="text-slate-500 text-[10px] block mb-2">// ESTADO DEL PAQUETE .saare-proof</span>
+          <span className="text-slate-500 text-[10px] block mb-2">Paquete de evidencia</span>
           <pre className="text-emerald-400 overflow-x-auto text-[11px] leading-relaxed">
             {JSON.stringify(
               {
@@ -49,7 +49,7 @@ export default function OpenProofDemo() {
                 proofBundle: {
                   ...SAMPLE_PROOF.proofBundle,
                   payloadHash: tampered
-                    ? "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b99"
+                    ? 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b99'
                     : SAMPLE_PROOF.proofBundle.payloadHash
                 }
               },
@@ -61,28 +61,28 @@ export default function OpenProofDemo() {
 
         <div className="bg-slate-950 p-4 rounded border border-slate-800 flex flex-col justify-between">
           <div>
-            <span className="text-slate-500 text-[10px] block mb-2">// RESULTADO DEL VERIFICADOR INDEPENDIENTE</span>
+            <span className="text-slate-500 text-[10px] block mb-2">Resultado de comprobación</span>
             <div className="space-y-2.5 font-sans mt-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">SHA-256 Digest:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
-                  {tampered ? "FAIL (Mismatch)" : "PASSED ✓"}
+                <span className={tampered ? 'text-rose-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                  {tampered ? 'FAIL (Mismatch)' : 'PASSED ✓'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">Merkle Inclusion:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
-                  {tampered ? "FAIL (Invalid Root)" : "PASSED ✓"}
+                <span className={tampered ? 'text-rose-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                  {tampered ? 'FAIL (Invalid Root)' : 'PASSED ✓'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Ed25519 Signature:</span>
-                <span className={tampered ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
-                  {tampered ? "INVALID" : "VERIFIED ✓"}
+                <span className="text-slate-400">Firma Digital:</span>
+                <span className={tampered ? 'text-rose-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                  {tampered ? 'INVALID' : 'VERIFIED ✓'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">RFC 3161 Timestamp:</span>
+                <span className="text-slate-400">Sellado Temporal:</span>
                 <span className="text-emerald-400 font-semibold">VALID ✓</span>
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function OpenProofDemo() {
               ? 'bg-rose-950/60 text-rose-200 border-rose-800/80'
               : 'bg-emerald-950/60 text-emerald-200 border-emerald-800/80'
           }`}>
-            VEREDICTO: {tampered ? 'INVALID / EVIDENCIA MANIPULADA' : 'VERIFIED / INTEGRIDAD ÍNTEGRA'}
+            VEREDICTO: {tampered ? 'INVALID / EVIDENCIA ALTERADA' : 'VERIFIED / INTEGRIDAD ÍNTEGRA'}
           </div>
         </div>
       </div>

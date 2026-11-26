@@ -1,7 +1,6 @@
 /**
- * S.A.A.R.E. Browser-Native Proof Verifier (Zero-Cloud / Zero-Network)
- * Ejecuta verificación criptográfica determinista ex-ante en el cliente.
- * Expediente: MS3V-RECON-VALID-2026-ALF-0521
+ * Browser-Native Proof Verifier
+ * Ejecuta verificación determinista en el cliente sobre paquetes de evidencia.
  */
 
 export async function computeSha256InBrowser(data) {
@@ -27,7 +26,7 @@ export async function verifySaareProofInBrowser(jsonProofInput) {
     if (!proof || typeof proof !== 'object' || !proof.proofBundle) {
       return {
         status: 'INVALID_FORMAT',
-        error: "El bloque de evidencia no contiene la estructura canónica 'proofBundle'.",
+        error: "El bloque de evidencia no contiene la estructura 'proofBundle'.",
         latencyMs: Number((performance.now() - startTime).toFixed(2)),
       };
     }
@@ -97,8 +96,7 @@ export async function verifySaareProofInBrowser(jsonProofInput) {
         rfc3161Timestamp,
         policyVersion: policyVersion || 'v1.0.0',
         controlVersion: controlVersion || 'v1.0.0',
-        safeCreativeAnchor: proof.proof_chain?.safe_creative_anchor?.registry_code || 'SC-REG-2026-1791667481',
-        executionMode: proof.execution_mode || 'ZERO_CLOUD_RAM_MLOCK',
+        executionMode: proof.execution_mode || 'LOCAL_MEMORY',
       },
     };
   } catch (err) {
