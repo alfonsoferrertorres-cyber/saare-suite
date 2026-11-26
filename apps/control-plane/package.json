@@ -23,7 +23,8 @@
   "author": "S.A.A.R.E. Engineering",
   "license": "PROPRIETARY",
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20261104.1",
+    "@cloudflare/workers-types": "5.20261123.1",
+    "@types/node": "^26.6.7",
     "wrangler": "4.168.0"
   }
 }
