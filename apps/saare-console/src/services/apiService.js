@@ -114,7 +114,7 @@ export const apiService = {
   },
 
   async setRouteMode(targetMode) {
-    const { token, tenant, cleanRoot } = getAuthContext();
+    const { token, tenant, baseUrl } = getAuthContext();
     if (targetMode === 'LOCAL_SIDECAR') {
       const probe = await fetch(LOCAL_SIDECAR_URL, {
         method: 'POST',
@@ -133,7 +133,7 @@ export const apiService = {
     }
 
     writeStorage(ROUTE_MODE_KEY, 'CLOUD_EDGE');
-    return { mode: 'CLOUD_EDGE', endpoint: `${cleanRoot}/api/v1/chat/completions` };
+    return { mode: 'CLOUD_EDGE', endpoint: `${baseUrl}/chat/completions` };
   },
 
   downloadNativeSidecar(overrideTenant) {
@@ -163,7 +163,7 @@ export const apiService = {
     try {
       const res = await saareFetch(`/metrics/tenants${query}`, { method: 'GET' });
       if (res && res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data?.data) ? data.data : [];
         const total = rows.reduce((acc, r) => acc + Number(r.total_prompts ?? 0), 0);
         const denied = rows.reduce((acc, r) => acc + Number(r.bloqueados_pii ?? 0), 0);
@@ -205,7 +205,7 @@ export const apiService = {
       });
 
       if (res && res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
       }
       if (res && res.status === 429) {
@@ -223,7 +223,7 @@ export const apiService = {
     try {
       const res = await saareFetch('/health', { method: 'GET' });
       if (res && res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         return {
           nodeId: data.node || data.service || '',
           tenantId: tenant,
@@ -282,12 +282,18 @@ export const apiService = {
       ...(resolvedTenant ? { tenant: resolvedTenant, tenant_id: rawBody.tenant_id || resolvedTenant } : {})
     };
 
+    const profileHeaders = {
+      ...(cleanBody.browserProfile ? { 'x-saare-browser-profile': String(cleanBody.browserProfile) } : {}),
+      ...(cleanBody.clientProfile ? { 'x-saare-client-profile': String(cleanBody.clientProfile) } : {})
+    };
+
     if (routeMode === 'LOCAL_SIDECAR') {
       try {
         const localRes = await fetch(LOCAL_SIDECAR_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...profileHeaders,
             ...(cleanBody.tenant ? { 'x-saare-tenant': cleanBody.tenant, 'X-SAARE-Tenant': cleanBody.tenant } : {}),
             ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
           },
@@ -334,6 +340,7 @@ export const apiService = {
     try {
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
+        headers: profileHeaders,
         overrideTenant: cleanBody.tenant,
         overrideUser: cleanBody.user,
         overrideRole: cleanBody.role,
@@ -342,7 +349,7 @@ export const apiService = {
       });
 
       if (res && res.ok) {
-        return await res.json();
+        return await res.json().catch(() => ({}));
       }
 
       const errData = await res?.json().catch(() => ({}));
@@ -368,7 +375,7 @@ export const apiService = {
     try {
       const res = await saareFetch('/vault/sync', { method: 'GET' });
       if (res && res.ok) {
-        return await res.json();
+        return await res.json().catch(() => ({}));
       }
       return { success: false, status: res?.status || 0 };
     } catch (e) {

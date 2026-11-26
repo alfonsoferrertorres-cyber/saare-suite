@@ -2481,7 +2481,7 @@ export default {
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      if ((path === "/v1/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue" || path === "/api/v1/intercept") && method === "POST") {
+      if ((path === "/v1/chat/completions" || path === "/api/v1/chat/completions" || path === "/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue" || path === "/api/v1/intercept") && method === "POST") {
         const startTime = performance.now();
         const reqContentType = request.headers.get("content-type") || "";
 

@@ -37,14 +37,25 @@ export default function GovernanceToolbar({
     };
   }, []);
 
+  const resolveActiveTenant = () =>
+    tenantId || apiService.getCurrentUser()?.tenantId || 'DEFAULT_TENANT';
+
   const getBaseUrl = () => {
+    const originFallback =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : '';
     const raw =
       (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
       SAARE_CONFIG?.API_BASE_URL ||
       API_HOST ||
-      (typeof window !== 'undefined' && window.location?.origin) ||
+      originFallback ||
       '';
-    return String(raw).trim().replace(/\/+$/, '').replace(/\/api\/v1$/i, '').replace(/\/v1$/i, '');
+    return String(raw)
+      .trim()
+      .replace(/\/+$/, '')
+      .replace(/\/api\/v1$/i, '')
+      .replace(/\/v1$/i, '');
   };
 
   const setLog = (msg) => {
@@ -72,25 +83,33 @@ export default function GovernanceToolbar({
     URL.revokeObjectURL(url);
   };
 
+  const parseOkJson = async (res, fallbackLabel = 'petición') => {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error || `Error HTTP ${res.status} en ${fallbackLabel}`);
+    }
+    return data;
+  };
+
   const runButtonAction = async (actionKey, startMsg, customHandler, fallbackApiFn) => {
     if (busyAction) return;
     setBusyAction(actionKey);
     setLog(startMsg);
 
     try {
-      if (typeof customHandler === 'function') {
-        const result = await customHandler();
-        if (typeof result === 'string' && result.trim()) {
-          setLog(result);
-        }
-      } else if (typeof fallbackApiFn === 'function') {
-        const result = await fallbackApiFn();
+      const handler = typeof customHandler === 'function' ? customHandler : fallbackApiFn;
+      if (typeof handler === 'function') {
+        const result = await handler();
         if (typeof result === 'string' && result.trim()) {
           setLog(result);
         }
       }
     } catch (err) {
-      setLog(`Error en acción [${actionKey}]: ${err?.message || 'Fallo de comunicación con el control plane.'}`);
+      setLog(
+        `Error en acción [${actionKey}]: ${
+          err?.message || 'Fallo de comunicación con el control plane.'
+        }`
+      );
     } finally {
       setBusyAction('');
     }
@@ -99,7 +118,7 @@ export default function GovernanceToolbar({
   const handleToggleRules = () => {
     const prevState = localRulesEnabled;
     const nextState = !prevState;
-    const activeTenant = tenantId || apiService.getCurrentUser()?.tenantId || 'DEFAULT_TENANT';
+    const activeTenant = resolveActiveTenant();
 
     setLocalRulesEnabled(nextState);
     runButtonAction(
@@ -108,25 +127,26 @@ export default function GovernanceToolbar({
         ? `Activando reglas DLP / políticas en ${activeTenant}...`
         : `Desactivando reglas DLP / políticas en ${activeTenant}...`,
       async () => {
-        if (typeof onToggleTenantRules === 'function') {
-          await onToggleTenantRules(nextState);
-        } else {
-          const res = await saareFetch('/custom-rules', {
-            method: 'POST',
-            overrideTenant: activeTenant,
-            body: JSON.stringify({ enabled: nextState })
-          });
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
+        try {
+          if (typeof onToggleTenantRules === 'function') {
+            await onToggleTenantRules(nextState);
+          } else {
+            const res = await saareFetch('/custom-rules', {
+              method: 'POST',
+              overrideTenant: activeTenant,
+              body: JSON.stringify({ enabled: nextState })
+            });
+            await parseOkJson(res, 'actualizar reglas del tenant');
           }
+          return nextState
+            ? `Reglas DLP / políticas ACTIVAS para ${activeTenant}.`
+            : `Reglas DLP / políticas DESACTIVADAS para ${activeTenant}.`;
+        } catch (err) {
+          setLocalRulesEnabled(prevState);
+          throw err;
         }
-        return nextState
-          ? `Reglas DLP / políticas ACTIVAS para ${activeTenant}.`
-          : `Reglas DLP / políticas DESACTIVADAS para ${activeTenant}.`;
       }
-    ).catch(() => {
-      setLocalRulesEnabled(prevState);
-    });
+    );
   };
 
   const handleVerify = (customHash) => {
@@ -156,7 +176,7 @@ export default function GovernanceToolbar({
         if (typeof onVerifySignature === 'function') {
           await onVerifySignature(hashToVerify);
         } else {
-          await saareFetch('/evidence/verify', {
+          const res = await saareFetch('/evidence/verify', {
             method: 'POST',
             body: JSON.stringify({
               proof: 'SHA256_RFC3161_VALIDATED',
@@ -164,16 +184,16 @@ export default function GovernanceToolbar({
               merkleRoot: hashToVerify
             })
           });
+          await parseOkJson(res, 'verificar firma');
         }
         return `Verificación iniciada para el hash ${hashToVerify.substring(0, 14)}...`;
       }
     );
   };
 
-  const activeTenant = tenantId || apiService.getCurrentUser()?.tenantId || 'DEFAULT_TENANT';
-
-  const handleExportCustody = () =>
-    runButtonAction(
+  const handleExportCustody = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'export_custody',
       `Exportando cadena de custodia de ${activeTenant}...`,
       onExportCustody,
@@ -188,9 +208,11 @@ export default function GovernanceToolbar({
         return `Cadena de custodia exportada (${traces.length} trazas).`;
       }
     );
+  };
 
-  const handleExportGrantDossier = () =>
-    runButtonAction(
+  const handleExportGrantDossier = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'export_grant_dossier',
       'Generando dossier de subvenciones...',
       onExportGrantDossier,
@@ -203,14 +225,16 @@ export default function GovernanceToolbar({
             documentType: 'ALL'
           })
         });
-        const data = await res.json().catch(() => ({}));
+        const data = await parseOkJson(res, 'dossier de subvenciones');
         downloadJsonFile(`dossier_subvenciones_${activeTenant}.json`, data);
         return `Dossier generado: ${data.complianceCode || 'OK'}.`;
       }
     );
+  };
 
-  const handleExecuteEnforcementCheck = () =>
-    runButtonAction(
+  const handleExecuteEnforcementCheck = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'enforcement_check',
       'Ejecutando verificación ex-ante L7...',
       onExecuteEnforcementCheck,
@@ -225,9 +249,11 @@ export default function GovernanceToolbar({
         return `Auditoría Ex-Ante completada: decisión ${resp?.decision || 'EVALUADA'}.`;
       }
     );
+  };
 
-  const handleOpenFriaModal = () =>
-    runButtonAction(
+  const handleOpenFriaModal = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'open_fria',
       'Consultando evaluación de impacto FRIA (Art. 27)...',
       onOpenFriaModal,
@@ -236,20 +262,22 @@ export default function GovernanceToolbar({
           method: 'GET',
           overrideTenant: activeTenant
         });
-        const data = await res.json().catch(() => ({}));
+        const data = await parseOkJson(res, 'evaluación FRIA / SoA');
         downloadJsonFile(`fria_soa_${activeTenant}.json`, data);
         return `Expediente FRIA / SoA sincronizado para ${activeTenant}.`;
       }
     );
+  };
 
-  const handleExportGovernancePackage = () =>
-    runButtonAction(
+  const handleExportGovernancePackage = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'export_grc',
       'Generando paquete de 4 plantillas GRC...',
       onExportGovernancePackage,
       async () => {
         const matrixRes = await saareFetch('/compliance/matrix', { method: 'GET' });
-        const matrix = await matrixRes.json().catch(() => ({}));
+        const matrix = await parseOkJson(matrixRes, 'matriz normativa GRC');
         downloadJsonFile(`plantillas_grc_${activeTenant}.json`, {
           tenantId: activeTenant,
           generatedAt: new Date().toISOString(),
@@ -259,9 +287,11 @@ export default function GovernanceToolbar({
         return 'Paquete de 4 plantillas GRC descargado.';
       }
     );
+  };
 
-  const handleOpenReportModal = () =>
-    runButtonAction(
+  const handleOpenReportModal = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'open_report',
       'Preparando informe oficial del tenant...',
       onOpenReportModal,
@@ -280,9 +310,11 @@ export default function GovernanceToolbar({
         return `Informe oficial exportado (${traces.length} registros).`;
       }
     );
+  };
 
-  const handleGenerateToken = () =>
-    runButtonAction(
+  const handleGenerateToken = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'generate_token',
       'Solicitando credencial / estado de licencia...',
       onGenerateToken,
@@ -292,26 +324,30 @@ export default function GovernanceToolbar({
           overrideTenant: activeTenant,
           body: JSON.stringify({ purpose: 'AUDIT_TOKEN' })
         });
-        const data = await res.json().catch(() => ({}));
+        const data = await parseOkJson(res, 'verificar licencia');
         return `Licencia verificada para ${data.tenant || activeTenant} (rol: ${data.role || 'AUDITOR'}).`;
       }
     );
+  };
 
-  const handleDownloadTeaser = () =>
-    runButtonAction(
+  const handleDownloadTeaser = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'download_teaser',
       'Descargando manifiesto técnico...',
       onDownloadTeaser,
       async () => {
         const res = await saareFetch('/forensics/manifest', { method: 'GET' });
-        const data = await res.json().catch(() => ({}));
+        const data = await parseOkJson(res, 'manifiesto técnico');
         downloadJsonFile(`manifiesto_tecnico_${activeTenant}.json`, data);
         return 'Manifiesto técnico descargado.';
       }
     );
+  };
 
-  const handleExportLecActa = () =>
-    runButtonAction(
+  const handleExportLecActa = () => {
+    const activeTenant = resolveActiveTenant();
+    return runButtonAction(
       'export_lec_acta',
       'Generando acta probatoria Art. 326 LEC / ISO 27037...',
       onExportLecActa,
@@ -324,11 +360,12 @@ export default function GovernanceToolbar({
             enable2of3Custody: true
           })
         });
-        const data = await res.json().catch(() => ({}));
+        const data = await parseOkJson(res, 'acta LEC / ISO 27037');
         downloadJsonFile(`acta_lec_iso27037_${activeTenant}.json`, data);
         return `Acta forense generada: lote ${data.batchId || 'OK'}.`;
       }
     );
+  };
 
   const btnBase = {
     padding: '8px 12px',
