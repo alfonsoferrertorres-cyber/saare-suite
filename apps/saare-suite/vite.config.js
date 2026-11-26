@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  
+
   base: '/',
 
   resolve: {
@@ -35,7 +35,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Coincidencia exacta únicamente con los paquetes núcleo de React
             if (/\/node_modules\/(react|react-dom|react-router|react-router-dom)\//.test(id)) {
               return 'vendor-react';
             }

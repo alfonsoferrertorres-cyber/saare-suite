@@ -12,7 +12,11 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": false,
-    "strict": false
+    "strict": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src", "public", "index.html"]
 }

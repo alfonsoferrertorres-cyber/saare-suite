@@ -13,20 +13,11 @@ build/
 vite.config.js.timestamp-*
 *.timestamp-*.mjs
 
-# Variables de entorno y credenciales
-.env
+# Variables de entorno y credenciales locales
 .env.local
 .env.*.local
 .dev.vars
 
 # Registros temporales y volcados
 *.log
-leads_log.json
 .DS_Store
-
-# Credenciales certificadas y registros locales
-saare-recognition.json
-
-# Resultados de rendimiento y pruebas de benchmark
-benchmark_*_summary.json
-*.summary.json
