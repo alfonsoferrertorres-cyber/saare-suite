@@ -112,12 +112,24 @@ const SAARE_APPROVED_COMMANDS = [
   "LOGIC_SAFE_STATE"
 ];
 
+function getEnvName(env) {
+  return String(env?.ENVIRONMENT || "").trim().toLowerCase();
+}
+
+function isProductionEnv(env) {
+  const envName = getEnvName(env);
+  if (envName === "staging" || envName === "development" || envName === "test" || envName === "local") {
+    return false;
+  }
+  return true;
+}
+
 function getJwtSecret(env) {
   if (env?.JWT_SECRET && String(env.JWT_SECRET).trim().length >= 16) {
     return String(env.JWT_SECRET).trim();
   }
-  const envName = String(env?.ENVIRONMENT || "").toLowerCase();
-  if (envName === "development" || envName === "test" || envName === "local") {
+  const envName = getEnvName(env);
+  if (envName === "development" || envName === "test" || envName === "local" || envName === "staging") {
     return "dev_only_local_jwt_secret_change_in_prod";
   }
   throw new Error("JWT_SECRET no configurado en el entorno de producción.");
@@ -129,12 +141,20 @@ function isSafeRegexPattern(pattern = "") {
   if (!trimmed || trimmed.length > 200) return false;
   if (/(\+|\*|\{\d+,?\d*\})\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
   if (/\([^)]*(\+|\*|\{\d+,?\d*\})[^)]*\)\s*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
+  if (/\([^)]*\|[^)]*(\+|\*|\{\d+,?\d*\})/.test(trimmed)) return false;
   try {
     new RegExp(trimmed, "i");
     return true;
   } catch {
     return false;
   }
+}
+
+function safeRegexTest(pattern, text) {
+  if (!isSafeRegexPattern(pattern) || typeof text !== "string") return false;
+  const boundedText = text.length > 16000 ? text.slice(0, 16000) : text;
+  const rx = new RegExp(pattern, "i");
+  return rx.test(boundedText);
 }
 
 function sanitizeEmail(email) {
@@ -542,6 +562,7 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
 }
 
 const MERKLE_BATCH_THRESHOLD = 1000;
+const MERKLE_BATCH_MAX_PER_RUN = 500;
 const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 
 function parseSemanticCommand(promptText, env = {}, explicitCode = "") {
@@ -987,7 +1008,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
       "SELECT COUNT(*) as total FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0"
     ).bind(tenantId).first();
 
-    const pendingCount = pendingRes?.total || 0;
+    const pendingCount = Number(pendingRes?.total || 0);
     const lastAnchor = await env.DB.prepare(
       "SELECT created_at FROM merkle_anchors WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1"
     ).bind(tenantId).first();
@@ -997,7 +1018,7 @@ async function processBatchMerkleAnchor(tenantId, env) {
 
     if (pendingCount >= MERKLE_BATCH_THRESHOLD || (pendingCount > 0 && timeElapsed >= MERKLE_TIME_THRESHOLD_MS)) {
       const { results } = await env.DB.prepare(
-        "SELECT trace_id, ms3v_hash, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY timestamp ASC LIMIT 10000"
+        `SELECT trace_id, ms3v_hash, timestamp FROM consolidated_traces WHERE tenant_id = ? AND anchored = 0 ORDER BY timestamp ASC LIMIT ${MERKLE_BATCH_MAX_PER_RUN}`
       ).bind(tenantId).all();
 
       if (!results || results.length === 0) return;
@@ -2631,21 +2652,18 @@ export default {
         let customHardBlockHit = false;
         for (const r of tenantCustomRules) {
           try {
-            if (!r?.pattern || !isSafeRegexPattern(r.pattern)) continue;
-            const rx = new RegExp(r.pattern, "i");
-            if (rx.test(rawPrompt)) {
-              const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
-              const isPiiRule =
-                ruleMeta.includes("DNI") ||
-                ruleMeta.includes("NIE") ||
-                ruleMeta.includes("IBAN") ||
-                ruleMeta.includes("EMAIL") ||
-                ruleMeta.includes("RGPD") ||
-                ruleMeta.includes("DLP");
+            if (!r?.pattern || !safeRegexTest(r.pattern, rawPrompt)) continue;
+            const ruleMeta = `${r.name || ""} ${r.id || ""}`.toUpperCase();
+            const isPiiRule =
+              ruleMeta.includes("DNI") ||
+              ruleMeta.includes("NIE") ||
+              ruleMeta.includes("IBAN") ||
+              ruleMeta.includes("EMAIL") ||
+              ruleMeta.includes("RGPD") ||
+              ruleMeta.includes("DLP");
 
-              if (!isPiiRule && (ruleMeta.includes("INJECTION") || ruleMeta.includes("JAILBREAK") || ruleMeta.includes("DROP TABLE"))) {
-                customHardBlockHit = true;
-              }
+            if (!isPiiRule && (ruleMeta.includes("INJECTION") || ruleMeta.includes("JAILBREAK") || ruleMeta.includes("DROP TABLE"))) {
+              customHardBlockHit = true;
             }
           } catch (_rxErr) {}
         }
@@ -2962,7 +2980,9 @@ export default {
         const cleanEmail = sanitizeEmail(body.email) || "auditor@saare.es";
         const cleanPassword = body.password ? body.password.trim() : "";
 
-        const masterSecret = env?.MASTER_TEST_PASSWORD ? String(env.MASTER_TEST_PASSWORD).trim() : "";
+        const masterSecret = !isProductionEnv(env) && env?.MASTER_TEST_PASSWORD
+          ? String(env.MASTER_TEST_PASSWORD).trim()
+          : "";
         const isMasterLogin = Boolean(masterSecret && cleanPassword && cleanPassword === masterSecret);
 
         let userRecord = null;
