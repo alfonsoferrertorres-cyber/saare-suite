@@ -1,4 +1,20 @@
-// apps/control-plane/src/engines/evidenceVaultEngine.js — S.A.A.R.E. Evidence Vault Engine (SGP 1.0)
+// apps/control-plane/src/engines/evidenceVaultEngine.js — S.A.A.R.E. Evidence Vault Engine (SGP 1.0 + RFC 8785 JCS)
+
+const DEFAULT_EXPEDIENTE_REF = "MS3V-SGP1.0-MASTER-2026";
+
+export function canonicalizeRfc8785(val) {
+  if (val === null || typeof val !== "object") {
+    if (typeof val === "number" && Object.is(val, -0)) {
+      return "0";
+    }
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return "[" + val.map((item) => canonicalizeRfc8785(item)).join(",") + "]";
+  }
+  const keys = Object.keys(val).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalizeRfc8785(val[k])).join(",") + "}";
+}
 
 function normalizeTenantId(rawTenant) {
   if (!rawTenant || typeof rawTenant !== "string") return "DEFAULT_TENANT";
@@ -24,6 +40,8 @@ export class EvidenceVaultEngine {
     this.env = env;
     this.trustAnchor = env?.TRUST_ANCHOR || "UNCONFIGURED_TRUST_ANCHOR";
     this.primaryNodeId = env?.SAFE_CREATIVE_DICTAMEN_ID || env?.SAFE_CREATIVE_ID || "NODE_L7_PRIMARY";
+    this.expediente = env?.EXPEDIENTE_ID || env?.EIDAS_EXPEDIENTE_ID || DEFAULT_EXPEDIENTE_REF;
+    this.allowFallbackVault = String(env?.ALLOW_FALLBACK_VAULT ?? "true").toLowerCase() !== "false";
   }
 
   async initializeSchema() {
@@ -68,11 +86,17 @@ export class EvidenceVaultEngine {
     } catch (err) {
       EvidenceVaultEngine.schemaInitialized = false;
       console.error("[Vault Engine] Error inicializando esquemas SQL D1:", err.message);
+      if (!this.allowFallbackVault) throw err;
     }
   }
 
   async recordNodeEvidence(tracePayload = {}) {
     const safePayload = tracePayload && typeof tracePayload === "object" ? tracePayload : {};
+    const resolvedExpediente =
+      safePayload.expediente ||
+      safePayload.expedienteId ||
+      this.expediente ||
+      DEFAULT_EXPEDIENTE_REF;
     const timestamp = safePayload.timestamp || new Date().toISOString();
     const parsedDate = new Date(timestamp);
     const year = !Number.isNaN(parsedDate.getTime()) ? parsedDate.getUTCFullYear() : new Date().getUTCFullYear();
@@ -99,22 +123,21 @@ export class EvidenceVaultEngine {
       safePayload.ms3vHash ||
       "";
 
-    const ms3vHash =
-      String(providedHash).trim() ||
-      (await computeWebSha256(
-        JSON.stringify({
-          trace_id: traceId,
-          evidence_id: evidenceId,
-          tenant_id: tenantId,
-          user,
-          decision,
-          verdict,
-          timestamp,
-          sanitized_payload: sanitizedPayloadText,
-          payload_hash: payloadHash
-        })
-      ));
+    const canonicalPayloadJcs = canonicalizeRfc8785({
+      trace_id: traceId,
+      evidence_id: evidenceId,
+      tenant_id: tenantId,
+      user,
+      decision,
+      verdict,
+      timestamp,
+      sanitized_payload: sanitizedPayloadText,
+      payload_hash: payloadHash,
+      expediente: resolvedExpediente
+    });
+    const canonicalJcsSha256 = await computeWebSha256(canonicalPayloadJcs);
 
+    const ms3vHash = String(providedHash).trim() || canonicalJcsSha256;
     const ms3vTimestampNs = safePayload.verdict_data?.ms3vTimestampNs || `${Date.now()}000000`;
 
     const finalEvaluatorNode = typeof safePayload.evaluator_chain === "object"
@@ -127,6 +150,8 @@ export class EvidenceVaultEngine {
 
     const fullRecord = {
       ...safePayload,
+      expediente: resolvedExpediente,
+      expedienteId: resolvedExpediente,
       id: evidenceId,
       evidence_id: evidenceId,
       trace_id: traceId,
@@ -141,6 +166,7 @@ export class EvidenceVaultEngine {
       verdict,
       timestamp,
       payload_hash: payloadHash,
+      canonical_jcs_sha256: canonicalJcsSha256,
       ms3v_hash: ms3vHash,
       merkleRoot: ms3vHash,
       ms3v_timestamp_ns: ms3vTimestampNs,
@@ -150,9 +176,12 @@ export class EvidenceVaultEngine {
         action: decision === "DENY" ? "BLOCKED" : "ALLOWED",
         ms3vHash,
         merkleRoot: ms3vHash,
+        canonicalJcsSha256,
         ms3vTimestampNs
       }
     };
+
+    const serializedFullRecord = canonicalizeRfc8785(fullRecord);
 
     if (this.env && this.env.DB) {
       try {
@@ -199,26 +228,28 @@ export class EvidenceVaultEngine {
           tenantId,
           safePayload.prompt || "",
           safePayload.responseOutput || sanitizedPayloadText,
-          JSON.stringify(fullRecord),
+          serializedFullRecord,
           timestamp
         ).run();
       } catch (err) {
-        console.warn("[Vault Engine] Fallo en escritura D1 SQL, derivando a respaldo KV:", err.message);
+        console.warn("[Vault Engine] Fallo en escritura D1 SQL:", err.message);
+        if (!this.allowFallbackVault) throw err;
       }
     }
 
     const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
-    if (kv) {
+    if (kv && (this.allowFallbackVault || !this.env?.DB)) {
       try {
         const kvKey = `trace:${tenantId}:${traceId}`;
-        await kv.put(kvKey, JSON.stringify(fullRecord), { expirationTtl: 86400 * 90 });
+        await kv.put(kvKey, serializedFullRecord, { expirationTtl: 86400 * 90 });
 
         const runsKey = `runs_${tenantId}`;
         const existingKv = (await kv.get(runsKey, "json")) || [];
         const updatedKv = [fullRecord, ...(Array.isArray(existingKv) ? existingKv : [])].slice(0, 100);
-        await kv.put(runsKey, JSON.stringify(updatedKv));
+        await kv.put(runsKey, canonicalizeRfc8785(updatedKv));
       } catch (err) {
         console.error("[Vault Engine] Error guardando en KV:", err.message);
+        if (!this.allowFallbackVault) throw err;
       }
     }
 
@@ -234,6 +265,9 @@ export class EvidenceVaultEngine {
         trustAnchor: this.trustAnchor,
         status: "BATCH_PENDING_MERKLE"
       },
+      expediente: resolvedExpediente,
+      canonicalization: "RFC 8785 (JCS)",
+      canonicalJcsSha256,
       integrityHash: ms3vHash,
       merkleRoot: ms3vHash,
       payloadHash
@@ -243,8 +277,10 @@ export class EvidenceVaultEngine {
       success: true,
       traceId,
       evidenceId,
+      expedienteId: resolvedExpediente,
       merkleRoot: ms3vHash,
       ms3vHash,
+      canonicalJcsSha256,
       doubleChainOfCustody: custodyRecord
     };
   }
@@ -270,6 +306,13 @@ export class EvidenceVaultEngine {
     const cleanFallback = normalizeTenantId(fallbackTenant);
     const traceId = base.trace_id || base.id || base.evidence_id || "";
     const d1Hash = traceId && d1HashMap[traceId] ? d1HashMap[traceId] : "";
+    const resolvedExpediente =
+      base.expediente ||
+      base.expedienteId ||
+      parsedPayload.expediente ||
+      parsedPayload.expedienteId ||
+      this.expediente ||
+      DEFAULT_EXPEDIENTE_REF;
 
     let integrityHash =
       base.merkleRoot ||
@@ -284,7 +327,7 @@ export class EvidenceVaultEngine {
 
     if (!integrityHash) {
       integrityHash = await computeWebSha256(
-        JSON.stringify({
+        canonicalizeRfc8785({
           trace_id: traceId,
           evidence_id: base.evidence_id || base.id || "",
           tenant: normalizeTenantId(base.tenant || base.tenant_id || cleanFallback),
@@ -293,7 +336,8 @@ export class EvidenceVaultEngine {
           verdict: base.verdict || "PERMITIDO",
           timestamp: base.timestamp || base.created_at || "",
           prompt: base.prompt || "",
-          responseOutput: base.responseOutput || ""
+          responseOutput: base.responseOutput || "",
+          expediente: resolvedExpediente
         })
       );
     }
@@ -302,6 +346,8 @@ export class EvidenceVaultEngine {
 
     return {
       ...base,
+      expediente: resolvedExpediente,
+      expedienteId: resolvedExpediente,
       id: base.id || base.evidence_id || traceId,
       evidence_id: base.evidence_id || base.id || traceId,
       trace_id: traceId,
@@ -349,12 +395,13 @@ export class EvidenceVaultEngine {
           );
         }
       } catch (err) {
-        console.error("[Vault Engine] Error consultando trazas en D1, consultando KV:", err.message);
+        console.error("[Vault Engine] Error consultando trazas en D1:", err.message);
+        if (!this.allowFallbackVault) throw err;
       }
     }
 
     const kv = this.env?.SAARE_KV_VAULT || this.env?.SAARE_VAULT_KV;
-    if (kv) {
+    if (kv && (this.allowFallbackVault || !this.env?.DB)) {
       try {
         const kvData = await kv.get(`runs_${cleanTenant}`, "json");
         if (Array.isArray(kvData)) {
@@ -362,7 +409,9 @@ export class EvidenceVaultEngine {
             kvData.slice(0, safeLimit).map((item) => this.normalizeTraceItem(item, cleanTenant, d1HashMap))
           );
         }
-      } catch {}
+      } catch (err) {
+        if (!this.allowFallbackVault) throw err;
+      }
     }
 
     return [];

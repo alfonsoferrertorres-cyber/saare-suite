@@ -1,9 +1,87 @@
 // apps/control-plane/src/middleware/semanticDetoxEngine.js
-// Módulo de Desintoxicación Semántica Ex-Ante en Memoria RAM (Capa 7 - S.A.A.R.E. SGP 1.0 + ISO 42001)
+// Módulo de Desintoxicación Semántica Ex-Ante en Memoria RAM (Capa 7 - S.A.A.R.E. SGP 1.0 + ISO 42001 + RFC 8785 + Mahalanobis L7)
+
+const DEFAULT_EXPEDIENTE_REF = "MS3V-SGP1.0-MASTER-2026";
+const MAHALANOBIS_K_MIN = 5;
+const MAHALANOBIS_DELTA_THRESHOLD = 0.0001; // 0.0100%
+
+export function canonicalizeRfc8785(val) {
+  if (val === null || typeof val !== "object") {
+    if (typeof val === "number" && Object.is(val, -0)) {
+      return "0";
+    }
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return "[" + val.map((item) => canonicalizeRfc8785(item)).join(",") + "]";
+  }
+  const keys = Object.keys(val).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalizeRfc8785(val[k])).join(",") + "}";
+}
+
+export function evaluateMahalanobisL7(
+  text = "",
+  rulesTriggered = [],
+  hasMediaAttachment = false,
+  expedienteId = DEFAULT_EXPEDIENTE_REF
+) {
+  const str = typeof text === "string" ? text : String(text ?? "");
+  const len = str.length;
+  const nonAsciiCount = (str.match(/[^\x00-\x7F]/g) || []).length;
+  const upperRatio = len > 0 ? ((str.match(/[A-ZÁÉÍÓÚÜÑ]/g) || []).length / len) : 0;
+  const symbolRatio = len > 0 ? ((str.match(/[^a-zA-Z0-9\s]/g) || []).length / len) : 0;
+  const quasiIdCount =
+    (str.match(/\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/gi) || []).length +
+    (str.match(/\b[A-Z]{2}\d{2}[\s-]?(?:\d{4}[\s-]?){4}\d{2,4}\b/gi) || []).length +
+    (str.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/gi) || []).length +
+    (str.match(/\b(?:\+34[\s-]?)?[6789]\d{8}\b/g) || []).length;
+
+  const featureVector = [
+    Math.min(len / 500, 10),
+    Math.min((nonAsciiCount / Math.max(len, 1)) * 10, 10),
+    Math.min(upperRatio * 10, 10),
+    Math.min(symbolRatio * 10, 10),
+    Math.min(quasiIdCount, 10),
+    Math.min(rulesTriggered.length + (hasMediaAttachment ? 2 : 0), 10)
+  ];
+
+  const mu = [1.2, 0.2, 1.1, 0.8, 0.0, 0.0];
+  const sigmaInvDiag = [1.0, 1.5, 1.2, 1.4, 2.5, 2.0];
+
+  let quadForm = 0;
+  for (let i = 0; i < featureVector.length; i++) {
+    const diff = featureVector[i] - mu[i];
+    quadForm += diff * sigmaInvDiag[i] * diff;
+  }
+
+  const distance = Number(Math.sqrt(Math.max(0, quadForm)).toFixed(6));
+  const quasiIdDensity = Number(featureVector[4]);
+  const estimatedKAnonymity = Math.max(1, Math.round(10 / (1 + quasiIdDensity)));
+  const kAnonymitySatisfied = quasiIdDensity === 0 ? true : estimatedKAnonymity >= MAHALANOBIS_K_MIN;
+  const divergenceDelta = Number((distance * 0.00005).toFixed(6));
+  const triggerGateFired = divergenceDelta > MAHALANOBIS_DELTA_THRESHOLD || (!kAnonymitySatisfied && quasiIdDensity > 0);
+
+  return {
+    metric: "MAHALANOBIS_D_X_MU",
+    expediente: expedienteId || DEFAULT_EXPEDIENTE_REF,
+    distance,
+    featureVector,
+    quasiIdCount: quasiIdDensity,
+    kMinRequired: MAHALANOBIS_K_MIN,
+    estimatedKAnonymity,
+    kAnonymitySatisfied,
+    divergenceDelta,
+    divergencePercent: `${(divergenceDelta * 100).toFixed(4)}%`,
+    thresholdPercent: "0.0100%",
+    triggerGateFired,
+    failClosedHttpStatus: triggerGateFired ? 403 : 200
+  };
+}
 
 export class SemanticDetoxEngine {
-  constructor() {
-    this.version = "v1.4-DETOX-RAM-ISO42001-FULL";
+  constructor(options = {}) {
+    this.version = "v1.5-DETOX-RAM-ISO42001-RFC8785-MAHALANOBIS";
+    this.expediente = options?.expedienteId || options?.EXPEDIENTE_ID || DEFAULT_EXPEDIENTE_REF;
 
     this.injectionPatterns = [
       {
@@ -287,6 +365,8 @@ export class SemanticDetoxEngine {
 
   detoxify(rawInput, customRules = [], options = {}) {
     const wrapUntrusted = options?.wrapUntrusted !== false;
+    const hasMediaAttachment = Boolean(options?.hasMediaAttachment);
+    const expedienteId = options?.expedienteId || options?.EXPEDIENTE_ID || this.expediente;
     const normalized = this.normalizeText(rawInput);
     const {
       sanitized,
@@ -298,22 +378,36 @@ export class SemanticDetoxEngine {
       findings
     } = this.stripInjectionWrappers(normalized, customRules);
 
+    const mahalanobis = evaluateMahalanobisL7(normalized, rulesTriggered, hasMediaAttachment, expedienteId);
+
     const cleanPrompt = wrapUntrusted
       ? `<user_input_untrusted>\n${sanitized}\n</user_input_untrusted>`
       : sanitized;
 
-    const status = highRiskDetected
+    const status = highRiskDetected || mahalanobis.triggerGateFired
       ? "BLOCKED"
       : threatDetected
       ? "SANITIZED"
       : "CLEAN";
 
+    const canonicalSummary = canonicalizeRfc8785({
+      version: this.version,
+      expediente: expedienteId,
+      status,
+      rulesTriggered,
+      mahalanobisDistance: mahalanobis.distance,
+      kAnonymitySatisfied: mahalanobis.kAnonymitySatisfied
+    });
+
     return {
       cleanPrompt,
       sanitizedText: sanitized,
       sanitizedPayload: sanitized,
+      expedienteId,
       rulesTriggered,
       findings,
+      mahalanobis,
+      canonicalSummary,
       threatDetected,
       jailbreakDetected,
       highRiskDetected,

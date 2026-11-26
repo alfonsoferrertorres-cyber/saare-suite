@@ -1,7 +1,23 @@
-// packages/merkle-eidas/forensicBatchService.js — Orquestador Merkle + eIDAS + Custodia 2-de-3
+// packages/merkle-eidas/forensicBatchService.js — Orquestador Merkle + eIDAS + Custodia 2-de-3 + RFC 8785 JCS
 import { buildMerkleBatch, verifyMerkleProof } from "./merkleTree.js";
 import { timestampMerkleRoot } from "./eidasTimestamping.js";
 import { encryptWith2of3Key, decryptWith2of3Key } from "../shamir-custody/shamir2of3.js";
+
+const EMPIRICAL_EXPEDIENTE_REF = "MS3V-RECON-VALID-2026-ALF-0521";
+
+export function canonicalizeRfc8785(val) {
+  if (val === null || typeof val !== "object") {
+    if (typeof val === "number" && Object.is(val, -0)) {
+      return "0";
+    }
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return "[" + val.map((item) => canonicalizeRfc8785(item)).join(",") + "]";
+  }
+  const keys = Object.keys(val).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalizeRfc8785(val[k])).join(",") + "}";
+}
 
 function normalizeTenant(tenantId = "") {
   return (
@@ -19,6 +35,7 @@ export async function sealForensicBatch(
   options = {}
 ) {
   const cleanTenant = normalizeTenant(tenantId);
+  const resolvedExpediente = expedienteId || env?.EIDAS_EXPEDIENTE_ID || env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF;
   const batchId = `BATCH-${cleanTenant}-${Date.now()}`;
   const createdAt = new Date().toISOString();
 
@@ -28,7 +45,7 @@ export async function sealForensicBatch(
     {
       merkleRoot: merkle.merkleRoot,
       tenantId: cleanTenant,
-      expedienteId: expedienteId || env?.EIDAS_EXPEDIENTE_ID || env?.EXPEDIENTE_ID,
+      expedienteId: resolvedExpediente,
       leafCount: merkle.leafCount
     },
     env,
@@ -49,6 +66,8 @@ export async function sealForensicBatch(
     const manifestToProtect = {
       batchId,
       tenantId: cleanTenant,
+      expedienteId: resolvedExpediente,
+      canonicalization: "RFC 8785 (JCS)",
       merkleRoot: merkle.merkleRoot,
       leafCount: merkle.leafCount,
       timestampSeal,
@@ -74,6 +93,8 @@ export async function sealForensicBatch(
   return {
     batchId,
     tenantId: cleanTenant,
+    expedienteId: resolvedExpediente,
+    canonicalization: "RFC 8785 (JCS)",
     createdAt,
     leafCount: merkle.leafCount,
     merkleRoot: merkle.merkleRoot,
@@ -89,6 +110,7 @@ export async function verifyEvidenceInclusion({ leafHash, proof = [], merkleRoot
   const valid = await verifyMerkleProof(leafHash, proof, merkleRoot);
   return {
     verified: valid,
+    expedienteId: EMPIRICAL_EXPEDIENTE_REF,
     merkleRoot: String(merkleRoot || "").trim().toLowerCase(),
     leafHash: String(leafHash || "").trim().toLowerCase(),
     verifiedAt: new Date().toISOString()
@@ -112,5 +134,6 @@ export async function unlockBatchManifest2of3(custody2of3, providedShares = []) 
 export default {
   sealForensicBatch,
   verifyEvidenceInclusion,
-  unlockBatchManifest2of3
+  unlockBatchManifest2of3,
+  canonicalizeRfc8785
 };

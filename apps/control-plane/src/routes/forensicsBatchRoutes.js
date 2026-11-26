@@ -1,172 +1,152 @@
-// control-plane/src/routes/forensicsBatchRoutes.js — Endpoints de Sellado y Verificación Forense
-import {
-  sealForensicBatch,
-  verifyEvidenceInclusion
-} from "../../../packages/merkle-eidas/forensicBatchService.js";
+// packages/merkle-eidas/forensicBatchService.js — Orquestador Merkle + eIDAS + Custodia 2-de-3 + RFC 8785 JCS
+import { buildMerkleBatch, verifyMerkleProof } from "./merkleTree.js";
+import { timestampMerkleRoot } from "./eidasTimestamping.js";
+import { encryptWith2of3Key, decryptWith2of3Key } from "../shamir-custody/shamir2of3.js";
 
-function normalizeTenant(rawTenant) {
+const DEFAULT_EXPEDIENTE_REF = "MS3V-SGP1.0-MASTER-2026";
+
+export function canonicalizeRfc8785(val) {
+  if (val === null || typeof val !== "object") {
+    if (typeof val === "number" && Object.is(val, -0)) {
+      return "0";
+    }
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return "[" + val.map((item) => canonicalizeRfc8785(item)).join(",") + "]";
+  }
+  const keys = Object.keys(val).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalizeRfc8785(val[k])).join(",") + "}";
+}
+
+function normalizeTenant(tenantId = "") {
   return (
-    String(rawTenant || "")
+    String(tenantId || "DEFAULT_TENANT")
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9_-]/g, "_")
-      .slice(0, 32) || ""
+      .slice(0, 32) || "DEFAULT_TENANT"
   );
 }
 
-async function ensureBatchesTable(db) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS forensic_batches (
-      batch_id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      merkle_root TEXT NOT NULL,
-      leaf_count INTEGER NOT NULL DEFAULT 0,
-      is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
-      assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
-      tsa_reference TEXT DEFAULT '',
-      batch_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
+export function resolveExpedienteId(explicitId, env = {}) {
+  return (
+    explicitId ||
+    env?.EXPEDIENTE_ID ||
+    env?.EIDAS_EXPEDIENTE_ID ||
+    DEFAULT_EXPEDIENTE_REF
+  );
 }
 
-async function loadTenantEvidences(env, tenantId, limit = 100) {
-  if (env?.DB) {
-    try {
-      const { results } = await env.DB.prepare(
-        "SELECT evidence_id, trace_id, tenant, decision, payload_json, created_at FROM runs WHERE tenant = ? ORDER BY id DESC LIMIT ?"
-      )
-        .bind(tenantId, limit)
-        .all();
+export async function sealForensicBatch(
+  { tenantId, evidences = [], enable2of3Custody = true, expedienteId = null },
+  env = {},
+  options = {}
+) {
+  const cleanTenant = normalizeTenant(tenantId);
+  const resolvedExpediente = resolveExpedienteId(expedienteId, env);
+  const batchId = `BATCH-${cleanTenant}-${Date.now()}`;
+  const createdAt = new Date().toISOString();
 
-      if (Array.isArray(results) && results.length > 0) {
-        return results.map((r) => {
-          let parsed = {};
-          try {
-            parsed = r.payload_json ? JSON.parse(r.payload_json) : {};
-          } catch {
-            parsed = {};
-          }
-          return {
-            evidence_id: r.evidence_id,
-            trace_id: r.trace_id,
-            tenant_id: tenantId,
-            decision: r.decision,
-            payloadHash: parsed.payload_hash || parsed.ms3v_hash || "",
-            timestamp: r.created_at
-          };
-        });
-      }
-    } catch {}
+  const merkle = await buildMerkleBatch(evidences);
+
+  const timestampSeal = await timestampMerkleRoot(
+    {
+      merkleRoot: merkle.merkleRoot,
+      tenantId: cleanTenant,
+      expedienteId: resolvedExpediente,
+      leafCount: merkle.leafCount
+    },
+    env,
+    options
+  );
+
+  const proofsByEvidenceId = {};
+  for (const leaf of merkle.leaves) {
+    proofsByEvidenceId[leaf.evidenceId] = {
+      leafHash: leaf.leafHash,
+      proof: leaf.proof,
+      merkleRoot: merkle.merkleRoot
+    };
   }
 
-  const kv = env?.SAARE_VAULT_KV || env?.SAARE_KV_VAULT;
-  if (kv) {
-    try {
-      const stored = await kv.get(`runs_${tenantId}`, "json");
-      if (Array.isArray(stored)) return stored.slice(0, limit);
-    } catch {}
+  let custody2of3 = null;
+  if (enable2of3Custody) {
+    const manifestToProtect = {
+      batchId,
+      tenantId: cleanTenant,
+      expedienteId: resolvedExpediente,
+      canonicalization: "RFC 8785 (JCS)",
+      merkleRoot: merkle.merkleRoot,
+      leafCount: merkle.leafCount,
+      timestampSeal,
+      createdAt
+    };
+
+    const encrypted = await encryptWith2of3Key(manifestToProtect, {
+      tenantId: cleanTenant,
+      keyId: `KEY-${batchId}`
+    });
+
+    custody2of3 = {
+      algorithm: encrypted.algorithm,
+      threshold: encrypted.custody.threshold,
+      totalShares: encrypted.custody.totalShares,
+      ivHex: encrypted.ivHex,
+      ciphertextHex: encrypted.ciphertextHex,
+      meta: encrypted.custody.meta,
+      shares: encrypted.custody.shares
+    };
   }
 
-  return [];
+  return {
+    batchId,
+    tenantId: cleanTenant,
+    expedienteId: resolvedExpediente,
+    canonicalization: "RFC 8785 (JCS)",
+    createdAt,
+    leafCount: merkle.leafCount,
+    merkleRoot: merkle.merkleRoot,
+    timestampSeal,
+    isQualifiedEidas: Boolean(timestampSeal?.isQualifiedEidas),
+    assuranceLevel: timestampSeal?.assuranceLevel || "LOCAL_INTEGRITY",
+    proofsByEvidenceId,
+    custody2of3
+  };
 }
 
-export async function handleForensicsRoutes(request, env, corsHeaders = {}) {
-  const url = new URL(request.url);
-  const path = url.pathname;
-
-  if (request.method === "POST" && path === "/api/v1/forensics/batch/seal") {
-    let body = {};
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
-    }
-
-    const headerTenant = request.headers.get("x-saare-tenant");
-    const tenantId = normalizeTenant(body.tenantId || headerTenant);
-    if (!tenantId) {
-      return new Response(
-        JSON.stringify({ error: "TENANT_REQUIRED", message: "Se requiere tenantId válido" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const sourceEvidences =
-      Array.isArray(body.evidences) && body.evidences.length > 0
-        ? body.evidences
-        : await loadTenantEvidences(env, tenantId, Number(body.limit) || 100);
-
-    const bundle = await sealForensicBatch(
-      {
-        tenantId,
-        evidences: sourceEvidences,
-        enable2of3Custody: body.enable2of3Custody !== false,
-        expedienteId: body.expedienteId || null
-      },
-      env
-    );
-
-    if (env?.DB) {
-      try {
-        await ensureBatchesTable(env.DB);
-        await env.DB.prepare(
-          `INSERT OR REPLACE INTO forensic_batches (
-            batch_id, tenant_id, merkle_root, leaf_count,
-            is_qualified_eidas, assurance_level, tsa_reference, batch_json, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-          .bind(
-            bundle.batchId,
-            bundle.tenantId,
-            bundle.merkleRoot,
-            bundle.leafCount,
-            bundle.isQualifiedEidas ? 1 : 0,
-            bundle.assuranceLevel,
-            bundle.timestampSeal?.tsaReference || "",
-            JSON.stringify(bundle),
-            bundle.createdAt
-          )
-          .run();
-      } catch (e) {
-        console.warn("[ForensicsRoutes] Error guardando lote en D1:", e.message);
-      }
-    }
-
-    const kv = env?.SAARE_VAULT_KV || env?.SAARE_KV_VAULT;
-    if (kv) {
-      try {
-        await kv.put(`forensic_batch:latest:${bundle.tenantId}`, JSON.stringify(bundle), {
-          expirationTtl: 86400 * 90
-        });
-      } catch {}
-    }
-
-    return new Response(JSON.stringify(bundle), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders }
-    });
-  }
-
-  if (request.method === "POST" && path === "/api/v1/forensics/batch/verify") {
-    let body = {};
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
-    }
-
-    const result = await verifyEvidenceInclusion({
-      leafHash: body.leafHash,
-      proof: body.proof,
-      merkleRoot: body.merkleRoot
-    });
-
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders }
-    });
-  }
-
-  return null;
+export async function verifyEvidenceInclusion(
+  { leafHash, proof = [], merkleRoot, expedienteId = null },
+  env = {}
+) {
+  const valid = await verifyMerkleProof(leafHash, proof, merkleRoot);
+  return {
+    verified: valid,
+    expedienteId: resolveExpedienteId(expedienteId, env),
+    merkleRoot: String(merkleRoot || "").trim().toLowerCase(),
+    leafHash: String(leafHash || "").trim().toLowerCase(),
+    verifiedAt: new Date().toISOString()
+  };
 }
+
+export async function unlockBatchManifest2of3(custody2of3, providedShares = []) {
+  if (!custody2of3?.ivHex || !custody2of3?.ciphertextHex) {
+    throw new Error("El paquete de custodia 2-de-3 está incompleto");
+  }
+  const plainJson = await decryptWith2of3Key(
+    {
+      ivHex: custody2of3.ivHex,
+      ciphertextHex: custody2of3.ciphertextHex
+    },
+    providedShares
+  );
+  return JSON.parse(plainJson);
+}
+
+export default {
+  sealForensicBatch,
+  verifyEvidenceInclusion,
+  unlockBatchManifest2of3,
+  canonicalizeRfc8785,
+  resolveExpedienteId
+};

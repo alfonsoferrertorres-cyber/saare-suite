@@ -1,7 +1,24 @@
+# Dependencias y builds
 node_modules/
 dist/
+build/
 .turbo/
 .wrangler/
+
+# Variables de entorno y secretos
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Secreto industrial / reglas compiladas / estado volátil
+packages/saare-core-control/kernel_rules.bin
+*.bin
+*.sock
+vault/evidences/
+apps/saare-console/public/evidences

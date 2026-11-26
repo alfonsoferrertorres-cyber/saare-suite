@@ -53,6 +53,14 @@ const writeStorageKeys = (keys = [], value = '') => {
   }
 };
 
+function sanitizeTenantCode(rawTenant = '') {
+  return String(rawTenant || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, '_')
+    .slice(0, 32);
+}
+
 function resolveLocalSidecarUrl() {
   const envSidecar =
     typeof import.meta !== 'undefined' ? import.meta.env?.VITE_LOCAL_SIDECAR_URL : '';
@@ -88,13 +96,44 @@ function normalizeControlPlaneEndpoint(endpoint = '') {
 
 function getAuthContext() {
   const token = readStorage(TOKEN_KEYS).replace(/^Bearer\s+/i, '').trim();
-  const tenant = readStorage(TENANT_KEYS).trim();
+  const tenant = sanitizeTenantCode(readStorage(TENANT_KEYS));
   const user = readStorage(USER_KEYS).trim();
   const role = readStorage(ROLE_KEYS).trim();
   const cleanRoot = resolveControlPlaneRoot();
   const baseUrl = `${cleanRoot}/api/v1`;
 
   return { token, tenant, user, role, baseUrl, cleanRoot };
+}
+
+function hasBinaryAttachment(payload = {}) {
+  if (!payload || typeof payload !== 'object') return false;
+  const candidate = payload.file || payload.image || payload.attachment || payload.photo;
+  return Boolean(
+    candidate &&
+      typeof candidate === 'object' &&
+      (('size' in candidate && typeof candidate.text === 'function') ||
+        candidate instanceof Blob)
+  );
+}
+
+function buildMultipartFormData(payload = {}) {
+  const formData = new FormData();
+  const attachment = payload.file || payload.image || payload.attachment || payload.photo;
+  if (attachment) {
+    const fileName =
+      typeof attachment.name === 'string' && attachment.name ? attachment.name : 'upload.bin';
+    formData.append('file', attachment, fileName);
+  }
+  for (const [key, val] of Object.entries(payload)) {
+    if (val === undefined || val === null) continue;
+    if (key === 'file' || key === 'image' || key === 'attachment' || key === 'photo') continue;
+    if (typeof val === 'object') {
+      formData.append(key, JSON.stringify(val));
+    } else {
+      formData.append(key, String(val));
+    }
+  }
+  return formData;
 }
 
 export async function saareFetch(endpoint, options = {}) {
@@ -107,9 +146,9 @@ export async function saareFetch(endpoint, options = {}) {
   )
     .replace(/^Bearer\s+/i, '')
     .trim();
-  const activeTenant = String(
+  const activeTenant = sanitizeTenantCode(
     options.overrideTenant !== undefined ? options.overrideTenant : tenant
-  ).trim();
+  );
   const activeUser = String(
     options.overrideUser !== undefined ? options.overrideUser : user
   ).trim();
@@ -117,8 +156,11 @@ export async function saareFetch(endpoint, options = {}) {
     options.overrideRole !== undefined ? options.overrideRole : role
   ).trim();
 
-  const headers = {
-    'Content-Type': 'application/json',
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+  const baseHeaders = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(activeTenant ? { 'x-saare-tenant': activeTenant } : {}),
     ...(activeUser ? { 'x-saare-user': activeUser } : {}),
     ...(activeRole ? { 'x-saare-role': activeRole } : {}),
@@ -126,11 +168,15 @@ export async function saareFetch(endpoint, options = {}) {
     ...(options.headers || {})
   };
 
+  if (isFormData && baseHeaders['Content-Type'] === 'application/json') {
+    delete baseHeaders['Content-Type'];
+  }
+
   const { overrideTenant, overrideUser, overrideRole, overrideToken, ...fetchOptions } = options;
 
   return await fetch(url, {
     ...fetchOptions,
-    headers
+    headers: baseHeaders
   });
 }
 
@@ -154,7 +200,7 @@ export const apiService = {
 
   async login(email, password, tenantId = '') {
     const cleanEmail = String(email || '').trim().toLowerCase();
-    const cleanTenant = String(tenantId || '').trim();
+    const cleanTenant = sanitizeTenantCode(tenantId);
     const { cleanRoot } = getAuthContext();
 
     const res = await fetch(`${cleanRoot}/api/v1/auth/login`, {
@@ -182,7 +228,9 @@ export const apiService = {
     const token = String(data?.token || data?.access_token || '')
       .replace(/^Bearer\s+/i, '')
       .trim();
-    const resolvedTenant = String(data?.user?.tenantId || data?.tenantId || cleanTenant).trim();
+    const resolvedTenant = sanitizeTenantCode(
+      data?.user?.tenantId || data?.tenantId || cleanTenant
+    );
     const resolvedEmail = String(data?.user?.email || cleanEmail).trim();
     const resolvedRole = String(data?.user?.role || '').trim();
 
@@ -235,7 +283,9 @@ export const apiService = {
 
   downloadNativeSidecar(overrideTenant) {
     const { tenant, cleanRoot } = getAuthContext();
-    const targetTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
+    const targetTenant = sanitizeTenantCode(
+      overrideTenant !== undefined ? overrideTenant : tenant
+    );
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
     const query = targetTenant ? `?tenant=${encodeURIComponent(targetTenant)}` : '';
@@ -243,7 +293,7 @@ export const apiService = {
 
     const link = document.createElement('a');
     link.href = sidecarUrl;
-    link.download = `saare_native_sidecar_${targetTenant || 'tenant'}.zip`;
+    link.download = `saare_native_sidecar_${(targetTenant || 'tenant').toLowerCase()}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -251,7 +301,9 @@ export const apiService = {
 
   async getKpis(startDate, endDate, overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
+    const activeTenant = sanitizeTenantCode(
+      overrideTenant !== undefined ? overrideTenant : tenant
+    );
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
@@ -293,11 +345,19 @@ export const apiService = {
   async getTelemetryTraces(params = {}) {
     try {
       const { tenant, user } = getAuthContext();
-      const limit = Number(params.limit) > 0 ? Number(params.limit) : 100;
-      const activeTenant = String(params.tenant !== undefined ? params.tenant : tenant).trim();
-      const activeUser = String(params.user !== undefined ? params.user : user).trim();
+      const parsedLimit = Number(params.limit);
+      const safeLimit =
+        Number.isFinite(parsedLimit) && parsedLimit > 0
+          ? Math.min(Math.floor(parsedLimit), 500)
+          : 100;
+      const activeTenant = sanitizeTenantCode(
+        params.tenant !== undefined ? params.tenant : tenant
+      );
+      const activeUser = String(
+        params.user !== undefined ? params.user : user
+      ).trim();
 
-      const searchParams = new URLSearchParams({ limit: String(limit) });
+      const searchParams = new URLSearchParams({ limit: String(safeLimit) });
       if (activeTenant) searchParams.set('tenant', activeTenant);
       if (activeUser) searchParams.set('user', activeUser);
 
@@ -332,12 +392,17 @@ export const apiService = {
 
   async getNodeStatus(overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
+    const activeTenant = sanitizeTenantCode(
+      overrideTenant !== undefined ? overrideTenant : tenant
+    );
     try {
       const res = await saareFetch('/health', {
         method: 'GET',
         overrideTenant: activeTenant
       });
+      if (res && res.status === 401) {
+        return { unauthorized: true, status: 401, healthy: false };
+      }
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
         return normalizeNodeStatus(
@@ -392,13 +457,16 @@ export const apiService = {
     );
     const activeToken = bodyData.token !== undefined ? bodyData.token : token;
     const { token: _omitToken, ...rawBody } = bodyData;
-    const resolvedTenant = String(
+    const resolvedTenant = sanitizeTenantCode(
       rawBody.tenant !== undefined ? rawBody.tenant : tenant
-    ).trim();
+    );
     const cleanBody = {
       ...rawBody,
       ...(resolvedTenant
-        ? { tenant: resolvedTenant, tenant_id: rawBody.tenant_id || resolvedTenant }
+        ? {
+            tenant: resolvedTenant,
+            tenant_id: sanitizeTenantCode(rawBody.tenant_id || resolvedTenant)
+          }
         : {})
     };
 
@@ -440,7 +508,7 @@ export const apiService = {
             ...localData,
             success: !isDeny,
             route: 'LOCAL_SIDECAR_RAM',
-            tenant: localData?.tenant_id || cleanBody.tenant || '',
+            tenant: sanitizeTenantCode(localData?.tenant_id || cleanBody.tenant || ''),
             evidence_id: localData?.evidence_hash
               ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}`
               : '',
@@ -473,6 +541,11 @@ export const apiService = {
     }
 
     try {
+      const useMultipart = hasBinaryAttachment(cleanBody);
+      const requestBody = useMultipart
+        ? buildMultipartFormData(cleanBody)
+        : JSON.stringify(cleanBody);
+
       const res = await saareFetch('/chat/completions', {
         method: 'POST',
         headers: profileHeaders,
@@ -480,7 +553,7 @@ export const apiService = {
         overrideUser: cleanBody.user,
         overrideRole: cleanBody.role,
         overrideToken: activeToken,
-        body: JSON.stringify(cleanBody)
+        body: requestBody
       });
 
       const data = await res?.json().catch(() => ({}));
@@ -564,7 +637,9 @@ export const apiService = {
 
   async sealMerkleBatch(params = {}) {
     const { tenant } = getAuthContext();
-    const targetTenant = String(params.tenantId || params.tenant || tenant || '').trim();
+    const targetTenant = sanitizeTenantCode(
+      params.tenantId || params.tenant || tenant || ''
+    );
 
     try {
       const res = await saareFetch('/forensics/batch/seal', {
@@ -601,7 +676,9 @@ export const apiService = {
 
   async syncVault(overrideTenant) {
     const { tenant } = getAuthContext();
-    const activeTenant = String(overrideTenant !== undefined ? overrideTenant : tenant).trim();
+    const activeTenant = sanitizeTenantCode(
+      overrideTenant !== undefined ? overrideTenant : tenant
+    );
     try {
       let res = await saareFetch('/vault/sync', {
         method: 'GET',

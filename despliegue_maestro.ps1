@@ -183,8 +183,21 @@ for d in deps:
 
 function Get-HttpStatusSafe {
     param([Parameter(Mandatory = $true)]$ExceptionRecord)
-    if ($ExceptionRecord.Exception -and $ExceptionRecord.Exception.Response) {
-        return [int]$ExceptionRecord.Exception.Response.StatusCode
+    try {
+        $resp = $ExceptionRecord.Exception.Response
+        if ($null -ne $resp) {
+            if ($resp.PSObject.Properties.Match("StatusCode").Count -gt 0) {
+                $code = $resp.StatusCode
+                if ($null -ne $code) {
+                    if ($code.PSObject.Properties.Match("value__").Count -gt 0) {
+                        return [int]$code.value__
+                    }
+                    return [int]$code
+                }
+            }
+        }
+    } catch {
+        # Ignorar si la excepcion no expone codigo HTTP numerico
     }
     return $null
 }
@@ -220,10 +233,10 @@ function Invoke-TenantChatProbe {
     try {
         $resp = Invoke-RestMethod -Uri $Endpoint -Method Post -Headers $headers -Body $payload -TimeoutSec 15
         return @{
-            Ok          = $true
-            StatusCode  = 200
-            Response    = $resp
-            ErrorText   = ""
+            Ok         = $true
+            StatusCode = 200
+            Response   = $resp
+            ErrorText  = ""
         }
     } catch {
         $status = Get-HttpStatusSafe -ExceptionRecord $_
@@ -232,10 +245,10 @@ function Invoke-TenantChatProbe {
             $detail = "$detail | $($_.ErrorDetails.Message)"
         }
         return @{
-            Ok          = $false
-            StatusCode  = $status
-            Response    = $null
-            ErrorText   = $detail
+            Ok         = $false
+            StatusCode = $status
+            Response   = $null
+            ErrorText  = $detail
         }
     }
 }
@@ -276,9 +289,16 @@ if (-not (Resolve-ToolInStandardPaths -CommandName "pnpm")) {
 Write-Host " -> [OK] pnpm disponible ($(pnpm -v))." -ForegroundColor Green
 
 Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
-$whoamiOutput = & pnpm exec wrangler whoami 2>&1
-$whoamiText = ($whoamiOutput | Out-String)
-if ($LASTEXITCODE -ne 0 -or ($whoamiText -match "You are not logged in|not authenticated|code: 10000")) {
+$whoamiRaw = & pnpm exec wrangler whoami 2>&1
+$whoamiExit = $LASTEXITCODE
+$whoamiFilteredLines = @(
+    $whoamiRaw | ForEach-Object {
+        if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { [string]$_ }
+    } | Where-Object { $_ -notmatch "^Scope:\s+all\s+\d+\s+workspace\s+projects" }
+)
+$whoamiText = ($whoamiFilteredLines -join "`n").Trim()
+
+if ($whoamiExit -ne 0 -or ($whoamiText -match "You are not logged in|not authenticated|code: 10000")) {
     throw "No se pudo verificar la sesion en Cloudflare. Ejecuta 'pnpm exec wrangler login' o revisa CLOUDFLARE_API_TOKEN. Detalle: $whoamiText"
 }
 Write-Host " -> Sesion de Wrangler verificada correctamente." -ForegroundColor Green
@@ -718,7 +738,8 @@ if (-not $SkipSmokeTests) {
 
     foreach ($tId in $tenantsToRun) {
         $probe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $tId -BodyTenant $tId -Token $SmokeToken -PromptText "Verificacion de conectividad ex-ante [$tId]."
-        if ($probe.Ok -and $probe.Response -and $probe.Response.success) {
+        $isSuccess = ($probe.Ok -and $null -ne $probe.Response -and ($probe.Response.PSObject.Properties.Match("success").Count -gt 0) -and ($probe.Response.success -eq $true))
+        if ($isSuccess) {
             $respTenant = $null
             if ($probe.Response.PSObject.Properties.Match("tenant_id").Count -gt 0) {
                 $respTenant = [string]$probe.Response.tenant_id
@@ -733,7 +754,8 @@ if (-not $SkipSmokeTests) {
                 Write-Host " -> [OK] Prueba de humo completada para tenant [$tId] (success=True)" -ForegroundColor Green
             }
         } else {
-            Write-Host " -> [FALLO] Prueba de humo fallida para tenant [$tId]: $($probe.ErrorText)" -ForegroundColor Red
+            $errReason = if ($probe.ErrorText) { $probe.ErrorText } else { "Respuesta sin success=True" }
+            Write-Host " -> [FALLO] Prueba de humo fallida para tenant [$tId]: $errReason" -ForegroundColor Red
             $testFailureCount++
         }
     }
@@ -784,13 +806,8 @@ if (-not $SkipSmokeTests) {
             if ($mismatchProbe.Response.success -eq $false) {
                 Write-Host " -> [OK] Conflicto de tenant (header=$primaryTenant vs body=$mismatchTenant) denegado por politica (success=False)." -ForegroundColor Green
             } else {
-                $leaked = ($mismatchProbe.Response | ConvertTo-Json -Depth 6 -Compress) -like "*$mismatchTenant*"
-                if ($leaked) {
-                    Write-Host " -> [FALLO] Posible fuga o suplantacion de tenant no autorizado ($mismatchTenant) en respuesta." -ForegroundColor Red
-                    $testFailureCount++
-                } else {
-                    Write-Host " -> [OK] Respuesta aislada al contexto del tenant autorizado [$primaryTenant]." -ForegroundColor Green
-                }
+                Write-Host " -> [FALLO] Conflicto de tenant (header=$primaryTenant vs body=$mismatchTenant) aceptado con success=True sin bloqueo." -ForegroundColor Red
+                $testFailureCount++
             }
         } else {
             Write-Host " -> [FALLO] Fallo inesperado en sonda de coherencia multitenant: $($mismatchProbe.ErrorText)" -ForegroundColor Red
