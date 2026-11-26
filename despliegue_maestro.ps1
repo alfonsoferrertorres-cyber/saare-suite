@@ -311,8 +311,8 @@ Write-Host "`n==> [6/7] Verificando salud del entorno de Produccion..." -Foregro
 Start-Sleep -Seconds 3
 
 $apiEndpoints = @(
-    "https://api.saare.es/health",
-    "https://api.saare.es/api/v1/health"
+    "[https://api.saare.es/health](https://api.saare.es/health)",
+    "[https://api.saare.es/api/v1/health](https://api.saare.es/api/v1/health)"
 )
 
 $apiOnline = $false
@@ -332,8 +332,8 @@ if (-not $apiOnline) {
 }
 
 $frontendsToTest = @(
-    @{ Name = "Consola GRC (saare-console)"; Url = "https://console.saare.es" },
-    @{ Name = "Landing Comercial (saare-suite)"; Url = "https://saare.es" }
+    @{ Name = "Consola GRC (saare-console)"; Url = "[https://console.saare.es](https://console.saare.es)" },
+    @{ Name = "Landing Comercial (saare-suite)"; Url = "[https://saare.es](https://saare.es)" }
 )
 
 foreach ($fe in $frontendsToTest) {
@@ -350,8 +350,8 @@ foreach ($fe in $frontendsToTest) {
 }
 
 $artifactsToTest = @(
-    @{ Name = "Extension L7 (.ZIP)"; Url = "https://console.saare.es/deploy/saare_l7_proxy_extension.zip" },
-    @{ Name = "Agente Nativo Python Sidecar (.ZIP)"; Url = "https://console.saare.es/deploy/saare_native_sidecar.zip" }
+    @{ Name = "Extension L7 (.ZIP)"; Url = "[https://console.saare.es/deploy/saare_l7_proxy_extension.zip](https://console.saare.es/deploy/saare_l7_proxy_extension.zip)" },
+    @{ Name = "Agente Nativo Python Sidecar (.ZIP)"; Url = "[https://console.saare.es/deploy/saare_native_sidecar.zip](https://console.saare.es/deploy/saare_native_sidecar.zip)" }
 )
 
 foreach ($art in $artifactsToTest) {
@@ -370,11 +370,11 @@ foreach ($art in $artifactsToTest) {
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [7/7] Ejecutando verificaciones de CORS y conectividad..." -ForegroundColor Cyan
 
-$chatEndpoint = "https://api.saare.es/v1/chat/completions"
+$chatEndpoint = "[https://api.saare.es/v1/chat/completions](https://api.saare.es/v1/chat/completions)"
 $testFailureCount = 0
 $corsOrigins = @(
-    "https://console.saare.es",
-    "https://saare.es"
+    "[https://console.saare.es](https://console.saare.es)",
+    "[https://saare.es](https://saare.es)"
 )
 
 foreach ($origin in $corsOrigins) {
@@ -429,10 +429,3 @@ if ($testFailureCount -gt 0) {
 }
 
 Write-Host "`n==> [OK] Despliegue maestro completado." -ForegroundColor Green
-```[cite: 12, 16]
-
-### Cómo ejecutarlo
-
-* **Activar la clave maestra durante el despliegue:**
-  ```powershell
-  .\despliegue_maestro.ps1 -MasterTestPassword "tu-clave-temporal"
