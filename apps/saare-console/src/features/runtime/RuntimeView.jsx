@@ -348,9 +348,9 @@ export default function RuntimeView({
   };
 
   const sectionStyle = {
-    background: '#090d16',
+    background: '#0b0f19',
     border: '1px solid #1e293b',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '16px',
     display: 'flex',
     flexDirection: 'column',
@@ -374,6 +374,8 @@ export default function RuntimeView({
           prompt: `${d.code} — Ejecuta directiva ${d.name}.`
         }));
 
+  const activeDirectivesCount = Object.values(directiveStates).filter(Boolean).length;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
       {/* 1. Runtime y conectividad */}
@@ -396,7 +398,7 @@ export default function RuntimeView({
                 padding: '2px 8px',
                 borderRadius: '999px',
                 whiteSpace: 'nowrap',
-                background: isRuntimeOk ? '#064e3b' : '#450a0a',
+                background: isRuntimeOk ? 'rgba(6, 78, 59, 0.7)' : 'rgba(69, 10, 10, 0.7)',
                 color: isRuntimeOk ? '#6ee7b7' : '#fca5a5',
                 border: `1px solid ${isRuntimeOk ? '#10b981' : '#ef4444'}`
               }}
@@ -451,7 +453,7 @@ export default function RuntimeView({
                 fontWeight: '700',
                 cursor: loadingNode ? 'wait' : 'pointer',
                 whiteSpace: 'nowrap',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 border: '1px solid #334155'
               }}
@@ -462,9 +464,10 @@ export default function RuntimeView({
         </div>
 
         <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-          Nodo: <strong>{nodeStatus?.nodeId || '—'}</strong> · Tenant:{' '}
-          <strong>{tenantId || 'Sin asignar'}</strong> · Ruta: <strong>{routeMode}</strong> ·
-          Modo: <strong>{nodeStatus?.mode || 'FAIL-CLOSED'}</strong>
+          Nodo: <strong className="saare-mono">{nodeStatus?.nodeId || '—'}</strong> · Tenant:{' '}
+          <strong className="saare-mono">{tenantId || 'Sin asignar'}</strong> · Ruta:{' '}
+          <strong className="saare-mono">{routeMode}</strong> · Modo:{' '}
+          <strong className="saare-mono">{nodeStatus?.mode || 'FAIL-CLOSED'}</strong>
         </div>
       </section>
 
@@ -562,7 +565,7 @@ export default function RuntimeView({
             style={{
               padding: '9px 14px',
               borderRadius: '6px',
-              background: '#1e293b',
+              background: '#111827',
               color: '#e2e8f0',
               border: '1px solid #38bdf8',
               fontSize: '0.75rem',
@@ -598,7 +601,7 @@ export default function RuntimeView({
           <div
             style={{
               padding: '12px 14px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               background: '#020617',
               border: `1px solid ${
                 evaluationResult.executionStatus === EXECUTION_STATUS.FAILED
@@ -614,10 +617,10 @@ export default function RuntimeView({
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <span>
                 Modo: <strong>{evaluationResult.simulation ? 'SIMULACIÓN' : 'REMISIÓN'}</strong> ·
-                Veredicto: <strong>{evaluationResult.verdict || '—'}</strong>
+                Veredicto: <strong className="saare-mono">{evaluationResult.verdict || '—'}</strong>
               </span>
-              <span style={{ color: '#94a3b8' }}>
-                Estado: [{evaluationResult.executionStatus}]
+              <span className="saare-mono" style={{ color: '#94a3b8' }}>
+                [{evaluationResult.executionStatus}]
                 {evaluationResult.traceId ? ` · trace: ${evaluationResult.traceId}` : ''}
               </span>
             </div>
@@ -638,7 +641,7 @@ export default function RuntimeView({
           <div
             style={{
               padding: '10px 14px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               background: '#020617',
               border: '1px solid #1e293b',
               display: 'flex',
@@ -649,8 +652,8 @@ export default function RuntimeView({
             }}
           >
             <div>
-              Resultado L7: <strong>{testResult.verdict}</strong> ({testResult.decision}) ·
-              Latencia: <strong>{testResult.latency}</strong>
+              Resultado L7: <strong className="saare-mono">{testResult.verdict}</strong> ({testResult.decision}) ·
+              Latencia: <strong className="saare-mono">{testResult.latency}</strong>
             </div>
             <div>Salida sanitizada: {testResult.sanitizedPrompt}</div>
           </div>
@@ -674,7 +677,7 @@ export default function RuntimeView({
                     style={{
                       padding: '6px 10px',
                       borderRadius: '6px',
-                      background: enabled ? '#0f172a' : '#1e293b',
+                      background: enabled ? '#0f172a' : '#111827',
                       color: enabled ? '#7dd3fc' : '#64748b',
                       border: `1px solid ${enabled ? '#0284c7' : '#334155'}`,
                       fontSize: '0.7rem',
@@ -692,7 +695,7 @@ export default function RuntimeView({
               <div
                 style={{
                   padding: '10px 12px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   background: '#020617',
                   border: '1px solid #1e293b',
                   fontSize: '0.74rem',
@@ -703,9 +706,9 @@ export default function RuntimeView({
                 }}
               >
                 <div>
-                  Comando: <strong>{protocolOutput.code}</strong> · Decisión:{' '}
-                  <strong>{protocolOutput.decision}</strong> · Latencia:{' '}
-                  <strong>{protocolOutput.latency}</strong>
+                  Comando: <strong className="saare-mono">{protocolOutput.code}</strong> · Decisión:{' '}
+                  <strong className="saare-mono">{protocolOutput.decision}</strong> · Latencia:{' '}
+                  <strong className="saare-mono">{protocolOutput.latency}</strong>
                 </div>
                 {protocolOutput.content && (
                   <div style={{ color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
@@ -729,7 +732,9 @@ export default function RuntimeView({
             flexWrap: 'wrap'
           }}
         >
-          <span style={labelStyle}>3. Directivas y políticas</span>
+          <span style={labelStyle}>
+            3. Directivas y políticas ({activeDirectivesCount}/{PROTOCOL_DIRECTIVES.length} activas)
+          </span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {typeof onSetAllProtocolCommands === 'function' && (
               <>
@@ -780,7 +785,7 @@ export default function RuntimeView({
                 fontWeight: '800',
                 cursor: policyBusy ? 'wait' : 'pointer',
                 whiteSpace: 'nowrap',
-                background: rulesEnabled ? '#064e3b' : '#1e293b',
+                background: rulesEnabled ? 'rgba(6, 78, 59, 0.7)' : '#111827',
                 color: rulesEnabled ? '#6ee7b7' : '#cbd5e1',
                 border: `1px solid ${rulesEnabled ? '#10b981' : '#334155'}`
               }}
@@ -804,7 +809,7 @@ export default function RuntimeView({
                 key={dir.code}
                 style={{
                   padding: '12px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   background: '#020617',
                   border: '1px solid #1e293b',
                   display: 'flex',
@@ -816,7 +821,9 @@ export default function RuntimeView({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
                     <strong style={{ fontSize: '0.8rem', color: '#f8fafc' }}>{dir.name}</strong>
-                    <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{dir.code}</span>
+                    <span className="saare-mono" style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                      {dir.code}
+                    </span>
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#38bdf8' }}>Ámbito: {dir.scope}</div>
                   <p style={{ margin: 0, fontSize: '0.73rem', color: '#94a3b8', lineHeight: 1.4 }}>
@@ -836,7 +843,7 @@ export default function RuntimeView({
                     fontWeight: '800',
                     cursor: policyBusy ? 'wait' : 'pointer',
                     whiteSpace: 'nowrap',
-                    background: active ? '#064e3b' : '#1e293b',
+                    background: active ? 'rgba(6, 78, 59, 0.7)' : '#111827',
                     color: active ? '#6ee7b7' : '#94a3b8',
                     border: `1px solid ${active ? '#10b981' : '#334155'}`
                   }}
@@ -855,7 +862,7 @@ export default function RuntimeView({
         style={{
           background: '#14070a',
           border: '1px solid #7f1d1d',
-          borderRadius: '8px',
+          borderRadius: '10px',
           padding: '16px',
           display: 'flex',
           flexDirection: 'column',
@@ -932,12 +939,13 @@ export default function RuntimeView({
 
         {killStatusMsg && (
           <div
+            className="saare-mono"
             style={{
               padding: '8px 12px',
               borderRadius: '6px',
               background: '#020617',
               borderLeft: '3px solid #f87171',
-              fontSize: '0.75rem',
+              fontSize: '0.74rem',
               color: '#fecaca'
             }}
           >

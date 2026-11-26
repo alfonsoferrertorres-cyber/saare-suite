@@ -74,6 +74,17 @@ export const EVIDENCE_LIFECYCLE = Object.freeze({
   FAILED: 'FAILED'
 });
 
+export const EVIDENCE_LIFECYCLE_LABELS = Object.freeze({
+  [EVIDENCE_LIFECYCLE.CREATED]: 'Registrada',
+  [EVIDENCE_LIFECYCLE.HASHED]: 'Hash calculado',
+  [EVIDENCE_LIFECYCLE.SIGNED]: 'Firmada (Ed25519)',
+  [EVIDENCE_LIFECYCLE.BATCHED]: 'Incluida en lote Merkle',
+  [EVIDENCE_LIFECYCLE.TSA_PENDING]: 'TSA pendiente',
+  [EVIDENCE_LIFECYCLE.TSA_VERIFIED]: 'Sello TSA confirmado',
+  [EVIDENCE_LIFECYCLE.SEALED_FALLBACK_LOCAL]: 'Contingencia local (sin TSA externo)',
+  [EVIDENCE_LIFECYCLE.FAILED]: 'Error de integridad'
+});
+
 /**
  * Ciclo de vida documental GRC (plantilla != certificación externa)
  */
@@ -81,6 +92,16 @@ export const DOCUMENT_LIFECYCLE = Object.freeze({
   DRAFT: 'BORRADOR',
   REVIEWED: 'REVISADO',
   APPROVED: 'APROBADO'
+});
+
+/**
+ * Severidad de hallazgos / riesgos GRC y L7
+ */
+export const RISK_SEVERITIES = Object.freeze({
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW'
 });
 
 /**
@@ -239,6 +260,14 @@ function normalizeVerdictCode(rawVerdict = '', blocked = false, sanitized = fals
   return L7_VERDICTS.ALLOW;
 }
 
+function normalizeSeverityCode(rawSeverity = '') {
+  const s = String(rawSeverity || '').trim().toUpperCase();
+  if (s.includes('CRIT')) return RISK_SEVERITIES.CRITICAL;
+  if (s.includes('HIGH') || s.includes('ALT')) return RISK_SEVERITIES.HIGH;
+  if (s.includes('MED')) return RISK_SEVERITIES.MEDIUM;
+  return RISK_SEVERITIES.LOW;
+}
+
 /**
  * Contrato normalizado para estado del nodo / runtime
  */
@@ -326,9 +355,66 @@ export function normalizeTraceRecord(raw = {}, fallbackTenant = '') {
     batchId,
     tsaStatus: tsaRaw || (batchId ? 'TSA_PENDING' : 'NOT_RUN'),
     lifecycle,
+    lifecycleLabel: EVIDENCE_LIFECYCLE_LABELS[lifecycle] || lifecycle,
     latencyMs: Number(raw.latencyMs ?? raw.latency_ms ?? 0) || 0,
     provider: pickFirstString(raw.provider, raw.modelProvider),
     reason: pickFirstString(raw.reason, raw.blockReason, raw.message)
+  };
+}
+
+/**
+ * Contrato normalizado para hallazgos de cumplimiento / riesgo
+ */
+export function normalizeComplianceFinding(raw = {}, index = 0) {
+  const id = pickFirstString(raw.id, raw.findingId, raw.code, `FND-${String(index + 1).padStart(3, '0')}`);
+  return {
+    id,
+    title: pickFirstString(raw.title, raw.control, raw.summary, 'Hallazgo de control'),
+    framework: pickFirstString(raw.framework, raw.standard, raw.norma, 'ISO/IEC 42001'),
+    severity: normalizeSeverityCode(raw.severity || raw.risk),
+    status: pickFirstString(raw.status, 'OPEN').toUpperCase(),
+    owner: pickFirstString(raw.owner, raw.assignee, raw.actor, '—'),
+    updatedAt: pickFirstString(raw.updatedAt, raw.updated_at, raw.timestamp, ''),
+    detail: pickFirstString(raw.detail, raw.description, raw.reason, '')
+  };
+}
+
+/**
+ * Contrato normalizado para resumen de gobernanza y cumplimiento GRC
+ */
+export function normalizeGovernanceSummary(raw = {}, fallbackTenant = '') {
+  const controlsEffective = Number(raw.controlsEffective ?? raw.compliantControls ?? 0) || 0;
+  const controlsWithIssues = Number(raw.controlsWithIssues ?? raw.partialControls ?? 0) || 0;
+  const controlsPending = Number(raw.controlsPending ?? raw.nonCompliantControls ?? 0) || 0;
+  const totalControls =
+    Number(raw.totalControls ?? controlsEffective + controlsWithIssues + controlsPending) || 0;
+
+  const compliancePercent =
+    raw.complianceScore !== undefined && raw.complianceScore !== null
+      ? Number(raw.complianceScore) || 0
+      : totalControls > 0
+      ? Number(((controlsEffective / totalControls) * 100).toFixed(1))
+      : 0;
+
+  const findings = Array.isArray(raw.findings)
+    ? raw.findings.map((item, idx) => normalizeComplianceFinding(item, idx))
+    : [];
+
+  return {
+    tenantId: pickFirstString(raw.tenantId, raw.tenant, fallbackTenant),
+    openRisks: Number(raw.openRisks ?? 0) || 0,
+    controlsTested: Number(raw.controlsTested ?? totalControls) || 0,
+    auditFindings: Number(raw.auditFindings ?? findings.length) || 0,
+    complianceScore: compliancePercent,
+    controlsBreakdown: {
+      total: totalControls,
+      effective: controlsEffective,
+      withIssues: controlsWithIssues,
+      pending: controlsPending
+    },
+    trendSeries: Array.isArray(raw.trendSeries) ? raw.trendSeries : [],
+    riskMatrix: Array.isArray(raw.riskMatrix) ? raw.riskMatrix : [],
+    findings
   };
 }
 
@@ -420,6 +506,7 @@ export function normalizeBatchSealResponse(raw = {}, fallbackTenant = '') {
     ok,
     status,
     lifecycle,
+    lifecycleLabel: EVIDENCE_LIFECYCLE_LABELS[lifecycle] || lifecycle,
     batchId,
     tenantId: pickFirstString(raw.tenantId, raw.tenant, fallbackTenant),
     merkleRoot,

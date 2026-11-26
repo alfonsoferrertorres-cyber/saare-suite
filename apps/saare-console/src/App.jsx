@@ -17,8 +17,6 @@ import SoaIso42001CompilerButton from './components/SoaIso42001CompilerButton';
 import { SAARE_CONFIG } from './config/saareState';
 import apiService from './services/apiService';
 
-const EXTENSION_ID = 'jmlakofckaafjpjnfbihgchkeiglamme';
-
 const SAARE_PROTOCOL_COMMANDS = [
   {
     label: 'Auditoría Forense',
@@ -106,7 +104,7 @@ const normalizeTenantId = (id = '') => {
 };
 
 const readStorageItem = (key = '') => {
-  if (!key) return '';
+  if (!key || typeof window === 'undefined') return '';
   try {
     return window.sessionStorage?.getItem(key) || window.localStorage?.getItem(key) || '';
   } catch {
@@ -115,7 +113,7 @@ const readStorageItem = (key = '') => {
 };
 
 const writeStorageItem = (key = '', value = '') => {
-  if (!key) return;
+  if (!key || typeof window === 'undefined') return;
   try {
     if (value) {
       window.localStorage?.setItem(key, value);
@@ -161,8 +159,13 @@ const readStoredProtocolCommands = (tenant = '') => {
 };
 
 const getApiEndpoint = (path = '') => {
-  const baseUrl = (SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es').trim().replace(/\/+$/, '');
-  const cleanBase = baseUrl.replace(/\/api\/v1$/i, '').replace(/\/api$/i, '').replace(/\/v1$/i, '');
+  const baseUrl = String(SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es')
+    .trim()
+    .replace(/\/+$/, '');
+  const cleanBase = baseUrl
+    .replace(/\/api\/v1$/i, '')
+    .replace(/\/api$/i, '')
+    .replace(/\/v1$/i, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${cleanBase}${cleanPath}`;
 };
@@ -194,6 +197,7 @@ const isValidTenantId = (id = '') => {
 };
 
 const triggerBlobDownload = (content, filename, mimeType = 'application/json;charset=utf-8') => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -206,6 +210,7 @@ const triggerBlobDownload = (content, filename, mimeType = 'application/json;cha
 };
 
 const triggerBase64Download = (base64Data, filename, mimeType = 'application/timestamp-reply') => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   const binary = atob(base64Data);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
@@ -244,7 +249,8 @@ function SaareConsoleInner() {
     pushActivity
   } = useConsole();
 
-  const queryParams = new URLSearchParams(window.location.search);
+  const queryParams =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const urlTenant = queryParams.get('tenant') ? normalizeTenantId(queryParams.get('tenant')) : null;
   const urlRole = queryParams.get('role') ? queryParams.get('role').trim() : null;
   const checkoutStatus = queryParams.get('checkout');
@@ -300,13 +306,15 @@ function SaareConsoleInner() {
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
   const [selectedEvidenceDetail, setSelectedEvidenceDetail] = useState(null);
 
+  const [pendingDangerCommand, setPendingDangerCommand] = useState(null);
+
   const [testPrompt, setTestPrompt] = useState('');
   const [testResult, setTestResult] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
   const [runningProtocolCode, setRunningProtocolCode] = useState('');
   const [protocolOutput, setProtocolOutput] = useState(null);
-  const [dossierRef, setDossierRef] = useState('030926-1SAA');
+  const [dossierRef, setDossierRef] = useState('');
   const [protocolCommandsEnabled, setProtocolCommandsEnabled] = useState(() => {
     const candidate =
       urlTenant ||
@@ -355,12 +363,14 @@ function SaareConsoleInner() {
       showOfficialReportModal ||
       showSeatsModal ||
       showExportModal ||
-      showFriaModal;
+      showFriaModal ||
+      Boolean(pendingDangerCommand);
     if (!hasOpenModal) return undefined;
 
     const onKeyDown = (event) => {
       if (event.key !== 'Escape') return;
-      if (showAuthModal) setShowAuthModal(false);
+      if (pendingDangerCommand) setPendingDangerCommand(null);
+      else if (showAuthModal) setShowAuthModal(false);
       else if (showOfficialReportModal) {
         setShowOfficialReportModal(false);
         setSelectedEvidenceForPdf(null);
@@ -376,7 +386,8 @@ function SaareConsoleInner() {
     showOfficialReportModal,
     showSeatsModal,
     showExportModal,
-    showFriaModal
+    showFriaModal,
+    pendingDangerCommand
   ]);
 
   useEffect(() => {
@@ -979,12 +990,8 @@ function SaareConsoleInner() {
         operatorEmail: userEmail || 'N/A'
       },
       infrastructure: {
-        controlPlaneWorker: 'saare-control-plane-prod',
         apiEndpoint: getApiEndpoint('/health'),
-        d1DatabaseId: '27eedbe9-1e30-4e11-bd26-220c049f264a',
-        d1Region: 'D1-EU-WESTERN-EUROPE',
-        kvNamespaceId: '8dbfe21019834fc1bdefd9b66e4e810b',
-        kvScope: 'SAARE_VAULT_KV (Edge State Store)',
+        vaultScope: 'D1 / Edge State Store',
         tenantIsolation: 'STRICT_TENANT_ID_SCOPING'
       },
       cryptographicState: {
@@ -1028,36 +1035,22 @@ function SaareConsoleInner() {
 <body>
   <div class="header">
     <h1>CERTIFICADO DE ANCLAJE TÉCNICO Y SOBERANÍA D1 (SGP 1.0)</h1>
-    <div class="sub">Emitido automáticamente por S.A.A.R.E. Control Plane · Fecha UTC: <strong>${issuedAt}</strong></div>
+    <div class="sub">Emitido por S.A.A.R.E. Control Plane · Fecha UTC: <strong>${issuedAt}</strong></div>
   </div>
 
   <div class="box">
     <strong>Entidad / Tenant Auditado:</strong> ${canonicalPayload.tenant.companyName} (<code>${tenantId}</code>) &nbsp;|&nbsp;
-    <strong>Plan:</strong> ${canonicalPayload.tenant.planId}<br/>
-    <strong>Proveedor de Plataforma:</strong> GABINETE MS3V · INGENIERÍA Y AUDITORÍA S.A.A.R.E. S.L. (Protocolo SGP 1.0)
+    <strong>Plan:</strong> ${canonicalPayload.tenant.planId}
   </div>
 
   <h2>1. Acreditación de Infraestructura y Aislamiento Multitenant</h2>
   <p style="font-size:12px;">
-    Este documento acredita los parámetros técnicos, identificadores de infraestructura y estado criptográfico
-    registrados para el inquilino <strong>${tenantId}</strong>. Las consultas, métricas, reglas DLP y lotes forenses
-    operan bajo aislamiento estricto por <code>tenant_id</code> sobre la bóveda relacional D1 en región europea.
+    Este documento acredita los parámetros técnicos y el estado criptográfico registrados para el inquilino
+    <strong>${tenantId}</strong>. Las consultas, métricas, reglas DLP y lotes forenses operan bajo aislamiento
+    por <code>tenant_id</code>.
   </p>
 
-  <h2>2. Matriz de Bindings y Estado de Bóveda</h2>
-  <table>
-    <thead>
-      <tr><th>Componente</th><th>Identificador / Endpoint</th><th>Ámbito / Estado</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>Cloudflare D1 Database (DB)</td><td class="mono">27eedbe9-1e30-4e11-bd26-220c049f264a</td><td>D1-EU-WESTERN-EUROPE (Bóveda principal)</td></tr>
-      <tr><td>KV Namespace (Vault Store)</td><td class="mono">8dbfe21019834fc1bdefd9b66e4e810b</td><td>SAARE_VAULT_KV (Almacén Edge / Estado operativo)</td></tr>
-      <tr><td>Control Plane Worker</td><td class="mono">saare-control-plane-prod</td><td>ONLINE · Aislamiento Multitenant Activo</td></tr>
-      <tr><td>Health &amp; Trust Anchor</td><td class="mono">${canonicalPayload.infrastructure.apiEndpoint}</td><td>ONLINE (Trust Anchor OK)</td></tr>
-    </tbody>
-  </table>
-
-  <h2>3. Sello de Metadatos Criptográficos e Integridad (SHA-256)</h2>
+  <h2>2. Sello de Metadatos Criptográficos e Integridad (SHA-256)</h2>
   <div class="box">
     <strong>SHA-256 DEL CERTIFICADO EMITIDO:</strong><br/>
     <span class="mono">${certificateSha256}</span><br/><br/>
@@ -1069,7 +1062,7 @@ function SaareConsoleInner() {
     Ref. TSA: <code>${canonicalPayload.cryptographicState.tsaReference || 'N/A'}</code>
   </div>
 
-  <h2>4. Correspondencia Técnica Normativa y Alcance Probatorio</h2>
+  <h2>3. Correspondencia Técnica Normativa y Alcance Probatorio</h2>
   <table>
     <thead>
       <tr><th>Marco</th><th>Requisito Técnico</th><th>Mecanismo Implementado en Tenant</th></tr>
@@ -1224,7 +1217,7 @@ function SaareConsoleInner() {
     setProtocolOutput(null);
     setSelectedEvidenceDetail(null);
     setSecondaryMode('');
-    triggerGovernance('Sesión cerrada. Consola restablecida en estado virgen.');
+    triggerGovernance('Sesión cerrada. Consola restablecida.');
   };
 
   useEffect(() => {
@@ -1438,28 +1431,22 @@ function SaareConsoleInner() {
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || '';
     const licenseKey =
       billingInfo?.credentials?.licenseKey || authToken || readStorageItem('saare_api_key') || '';
+    const extensionId = String(SAARE_CONFIG?.EXTENSION_ID || '').trim();
 
-    const regContent =
-      [
-        'Windows Registry Editor Version 5.00',
-        '',
-        '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist]',
-        `"1"="${EXTENSION_ID};https://edge.microsoft.com/extensionwebstorebase/v1/crx"`,
-        '',
-        '[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist]',
-        `"1"="${EXTENSION_ID};https://clients2.google.com/service/update2/crx"`,
-        '',
-        `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\3rdparty\\extensions\\${EXTENSION_ID}\\policy]`,
-        `"TenantId"="${tenantId}"`,
-        `"LicenseKey"="${licenseKey}"`,
-        `"ProxyGateway"="${gateway}"`,
-        `"TrustAnchor"="${trustAnchor}"`,
-        '"FailClosed"=dword:00000001',
-        '"EnableExAnteEnforcement"=dword:00000001'
-      ].join('\r\n') + '\r\n';
+    const lines = [
+      'Windows Registry Editor Version 5.00',
+      '',
+      `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\3rdparty\\extensions\\${extensionId || 'SAARE_EXTENSION'}\\policy]`,
+      `"TenantId"="${tenantId}"`,
+      `"LicenseKey"="${licenseKey}"`,
+      `"ProxyGateway"="${gateway}"`,
+      `"TrustAnchor"="${trustAnchor}"`,
+      '"FailClosed"=dword:00000001',
+      '"EnableExAnteEnforcement"=dword:00000001'
+    ];
 
     triggerBlobDownload(
-      regContent,
+      `${lines.join('\r\n')}\r\n`,
       `SAARE_L7_POLICY_${tenantId || 'cliente'}.reg`,
       'text/plain;charset=utf-8'
     );
@@ -1670,21 +1657,9 @@ function SaareConsoleInner() {
     }
   }, [tenantId, authToken, triggerGovernance]);
 
-  const handleExecuteProtocolCommand = useCallback(
+  const runProtocolCommandNow = useCallback(
     async (cmd) => {
       if (!cmd?.prompt) return;
-
-      if (protocolCommandsEnabled[cmd.code] === false) {
-        triggerGovernance(`El comando ${cmd.code} está desactivado en la consola.`);
-        return;
-      }
-
-      if (cmd.danger) {
-        const confirmed = window.confirm(
-          `Vas a ejecutar ${cmd.code} sobre el tenant [${tenantId || 'SIN_TENANT'}]. ¿Deseas continuar?`
-        );
-        if (!confirmed) return;
-      }
 
       const cleanRef = String(dossierRef || '').trim();
       const effectivePrompt = cleanRef
@@ -1743,7 +1718,6 @@ function SaareConsoleInner() {
       }
     },
     [
-      protocolCommandsEnabled,
       dossierRef,
       tenantId,
       authToken,
@@ -1752,6 +1726,25 @@ function SaareConsoleInner() {
       triggerGovernance,
       fetchTelemetryDirectFromVault
     ]
+  );
+
+  const handleExecuteProtocolCommand = useCallback(
+    async (cmd) => {
+      if (!cmd?.prompt) return;
+
+      if (protocolCommandsEnabled[cmd.code] === false) {
+        triggerGovernance(`El comando ${cmd.code} está desactivado en la consola.`);
+        return;
+      }
+
+      if (cmd.danger) {
+        setPendingDangerCommand(cmd);
+        return;
+      }
+
+      await runProtocolCommandNow(cmd);
+    },
+    [protocolCommandsEnabled, triggerGovernance, runProtocolCommandNow]
   );
 
   const handleExecuteTestExAnte = async (customPrompt = null) => {
@@ -1831,13 +1824,15 @@ function SaareConsoleInner() {
         >
           <div>
             <strong style={{ color: '#94a3b8' }}>ID:</strong>{' '}
-            <span style={{ color: '#f8fafc', fontWeight: '700' }}>
+            <span className="saare-mono" style={{ color: '#f8fafc', fontWeight: '700' }}>
               {selectedEvidenceDetail.evidenceId || selectedEvidenceDetail.id}
             </span>
           </div>
           <div>
             <strong style={{ color: '#94a3b8' }}>Veredicto:</strong>{' '}
-            <span style={{ color: '#f8fafc' }}>{selectedEvidenceDetail.verdict}</span>
+            <span className="saare-mono" style={{ color: '#f8fafc' }}>
+              {selectedEvidenceDetail.verdict}
+            </span>
           </div>
           <div>
             <strong style={{ color: '#94a3b8' }}>Ciclo:</strong>{' '}
@@ -1845,7 +1840,7 @@ function SaareConsoleInner() {
           </div>
           <div style={{ wordBreak: 'break-all' }}>
             <strong style={{ color: '#94a3b8' }}>Hash:</strong>{' '}
-            <span style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.68rem' }}>
+            <span className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.68rem' }}>
               {selectedEvidenceDetail.hash || '—'}
             </span>
           </div>
@@ -1874,7 +1869,7 @@ function SaareConsoleInner() {
               padding: '7px 12px',
               borderRadius: '6px',
               border: '1px solid #334155',
-              background: '#1e293b',
+              background: '#111827',
               color: '#e2e8f0',
               fontSize: '0.72rem',
               fontWeight: '700',
@@ -1914,7 +1909,7 @@ function SaareConsoleInner() {
                 padding: '6px 12px',
                 borderRadius: '6px',
                 border: '1px solid #334155',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 fontSize: '0.74rem',
                 fontWeight: '700',
@@ -2104,7 +2099,7 @@ function SaareConsoleInner() {
             style={{
               marginBottom: '16px',
               padding: '14px 18px',
-              background: '#0f172a',
+              background: '#0b0f19',
               border: '1px solid #f59e0b',
               borderRadius: '10px',
               display: 'flex',
@@ -2115,7 +2110,7 @@ function SaareConsoleInner() {
             }}
           >
             <div>
-              <div style={{ fontWeight: '900', color: '#fbbf24', fontSize: '0.88rem' }}>
+              <div style={{ fontWeight: '800', color: '#fbbf24', fontSize: '0.88rem' }}>
                 Entorno listo para configurar — Sin token ni tenant vinculado
               </div>
               <div style={{ color: '#cbd5e1', fontSize: '0.76rem', marginTop: '3px' }}>
@@ -2135,7 +2130,7 @@ function SaareConsoleInner() {
                 color: '#fff',
                 border: 'none',
                 borderRadius: '6px',
-                fontWeight: '900',
+                fontWeight: '800',
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}
@@ -2147,6 +2142,84 @@ function SaareConsoleInner() {
 
         {renderMainContent()}
       </ConsoleShell>
+
+      {pendingDangerCommand && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 6, 23, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: '16px'
+          }}
+        >
+          <div
+            style={{
+              background: '#14070a',
+              border: '1px solid #ef4444',
+              borderRadius: '12px',
+              maxWidth: '440px',
+              width: '100%',
+              padding: '22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <strong style={{ color: '#fca5a5', fontSize: '0.95rem' }}>
+              Confirmar ejecución de {pendingDangerCommand.code}
+            </strong>
+            <p style={{ margin: 0, color: '#fecaca', fontSize: '0.78rem', lineHeight: 1.45 }}>
+              Vas a ejecutar <strong>{pendingDangerCommand.label}</strong> sobre el tenant{' '}
+              <strong className="saare-mono">{tenantId || 'SIN_TENANT'}</strong>. Esta acción quedará
+              registrada en la actividad de sesión.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setPendingDangerCommand(null)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #334155',
+                  background: '#111827',
+                  color: '#e2e8f0',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const cmdToRun = pendingDangerCommand;
+                  setPendingDangerCommand(null);
+                  await runProtocolCommandNow(cmdToRun);
+                }}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #ef4444',
+                  background: '#991b1b',
+                  color: '#ffffff',
+                  fontSize: '0.75rem',
+                  fontWeight: '800',
+                  cursor: 'pointer'
+                }}
+              >
+                Confirmar ejecución
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAuthModal && (
         <div
@@ -2286,7 +2359,7 @@ function SaareConsoleInner() {
                   <input
                     type="text"
                     required
-                    placeholder="Tenant ID de tu organización (ej: mi-empresa)"
+                    placeholder="Tenant ID de tu organización"
                     value={authForm.tenantId}
                     onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
                     style={{

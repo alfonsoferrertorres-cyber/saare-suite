@@ -107,9 +107,9 @@ export default function OverviewView({
       : 'NOT_RUN';
 
   const cardStyle = {
-    background: '#090d16',
+    background: '#0b0f19',
     border: '1px solid #1e293b',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
@@ -130,9 +130,9 @@ export default function OverviewView({
       {/* Cabecera de estado del nodo y acciones rápidas */}
       <section
         style={{
-          background: '#020617',
+          background: '#0b0f19',
           border: '1px solid #1e293b',
-          borderRadius: '8px',
+          borderRadius: '10px',
           padding: '16px',
           display: 'flex',
           justifyContent: 'space-between',
@@ -151,7 +151,7 @@ export default function OverviewView({
                 padding: '2px 8px',
                 borderRadius: '999px',
                 whiteSpace: 'nowrap',
-                background: isRuntimeOk ? '#064e3b' : '#450a0a',
+                background: isRuntimeOk ? 'rgba(6, 78, 59, 0.7)' : 'rgba(69, 10, 10, 0.7)',
                 color: isRuntimeOk ? '#6ee7b7' : '#fca5a5',
                 border: `1px solid ${isRuntimeOk ? '#10b981' : '#ef4444'}`
               }}
@@ -177,7 +177,8 @@ export default function OverviewView({
 
           <div style={{ fontSize: '0.8rem', color: '#cbd5e1', wordBreak: 'break-word' }}>
             Tenant: <strong>{tenantId || 'Sin tenant seleccionado'}</strong> · Ruta:{' '}
-            <strong>{routeMode}</strong> · Modo PEP: <strong>{nodeStatus?.mode || 'FAIL-CLOSED'}</strong>
+            <strong>{routeMode}</strong> · Modo PEP:{' '}
+            <strong>{nodeStatus?.mode || 'FAIL-CLOSED'}</strong>
           </div>
         </div>
 
@@ -208,7 +209,7 @@ export default function OverviewView({
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
-              background: '#1e293b',
+              background: '#111827',
               color: '#e2e8f0',
               border: '1px solid #334155',
               fontSize: '0.75rem',
@@ -269,7 +270,7 @@ export default function OverviewView({
               style={{
                 padding: '8px 12px',
                 borderRadius: '6px',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 border: '1px solid #334155',
                 fontSize: '0.75rem',
@@ -309,7 +310,7 @@ export default function OverviewView({
             style={{
               padding: '8px 12px',
               borderRadius: '6px',
-              background: '#090d16',
+              background: '#070b14',
               color: '#94a3b8',
               border: '1px solid #334155',
               fontSize: '0.75rem',
@@ -335,6 +336,7 @@ export default function OverviewView({
         <div style={cardStyle}>
           <span style={labelStyle}>Runtime</span>
           <strong
+            className="saare-mono"
             style={{
               fontSize: '1.15rem',
               color: isRuntimeOk ? '#34d399' : '#f87171'
@@ -349,7 +351,7 @@ export default function OverviewView({
 
         <div style={cardStyle}>
           <span style={labelStyle}>Inspecciones L7</span>
-          <strong style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
             {loadingKpis ? '—' : kpis.totalInterceptions}
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
@@ -359,17 +361,16 @@ export default function OverviewView({
 
         <div style={cardStyle}>
           <span style={labelStyle}>Evidencias pendientes</span>
-          <strong style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
             {loadingKpis ? '—' : kpis.pendingConsolidation}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Por consolidar en lote
-          </span>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Por consolidar en lote</span>
         </div>
 
         <div style={cardStyle}>
           <span style={labelStyle}>Última verificación</span>
           <strong
+            className="saare-mono"
             style={{
               fontSize: '1.15rem',
               color:
@@ -399,25 +400,18 @@ export default function OverviewView({
       </section>
 
       {/* Actividad reciente observable */}
-      <section
-        style={{
-          background: '#090d16',
-          border: '1px solid #1e293b',
-          borderRadius: '8px',
-          padding: '16px'
-        }}
-      >
+      <section style={cardStyle}>
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: '8px',
-            marginBottom: '10px'
+            marginBottom: '4px'
           }}
         >
           <span style={labelStyle}>Actividad reciente</span>
-          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+          <span className="saare-mono" style={{ fontSize: '0.72rem', color: '#64748b' }}>
             {activityLog.length} evento(s) en sesión
           </span>
         </div>
@@ -452,7 +446,10 @@ export default function OverviewView({
                       {ev.module} · {ev.action} · {ev.timestamp}
                     </span>
                   </div>
-                  <span style={{ color: '#94a3b8', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                  <span
+                    className="saare-mono"
+                    style={{ color: '#94a3b8', whiteSpace: 'nowrap', fontSize: '0.72rem' }}
+                  >
                     [{ev.status}]{ev.traceId ? ` · trace: ${ev.traceId}` : ''}
                   </span>
                 </div>

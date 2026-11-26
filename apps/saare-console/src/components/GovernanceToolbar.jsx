@@ -54,9 +54,14 @@ export default function GovernanceToolbar({
     String(
       tenantId ||
         contextTenantId ||
-        apiService.getCurrentUser()?.tenantId ||
-        'DEFAULT_TENANT'
+        (typeof apiService.getCurrentUser === 'function'
+          ? apiService.getCurrentUser()?.tenantId
+          : '') ||
+        ''
     ).trim();
+
+  const tenantLabel = resolveActiveTenant() || 'Sin asignar';
+  const fileSlug = resolveActiveTenant() || 'CONTEXTO';
 
   const setLog = (msg, tone = 'info') => {
     setStatus(msg);
@@ -163,7 +168,7 @@ export default function GovernanceToolbar({
   const handleToggleRules = () => {
     const prevState = localRulesEnabled;
     const nextState = !prevState;
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
 
     setLocalRulesEnabled(nextState);
     runButtonAction({
@@ -171,8 +176,8 @@ export default function GovernanceToolbar({
       permissionKey: CONSOLE_ACTIONS.TOGGLE_TENANT_RULES,
       moduleName: 'RUNTIME',
       startMsg: nextState
-        ? `Activando reglas DLP / políticas en ${activeTenant}...`
-        : `Desactivando reglas DLP / políticas en ${activeTenant}...`,
+        ? `Activando reglas DLP / políticas en ${tenantLabel}...`
+        : `Desactivando reglas DLP / políticas en ${tenantLabel}...`,
       customHandler: async () => {
         try {
           if (typeof onToggleTenantRules === 'function') {
@@ -186,8 +191,8 @@ export default function GovernanceToolbar({
             await parseOkJson(res, 'actualizar reglas del tenant');
           }
           return nextState
-            ? `Reglas DLP / políticas ACTIVAS para ${activeTenant}.`
-            : `Reglas DLP / políticas DESACTIVADAS para ${activeTenant}.`;
+            ? `Reglas DLP / políticas ACTIVAS para ${tenantLabel}.`
+            : `Reglas DLP / políticas DESACTIVADAS para ${tenantLabel}.`;
         } catch (err) {
           setLocalRulesEnabled(prevState);
           throw err;
@@ -207,7 +212,7 @@ export default function GovernanceToolbar({
       return;
     }
 
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
 
     runButtonAction({
       actionKey: 'verify_signature',
@@ -257,20 +262,20 @@ export default function GovernanceToolbar({
   };
 
   const handleExportCustody = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'export_custody',
       permissionKey: CONSOLE_ACTIONS.EXPORT_CUSTODY,
       moduleName: 'EVIDENCE',
-      startMsg: `Exportando cadena de custodia de ${activeTenant}...`,
+      startMsg: `Exportando cadena de custodia de ${tenantLabel}...`,
       customHandler: onExportCustody,
       fallbackApiFn: async () => {
         const traces = await apiService.getTelemetryTraces({
           tenant: activeTenant,
           limit: 100
         });
-        downloadJsonFile(`custodia_${activeTenant}_${Date.now()}.json`, {
-          tenantId: activeTenant,
+        downloadJsonFile(`custodia_${fileSlug}_${Date.now()}.json`, {
+          tenantId: activeTenant || null,
           targetHash: targetHash || null,
           documentState: DOCUMENT_LIFECYCLE.REVIEWED,
           exportedAt: new Date().toISOString(),
@@ -282,7 +287,7 @@ export default function GovernanceToolbar({
   };
 
   const handleExportGrantDossier = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'export_grant_dossier',
       permissionKey: CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER,
@@ -299,7 +304,7 @@ export default function GovernanceToolbar({
           })
         });
         const data = await parseOkJson(res, 'dossier de subvenciones');
-        downloadJsonFile(`dossier_subvenciones_${activeTenant}.json`, {
+        downloadJsonFile(`dossier_subvenciones_${fileSlug}.json`, {
           ...data,
           documentState: DOCUMENT_LIFECYCLE.DRAFT
         });
@@ -309,7 +314,7 @@ export default function GovernanceToolbar({
   };
 
   const handleExecuteEnforcementCheck = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'enforcement_check',
       permissionKey: CONSOLE_ACTIONS.EXECUTE_L7_INFERENCE,
@@ -328,14 +333,17 @@ export default function GovernanceToolbar({
           ok: resp?.ok !== false && resp?.executionStatus !== EXECUTION_STATUS.FAILED,
           status: resp?.executionStatus || EXECUTION_STATUS.VERIFIED,
           traceId: resp?.traceId || '',
-          message: `Auditoría Ex-Ante completada: decisión ${resp?.verdict || resp?.rawDecision || 'EVALUADA'}.`
+          message: `Auditoría Ex-Ante completada: decisión ${
+            resp?.verdict || resp?.rawDecision || 'EVALUADA'
+          }.`
         };
       }
     });
   };
 
   const handleOpenFriaModal = () => {
-    const activeTenant = resolveActiveTenant();
+    const cleanTenant = resolveActiveTenant();
+    const activeTenant = cleanTenant || undefined;
     return runButtonAction({
       actionKey: 'open_fria',
       permissionKey: CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT,
@@ -343,22 +351,23 @@ export default function GovernanceToolbar({
       startMsg: 'Consultando evaluación de impacto FRIA (Art. 27)...',
       customHandler: onOpenFriaModal,
       fallbackApiFn: async () => {
-        const res = await saareFetch(`/soa/iso42001?tenant=${encodeURIComponent(activeTenant)}`, {
+        const query = cleanTenant ? `?tenant=${encodeURIComponent(cleanTenant)}` : '';
+        const res = await saareFetch(`/soa/iso42001${query}`, {
           method: 'GET',
           overrideTenant: activeTenant
         });
         const data = await parseOkJson(res, 'evaluación FRIA / SoA');
-        downloadJsonFile(`fria_soa_${activeTenant}.json`, {
+        downloadJsonFile(`fria_soa_${fileSlug}.json`, {
           ...data,
           documentState: DOCUMENT_LIFECYCLE.DRAFT
         });
-        return `Expediente FRIA / SoA [${DOCUMENT_LIFECYCLE.DRAFT}] exportado para ${activeTenant}.`;
+        return `Expediente FRIA / SoA [${DOCUMENT_LIFECYCLE.DRAFT}] exportado para ${tenantLabel}.`;
       }
     });
   };
 
   const handleExportGovernancePackage = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'export_grc',
       permissionKey: CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE,
@@ -371,8 +380,8 @@ export default function GovernanceToolbar({
           overrideTenant: activeTenant
         });
         const matrix = await parseOkJson(matrixRes, 'matriz normativa GRC');
-        downloadJsonFile(`plantillas_grc_${activeTenant}.json`, {
-          tenantId: activeTenant,
+        downloadJsonFile(`plantillas_grc_${fileSlug}.json`, {
+          tenantId: activeTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: DOCUMENT_LIFECYCLE.DRAFT,
           templatesCount: 4,
@@ -384,7 +393,7 @@ export default function GovernanceToolbar({
   };
 
   const handleOpenReportModal = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'open_report',
       permissionKey: CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT,
@@ -396,8 +405,8 @@ export default function GovernanceToolbar({
           apiService.getNodeStatus(activeTenant),
           apiService.getTelemetryTraces({ tenant: activeTenant, limit: 50 })
         ]);
-        downloadJsonFile(`informe_oficial_${activeTenant}.json`, {
-          tenantId: activeTenant,
+        downloadJsonFile(`informe_oficial_${fileSlug}.json`, {
+          tenantId: activeTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: DOCUMENT_LIFECYCLE.REVIEWED,
           nodeStatus,
@@ -410,7 +419,7 @@ export default function GovernanceToolbar({
   };
 
   const handleGenerateToken = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'generate_token',
       permissionKey: CONSOLE_ACTIONS.MANAGE_CREDENTIALS,
@@ -424,7 +433,7 @@ export default function GovernanceToolbar({
           body: JSON.stringify({ purpose: 'AUDIT_TOKEN' })
         });
         const data = await parseOkJson(res, 'verificar licencia');
-        return `Licencia verificada para ${data.tenant || activeTenant} (rol: ${
+        return `Licencia verificada para ${data.tenant || tenantLabel} (rol: ${
           data.role || 'AUDITOR'
         }).`;
       }
@@ -432,7 +441,7 @@ export default function GovernanceToolbar({
   };
 
   const handleDownloadTeaser = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'download_teaser',
       permissionKey: CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS,
@@ -445,7 +454,7 @@ export default function GovernanceToolbar({
           overrideTenant: activeTenant
         });
         const data = await parseOkJson(res, 'manifiesto técnico');
-        downloadJsonFile(`manifiesto_tecnico_${activeTenant}.json`, {
+        downloadJsonFile(`manifiesto_tecnico_${fileSlug}.json`, {
           ...data,
           documentState: DOCUMENT_LIFECYCLE.APPROVED
         });
@@ -455,7 +464,7 @@ export default function GovernanceToolbar({
   };
 
   const handleExportLecActa = () => {
-    const activeTenant = resolveActiveTenant();
+    const activeTenant = resolveActiveTenant() || undefined;
     return runButtonAction({
       actionKey: 'export_lec_acta',
       permissionKey: CONSOLE_ACTIONS.EXPORT_LEC_ACTA,
@@ -467,12 +476,12 @@ export default function GovernanceToolbar({
           method: 'POST',
           overrideTenant: activeTenant,
           body: JSON.stringify({
-            tenantId: activeTenant,
+            ...(activeTenant ? { tenantId: activeTenant } : {}),
             enable2of3Custody: true
           })
         });
         const data = await parseOkJson(res, 'acta LEC / ISO 27037');
-        downloadJsonFile(`acta_lec_iso27037_${activeTenant}.json`, {
+        downloadJsonFile(`acta_lec_iso27037_${fileSlug}.json`, {
           ...data,
           documentState: DOCUMENT_LIFECYCLE.REVIEWED
         });
@@ -498,8 +507,8 @@ export default function GovernanceToolbar({
 
   const groupBox = {
     padding: '10px 12px',
-    background: '#090d16',
-    borderRadius: '6px',
+    background: '#0b0f19',
+    borderRadius: '8px',
     border: '1px solid #1e293b',
     display: 'flex',
     flexDirection: 'column',
@@ -511,24 +520,23 @@ export default function GovernanceToolbar({
   const groupLabel = {
     fontSize: '10px',
     fontWeight: '800',
-    color: '#64748b',
+    color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: '0.06em'
   };
 
   const toneColor =
-    statusTone === 'error' ? '#f87171' : statusTone === 'success' ? '#34d399' : '#38bdf8';
+    statusTone === 'error' ? '#fca5a5' : statusTone === 'success' ? '#6ee7b7' : '#7dd3fc';
   const toneBorder =
-    statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#38bdf8';
+    statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#0284c7';
 
   return (
     <section
       style={{
         padding: '16px',
-        background: '#020617',
-        borderRadius: '8px',
-        border: '1px solid #1e293b',
-        marginBottom: '20px'
+        background: '#0b0f19',
+        borderRadius: '10px',
+        border: '1px solid #1e293b'
       }}
     >
       <div
@@ -544,17 +552,17 @@ export default function GovernanceToolbar({
         <h3
           style={{
             margin: 0,
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: '800',
             color: '#94a3b8',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.06em'
           }}
         >
           Acciones de Gobernanza &amp; Auditoría Operativa
         </h3>
-        <span style={{ fontSize: '11px', color: '#64748b' }}>
-          Tenant: <strong style={{ color: '#cbd5e1' }}>{resolveActiveTenant()}</strong>
+        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+          Tenant: <strong className="saare-mono" style={{ color: '#e2e8f0' }}>{tenantLabel}</strong>
         </span>
       </div>
 
@@ -583,8 +591,8 @@ export default function GovernanceToolbar({
               onClick={handleExportCustody}
               style={{
                 ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_CUSTODY)),
-                background: '#1e293b',
-                color: '#cbd5e1',
+                background: '#111827',
+                color: '#e2e8f0',
                 border: '1px solid #334155'
               }}
             >
@@ -597,7 +605,7 @@ export default function GovernanceToolbar({
               onClick={handleExportLecActa}
               style={{
                 ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_LEC_ACTA)),
-                background: '#312e81',
+                background: '#1e1b4b',
                 color: '#e0e7ff',
                 border: '1px solid #6366f1'
               }}
@@ -635,7 +643,7 @@ export default function GovernanceToolbar({
               onClick={handleToggleRules}
               style={{
                 ...btnBase(isActionAllowed(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES)),
-                background: localRulesEnabled ? '#450a0a' : '#064e3b',
+                background: localRulesEnabled ? 'rgba(69, 10, 10, 0.7)' : 'rgba(6, 78, 59, 0.7)',
                 color: localRulesEnabled ? '#fca5a5' : '#6ee7b7',
                 border: localRulesEnabled ? '1px solid #dc2626' : '1px solid #10b981'
               }}
@@ -717,8 +725,8 @@ export default function GovernanceToolbar({
               onClick={handleDownloadTeaser}
               style={{
                 ...btnBase(isActionAllowed(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)),
-                background: '#1e293b',
-                color: '#94a3b8',
+                background: '#111827',
+                color: '#cbd5e1',
                 border: '1px solid #334155'
               }}
             >
@@ -739,7 +747,7 @@ export default function GovernanceToolbar({
               onClick={handleGenerateToken}
               style={{
                 ...btnBase(isActionAllowed(CONSOLE_ACTIONS.MANAGE_CREDENTIALS)),
-                background: '#1e293b',
+                background: '#111827',
                 border: '1px solid #059669',
                 color: '#34d399'
               }}
@@ -752,18 +760,19 @@ export default function GovernanceToolbar({
 
       {status && (
         <div
+          role="status"
           style={{
             marginTop: '12px',
             padding: '10px 14px',
-            background: '#090d16',
+            background: '#020617',
             borderLeft: `3px solid ${toneBorder}`,
-            borderRadius: '4px',
+            borderRadius: '6px',
             fontSize: '0.75rem',
             color: toneColor,
             fontWeight: '600'
           }}
         >
-          System Log: {status}
+          Registro de estado: {status}
         </div>
       )}
     </section>

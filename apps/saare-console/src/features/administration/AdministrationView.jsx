@@ -46,7 +46,8 @@ export default function AdministrationView({
     setTenantDraft(tenantId || '');
   }, [tenantId]);
 
-  const activeTenant = String(tenantId || '').trim() || 'DEFAULT_TENANT';
+  const activeTenant = String(tenantId || '').trim();
+  const tenantLabel = activeTenant || 'Sin asignar';
 
   const setFeedback = (msg, tone = 'info') => {
     setStatusMessage(msg);
@@ -95,12 +96,12 @@ export default function AdministrationView({
     }
 
     setLicenseBusy(true);
-    setFeedback(`Verificando credencial y licencia para ${activeTenant}...`, 'info');
+    setFeedback(`Verificando credencial y licencia para ${tenantLabel}...`, 'info');
 
     try {
       const res = await saareFetch('/auth/verifylicense', {
         method: 'POST',
-        overrideTenant: activeTenant,
+        overrideTenant: activeTenant || undefined,
         body: JSON.stringify({ purpose: 'AUDIT_TOKEN' })
       });
       const data = await res.json().catch(() => ({}));
@@ -109,7 +110,7 @@ export default function AdministrationView({
       }
 
       const summary = {
-        tenant: data.tenant || activeTenant,
+        tenant: data.tenant || tenantLabel,
         role: data.role || role,
         plan: data.plan || data.tier || billingInfo?.planId || 'NO_ESPECIFICADO',
         keyRef: maskCredentialRef(data.keyId || data.key_id || data.tokenId || data.id),
@@ -149,10 +150,10 @@ export default function AdministrationView({
     if (typeof onDownloadSidecarPackage === 'function') {
       onDownloadSidecarPackage();
     } else if (typeof apiService.downloadNativeSidecar === 'function') {
-      apiService.downloadNativeSidecar(activeTenant);
+      apiService.downloadNativeSidecar(activeTenant || undefined);
     }
 
-    const msg = `Descarga de Sidecar L7 iniciada para ${activeTenant}.`;
+    const msg = `Descarga de Sidecar L7 iniciada para ${tenantLabel}.`;
     setFeedback(msg, 'success');
     pushActivity({
       module: 'ADMINISTRATION',
@@ -170,7 +171,7 @@ export default function AdministrationView({
 
     if (typeof onDownloadIso27037Manifest === 'function') {
       await onDownloadIso27037Manifest();
-      const msg = `Manifiesto ISO/IEC 27037 solicitado para ${activeTenant}.`;
+      const msg = `Manifiesto ISO/IEC 27037 solicitado para ${tenantLabel}.`;
       setFeedback(msg, 'success');
       pushActivity({
         module: 'ADMINISTRATION',
@@ -181,11 +182,11 @@ export default function AdministrationView({
       return;
     }
 
-    setFeedback(`Solicitando manifiesto técnico para ${activeTenant}...`, 'info');
+    setFeedback(`Solicitando manifiesto técnico para ${tenantLabel}...`, 'info');
     try {
       const res = await saareFetch('/forensics/manifest', {
         method: 'GET',
-        overrideTenant: activeTenant
+        overrideTenant: activeTenant || undefined
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -193,20 +194,21 @@ export default function AdministrationView({
       }
 
       if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const fileSlug = activeTenant || 'CONTEXTO';
         const blob = new Blob([JSON.stringify(data, null, 2)], {
           type: 'application/json;charset=utf-8'
         });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `manifiesto_despliegue_${activeTenant}.json`;
+        link.download = `manifiesto_despliegue_${fileSlug}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }
 
-      const msg = `Manifiesto técnico descargado para ${activeTenant}.`;
+      const msg = `Manifiesto técnico descargado para ${tenantLabel}.`;
       setFeedback(msg, 'success');
       pushActivity({
         module: 'ADMINISTRATION',
@@ -227,9 +229,9 @@ export default function AdministrationView({
   };
 
   const sectionStyle = {
-    background: '#090d16',
+    background: '#0b0f19',
     border: '1px solid #1e293b',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '16px',
     display: 'flex',
     flexDirection: 'column',
@@ -247,7 +249,7 @@ export default function AdministrationView({
   const buttonSecondaryStyle = {
     padding: '8px 14px',
     borderRadius: '6px',
-    background: '#1e293b',
+    background: '#111827',
     color: '#e2e8f0',
     border: '1px solid #334155',
     fontSize: '0.75rem',
@@ -268,7 +270,7 @@ export default function AdministrationView({
           role="status"
           style={{
             padding: '10px 14px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             background: '#020617',
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
@@ -316,17 +318,7 @@ export default function AdministrationView({
               <button
                 type="button"
                 onClick={onOpenSeatsModal}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: '#1e293b',
-                  color: '#e2e8f0',
-                  border: '1px solid #334155',
-                  fontSize: '0.72rem',
-                  fontWeight: '800',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
+                style={buttonSecondaryStyle}
               >
                 Gestionar asientos
               </button>
@@ -335,7 +327,7 @@ export default function AdministrationView({
         </div>
 
         <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-          Tenant activo: <strong>{tenantId || 'Sin asignar'}</strong> · Usuario:{' '}
+          Tenant activo: <strong>{tenantLabel}</strong> · Usuario:{' '}
           <strong>{userEmail || 'No autenticado'}</strong> · Rol: <strong>{role}</strong>
           {billingInfo?.planId ? (
             <>
@@ -431,12 +423,13 @@ export default function AdministrationView({
 
         {licenseSummary && (
           <div
+            className="saare-mono"
             style={{
               padding: '12px',
               borderRadius: '6px',
               background: '#020617',
               border: '1px solid #1e293b',
-              fontSize: '0.76rem',
+              fontSize: '0.74rem',
               color: '#cbd5e1',
               display: 'flex',
               flexDirection: 'column',

@@ -9,7 +9,7 @@ import {
   normalizeSignatureVerifyResponse
 } from '../domain/contracts';
 
-const LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
+const DEFAULT_LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
 const ROUTE_MODE_KEY = 'SAARE_ROUTE_MODE'; // 'CLOUD_EDGE' | 'LOCAL_SIDECAR'
 
 const readStorage = (keys = []) => {
@@ -30,21 +30,29 @@ const readStorage = (keys = []) => {
 const writeStorage = (key, value) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage?.setItem(key, value);
-    window.sessionStorage?.setItem(key, value);
+    if (value) {
+      window.localStorage?.setItem(key, value);
+      window.sessionStorage?.setItem(key, value);
+    } else {
+      window.localStorage?.removeItem(key);
+      window.sessionStorage?.removeItem(key);
+    }
   } catch {
     // Ignorar restricciones de almacenamiento
   }
 };
 
+function resolveLocalSidecarUrl() {
+  const envSidecar =
+    typeof import.meta !== 'undefined' ? import.meta.env?.VITE_LOCAL_SIDECAR_URL : '';
+  return String(envSidecar || SAARE_CONFIG?.LOCAL_SIDECAR_URL || DEFAULT_LOCAL_SIDECAR_URL)
+    .trim()
+    .replace(/\/+$/, '');
+}
+
 function resolveControlPlaneRoot() {
   const envUrl = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_URL : '';
-  const rawBase = String(
-    envUrl ||
-      SAARE_CONFIG?.API_BASE_URL ||
-      (typeof window !== 'undefined' ? window.location?.origin : '') ||
-      'https://api.saare.es'
-  )
+  const rawBase = String(envUrl || SAARE_CONFIG?.API_BASE_URL || 'https://api.saare.es')
     .trim()
     .replace(/\/+$/, '');
 
@@ -69,9 +77,9 @@ function normalizeControlPlaneEndpoint(endpoint = '') {
 
 function getAuthContext() {
   const token = readStorage(['saare_auth_token', 'saare_token']);
-  const tenant = readStorage(['saare_tenant_domain', 'saare_tenant']) || SAARE_CONFIG?.DEFAULT_TENANT || '';
-  const user = readStorage(['saare_user_email']) || SAARE_CONFIG?.DEFAULT_USER || '';
-  const role = readStorage(['saare_user_role']) || SAARE_CONFIG?.DEFAULT_ROLE || '';
+  const tenant = readStorage(['saare_tenant_domain', 'saare_tenant']) || '';
+  const user = readStorage(['saare_user_email']) || '';
+  const role = readStorage(['saare_user_role']) || '';
   const cleanRoot = resolveControlPlaneRoot();
   const baseUrl = `${cleanRoot}/api/v1`;
 
@@ -123,8 +131,10 @@ export const apiService = {
 
   async setRouteMode(targetMode) {
     const { token, tenant, baseUrl } = getAuthContext();
+    const sidecarUrl = resolveLocalSidecarUrl();
+
     if (targetMode === 'LOCAL_SIDECAR') {
-      const probe = await fetch(LOCAL_SIDECAR_URL, {
+      const probe = await fetch(sidecarUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +147,7 @@ export const apiService = {
         throw new Error(`El agente local respondió con estado HTTP ${probe.status}.`);
       }
       writeStorage(ROUTE_MODE_KEY, 'LOCAL_SIDECAR');
-      return { mode: 'LOCAL_SIDECAR', endpoint: LOCAL_SIDECAR_URL };
+      return { mode: 'LOCAL_SIDECAR', endpoint: sidecarUrl };
     }
 
     writeStorage(ROUTE_MODE_KEY, 'CLOUD_EDGE');
@@ -268,6 +278,7 @@ export const apiService = {
   async interceptPrompt(payloadOrPrompt, context = {}) {
     const { tenant, user, role, token } = getAuthContext();
     const routeMode = this.getRouteMode();
+    const sidecarUrl = resolveLocalSidecarUrl();
 
     let bodyData = {};
     if (typeof payloadOrPrompt === 'string') {
@@ -313,7 +324,7 @@ export const apiService = {
 
     if (routeMode === 'LOCAL_SIDECAR') {
       try {
-        const localRes = await fetch(LOCAL_SIDECAR_URL, {
+        const localRes = await fetch(sidecarUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -370,25 +370,35 @@ export default function EvidenceView({
     }
   };
 
-  const filteredTraces = traces.filter((t) => {
-    const matchesVerdict = verdictFilter === 'ALL' || t.verdict === verdictFilter;
-    const q = searchTerm.trim().toLowerCase();
-    const matchesQuery =
-      !q ||
-      String(t.evidenceId || '').toLowerCase().includes(q) ||
-      String(t.traceId || '').toLowerCase().includes(q) ||
-      String(t.hash || '').toLowerCase().includes(q) ||
-      String(t.promptPreview || '').toLowerCase().includes(q);
-    return matchesVerdict && matchesQuery;
-  });
+  const filteredTraces = useMemo(() => {
+    return traces.filter((t) => {
+      const matchesVerdict = verdictFilter === 'ALL' || t.verdict === verdictFilter;
+      const q = searchTerm.trim().toLowerCase();
+      const matchesQuery =
+        !q ||
+        String(t.evidenceId || '').toLowerCase().includes(q) ||
+        String(t.traceId || '').toLowerCase().includes(q) ||
+        String(t.hash || '').toLowerCase().includes(q) ||
+        String(t.promptPreview || '').toLowerCase().includes(q);
+      return matchesVerdict && matchesQuery;
+    });
+  }, [traces, verdictFilter, searchTerm]);
+
+  const verifiedCount = useMemo(() => {
+    return traces.filter(
+      (t) =>
+        verificationMap[t.id]?.status === EXECUTION_STATUS.VERIFIED ||
+        t.signatureStatus === EXECUTION_STATUS.VERIFIED
+    ).length;
+  }, [traces, verificationMap]);
 
   const activeHash = selectedTrace?.hash || activeBatchSummary?.merkleRoot || '';
   const isSealingNow = sealBusy || isSealingBatch;
 
   const sectionStyle = {
-    background: '#090d16',
+    background: '#0b0f19',
     border: '1px solid #1e293b',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '16px',
     display: 'flex',
     flexDirection: 'column',
@@ -415,7 +425,7 @@ export default function EvidenceView({
           role="status"
           style={{
             padding: '10px 14px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             background: '#020617',
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
@@ -426,6 +436,43 @@ export default function EvidenceView({
           {bannerMessage}
         </div>
       )}
+
+      {/* Métricas forenses rápidas */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '12px'
+        }}
+      >
+        <div style={sectionStyle}>
+          <span style={labelStyle}>Trazas en bóveda</span>
+          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
+            {traces.length}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            Filtradas: {filteredTraces.length}
+          </span>
+        </div>
+
+        <div style={sectionStyle}>
+          <span style={labelStyle}>Firmas verificadas</span>
+          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#34d399' }}>
+            {verifiedCount}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Ed25519 / inclusión</span>
+        </div>
+
+        <div style={sectionStyle}>
+          <span style={labelStyle}>Estado TSA / Lote</span>
+          <strong className="saare-mono" style={{ fontSize: '0.95rem', color: '#38bdf8' }}>
+            {activeBatchSummary?.tsaStatus || 'SIN_LOTE'}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            {activeBatchSummary?.batchId || 'Sin lote activo'}
+          </span>
+        </div>
+      </div>
 
       {/* Acciones de custodia, firma y exportación */}
       <GovernanceToolbar targetHash={activeHash} tenantId={tenantId} />
@@ -439,7 +486,7 @@ export default function EvidenceView({
               style={{
                 padding: '7px 12px',
                 borderRadius: '6px',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 border: '1px solid #334155',
                 fontSize: '0.73rem',
@@ -458,7 +505,7 @@ export default function EvidenceView({
               style={{
                 padding: '7px 12px',
                 borderRadius: '6px',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 border: '1px solid #334155',
                 fontSize: '0.73rem',
@@ -520,7 +567,7 @@ export default function EvidenceView({
                 style={{
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  background: '#1e293b',
+                  background: '#111827',
                   color: '#e2e8f0',
                   border: '1px solid #334155',
                   fontSize: '0.75rem',
@@ -559,7 +606,7 @@ export default function EvidenceView({
           <div
             style={{
               padding: '12px 14px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               background: '#020617',
               border: '1px solid #0284c7',
               display: 'flex',
@@ -630,7 +677,7 @@ export default function EvidenceView({
                 color: '#f8fafc',
                 border: '1px solid #334155',
                 fontSize: '0.75rem',
-                minWidth: '180px'
+                minWidth: '190px'
               }}
             />
 
@@ -661,7 +708,7 @@ export default function EvidenceView({
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
-                background: '#1e293b',
+                background: '#111827',
                 color: '#e2e8f0',
                 border: '1px solid #334155',
                 fontSize: '0.75rem',
@@ -682,161 +729,149 @@ export default function EvidenceView({
               : 'No hay trazas disponibles para los filtros actuales.'}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {filteredTraces.map((tr) => {
-              const isSelected = selectedTrace?.id === tr.id;
-              const checkInfo = verificationMap[tr.id];
-              const verStatus = checkInfo?.status || tr.signatureStatus || EXECUTION_STATUS.NOT_RUN;
-              const incStatus =
-                inclusionStatusByEvidence[tr.id] ||
-                inclusionStatusByEvidence[tr.evidenceId] ||
-                inclusionStatusByEvidence[tr.traceId] ||
-                '';
+          <div className="saare-table-wrap">
+            <table className="saare-table" aria-label="Registro forense de trazas y evidencias">
+              <thead>
+                <tr>
+                  <th>Evidencia / Traza</th>
+                  <th>Veredicto</th>
+                  <th>Ciclo / Firma</th>
+                  <th>Consulta / Hash</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTraces.map((tr) => {
+                  const isSelected = selectedTrace?.id === tr.id;
+                  const checkInfo = verificationMap[tr.id];
+                  const verStatus = checkInfo?.status || tr.signatureStatus || EXECUTION_STATUS.NOT_RUN;
+                  const incStatus =
+                    inclusionStatusByEvidence[tr.id] ||
+                    inclusionStatusByEvidence[tr.evidenceId] ||
+                    inclusionStatusByEvidence[tr.traceId] ||
+                    '';
 
-              return (
-                <article
-                  key={tr.id}
-                  onClick={() => setSelectedTrace(tr)}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '6px',
-                    background: isSelected ? '#0f172a' : '#020617',
-                    border: `1px solid ${isSelected ? '#0284c7' : '#1e293b'}`,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '8px',
-                      flexWrap: 'wrap'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: '0.78rem', color: '#f8fafc' }}>
-                        {tr.evidenceId || tr.id}
-                      </strong>
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: '800',
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          whiteSpace: 'nowrap',
-                          background: '#1e293b',
-                          color: '#e2e8f0'
-                        }}
-                      >
-                        {tr.verdict}
-                      </span>
-                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                        Ciclo: {tr.lifecycle} · Firma: {verStatus}
-                        {incStatus ? ` · Merkle: ${incStatus}` : ''}
-                      </span>
-                    </div>
-
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                      {tr.timestamp || 'Sin fecha'}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: '0.76rem',
-                      color: '#cbd5e1',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {tr.promptPreview}
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                      fontSize: '0.7rem',
-                      color: '#94a3b8'
-                    }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      Hash: {tr.hash || '—'} · Política: {tr.policyVersion || '—'}
-                    </span>
-
-                    <div
-                      style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}
-                      onClick={(e) => e.stopPropagation()}
+                  return (
+                    <tr
+                      key={tr.id}
+                      onClick={() => setSelectedTrace(tr)}
+                      style={{
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(2, 132, 199, 0.14)' : undefined
+                      }}
                     >
-                      <button
-                        type="button"
-                        disabled={Boolean(verifyingId)}
-                        onClick={() => handleVerifyRow(tr)}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '5px',
-                          background: '#0284c7',
-                          color: '#ffffff',
-                          border: 'none',
-                          fontSize: '0.7rem',
-                          fontWeight: '700',
-                          cursor: verifyingId ? 'wait' : 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {verifyingId === tr.id ? 'Verificando...' : 'Verificar'}
-                      </button>
-
-                      {typeof onOpenPdfReport === 'function' && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenPdfReport(tr.raw || tr)}
+                      <td className="saare-mono" style={{ fontWeight: '700', color: '#f8fafc' }}>
+                        {tr.evidenceId || tr.id}
+                      </td>
+                      <td>
+                        <span
                           style={{
-                            padding: '5px 10px',
-                            borderRadius: '5px',
-                            background: '#0f172a',
-                            color: '#7dd3fc',
-                            border: '1px solid #0284c7',
-                            fontSize: '0.7rem',
-                            fontWeight: '700',
-                            cursor: 'pointer',
+                            fontSize: '0.68rem',
+                            fontWeight: '800',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            whiteSpace: 'nowrap',
+                            background: '#1e293b',
+                            color: '#e2e8f0'
+                          }}
+                        >
+                          {tr.verdict}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.72rem', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                        {tr.lifecycle} · {verStatus}
+                        {incStatus ? ` · Merkle: ${incStatus}` : ''}
+                      </td>
+                      <td style={{ maxWidth: '280px' }}>
+                        <div
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: '#e2e8f0'
+                          }}
+                        >
+                          {tr.promptPreview}
+                        </div>
+                        <div
+                          className="saare-mono"
+                          style={{
+                            fontSize: '0.68rem',
+                            color: '#64748b',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
                           }}
                         >
-                          PDF
-                        </button>
-                      )}
+                          {tr.hash || 'Sin hash'}
+                        </div>
+                      </td>
+                      <td className="saare-mono" style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        {tr.timestamp || '—'}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+                          <button
+                            type="button"
+                            disabled={Boolean(verifyingId)}
+                            onClick={() => handleVerifyRow(tr)}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: '5px',
+                              background: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              cursor: verifyingId ? 'wait' : 'pointer'
+                            }}
+                          >
+                            {verifyingId === tr.id ? 'Verificando...' : 'Verificar'}
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleExportSingleEvidence(tr)}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '5px',
-                          background: '#1e293b',
-                          color: '#e2e8f0',
-                          border: '1px solid #334155',
-                          fontSize: '0.7rem',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        Exportar JSON
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                          {typeof onOpenPdfReport === 'function' && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPdfReport(tr.raw || tr)}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '5px',
+                                background: '#0f172a',
+                                color: '#7dd3fc',
+                                border: '1px solid #0284c7',
+                                fontSize: '0.7rem',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              PDF
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleExportSingleEvidence(tr)}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: '5px',
+                              background: '#111827',
+                              color: '#e2e8f0',
+                              border: '1px solid #334155',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            JSON
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

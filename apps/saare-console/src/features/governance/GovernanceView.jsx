@@ -1,5 +1,5 @@
 // saare-console/src/features/governance/GovernanceView.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useConsole } from '../../context/ConsoleContext';
 import { apiService, saareFetch } from '../../services/apiService';
 import {
@@ -105,7 +105,21 @@ export default function GovernanceView({
   const activeRuleForm = externalRuleForm || localRuleForm;
   const updateRuleForm = externalSetRuleForm || setLocalRuleForm;
 
-  const activeTenant = String(tenantId || '').trim() || 'DEFAULT_TENANT';
+  const cleanTenant = String(tenantId || '').trim();
+  const tenantLabel = cleanTenant || 'Sin asignar';
+  const fileTenantSlug = cleanTenant || 'CONTEXTO';
+
+  const docCounts = useMemo(() => {
+    return GOVERNANCE_ITEMS.reduce(
+      (acc, item) => {
+        if (item.documentState === DOCUMENT_LIFECYCLE.APPROVED) acc.approved += 1;
+        else if (item.documentState === DOCUMENT_LIFECYCLE.REVIEWED) acc.reviewed += 1;
+        else acc.draft += 1;
+        return acc;
+      },
+      { draft: 0, reviewed: 0, approved: 0 }
+    );
+  }, []);
 
   const setFeedback = (msg, tone = 'info') => {
     setStatusMessage(msg);
@@ -128,11 +142,11 @@ export default function GovernanceView({
     }
 
     setBusyKey(item.key);
-    setFeedback(`Procesando: ${item.title} (${activeTenant})...`, 'info');
+    setFeedback(`Procesando: ${item.title} (${tenantLabel})...`, 'info');
 
     try {
       let exportedData = null;
-      let filename = `${item.key}_${activeTenant}.json`;
+      let filename = `${item.key}_${fileTenantSlug}.json`;
       let summaryMsg = `${item.title} generado [${item.documentState}].`;
 
       if (item.key === 'fria_soa') {
@@ -141,7 +155,7 @@ export default function GovernanceView({
           summaryMsg = `Dossier FRIA / SoA ISO 42001 exportado [${item.documentState}].`;
           setLastArtifact({
             title: item.title,
-            filename: `dossier-iso42001-${activeTenant.toLowerCase()}.json`,
+            filename: `dossier-iso42001-${fileTenantSlug.toLowerCase()}.json`,
             documentState: item.documentState,
             generatedAt: new Date().toISOString()
           });
@@ -155,31 +169,29 @@ export default function GovernanceView({
           return;
         }
 
-        const res = await saareFetch(
-          `/soa/iso42001?tenant=${encodeURIComponent(activeTenant)}`,
-          {
-            method: 'GET',
-            overrideTenant: activeTenant
-          }
-        );
+        const query = cleanTenant ? `?tenant=${encodeURIComponent(cleanTenant)}` : '';
+        const res = await saareFetch(`/soa/iso42001${query}`, {
+          method: 'GET',
+          overrideTenant: cleanTenant || undefined
+        });
         const raw = await readJsonOrThrow(res, 'FRIA / SoA ISO 42001');
         exportedData = {
-          tenantId: activeTenant,
+          tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: item.documentState,
           certificationDisclaimer:
             'Documento de evaluación/gestión interna; no constituye certificación acreditada.',
           data: raw
         };
-        filename = `fria_soa_${activeTenant}.json`;
+        filename = `fria_soa_${fileTenantSlug}.json`;
       } else if (item.key === 'grc_templates') {
         const res = await saareFetch('/compliance/matrix', {
           method: 'GET',
-          overrideTenant: activeTenant
+          overrideTenant: cleanTenant || undefined
         });
         const matrix = await readJsonOrThrow(res, 'matriz normativa GRC');
         exportedData = {
-          tenantId: activeTenant,
+          tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: item.documentState,
           certificationDisclaimer:
@@ -187,11 +199,11 @@ export default function GovernanceView({
           templatesCount: 4,
           regulatoryMatrix: matrix
         };
-        filename = `plantillas_grc_${activeTenant}.json`;
+        filename = `plantillas_grc_${fileTenantSlug}.json`;
       } else if (item.key === 'grant_dossier') {
         const res = await saareFetch('/subsidies/export-package', {
           method: 'POST',
-          overrideTenant: activeTenant,
+          overrideTenant: cleanTenant || undefined,
           body: JSON.stringify({
             grantType: 'KIT_CONSULTING',
             documentType: 'ALL'
@@ -199,22 +211,22 @@ export default function GovernanceView({
         });
         const raw = await readJsonOrThrow(res, 'dossier de subvenciones');
         exportedData = {
-          tenantId: activeTenant,
+          tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: item.documentState,
           data: raw
         };
-        filename = `dossier_subvenciones_${activeTenant}.json`;
+        filename = `dossier_subvenciones_${fileTenantSlug}.json`;
         if (raw?.complianceCode) {
           summaryMsg = `Dossier generado [${item.documentState}]: código ${raw.complianceCode}.`;
         }
       } else if (item.key === 'official_report') {
         const [nodeStatus, traces] = await Promise.all([
-          apiService.getNodeStatus(),
-          apiService.getTelemetryTraces({ tenant: activeTenant, limit: 50 })
+          apiService.getNodeStatus(cleanTenant || undefined),
+          apiService.getTelemetryTraces({ tenant: cleanTenant || undefined, limit: 50 })
         ]);
         exportedData = {
-          tenantId: activeTenant,
+          tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: item.documentState,
           certificationDisclaimer:
@@ -223,21 +235,21 @@ export default function GovernanceView({
           tracesCount: traces.length,
           traces
         };
-        filename = `informe_oficial_${activeTenant}.json`;
+        filename = `informe_oficial_${fileTenantSlug}.json`;
         summaryMsg = `Informe oficial [${item.documentState}] exportado (${traces.length} trazas).`;
       } else if (item.key === 'technical_manifest') {
         const res = await saareFetch('/forensics/manifest', {
           method: 'GET',
-          overrideTenant: activeTenant
+          overrideTenant: cleanTenant || undefined
         });
         const raw = await readJsonOrThrow(res, 'manifiesto técnico');
         exportedData = {
-          tenantId: activeTenant,
+          tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
           documentState: item.documentState,
           data: raw
         };
-        filename = `manifiesto_tecnico_${activeTenant}.json`;
+        filename = `manifiesto_tecnico_${fileTenantSlug}.json`;
       }
 
       triggerJsonDownload(filename, exportedData);
@@ -284,20 +296,70 @@ export default function GovernanceView({
   const bannerBorder =
     statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#0284c7';
 
+  const cardStyle = {
+    background: '#0b0f19',
+    border: '1px solid #1e293b',
+    borderRadius: '10px',
+    padding: '14px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    minWidth: 0
+  };
+
+  const labelStyle = {
+    fontSize: '10px',
+    fontWeight: '800',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em'
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      {/* Aviso normativo y accesos directos de gobernanza */}
+      {/* Resumen documental y políticas GRC */}
       <section
+        aria-label="Indicadores de gobernanza y políticas"
         style={{
-          background: '#090d16',
-          border: '1px solid #1e293b',
-          borderRadius: '8px',
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '12px'
         }}
       >
+        <div style={cardStyle}>
+          <span style={labelStyle}>Artefactos GRC</span>
+          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
+            {GOVERNANCE_ITEMS.length}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            {docCounts.draft} borrador · {docCounts.reviewed} revisado · {docCounts.approved} aprobado
+          </span>
+        </div>
+
+        <div style={cardStyle}>
+          <span style={labelStyle}>Reglas DLP activas</span>
+          <strong
+            className="saare-mono"
+            style={{ fontSize: '1.2rem', color: tenantRulesEnabled ? '#34d399' : '#fbbf24' }}
+          >
+            {tenantRulesEnabled ? 'ACTIVAS' : 'INACTIVAS'}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            Reglas personalizadas: {Array.isArray(customRules) ? customRules.length : 0}
+          </span>
+        </div>
+
+        <div style={cardStyle}>
+          <span style={labelStyle}>Contexto normativo</span>
+          <strong className="saare-mono" style={{ fontSize: '0.95rem', color: '#38bdf8' }}>
+            ISO/IEC 42001 · FRIA
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Tenant: {tenantLabel}</span>
+        </div>
+      </section>
+
+      {/* Aviso normativo y accesos directos de gobernanza */}
+      <section style={cardStyle}>
         <div
           style={{
             display: 'flex',
@@ -307,19 +369,9 @@ export default function GovernanceView({
             flexWrap: 'wrap'
           }}
         >
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: '800',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em'
-            }}
-          >
-            Gobernanza, evaluaciones y documentación GRC
-          </span>
+          <span style={labelStyle}>Gobernanza, evaluaciones y documentación GRC</span>
           <span style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
-            Tenant activo: <strong>{activeTenant}</strong>
+            Tenant activo: <strong>{tenantLabel}</strong>
           </span>
         </div>
 
@@ -378,7 +430,7 @@ export default function GovernanceView({
           role="status"
           style={{
             padding: '10px 14px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             background: '#020617',
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
@@ -394,7 +446,7 @@ export default function GovernanceView({
         <div
           style={{
             padding: '10px 14px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             background: '#020617',
             border: '1px solid #1e293b',
             fontSize: '0.74rem',
@@ -407,10 +459,12 @@ export default function GovernanceView({
           }}
         >
           <span>
-            Último artefacto exportado: <strong>{lastArtifact.filename}</strong> · Estado:{' '}
-            <strong>{lastArtifact.documentState}</strong>
+            Último artefacto exportado: <strong className="saare-mono">{lastArtifact.filename}</strong>{' '}
+            · Estado: <strong>{lastArtifact.documentState}</strong>
           </span>
-          <span style={{ color: '#64748b', fontSize: '0.7rem' }}>{lastArtifact.generatedAt}</span>
+          <span className="saare-mono" style={{ color: '#64748b', fontSize: '0.7rem' }}>
+            {lastArtifact.generatedAt}
+          </span>
         </div>
       )}
 
@@ -431,9 +485,9 @@ export default function GovernanceView({
             <article
               key={item.key}
               style={{
-                background: '#090d16',
+                background: '#0b0f19',
                 border: '1px solid #1e293b',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 padding: '14px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -503,17 +557,7 @@ export default function GovernanceView({
       </section>
 
       {/* Reglas DLP y preset ISO 42001 */}
-      <section
-        style={{
-          background: '#090d16',
-          border: '1px solid #1e293b',
-          borderRadius: '8px',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}
-      >
+      <section style={cardStyle}>
         <div
           style={{
             display: 'flex',
@@ -523,16 +567,8 @@ export default function GovernanceView({
             flexWrap: 'wrap'
           }}
         >
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: '800',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em'
-            }}
-          >
-            Políticas DLP y reglas personalizadas ({customRules.length})
+          <span style={labelStyle}>
+            Políticas DLP y reglas personalizadas ({Array.isArray(customRules) ? customRules.length : 0})
           </span>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -564,7 +600,7 @@ export default function GovernanceView({
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  background: '#1e293b',
+                  background: '#111827',
                   color: '#e2e8f0',
                   border: '1px solid #334155',
                   fontSize: '0.72rem',
@@ -649,7 +685,9 @@ export default function GovernanceView({
               >
                 <div style={{ minWidth: 0 }}>
                   <strong style={{ color: '#f8fafc' }}>{rule.name}</strong>{' '}
-                  <code style={{ color: '#38bdf8', fontSize: '0.7rem' }}>{rule.pattern}</code>
+                  <code className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.7rem' }}>
+                    {rule.pattern}
+                  </code>
                 </div>
                 {typeof onRemoveCustomRule === 'function' && rule.id && (
                   <button
@@ -659,7 +697,7 @@ export default function GovernanceView({
                     style={{
                       padding: '4px 10px',
                       borderRadius: '5px',
-                      background: '#1e293b',
+                      background: '#111827',
                       color: '#fca5a5',
                       border: '1px solid #334155',
                       fontSize: '0.7rem',

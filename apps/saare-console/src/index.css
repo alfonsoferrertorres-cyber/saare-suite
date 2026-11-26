@@ -5,21 +5,30 @@
 :root {
   color-scheme: dark;
   --bg-main: #030712;
+  --bg-shell: #070b14;
   --bg-card: #0b0f19;
+  --bg-elevated: #0f172a;
   --bg-subcard: #020617;
   --border-color: #1e293b;
+  --border-subtle: rgba(30, 41, 59, 0.75);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
   --accent-cyan: #38bdf8;
   --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-violet: #8b5cf6;
   --accent-rose: #ef4444;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   min-height: 100vh;
   background-color: var(--bg-main);
-  color: #f8fafc;
+  color: var(--text-primary);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -49,6 +58,65 @@ html, body {
   color: #ffffff;
 }
 
+.saare-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.saare-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.saare-panel {
+  background: var(--bg-shell);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.saare-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-subcard);
+}
+
+.saare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.saare-table th {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--bg-shell);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.saare-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: #e2e8f0;
+  vertical-align: middle;
+}
+
+.saare-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.saare-table tbody tr:hover td {
+  background: rgba(15, 23, 42, 0.55);
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -72,8 +140,13 @@ html, body {
 }
 
 @keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .animate-pulse-subtle {

@@ -27,80 +27,61 @@ export function normalizeConsoleTenantId(id = '') {
     .slice(0, 32);
 }
 
-function readInitialSession() {
-  if (typeof window === 'undefined') {
-    return { tenantId: '', userEmail: '', role: ROLES.READ_ONLY };
-  }
-
-  let tenantId = '';
-  for (const k of TENANT_STORAGE_KEYS) {
+function readStoredValue(keys = []) {
+  if (typeof window === 'undefined') return '';
+  for (const key of keys) {
     try {
-      const val = window.sessionStorage?.getItem(k) || window.localStorage?.getItem(k) || '';
-      if (val && val.trim()) {
-        tenantId = normalizeConsoleTenantId(val);
-        break;
-      }
+      const sessionVal = window.sessionStorage?.getItem(key) || '';
+      if (sessionVal && sessionVal.trim()) return sessionVal.trim();
+      const localVal = window.localStorage?.getItem(key) || '';
+      if (localVal && localVal.trim()) return localVal.trim();
     } catch {
-      // Ignorar restricciones de almacenamiento
+      // Ignorar restricciones de almacenamiento del navegador
     }
   }
-
-  let hasToken = false;
-  for (const k of TOKEN_STORAGE_KEYS) {
-    try {
-      const val = window.sessionStorage?.getItem(k) || window.localStorage?.getItem(k) || '';
-      if (val && val.trim()) {
-        hasToken = true;
-        break;
-      }
-    } catch {
-      // Ignorar restricciones de almacenamiento
-    }
-  }
-
-  let userEmail = '';
-  let rawRole = '';
-  try {
-    userEmail = (
-      window.sessionStorage?.getItem(USER_STORAGE_KEY) ||
-      window.localStorage?.getItem(USER_STORAGE_KEY) ||
-      ''
-    ).trim();
-    rawRole = (
-      window.sessionStorage?.getItem(ROLE_STORAGE_KEY) ||
-      window.localStorage?.getItem(ROLE_STORAGE_KEY) ||
-      ''
-    ).trim();
-  } catch {
-    // Ignorar restricciones de almacenamiento
-  }
-
-  const currentUser = apiService?.getCurrentUser?.() || {};
-  const finalTenant = tenantId || normalizeConsoleTenantId(currentUser.tenantId || '');
-  const finalUser = userEmail || currentUser.email || '';
-  const detectedRole =
-    rawRole || currentUser.role || (hasToken || finalTenant ? ROLES.TENANT_ADMIN : ROLES.READ_ONLY);
-  const finalRole = normalizeRole(detectedRole);
-
-  return { tenantId: finalTenant, userEmail: finalUser, role: finalRole };
+  return '';
 }
 
-function persistTenant(tenantId) {
+function writeStoredValue(keys = [], value = '') {
   if (typeof window === 'undefined') return;
-  const clean = normalizeConsoleTenantId(tenantId);
-  for (const k of TENANT_STORAGE_KEYS) {
+  const clean = String(value || '').trim();
+  for (const key of keys) {
     try {
       if (clean) {
-        window.localStorage?.setItem(k, clean);
-        window.sessionStorage?.setItem(k, clean);
+        window.localStorage?.setItem(key, clean);
+        window.sessionStorage?.setItem(key, clean);
       } else {
-        window.localStorage?.removeItem(k);
-        window.sessionStorage?.removeItem(k);
+        window.localStorage?.removeItem(key);
+        window.sessionStorage?.removeItem(key);
       }
     } catch {
-      // Ignorar restricciones de almacenamiento
+      // Ignorar restricciones de almacenamiento del navegador
     }
   }
+}
+
+function readInitialSession() {
+  const rawTenant = readStoredValue(TENANT_STORAGE_KEYS);
+  const rawToken = readStoredValue(TOKEN_STORAGE_KEYS);
+  const rawEmail = readStoredValue([USER_STORAGE_KEY]);
+  const rawRole = readStoredValue([ROLE_STORAGE_KEY]);
+
+  const currentUser = apiService?.getCurrentUser?.() || {};
+  const finalTenant = normalizeConsoleTenantId(rawTenant || currentUser.tenantId || '');
+  const finalUser = String(rawEmail || currentUser.email || '').trim().toLowerCase();
+  const hasSessionToken = Boolean(rawToken);
+
+  const detectedRole =
+    rawRole ||
+    currentUser.role ||
+    (hasSessionToken || finalTenant ? ROLES.TENANT_ADMIN : ROLES.READ_ONLY);
+
+  return {
+    tenantId: finalTenant,
+    userEmail: finalUser,
+    role: normalizeRole(detectedRole),
+    hasSessionToken
+  };
 }
 
 function getInitialRoute() {
@@ -118,6 +99,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
   const [role, setRoleState] = useState(() =>
     initialRole ? normalizeRole(initialRole) : initialSession.role
   );
+  const [hasSessionToken, setHasSessionToken] = useState(() => initialSession.hasSessionToken);
 
   const [activeRoute, setActiveRoute] = useState(() => getInitialRoute());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -141,40 +123,22 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
 
   const [activityLog, setActivityLog] = useState([]);
 
+  const syncSessionTokenState = useCallback(() => {
+    const token = readStoredValue(TOKEN_STORAGE_KEYS);
+    setHasSessionToken(Boolean(token));
+    return Boolean(token);
+  }, []);
+
   const setUserEmail = useCallback((nextEmail = '') => {
     const clean = String(nextEmail || '').trim().toLowerCase();
     setUserEmailState(clean);
-    if (typeof window !== 'undefined') {
-      try {
-        if (clean) {
-          window.localStorage?.setItem(USER_STORAGE_KEY, clean);
-          window.sessionStorage?.setItem(USER_STORAGE_KEY, clean);
-        } else {
-          window.localStorage?.removeItem(USER_STORAGE_KEY);
-          window.sessionStorage?.removeItem(USER_STORAGE_KEY);
-        }
-      } catch {
-        // Ignorar errores de almacenamiento
-      }
-    }
+    writeStoredValue([USER_STORAGE_KEY], clean);
   }, []);
 
   const setRole = useCallback((nextRole = '') => {
     const normalized = normalizeRole(nextRole);
     setRoleState(normalized);
-    if (typeof window !== 'undefined') {
-      try {
-        if (nextRole) {
-          window.localStorage?.setItem(ROLE_STORAGE_KEY, normalized);
-          window.sessionStorage?.setItem(ROLE_STORAGE_KEY, normalized);
-        } else {
-          window.localStorage?.removeItem(ROLE_STORAGE_KEY);
-          window.sessionStorage?.removeItem(ROLE_STORAGE_KEY);
-        }
-      } catch {
-        // Ignorar errores de almacenamiento
-      }
-    }
+    writeStoredValue([ROLE_STORAGE_KEY], nextRole ? normalized : '');
   }, []);
 
   const pushActivity = useCallback((entry = {}) => {
@@ -188,6 +152,10 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       summary: entry.summary || ''
     };
     setActivityLog((prev) => [item, ...prev].slice(0, 50));
+  }, []);
+
+  const clearActivityLog = useCallback(() => {
+    setActivityLog([]);
   }, []);
 
   const navigateTo = useCallback((routeOrPath) => {
@@ -218,21 +186,26 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
     const onPopState = () => {
       setActiveRoute(resolveRouteByPath(window.location?.pathname || ''));
       setMobileNavOpen(false);
+      syncSessionTokenState();
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [syncSessionTokenState]);
 
   const selectTenant = useCallback(
     (nextTenantId) => {
       const clean = normalizeConsoleTenantId(nextTenantId);
+      const hasToken = syncSessionTokenState();
+
       if (clean === tenantId) return;
 
       setTenantId(clean);
-      persistTenant(clean);
+      writeStoredValue(TENANT_STORAGE_KEYS, clean);
 
       if (clean && role === ROLES.READ_ONLY) {
         setRole(ROLES.TENANT_ADMIN);
+      } else if (!clean && !hasToken) {
+        setRole(ROLES.READ_ONLY);
       }
 
       setLastVerification({
@@ -251,7 +224,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
         summary: clean ? `Contexto cambiado a tenant [${clean}].` : 'Contexto de tenant limpiado.'
       });
     },
-    [tenantId, role, setRole, pushActivity]
+    [tenantId, role, setRole, pushActivity, syncSessionTokenState]
   );
 
   const changeRouteMode = useCallback(
@@ -285,6 +258,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
   );
 
   const refreshNodeStatus = useCallback(async () => {
+    syncSessionTokenState();
     setLoadingNode(true);
     try {
       const rawStatus = apiService?.getNodeStatus
@@ -306,7 +280,7 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
     } finally {
       setLoadingNode(false);
     }
-  }, [tenantId, pushActivity]);
+  }, [tenantId, pushActivity, syncSessionTokenState]);
 
   useEffect(() => {
     refreshNodeStatus();
@@ -314,14 +288,29 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
 
   const can = useCallback((action) => canPerformAction(role, action), [role]);
 
+  const sessionSummary = useMemo(() => {
+    const hasTenant = Boolean(tenantId);
+    const hasUser = Boolean(userEmail);
+    const isConfigured = hasTenant && (hasSessionToken || hasUser);
+    return {
+      hasTenant,
+      hasUser,
+      hasSessionToken,
+      isConfigured
+    };
+  }, [tenantId, userEmail, hasSessionToken]);
+
   const value = useMemo(
     () => ({
       tenantId,
       userEmail,
       role,
+      hasSessionToken,
+      sessionSummary,
       setUserEmail,
       setRole,
       selectTenant,
+      syncSessionTokenState,
       can,
       routes: CONSOLE_ROUTES,
       routeList: ROUTE_LIST,
@@ -337,15 +326,19 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       lastVerification,
       setLastVerification,
       activityLog,
-      pushActivity
+      pushActivity,
+      clearActivityLog
     }),
     [
       tenantId,
       userEmail,
       role,
+      hasSessionToken,
+      sessionSummary,
       setUserEmail,
       setRole,
       selectTenant,
+      syncSessionTokenState,
       can,
       activeRoute,
       navigateTo,
@@ -357,7 +350,8 @@ export function ConsoleProvider({ children, initialTenant = '', initialRole = ''
       refreshNodeStatus,
       lastVerification,
       activityLog,
-      pushActivity
+      pushActivity,
+      clearActivityLog
     ]
   );
 

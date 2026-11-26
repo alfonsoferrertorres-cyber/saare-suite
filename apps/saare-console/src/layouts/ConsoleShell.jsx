@@ -15,6 +15,7 @@ export default function ConsoleShell({
     selectTenant,
     userEmail,
     role,
+    sessionSummary,
     routeList,
     activeRoute,
     navigateTo,
@@ -25,7 +26,8 @@ export default function ConsoleShell({
     nodeStatus,
     loadingNode,
     refreshNodeStatus,
-    activityLog
+    activityLog,
+    clearActivityLog
   } = useConsole();
 
   const [manualTenantInput, setManualTenantInput] = useState(tenantId || '');
@@ -61,6 +63,8 @@ export default function ConsoleShell({
   };
 
   const isRuntimeOk = Boolean(nodeStatus?.healthy);
+  const showShellActivityLog =
+    activeRoute?.id !== 'overview' && Array.isArray(activityLog) && activityLog.length > 0;
 
   return (
     <div
@@ -79,7 +83,7 @@ export default function ConsoleShell({
           position: 'sticky',
           top: 0,
           zIndex: 30,
-          background: '#090d16',
+          background: '#070b14',
           borderBottom: '1px solid #1e293b',
           padding: '10px 16px',
           display: 'flex',
@@ -97,7 +101,7 @@ export default function ConsoleShell({
             style={{
               padding: '6px 10px',
               borderRadius: '6px',
-              background: '#1e293b',
+              background: '#111827',
               color: '#e2e8f0',
               border: '1px solid #334155',
               fontSize: '0.75rem',
@@ -111,7 +115,7 @@ export default function ConsoleShell({
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.88rem', fontWeight: '800', letterSpacing: '0.04em' }}>
                 S.A.A.R.E. CONSOLE
               </span>
               <span
@@ -121,7 +125,7 @@ export default function ConsoleShell({
                   padding: '2px 8px',
                   borderRadius: '999px',
                   whiteSpace: 'nowrap',
-                  background: isRuntimeOk ? '#064e3b' : '#450a0a',
+                  background: isRuntimeOk ? 'rgba(6, 78, 59, 0.7)' : 'rgba(69, 10, 10, 0.7)',
                   color: isRuntimeOk ? '#6ee7b7' : '#fca5a5',
                   border: `1px solid ${isRuntimeOk ? '#10b981' : '#ef4444'}`
                 }}
@@ -182,7 +186,7 @@ export default function ConsoleShell({
                 style={{
                   padding: '6px 10px',
                   borderRadius: '6px',
-                  background: '#1e293b',
+                  background: '#111827',
                   color: '#e2e8f0',
                   border: '1px solid #334155',
                   fontSize: '0.72rem',
@@ -251,7 +255,7 @@ export default function ConsoleShell({
             style={{
               padding: '6px 10px',
               borderRadius: '6px',
-              background: '#1e293b',
+              background: '#111827',
               color: '#cbd5e1',
               border: '1px solid #334155',
               fontSize: '0.72rem',
@@ -306,7 +310,7 @@ export default function ConsoleShell({
         <nav
           aria-label="Navegación móvil"
           style={{
-            background: '#090d16',
+            background: '#070b14',
             borderBottom: '1px solid #1e293b',
             padding: '10px 16px',
             display: 'flex',
@@ -356,7 +360,7 @@ export default function ConsoleShell({
           style={{
             width: '240px',
             flexShrink: 0,
-            background: '#090d16',
+            background: '#070b14',
             borderRight: '1px solid #1e293b',
             padding: '14px 12px',
             display: 'flex',
@@ -408,16 +412,31 @@ export default function ConsoleShell({
           <div
             style={{
               padding: '10px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               background: '#020617',
               border: '1px solid #1e293b',
               fontSize: '0.72rem',
               color: '#94a3b8',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px'
+              gap: '5px'
             }}
           >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#e2e8f0', fontWeight: '700' }}>Sesión</span>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: '700',
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  background: sessionSummary?.isConfigured ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.14)',
+                  color: sessionSummary?.isConfigured ? '#6ee7b7' : '#fbbf24'
+                }}
+              >
+                {sessionSummary?.isConfigured ? 'Vinculada' : 'Sin configurar'}
+              </span>
+            </div>
             <div>
               <strong style={{ color: '#e2e8f0' }}>Rol:</strong> {role}
             </div>
@@ -435,7 +454,7 @@ export default function ConsoleShell({
           style={{
             flex: '1 1 540px',
             minWidth: 0,
-            padding: '16px',
+            padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px'
@@ -443,45 +462,86 @@ export default function ConsoleShell({
         >
           <div
             style={{
-              paddingBottom: '10px',
-              borderBottom: '1px solid #1e293b'
+              paddingBottom: '12px',
+              borderBottom: '1px solid #1e293b',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}
           >
-            <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800' }}>
-              {activeRoute?.label}
-            </h1>
-            {activeRoute?.description && (
-              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                {activeRoute.description}
-              </p>
-            )}
+            <div>
+              <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#f8fafc' }}>
+                {activeRoute?.label}
+              </h1>
+              {activeRoute?.description && (
+                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  {activeRoute.description}
+                </p>
+              )}
+            </div>
+            <span
+              style={{
+                fontSize: '0.7rem',
+                color: '#64748b',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+              }}
+            >
+              {activeRoute?.path || '/overview'}
+            </span>
           </div>
 
           <div style={{ minWidth: 0 }}>{children}</div>
 
-          {/* Actividad reciente observable con traceId */}
-          {Array.isArray(activityLog) && activityLog.length > 0 && (
+          {/* Actividad reciente en rutas secundarias */}
+          {showShellActivityLog && (
             <section
               aria-label="Actividad reciente"
               style={{
                 marginTop: 'auto',
                 padding: '12px 14px',
-                background: '#090d16',
+                background: '#070b14',
                 borderRadius: '8px',
                 border: '1px solid #1e293b'
               }}
             >
               <div
                 style={{
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  color: '#64748b',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
                   marginBottom: '8px'
                 }}
               >
-                Actividad reciente
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    color: '#64748b',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em'
+                  }}
+                >
+                  Actividad reciente
+                </span>
+                {typeof clearActivityLog === 'function' && (
+                  <button
+                    type="button"
+                    onClick={clearActivityLog}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#94a3b8',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Limpiar
+                  </button>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {activityLog.slice(0, 5).map((item) => {
@@ -496,14 +556,20 @@ export default function ConsoleShell({
                         gap: '8px',
                         flexWrap: 'wrap',
                         fontSize: '0.73rem',
-                        padding: '6px 8px',
-                        borderRadius: '4px',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
                         background: '#020617',
                         borderLeft: `3px solid ${isFailed ? '#ef4444' : '#38bdf8'}`
                       }}
                     >
                       <span style={{ color: '#e2e8f0' }}>{item.summary}</span>
-                      <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      <span
+                        style={{
+                          color: '#94a3b8',
+                          whiteSpace: 'nowrap',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+                        }}
+                      >
                         [{item.status}]{item.traceId ? ` · trace: ${item.traceId}` : ''}
                       </span>
                     </div>
@@ -522,7 +588,7 @@ export default function ConsoleShell({
               width: '320px',
               flex: '1 1 280px',
               maxWidth: '420px',
-              background: '#090d16',
+              background: '#070b14',
               borderLeft: '1px solid #1e293b',
               padding: '16px',
               minWidth: 0
