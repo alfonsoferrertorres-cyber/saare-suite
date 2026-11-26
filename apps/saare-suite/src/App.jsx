@@ -1,4 +1,3 @@
-// saare-suite/src/App.jsx — Orquestador Principal de la Suite S.A.A.R.E. (SGP 1.0 & Stripe Direct Flow)
 import React, { useState, useEffect } from 'react';
 import LandingPage from './LandingPage';
 import Login from './Login';
@@ -15,7 +14,7 @@ function PrivacyPage({ onBack }) {
       </button>
       <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Política de Privacidad</h1>
       <p className="text-slate-400 leading-relaxed text-sm">
-        En S.A.A.R.E. Enterprise Core garantizamos la máxima protección de sus datos personales bajo el estricto cumplimiento del Reglamento General de Protección de Datos (RGPD / UE 2016/679) y la LOPDGDD 3/2018. La arquitectura de inspección de la plataforma opera bajo el principio de Zero-Disk Compute en memoria RAM local, evitando el almacenamiento permanente de contenidos de payload confidenciales.
+        El tratamiento de datos se realiza conforme al RGPD (UE 2016/679) y la normativa aplicable. La evaluación de solicitudes opera en memoria sin retención innecesaria de contenidos sensibles.
       </p>
     </div>
   );
@@ -31,9 +30,9 @@ function TermsPage({ onBack }) {
       >
         ← Volver al Inicio
       </button>
-      <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Términos y Condiciones de Servicio</h1>
+      <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Términos y Condiciones</h1>
       <p className="text-slate-400 leading-relaxed text-sm">
-        El acceso y uso de la Suite de Gobernanza GRC y Ciberresiliencia S.A.A.R.E. está sujeto a las cláusulas de licenciamiento corporativo acordadas. Todas las inspecciones ex-ante y evidencias forense se firman mediante criptografía inmutable Ed25519 acreditada contra Bóveda D1 y el Trust Anchor del nodo.
+        El acceso y uso del servicio se rigen por las condiciones de contratación y licencia aplicables a cada organización.
       </p>
     </div>
   );
@@ -51,7 +50,7 @@ function CookiesPage({ onBack }) {
       </button>
       <h1 className="text-3xl font-extrabold text-cyan-400 mb-4">Política de Cookies</h1>
       <p className="text-slate-400 leading-relaxed text-sm">
-        Este sitio web utiliza exclusivamente cookies técnicas de sesión estrictamente necesarias y almacenamiento local (`localStorage`) para mantener el estado de autenticación y preferencia de Tenant/Rol del usuario. No se emplean cookies de seguimiento de terceros ni tecnologías de perfilado comercial.
+        Este sitio utiliza exclusivamente cookies técnicas esenciales y almacenamiento local necesario para la sesión y el flujo de acceso.
       </p>
     </div>
   );

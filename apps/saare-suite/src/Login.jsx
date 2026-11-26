@@ -1,4 +1,3 @@
-// saare-suite/src/Login.jsx
 import React, { useState } from 'react';
 import { SAARE_CONFIG } from './config/saareState';
 import { API_HOST } from './api/api';
@@ -92,7 +91,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         saveSessionAndProceed(
           {
             email: u.email || cleanEmail,
-            name: u.name || 'Enterprise Operator',
+            name: u.name || 'Operador',
             tenantName: u.tenantId || u.tenantName || u.company || 'ENTERPRISE',
             role: u.role || 'CISO_ADMIN',
             plan: u.plan || 'PROFESSIONAL_649',
@@ -101,10 +100,10 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
           data.token || u.apiKey
         );
       } else {
-        setErrorMsg(data.message || data.error || 'Credenciales inválidas o cuenta sin verificar.');
+        setErrorMsg(data.message || data.error || 'Credenciales inválidas o cuenta pendiente de verificación.');
       }
     } catch {
-      setErrorMsg('Error de conexión con el Control Plane de S.A.A.R.E.');
+      setErrorMsg('No se pudo conectar con el servicio de autenticación.');
     } finally {
       setLoading(false);
     }
@@ -152,10 +151,10 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         };
         saveSessionAndProceed(provisionedUser, data.token);
       } else {
-        setErrorMsg(data.message || data.error || 'No se pudo aprovisionar el entorno Sandbox.');
+        setErrorMsg(data.message || data.error || 'No se pudo completar el alta.');
       }
     } catch {
-      setErrorMsg('Fallo de red al registrar la organización en el Control Plane.');
+      setErrorMsg('Error de red al procesar el registro.');
     } finally {
       setLoading(false);
     }
@@ -179,13 +178,13 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
-        setSuccessMsg(data.message || 'Instrucciones enviadas desde legal@saare.es.');
+        setSuccessMsg(data.message || 'Instrucciones enviadas a tu correo.');
         setAuthMode('VERIFY');
       } else {
         setErrorMsg(data.message || data.error || 'No se pudo procesar la solicitud.');
       }
     } catch {
-      setErrorMsg('Error de conexión con el servicio de correo legal.');
+      setErrorMsg('Error de conexión al solicitar la recuperación.');
     } finally {
       setLoading(false);
     }
@@ -212,17 +211,17 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         saveSessionAndProceed(
           data.user || {
             email: email.trim().toLowerCase(),
-            name: 'Operador Validado',
+            name: 'Operador',
             tenantName: 'ENTERPRISE',
             role: 'CISO_ADMIN'
           },
           data.token
         );
       } else {
-        setErrorMsg(data.message || data.error || 'Código de verificación inválido o expirado.');
+        setErrorMsg(data.message || data.error || 'Código inválido o expirado.');
       }
     } catch {
-      setErrorMsg('Error al validar el código con el servidor.');
+      setErrorMsg('Error al validar el código.');
     } finally {
       setLoading(false);
     }
@@ -236,7 +235,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
           onClick={onBack}
           className="absolute top-6 left-6 text-xs font-semibold text-slate-400 hover:text-cyan-400 transition-colors flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 cursor-pointer"
         >
-          <span>←</span> Volver a la Web Principal
+          <span>←</span> Volver al Inicio
         </button>
       )}
 
@@ -251,7 +250,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
             S.A.A.R.E. ACCESS GATE
           </h2>
           <p className="text-xs text-slate-400 font-medium mt-1">
-            Infraestructura Soberana de Autorización & Bóveda Criptográfica
+            Acceso y Autorización de Entorno
           </p>
         </div>
 
@@ -272,7 +271,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
               authMode === 'REGISTER' ? 'border-emerald-400 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            Sandbox Gratis (2 Asientos)
+            Activar Acceso (2 Asientos)
           </button>
         </div>
 
@@ -301,7 +300,6 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ciso@empresa.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
               />
             </div>
@@ -324,7 +322,6 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
               />
             </div>
@@ -334,7 +331,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-cyan-500/20 mt-2 cursor-pointer"
             >
-              {loading ? 'Verificando Custodia...' : 'Acceder a la Consola ↗'}
+              {loading ? 'Verificando...' : 'Acceder ↗'}
             </button>
           </form>
         )}
@@ -342,7 +339,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         {authMode === 'REGISTER' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div className="bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-xl text-[11px] text-emerald-400 font-bold text-center">
-              ⚡ Aprovisionamiento Instantáneo · 2 Asientos · Sin Tarjeta
+              Alta Inmediata · 2 Asientos · Sin Tarjeta
             </div>
 
             <div>
@@ -354,21 +351,19 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@empresa.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Organización / Tenant ID
+                Organización
               </label>
               <input
                 type="text"
                 required
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="ACME Corporation"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -383,21 +378,20 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Tier de Licencia Seleccionado
+                Plan Seleccionado
               </label>
               <select
                 value={planType}
                 onChange={(e) => setPlanType(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
               >
-                <option value="SANDBOX_FREE">Sandbox Gratuita (2 Asientos · 1.000 veredictos/mes)</option>
+                <option value="SANDBOX_FREE">Acceso Inicial (2 Asientos · 1.000 veredictos/mes)</option>
                 <option value="STARTER_199">Starter (199 €/mes)</option>
                 <option value="PROFESSIONAL_649">Professional (649 €/mes)</option>
                 <option value="ENTERPRISE_1990">Enterprise (1.990 €/mes)</option>
@@ -409,7 +403,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
               disabled={loading}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/20 mt-2 cursor-pointer"
             >
-              {loading ? 'Aprovisionando Entorno...' : 'Activar Sandbox Gratuita (2 Asientos) ↗'}
+              {loading ? 'Activando...' : 'Activar Acceso (2 Asientos) ↗'}
             </button>
           </form>
         )}
@@ -417,7 +411,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         {authMode === 'RECOVER' && (
           <form onSubmit={handleRecoverSubmit} className="space-y-4">
             <p className="text-xs text-slate-400 leading-relaxed">
-              Introduce tu correo corporativo para emitir una clave de acceso provisional.
+              Introduce tu correo corporativo para recibir instrucciones de acceso.
             </p>
 
             <div>
@@ -429,7 +423,6 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="operador@empresa.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
               />
             </div>
@@ -439,7 +432,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
               disabled={loading}
               className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-colors shadow-lg shadow-amber-600/20 cursor-pointer"
             >
-              {loading ? 'Emitiendo...' : 'Solicitar Clave Provisional'}
+              {loading ? 'Enviando...' : 'Solicitar Acceso'}
             </button>
 
             <button
@@ -455,12 +448,12 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
         {authMode === 'VERIFY' && (
           <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
             <p className="text-xs text-emerald-400 leading-relaxed">
-              Introduce el código enviado a <strong>{email}</strong> desde <code className="text-white bg-slate-950 px-1 py-0.5 rounded">legal@saare.es</code>.
+              Introduce el código enviado a <strong>{email}</strong>.
             </p>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Código / Token
+                Código de Verificación
               </label>
               <input
                 type="text"
@@ -468,7 +461,6 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
                 maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                placeholder="123456"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-base text-cyan-400 font-mono tracking-widest text-center focus:outline-none focus:border-cyan-500 transition-colors"
               />
             </div>
@@ -493,7 +485,7 @@ export default function Login({ initialPlan = 'SANDBOX_FREE', onLoginSuccess, on
 
         <div className="mt-8 pt-4 border-t border-slate-800/80 text-center">
           <span className="text-[10px] font-mono text-slate-500">
-            Trust Anchor: {SAARE_CONFIG?.TRUST_ANCHOR || 'SAARE-MD-IPRES-2026'} | Spec: {SAARE_CONFIG?.SPEC_VERSION || 'SGP 1.0'}
+            {SAARE_CONFIG?.SPEC_VERSION || 'SGP 1.0'}
           </span>
         </div>
       </div>

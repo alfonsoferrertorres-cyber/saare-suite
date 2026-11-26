@@ -1,4 +1,3 @@
-// saare-suite/src/LandingPage.jsx — Landing Comercial & GRC Enterprise S.A.A.R.E. v10.6.0
 import React, { useState, useEffect } from 'react';
 import PricingSection from './components/PricingSection';
 import { API_HOST } from './api/api';
@@ -6,8 +5,8 @@ import { API_HOST } from './api/api';
 const NAV_ITEMS = [
   { label: 'Arquitectura', href: '#motor' },
   { label: 'Diferenciación', href: '#diferenciacion' },
-  { label: 'Integración Proxy', href: '#integracion' },
-  { label: 'Biblioteca de Evidencias', href: '#templates' },
+  { label: 'Integración', href: '#integracion' },
+  { label: 'Validación', href: '#templates' },
   { label: 'Licenciamiento', href: '#pricing' },
 ];
 
@@ -82,10 +81,10 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       if (!response.ok) throw new Error('No se pudo enviar la solicitud de evaluación.');
 
       setFormStatus('SUCCESS');
-      setFormMessage('Solicitud recibida correctamente. Nuestro equipo técnico se pondrá en contacto para programar la evaluación ex ante.');
+      setFormMessage('Solicitud recibida correctamente. Nuestro equipo se pondrá en contacto para programar la evaluación.');
     } catch (error) {
       setFormStatus('ERROR');
-      setFormMessage(error?.message || 'No se pudo conectar con el servidor.');
+      setFormMessage(error?.message || 'No se pudo conectar con el servicio.');
     }
   };
 
@@ -141,7 +140,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               onClick={() => handleAction('SANDBOX_FREE')}
               className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 cursor-pointer"
             >
-              Sandbox Gratis (2 Asientos)
+              Activar Acceso (2 Asientos)
             </button>
           </div>
         </div>
@@ -158,7 +157,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 Controla la IA antes de que tus <span className="text-[#38BDDB]">datos salgan</span>
               </h1>
               <p className="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
-                S.A.A.R.E. es una infraestructura de gobernanza y control preventivo para sistemas de inteligencia artificial. Intercepta y evalúa las solicitudes antes de su envío a los modelos, aplica políticas de seguridad y genera evidencias técnicas verificables de las operaciones.
+                S.A.A.R.E. es una infraestructura de gobernanza y control preventivo para sistemas de inteligencia artificial. Evalúa las solicitudes antes de su envío a los modelos, aplica políticas de seguridad y genera evidencias verificables de las operaciones.
               </p>
               <p className="mt-3 text-xs text-slate-400">
                 Un único plano de control para tus sistemas de IA. Independiente del modelo. Bajo tus políticas.
@@ -170,48 +169,48 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                   onClick={() => handleAction('SANDBOX_FREE')}
                   className="rounded-xl bg-emerald-500 px-7 py-3.5 text-sm font-extrabold text-slate-950 shadow-xl shadow-emerald-500/20 transition-all hover:bg-emerald-400 inline-block text-center cursor-pointer"
                 >
-                  Probar Sandbox Gratis (2 Asientos)
+                  Activar Acceso (2 Asientos)
                 </button>
                 <a
                   href="#evaluation"
                   className="rounded-xl bg-[#38BDDB] px-7 py-3.5 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-500/20 transition-all hover:bg-cyan-400 inline-block text-center"
                 >
-                  Solicitar auditoría ex ante
+                  Solicitar evaluación
                 </a>
                 <a
                   href="#integracion"
                   className="rounded-xl border border-cyan-500/40 bg-slate-900/80 px-7 py-3.5 text-sm font-semibold text-cyan-300 transition-all hover:bg-slate-800 inline-block text-center"
                 >
-                  Ver Guía de Integración
+                  Integración Directa
                 </a>
               </div>
               <p className="mt-4 text-[11px] text-slate-500 font-mono">
-                Compatible con arquitecturas basadas en LLM externos y modelos desplegados en entornos propios, según la configuración de integración.
+                Compatible con proveedores externos y despliegues propios según la configuración de red.
               </p>
             </div>
 
             <div className="relative flex justify-center">
               <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0A101E] p-6 shadow-2xl font-mono">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-                  <span className="text-xs uppercase tracking-widest text-slate-400">Flujo Preventivo Perimetral L7</span>
-                  <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400">CONTROL ACTIVO</span>
+                  <span className="text-xs uppercase tracking-widest text-slate-400">Flujo Preventivo Perimetral</span>
+                  <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400">ACTIVO</span>
                 </div>
                 <div className="space-y-3 text-xs">
                   <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">01. Solicitud Entrante:</span>
+                    <span className="text-slate-300">01. Solicitud Entrante</span>
                     <span className="font-bold text-slate-200">Captura en Origen</span>
                   </div>
                   <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">02. PEP L7 (Saneamiento):</span>
-                    <span className="font-bold text-cyan-400">Filtro Ex Ante (RAM 0x00)</span>
+                    <span className="text-slate-300">02. Evaluación Ex Ante</span>
+                    <span className="font-bold text-cyan-400">Filtrado en Memoria</span>
                   </div>
                   <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">03. Proveedor LLM / Modelo:</span>
-                    <span className="font-bold text-purple-400">Inferencia Segura</span>
+                    <span className="text-slate-300">03. Destino de Inferencia</span>
+                    <span className="font-bold text-purple-400">Enrutamiento Controlado</span>
                   </div>
                   <div className="rounded-xl bg-slate-900/90 p-3.5 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-slate-300">04. Bóveda Dual / Trazas:</span>
-                    <span className="font-bold text-emerald-400">Evidencia Criptográfica</span>
+                    <span className="text-slate-300">04. Registro de Evidencia</span>
+                    <span className="font-bold text-emerald-400">Integridad Criptográfica</span>
                   </div>
                 </div>
               </div>
@@ -225,7 +224,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">01. EL PROBLEMA</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">La gobernanza no debería empezar después del incidente</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
-                Cuando una organización utiliza modelos de IA, necesita controlar qué información se comparte, qué políticas se aplican y cómo se demuestra lo ocurrido. La revisión documental por sí sola no impide que una solicitud contenga información sensible. Y un registro de actividad no equivale necesariamente a una evidencia íntegra y verificable. S.A.A.R.E. sitúa el control en el punto crítico: antes de que la información salga hacia el proveedor de IA.
+                Cuando una organización utiliza modelos de IA, necesita controlar qué información se comparte, qué políticas se aplican y cómo se demuestra lo ocurrido. S.A.A.R.E. sitúa el control antes de que la información salga hacia el modelo.
               </p>
             </div>
 
@@ -241,11 +240,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 },
                 {
                   title: 'Trazabilidad insuficiente',
-                  desc: 'Generación de registros y evidencias estructuradas para facilitar la revisión técnica.',
+                  desc: 'Generación de registros y evidencias estructuradas para revisión técnica.',
                 },
                 {
                   title: 'Dependencia tecnológica',
-                  desc: 'Separación entre las políticas de gobernanza y el modelo de IA utilizado.',
+                  desc: 'Separación entre las políticas de gobernanza y el modelo utilizado.',
                 },
               ].map((item, idx) => (
                 <div key={idx} className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6 flex flex-col justify-between">
@@ -267,25 +266,25 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
                 <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">01</div>
-                <h3 className="text-lg font-bold text-white mb-3">PEP L7 · Control preventivo</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Control preventivo</h3>
                 <p className="text-sm text-slate-400 leading-relaxed">
-                  Evalúa las solicitudes en el perímetro antes de su envío al modelo de IA. Incluye capacidades de análisis orientadas a la prevención de fugas de datos, detección de información personal y secretos, protección frente a instrucciones maliciosas y aplicación de políticas de control.
+                  Evalúa las solicitudes antes de su envío al modelo de IA para prevenir fugas de datos, detectar información sensible y aplicar políticas de seguridad.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
                 <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">02</div>
-                <h3 className="text-lg font-bold text-white mb-3">Desacople semántico · Soberanía de políticas</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Soberanía de políticas</h3>
                 <p className="text-sm text-slate-400 leading-relaxed">
-                  Las reglas de negocio y las políticas de validación se gestionan independientemente del proveedor de LLM, dentro de los límites de la arquitectura desplegada. Esto permite diseñar una estrategia de gobernanza que no dependa exclusivamente de un único modelo.
+                  Las reglas y políticas de validación se gestionan de forma independiente respecto al proveedor de IA, evitando dependencia de un único modelo.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 relative">
                 <div className="absolute top-6 right-6 font-mono text-xl font-black text-cyan-500/40">03</div>
-                <h3 className="text-lg font-bold text-white mb-3">Bóveda Dual · Evidencia verificable</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Evidencia verificable</h3>
                 <p className="text-sm text-slate-400 leading-relaxed">
-                  Genera trazas consolidadas y mecanismos de verificación de integridad mediante técnicas criptográficas, incluyendo firmas digitales y estructuras de tipo Merkle. Facilita la auditoría técnica y la investigación de incidentes sin conservación indiscriminada de prompts.
+                  Genera trazas consolidadas y mecanismos criptográficos de verificación de integridad para auditoría y revisión técnica.
                 </p>
               </div>
             </div>
@@ -296,7 +295,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">03. DIFERENCIACIÓN</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">No es burocracia o documentación. Es control técnico de los flujos de IA.</h2>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Control técnico de los flujos de IA.</h2>
               <p className="text-slate-400 mt-3 text-sm">La diferencia está en dónde se aplica el control y cómo se demuestra.</p>
             </div>
 
@@ -311,7 +310,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 <tbody className="divide-y divide-slate-800/60 text-slate-400">
                   <tr className="hover:bg-slate-900/40">
                     <td className="py-4 px-6 font-bold text-white">Filtrado ex ante</td>
-                    <td className="py-4 px-6">Evalúa la información antes de su envío al LLM.</td>
+                    <td className="py-4 px-6">Evalúa la información antes de su envío al modelo.</td>
                   </tr>
                   <tr className="hover:bg-slate-900/40">
                     <td className="py-4 px-6 font-bold text-white">Protección de datos</td>
@@ -342,10 +341,10 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         <section id="integracion" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">04. GUÍA DE INTEGRACIÓN RÁPIDA</span>
-              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Conecte su aplicación al Proxy de Gobernanza L7</h2>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">04. INTEGRACIÓN DIRECTA</span>
+              <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Conecte su aplicación al punto de control</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
-                Para enrutar sus peticiones de IA a través de la capa de cumplimiento ex-ante de S.A.A.R.E., solo necesita actualizar el destino de sus llamadas API o configurar su variable de entorno.
+                Dirija sus solicitudes de IA al endpoint de control de S.A.A.R.E. para aplicar sus políticas de validación y registro sin alterar su flujo operativo.
               </p>
             </div>
 
@@ -353,54 +352,46 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-white">Opción A: Cambiar la URL Base (.env)</h3>
-                    <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400 font-mono">RECOMENDADO</span>
+                    <h3 className="text-base font-bold text-white">Configuración de Destino API</h3>
+                    <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[10px] font-bold text-cyan-400 font-mono">DIRECTO</span>
                   </div>
                   <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                    Si utiliza librerías estándar compatibles con OpenAI u otros proveedores, simplemente redirija la URL base del servicio en su configuración:
+                    Configure la URL base de su cliente HTTP o SDK hacia el servicio de S.A.A.R.E.:
                   </p>
                   <div className="rounded-xl bg-slate-950 p-4 border border-slate-800 font-mono text-xs text-cyan-300 mb-4">
-                    OPENAI_BASE_URL=https://api.saare.es/v1/proxy/llm
+                    https://api.saare.es/v1/proxy/llm
                   </div>
-                  <p className="text-xs text-slate-400 mb-2 font-semibold">Cabeceras requeridas en la petición:</p>
+                  <p className="text-xs text-slate-400 mb-2 font-semibold">Cabeceras de solicitud:</p>
                   <ul className="space-y-1.5 text-xs text-slate-300 font-mono list-disc list-inside">
-                    <li><span className="text-slate-400">Authorization:</span> Bearer sk_saare_live_su_token</li>
-                    <li><span className="text-slate-400">x-saare-tenant:</span> NOMBRE_DE_SU_EMPRESA</li>
-                    <li><span className="text-slate-400">x-saare-provider:</span> OPENAI (o GEMINI, ANTHROPIC, etc.)</li>
+                    <li><span className="text-slate-400">Authorization:</span> Bearer &lt;TOKEN&gt;</li>
+                    <li><span className="text-slate-400">x-saare-tenant:</span> &lt;TENANT_ID&gt;</li>
+                    <li><span className="text-slate-400">x-saare-provider:</span> &lt;PROVEEDOR&gt;</li>
                   </ul>
                 </div>
                 <div className="mt-6 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
-                  Su código funcionará de inmediato pasando por la capa de seguridad sin modificaciones adicionales.
+                  Evaluación previa al envío con registro verificable de la operación.
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-white">Opción B: Llamada HTTP Directa</h3>
-                    <span className="rounded bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 text-[10px] font-bold text-purple-400 font-mono">FETCH / AXIOS</span>
+                    <h3 className="text-base font-bold text-white">Petición HTTP</h3>
+                    <span className="rounded bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 text-[10px] font-bold text-purple-400 font-mono">HTTPS</span>
                   </div>
                   <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-                    Ejemplo de integración mediante código estándar en su backend para auditar y sanear prompts antes de la inferencia:
+                    Envíe solicitudes POST en formato JSON al endpoint de control de S.A.A.R.E.:
                   </p>
                   <pre className="rounded-xl bg-slate-950 p-4 border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto leading-relaxed">
-{`const res = await fetch("https://api.saare.es/v1/proxy/llm", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer sk_saare_live_...",
-    "x-saare-tenant": "ORGANISMO_DEMO_01",
-    "x-saare-provider": "OPENAI"
-  },
-  body: JSON.stringify({
-    model: "gpt-4o",
-    prompt: "Auditoría de flujo corporativo ex ante"
-  })
-});`}
+{`POST https://api.saare.es/v1/proxy/llm
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+x-saare-tenant: <TENANT_ID>
+x-saare-provider: <PROVEEDOR>`}
                   </pre>
                 </div>
                 <div className="mt-4 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
-                  Devuelve el veredicto ex ante, traza firmada en la Bóveda D1 y respuesta saneada en RAM.
+                  Respuesta inmediata con el resultado de la evaluación y trazabilidad asociada.
                 </div>
               </div>
             </div>
@@ -413,7 +404,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">05. GOBERNANZA Y CUMPLIMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Prepara tus procesos de IA para una supervisión demostrable</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
-                S.A.A.R.E. está diseñado para apoyar la implantación de controles técnicos y procesos de gobernanza relacionados con:
+                S.A.A.R.E. apoya la implantación de controles técnicos y procesos de gobernanza relacionados con:
               </p>
             </div>
 
@@ -423,16 +414,16 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 <p className="text-xs text-slate-400">Apoyo técnico para sistemas de IA de alto riesgo y transparencia.</p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <h3 className="text-sm font-bold text-white mb-2">RGPD & Privacidad</h3>
-                <p className="text-xs text-slate-400">Mitigación de riesgos en el tratamiento de datos personales en flujos LLM.</p>
+                <h3 className="text-sm font-bold text-white mb-2">RGPD y Privacidad</h3>
+                <p className="text-xs text-slate-400">Mitigación de riesgos en el tratamiento de datos personales en flujos de IA.</p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
                 <h3 className="text-sm font-bold text-white mb-2">ISO/IEC 42001</h3>
                 <p className="text-xs text-slate-400">Sistemas de gestión de inteligencia artificial y control operativo.</p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6">
-                <h3 className="text-sm font-bold text-white mb-2">DORA & PCI DSS</h3>
-                <p className="text-xs text-slate-400">Controles de seguridad relevantes para entornos financieros y críticos.</p>
+                <h3 className="text-sm font-bold text-white mb-2">DORA y PCI DSS</h3>
+                <p className="text-xs text-slate-400">Controles de seguridad para entornos financieros y críticos.</p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-6 md:col-span-2">
                 <h3 className="text-sm font-bold text-white mb-2">Gestión de Evidencias Digitales</h3>
@@ -441,8 +432,8 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             </div>
 
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-xs text-amber-200/80 leading-relaxed font-mono">
-              <p className="font-bold mb-1">Nota de responsabilidad legal y regulatoria:</p>
-              La aplicabilidad de cada requisito depende del uso de la IA, la actividad de la organización, el contexto normativo y la configuración implantada. S.A.A.R.E. proporciona capacidades técnicas de apoyo a la gobernanza. La contratación de la plataforma no constituye por sí misma una certificación ni garantiza automáticamente el cumplimiento normativo.
+              <p className="font-bold mb-1">Nota legal y regulatoria:</p>
+              La aplicabilidad de cada requisito depende del uso de la IA, la actividad de la organización, el marco normativo y la configuración implantada. S.A.A.R.E. aporta capacidades técnicas de apoyo a la gobernanza y no sustituye una certificación ni garantiza por sí sola el cumplimiento normativo.
             </div>
 
             <div className="mt-8 text-center">
@@ -450,7 +441,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 href="#evaluation"
                 className="inline-flex items-center rounded-xl bg-slate-900 border border-cyan-500/40 px-6 py-3 text-xs font-bold text-cyan-300 hover:bg-slate-800 transition-all"
               >
-                Solicitar una evaluación técnica
+                Solicitar evaluación técnica
               </a>
             </div>
           </div>
@@ -461,7 +452,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">06. LICENCIAMIENTO</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Empieza con el alcance que necesitas. Escala cuando tu operación lo requiera.</h2>
-              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Incluye Sandbox gratuita de 2 asientos (hasta 1.000 veredictos/mes) sin tarjeta.</p>
+              <p className="text-slate-400 mt-3 text-sm">Precios en euros, IVA no incluido. Acceso inicial de 2 asientos (hasta 1.000 veredictos/mes) sin tarjeta.</p>
             </div>
 
             <PricingSection onSelectPlan={handleAction} />
@@ -490,7 +481,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
               </div>
               <div className="rounded-2xl border border-slate-800 bg-[#0A101E] p-8">
                 <h3 className="text-base font-bold text-white mb-3">Organizaciones Corporativas</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">Evalúa despliegues dedicados, integración con sistemas existentes y necesidades específicas de auditoría.</p>
+                <p className="text-sm text-slate-400 leading-relaxed">Evalúa despliegues dedicados, integración con sistemas existentes y requisitos de auditoría.</p>
               </div>
             </div>
           </div>
@@ -499,22 +490,22 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         <section id="templates" className="border-b border-slate-800/80 py-20 bg-[#060A17]">
           <div className="mx-auto max-w-7xl px-6">
             <div className="max-w-3xl mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. VALIDACIÓN TÉCNICA Y BIBLIOTECA DE EVIDENCIAS</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">08. VALIDACIÓN TÉCNICA</span>
               <h2 className="text-3xl font-black text-white sm:text-4xl mt-3">Las capacidades deben poder demostrarse</h2>
               <p className="text-slate-400 mt-3 text-sm leading-relaxed">
-                La confianza en una infraestructura de gobernanza no debería depender únicamente de declaraciones comerciales. Por eso, la evaluación técnica de S.A.A.R.E. puede centrarse en aspectos empíricos y verificables.
+                La evaluación técnica de S.A.A.R.E. se apoya en controles y verificaciones objetivas sobre el flujo de solicitudes y registros.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
               {[
-                'Pruebas de filtrado antes del envío al proveedor',
-                'Verificación de las políticas efectivamente aplicadas',
-                'Ensayos de tratamiento de información sensible',
+                'Filtrado de solicitudes antes del envío al proveedor',
+                'Verificación de políticas aplicadas',
+                'Tratamiento de información sensible',
                 'Verificación criptográfica de registros y firmas',
-                'Evaluación de los mecanismos de sellado temporal',
-                'Pruebas de persistencia, retención y eliminación de datos',
-                'Medición de latencia bajo una carga de trabajo definida',
+                'Sellado temporal de eventos',
+                'Control de retención y eliminación de datos',
+                'Medición de latencia en operación',
               ].map((testItem, idx) => (
                 <div key={idx} className="rounded-xl border border-slate-800 bg-[#0A101E] p-5 flex items-start gap-3">
                   <span className="text-cyan-400 font-mono text-sm">✓</span>
@@ -529,7 +520,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 onClick={() => handleDownloadPdf('04_ET_MS3V_Prueba_Reina_2026.pdf')}
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-900 border border-cyan-500/40 px-7 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-slate-800 transition-all cursor-pointer"
               >
-                <span>📥</span> Descargar Dossier Técnico de Pruebas Periciales
+                <span>📥</span> Descargar Dossier Técnico
               </button>
             </div>
           </div>
@@ -539,10 +530,10 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
           <div className="mx-auto max-w-4xl px-6">
             <div className="rounded-3xl border border-slate-800 bg-[#0A101E] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
               <div className="text-center max-w-2xl mx-auto mb-10">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">09. EVALUACIÓN EX ANTE</span>
-                <h2 className="text-3xl font-black text-white mt-2">Antes de confiar en un modelo, establece cómo se gobierna</h2>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#38BDDB]">09. SOLICITUD DE EVALUACIÓN</span>
+                <h2 className="text-3xl font-black text-white mt-2">Establece cómo se gobierna tu IA</h2>
                 <p className="text-sm text-slate-400 mt-3">
-                  Evalúa cómo S.A.A.R.E. puede incorporarse a tu arquitectura de IA, qué controles necesita tu organización y qué evidencias requiere tu proceso de auditoría.
+                  Solicita una evaluación para revisar el encaje de S.A.A.R.E. en tu arquitectura y tus requisitos de control.
                 </p>
               </div>
 
@@ -555,13 +546,12 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                 <form onSubmit={handleEvaluationSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Correo Electrónico Corporativo *</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Correo Corporativo *</label>
                       <input
                         type="email"
                         required
                         value={evaluationForm.workEmail}
                         onChange={(e) => updateEvaluationField('workEmail', e.target.value)}
-                        placeholder="ciso@empresa.es"
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       />
                     </div>
@@ -572,7 +562,6 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                         required
                         value={evaluationForm.company}
                         onChange={(e) => updateEvaluationField('company', e.target.value)}
-                        placeholder="Nombre de la entidad"
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       />
                     </div>
@@ -580,21 +569,21 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Responsabilidad Profesional</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Responsabilidad</label>
                       <select
                         value={evaluationForm.role}
                         onChange={(e) => updateEvaluationField('role', e.target.value)}
                         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                       >
-                        <option value="CISO">CISO / Dirección de Seguridad</option>
-                        <option value="CTO">CTO / Dirección Tecnológica</option>
-                        <option value="Compliance">Compliance / Responsable GRC</option>
-                        <option value="DPO">DPO / Privacidad de Datos</option>
-                        <option value="Consultant">Auditor / Consultor Senior</option>
+                        <option value="CISO">Seguridad de la Información</option>
+                        <option value="CTO">Tecnología e Ingeniería</option>
+                        <option value="Compliance">Cumplimiento y Gobernanza</option>
+                        <option value="DPO">Privacidad y Protección de Datos</option>
+                        <option value="Consultant">Auditoría y Consultoría</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Sistemas de IA Desplegados</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Sistemas de IA</label>
                       <select
                         value={evaluationForm.aiSystems}
                         onChange={(e) => updateEvaluationField('aiSystems', e.target.value)}
@@ -608,12 +597,11 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Requisito Específico o Caso de Uso</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Requisitos</label>
                     <textarea
                       rows={3}
                       value={evaluationForm.requirement}
                       onChange={(e) => updateEvaluationField('requirement', e.target.value)}
-                      placeholder="Describa brevemente su arquitectura o necesidades de gobernanza ex ante..."
                       className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 resize-none"
                     />
                   </div>
@@ -628,7 +616,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                       className="mt-1 h-4 w-4 rounded border-slate-800 bg-slate-950 text-cyan-500 focus:ring-cyan-500"
                     />
                     <label htmlFor="privacyAccepted" className="text-xs text-slate-400 leading-relaxed">
-                      He leído y acepto la{' '}
+                      Acepto la{' '}
                       <button
                         type="button"
                         onClick={() => onNavigateToLegal && onNavigateToLegal('privacy')}
@@ -636,7 +624,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                       >
                         Política de Privacidad
                       </button>
-                      . Responsable: S.A.A.R.E. Technologies S.L. (Expediente Marco MS3V-RECON-VALID-2026). Finalidad: Gestión de solicitudes de evaluación de gobernanza ex ante.
+                      {' '}para la gestión de esta solicitud.
                     </label>
                   </div>
 
@@ -650,14 +638,14 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
                       disabled={formStatus === 'SUBMITTING' || !evaluationForm.privacyAccepted}
                       className="flex-1 rounded-xl bg-[#38BDDB] px-6 py-4 text-xs font-bold text-slate-950 shadow-lg transition-all hover:bg-cyan-400 disabled:opacity-50 cursor-pointer"
                     >
-                      {formStatus === 'SUBMITTING' ? 'Procesando Solicitud...' : 'Solicitar auditoría ex ante'}
+                      {formStatus === 'SUBMITTING' ? 'Enviando...' : 'Solicitar evaluación'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAction('SANDBOX_FREE')}
                       className="flex-1 rounded-xl bg-emerald-500/10 border border-emerald-500/40 px-6 py-4 text-xs font-extrabold text-emerald-400 hover:bg-emerald-500/20 transition-all text-center cursor-pointer"
                     >
-                      O activar Sandbox Gratuita (2 Asientos) →
+                      Activar Acceso (2 Asientos) →
                     </button>
                   </div>
                 </form>
@@ -670,9 +658,8 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
       <footer id="support" className="border-t border-slate-800/80 bg-slate-950 px-6 py-14">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 font-mono gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <p className="font-bold text-slate-200">S.A.A.R.E. Technologies S.L. — Expediente MS3V-RECON-VALID-2026</p>
-            <p className="text-[11px] text-slate-500">Infraestructura Tecnológica Global | RPI: RPI-2026-SAARE-0914X</p>
-            <p className="text-[11px] text-slate-500 mt-2">Gobernanza ex ante. Soberanía tecnológica. Evidencia verificable.</p>
+            <p className="font-bold text-slate-200">S.A.A.R.E.</p>
+            <p className="text-[11px] text-slate-500">Gobernanza ex ante. Soberanía tecnológica. Evidencia verificable.</p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 text-slate-400 text-xs">
@@ -687,7 +674,7 @@ export default function LandingPage({ onNavigateToLogin, onSelectPlan, onNavigat
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-[#0A101E]/95 backdrop-blur-md p-4 sm:p-6 shadow-2xl">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-300 leading-relaxed text-center sm:text-left">
-              <span className="font-bold text-white">Uso de Cookies Técnicas:</span> Este sitio utiliza exclusivamente cookies técnicas esenciales para garantizar la navegación y la gestión de sesión.{' '}
+              <span className="font-bold text-white">Cookies Técnicas:</span> Se utilizan exclusivamente cookies técnicas esenciales para el funcionamiento del sitio.{' '}
               <button type="button" onClick={() => onNavigateToLegal && onNavigateToLegal('cookies')} className="text-cyan-400 underline ml-1 cursor-pointer">Más información</button>
             </div>
             <div className="flex items-center gap-3 shrink-0">
