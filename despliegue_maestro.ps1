@@ -11,12 +11,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Invoke-NativeCommand {
+function Assert-LastExitCode {
     param(
-        [Parameter(Mandatory = $true)][string]$Command,
         [string]$FailureMessage = "El comando fallo."
     )
-    Invoke-Expression $Command
     if ($LASTEXITCODE -ne 0) {
         throw "$FailureMessage (ExitCode=$LASTEXITCODE)"
     }
@@ -51,9 +49,7 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
 Write-Host " -> Verificando estado del repositorio Git..." -ForegroundColor Gray
 try {
     git rev-parse --is-inside-work-tree | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "No es un repositorio Git."
-    }
+    Assert-LastExitCode -FailureMessage "No es un repositorio Git."
 } catch {
     Write-Host "[ERROR] El directorio actual no es un repositorio Git valido." -ForegroundColor Red
     exit 1
@@ -63,7 +59,8 @@ try {
 # FASE 1: DEPENDENCIAS, EMPAQUETADO DE EXTENSION + SIDECAR PYTHON Y LIMPIEZA
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [1/7] Resolviendo dependencias, empaquetando artefactos L7 y limpiando builds..." -ForegroundColor Yellow
-Invoke-NativeCommand -Command "pnpm install --no-frozen-lockfile" -FailureMessage "Fallo al instalar dependencias con pnpm"
+pnpm install --no-frozen-lockfile
+Assert-LastExitCode -FailureMessage "Fallo al instalar dependencias con pnpm"
 
 # Limpieza de dist/ antiguos y temporales de Vite
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist", "apps/control-plane/dist"
@@ -174,10 +171,12 @@ if ($sidecarSrc -and $consolePublicDeploy) {
 Write-Host "`n==> [2/7] Compilando aplicaciones web (saare-console + saare-suite)..." -ForegroundColor Cyan
 
 Write-Host " -> Compilando Consola GRC (saare-console)..." -ForegroundColor Gray
-Invoke-NativeCommand -Command "pnpm --filter saare-console run build" -FailureMessage "Fallo al compilar saare-console"
+pnpm --filter saare-console run build
+Assert-LastExitCode -FailureMessage "Fallo al compilar saare-console"
 
 Write-Host " -> Compilando Landing Comercial (saare-suite)..." -ForegroundColor Gray
-Invoke-NativeCommand -Command "pnpm --filter saare-suite run build" -FailureMessage "Fallo al compilar saare-suite"
+pnpm --filter saare-suite run build
+Assert-LastExitCode -FailureMessage "Fallo al compilar saare-suite"
 
 # ------------------------------------------------------------------------------
 # FASE 3: DESPLIEGUE DE FRONTENDS A CLOUDFLARE PAGES
@@ -193,7 +192,8 @@ $consoleDist = if (Test-Path "saare-console/dist") {
 }
 if ($consoleDist) {
     Write-Host " -> Desplegando Consola GRC ($consoleDist)..." -ForegroundColor Gray
-    Invoke-NativeCommand -Command "npx wrangler pages deploy `"$consoleDist`" --project-name=saare-console --branch=main --commit-dirty=true" -FailureMessage "Fallo al desplegar saare-console"
+    npx wrangler pages deploy "$consoleDist" --project-name=saare-console --branch=main --commit-dirty=true
+    Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-console"
 } else {
     Write-Host "[ERROR] Fallo la compilacion de saare-console. No existe carpeta dist." -ForegroundColor Red
     exit 1
@@ -208,7 +208,8 @@ $suiteDist = if (Test-Path "saare-suite/dist") {
 }
 if ($suiteDist) {
     Write-Host " -> Desplegando Landing Comercial ($suiteDist)..." -ForegroundColor Gray
-    Invoke-NativeCommand -Command "npx wrangler pages deploy `"$suiteDist`" --project-name=saare-suite --branch=main --commit-dirty=true" -FailureMessage "Fallo al desplegar saare-suite"
+    npx wrangler pages deploy "$suiteDist" --project-name=saare-suite --branch=main --commit-dirty=true
+    Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-suite"
 } else {
     Write-Host "[ERROR] Fallo la compilacion de saare-suite. No existe carpeta dist." -ForegroundColor Red
     exit 1
@@ -240,7 +241,8 @@ if ($controlPlanePath) {
 
         if ($sqlPath) {
             Write-Host " -> Aplicando esquema relacional D1 ($sqlPath) en remoto..." -ForegroundColor Gray
-            Invoke-NativeCommand -Command "npx wrangler d1 execute saare-vault-d1 --remote --file=`"$sqlPath`" --yes" -FailureMessage "Fallo al aplicar schema.sql en D1"
+            npx wrangler d1 execute saare-vault-d1 --remote --file="$sqlPath" --yes
+            Assert-LastExitCode -FailureMessage "Fallo al aplicar schema.sql en D1"
             Write-Host " -> [OK] Esquema D1 aplicado correctamente." -ForegroundColor Green
         } else {
             Write-Host "[ADVERTENCIA] No se encontro el archivo schema.sql. Omitiendo migracion D1." -ForegroundColor DarkYellow
@@ -255,21 +257,22 @@ if ($controlPlanePath) {
         }
 
         Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
-        Invoke-NativeCommand -Command "npx wrangler types" -FailureMessage "Fallo al generar tipos con wrangler types"
+        npx wrangler types
+        Assert-LastExitCode -FailureMessage "Fallo al generar tipos con wrangler types"
 
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
-        Invoke-NativeCommand -Command "npx wrangler deploy --env production" -FailureMessage "Fallo al desplegar el Worker"
+        npx wrangler deploy --env production
+        Assert-LastExitCode -FailureMessage "Fallo al desplegar el Worker"
 
         if ($RemoveMasterTestPassword) {
             Write-Host " -> Eliminando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
-            Invoke-NativeCommand -Command "npx wrangler secret delete MASTER_TEST_PASSWORD --env production --force" -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
+            npx wrangler secret delete MASTER_TEST_PASSWORD --env production --force
+            Assert-LastExitCode -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
             Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD eliminado." -ForegroundColor Green
         } elseif (-not [string]::IsNullOrWhiteSpace($MasterTestPassword)) {
             Write-Host " -> Configurando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
             $MasterTestPassword | npx wrangler secret put MASTER_TEST_PASSWORD --env production
-            if ($LASTEXITCODE -ne 0) {
-                throw "Fallo al configurar MASTER_TEST_PASSWORD (ExitCode=$LASTEXITCODE)"
-            }
+            Assert-LastExitCode -FailureMessage "Fallo al configurar MASTER_TEST_PASSWORD"
             Write-Host " -> [OK] Secreto MASTER_TEST_PASSWORD actualizado en produccion." -ForegroundColor Green
         }
     } catch {
@@ -288,6 +291,7 @@ if ($controlPlanePath) {
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [5/7] Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
 git add .
+Assert-LastExitCode -FailureMessage "Fallo en git add"
 $gitStatus = git status --porcelain
 if ($gitStatus) {
     $currentBranch = (git branch --show-current).Trim()
@@ -296,7 +300,9 @@ if ($gitStatus) {
     }
 
     git commit -m "chore(release): despliegue maestro v8.9"
+    Assert-LastExitCode -FailureMessage "Fallo en git commit"
     git push origin HEAD
+    Assert-LastExitCode -FailureMessage "Fallo en git push"
     Write-Host "Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
 } else {
     Write-Host "No hay cambios pendientes en Git." -ForegroundColor Yellow

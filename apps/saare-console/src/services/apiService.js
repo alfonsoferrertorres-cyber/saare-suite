@@ -1,5 +1,13 @@
 // saare-console/src/services/apiService.js
 import { SAARE_CONFIG } from '../config/saareState';
+import {
+  EXECUTION_STATUS,
+  normalizeNodeStatus,
+  normalizeTraceRecord,
+  normalizeVerdictResponse,
+  normalizeBatchSealResponse,
+  normalizeSignatureVerifyResponse
+} from '../domain/contracts';
 
 const LOCAL_SIDECAR_URL = 'http://127.0.0.1:8080/api/v1/validate';
 const ROUTE_MODE_KEY = 'SAARE_ROUTE_MODE'; // 'CLOUD_EDGE' | 'LOCAL_SIDECAR'
@@ -150,18 +158,22 @@ export const apiService = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    window.open(`${cleanRoot}/api/v1/agent/bootstrap${query}`, '_blank', 'noopener,noreferrer');
   },
 
-  async getKpis(startDate, endDate) {
+  async getKpis(startDate, endDate, overrideTenant) {
+    const { tenant } = getAuthContext();
+    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
+    if (activeTenant) params.set('tenant', activeTenant);
     const query = params.toString() ? `?${params.toString()}` : '';
 
     try {
-      const res = await saareFetch(`/metrics/tenants${query}`, { method: 'GET' });
+      const res = await saareFetch(`/metrics/tenants${query}`, {
+        method: 'GET',
+        overrideTenant: activeTenant
+      });
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data?.data) ? data.data : [];
@@ -206,7 +218,10 @@ export const apiService = {
 
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
-        return Array.isArray(data) ? data : (data.traces || data.evidences || data.runs || []);
+        const list = Array.isArray(data)
+          ? data
+          : data.traces || data.evidences || data.runs || [];
+        return list.map((item) => normalizeTraceRecord(item, activeTenant));
       }
       if (res && res.status === 429) {
         console.warn('[SAARE API] Rate limit alcanzado.');
@@ -218,37 +233,36 @@ export const apiService = {
     return [];
   },
 
-  async getNodeStatus() {
+  async getNodeStatus(overrideTenant) {
     const { tenant } = getAuthContext();
+    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
     try {
-      const res = await saareFetch('/health', { method: 'GET' });
+      const res = await saareFetch('/health', {
+        method: 'GET',
+        overrideTenant: activeTenant
+      });
       if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
-        return {
-          nodeId: data.node || data.service || '',
-          tenantId: tenant,
-          mode: data.mode || 'FAIL-CLOSED',
-          latencyP99Ms: Number(data.latencyP99Ms ?? 0),
-          activePolicies: Number(data.activePolicies ?? data.activeScenarios ?? 0),
-          status: data.status || 'HEALTHY',
-          trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || '',
-          vaultSource: data.vaultSource || ''
-        };
+        return normalizeNodeStatus(
+          {
+            ...data,
+            trustAnchor: data.trustAnchor || SAARE_CONFIG?.TRUST_ANCHOR || ''
+          },
+          activeTenant
+        );
       }
     } catch (e) {
       console.warn('[SAARE API] Error consultando estado del nodo:', e);
     }
 
-    return {
-      nodeId: '',
-      tenantId: tenant,
-      mode: 'FAIL-CLOSED',
-      latencyP99Ms: 0,
-      activePolicies: 0,
-      status: 'UNAVAILABLE',
-      trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || '',
-      vaultSource: ''
-    };
+    return normalizeNodeStatus(
+      {
+        status: 'NO_DISPONIBLE',
+        healthy: false,
+        trustAnchor: SAARE_CONFIG?.TRUST_ANCHOR || ''
+      },
+      activeTenant
+    );
   },
 
   async interceptPrompt(payloadOrPrompt, context = {}) {
@@ -274,17 +288,27 @@ export const apiService = {
       };
     }
 
+    const isSimulation = Boolean(
+      bodyData.simulation === true ||
+        String(bodyData.mode || '').toUpperCase() === 'SIMULATION'
+    );
     const activeToken = bodyData.token !== undefined ? bodyData.token : token;
     const { token: _omitToken, ...rawBody } = bodyData;
     const resolvedTenant = rawBody.tenant !== undefined ? rawBody.tenant : tenant;
     const cleanBody = {
       ...rawBody,
-      ...(resolvedTenant ? { tenant: resolvedTenant, tenant_id: rawBody.tenant_id || resolvedTenant } : {})
+      ...(resolvedTenant
+        ? { tenant: resolvedTenant, tenant_id: rawBody.tenant_id || resolvedTenant }
+        : {})
     };
 
     const profileHeaders = {
-      ...(cleanBody.browserProfile ? { 'x-saare-browser-profile': String(cleanBody.browserProfile) } : {}),
-      ...(cleanBody.clientProfile ? { 'x-saare-client-profile': String(cleanBody.clientProfile) } : {})
+      ...(cleanBody.browserProfile
+        ? { 'x-saare-browser-profile': String(cleanBody.browserProfile) }
+        : {}),
+      ...(cleanBody.clientProfile
+        ? { 'x-saare-client-profile': String(cleanBody.clientProfile) }
+        : {})
     };
 
     if (routeMode === 'LOCAL_SIDECAR') {
@@ -294,46 +318,57 @@ export const apiService = {
           headers: {
             'Content-Type': 'application/json',
             ...profileHeaders,
-            ...(cleanBody.tenant ? { 'x-saare-tenant': cleanBody.tenant, 'X-SAARE-Tenant': cleanBody.tenant } : {}),
+            ...(cleanBody.tenant
+              ? { 'x-saare-tenant': cleanBody.tenant, 'X-SAARE-Tenant': cleanBody.tenant }
+              : {}),
             ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
           },
           body: JSON.stringify({
             prompt: cleanBody.prompt || '',
             scenario: cleanBody.scenarioId || cleanBody.scenario || 'DEFAULT',
-            tenant_id: cleanBody.tenant || ''
+            tenant_id: cleanBody.tenant || '',
+            simulation: isSimulation
           })
         });
 
         const localData = await localRes.json().catch(() => ({}));
-        const isDeny = localData?.verdict === 'DENY' || localRes.status === 403 || !localRes.ok;
+        const isDeny =
+          localData?.verdict === 'DENY' || localRes.status === 403 || !localRes.ok;
 
-        return {
-          success: !isDeny,
-          route: 'LOCAL_SIDECAR_RAM',
-          tenant: localData?.tenant_id || cleanBody.tenant || '',
-          evidence_id: localData?.evidence_hash ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}` : '',
-          decision: isDeny ? 'DENY' : 'ALLOW',
-          verdict: isDeny ? 'RECHAZADO' : (localData?.detox_status === 'SANITIZED' ? 'SANITIZED' : 'PERMITIDO'),
-          enforcement: {
-            verdict: isDeny ? 'DENY' : 'ALLOW',
-            sanitizedInRam: true,
-            piiDetected: Boolean(localData?.threat_detected),
-            ms3vIntegrityHash: localData?.evidence_hash || '',
-            latencyMs: localData?.latency_ms ?? 0,
-            d1VaultSynced: Boolean(localData?.d1_vault_synced)
+        return normalizeVerdictResponse(
+          {
+            ...localData,
+            success: !isDeny,
+            route: 'LOCAL_SIDECAR_RAM',
+            tenant: localData?.tenant_id || cleanBody.tenant || '',
+            evidence_id: localData?.evidence_hash
+              ? `EV-${String(localData.evidence_hash).slice(0, 10).toUpperCase()}`
+              : '',
+            decision: isDeny ? 'DENY' : 'ALLOW',
+            enforcement: {
+              verdict: isDeny ? 'DENY' : 'ALLOW',
+              sanitizedInRam: true,
+              piiDetected: Boolean(localData?.threat_detected),
+              ms3vIntegrityHash: localData?.evidence_hash || '',
+              latencyMs: localData?.latency_ms ?? 0
+            },
+            inference: {
+              provider: 'LOCAL_SIDECAR',
+              responseContent: isDeny ? '' : localData?.clean_prompt || ''
+            }
           },
-          inference: {
-            provider: 'LOCAL_SIDECAR',
-            responseContent: isDeny ? '' : (localData?.clean_prompt || '')
-          }
-        };
+          { simulation: isSimulation, tenantId: cleanBody.tenant }
+        );
       } catch (e) {
-        return {
-          decision: 'DENY',
-          verdict: 'LOCAL_SIDECAR_UNREACHABLE',
-          error: e.message,
-          message: e.message
-        };
+        return normalizeVerdictResponse(
+          {
+            decision: 'DENY',
+            verdict: 'LOCAL_SIDECAR_UNREACHABLE',
+            error: e.message,
+            message: e.message
+          },
+          { simulation: isSimulation, tenantId: cleanBody.tenant }
+        );
       }
     }
 
@@ -348,38 +383,149 @@ export const apiService = {
         body: JSON.stringify(cleanBody)
       });
 
+      const data = await res?.json().catch(() => ({}));
       if (res && res.ok) {
-        return await res.json().catch(() => ({}));
+        return normalizeVerdictResponse(data, {
+          simulation: isSimulation,
+          tenantId: cleanBody.tenant
+        });
       }
 
-      const errData = await res?.json().catch(() => ({}));
-      const errMsg = errData.message || errData.error || `HTTP ${res?.status}: Acceso bloqueado.`;
-      return {
-        decision: 'DENY',
-        verdict: 'FAIL_CLOSED_BLOCKED',
-        status: res?.status || 0,
-        error: errMsg,
-        message: errMsg
-      };
+      const errMsg = data.message || data.error || `HTTP ${res?.status}: Acceso bloqueado.`;
+      return normalizeVerdictResponse(
+        {
+          ...data,
+          decision: 'DENY',
+          verdict: 'FAIL_CLOSED_BLOCKED',
+          error: errMsg,
+          message: errMsg
+        },
+        { simulation: isSimulation, tenantId: cleanBody.tenant }
+      );
     } catch (e) {
-      return {
-        decision: 'DENY',
-        verdict: 'FAIL_CLOSED',
-        error: e.message,
-        message: e.message
-      };
+      return normalizeVerdictResponse(
+        {
+          decision: 'DENY',
+          verdict: 'FAIL_CLOSED',
+          error: e.message,
+          message: e.message
+        },
+        { simulation: isSimulation, tenantId: cleanBody.tenant }
+      );
     }
   },
 
-  async syncVault() {
+  async verifyEvidenceSignature(hash = '', extra = {}) {
+    const cleanHash = String(hash || '').trim();
+    if (!cleanHash) {
+      return normalizeSignatureVerifyResponse(
+        { verified: false, error: 'Hash vacío o no especificado.' },
+        ''
+      );
+    }
+
     try {
-      const res = await saareFetch('/vault/sync', { method: 'GET' });
-      if (res && res.ok) {
-        return await res.json().catch(() => ({}));
+      const res = await saareFetch('/evidence/verify', {
+        method: 'POST',
+        body: JSON.stringify({
+          proof: extra.proof || 'SHA256_RFC3161_VALIDATED',
+          leafHash: cleanHash,
+          merkleRoot: extra.merkleRoot || cleanHash,
+          ...extra
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return normalizeSignatureVerifyResponse(
+          {
+            ...data,
+            verified: false,
+            error: data?.message || data?.error || `HTTP ${res.status}`
+          },
+          cleanHash
+        );
       }
-      return { success: false, status: res?.status || 0 };
+      return normalizeSignatureVerifyResponse(data, cleanHash);
     } catch (e) {
-      return { success: false, error: e.message };
+      return normalizeSignatureVerifyResponse(
+        { verified: false, error: e?.message || 'Error al verificar firma.' },
+        cleanHash
+      );
+    }
+  },
+
+  async sealMerkleBatch(params = {}) {
+    const { tenant } = getAuthContext();
+    const targetTenant = String(params.tenantId || params.tenant || tenant || '').trim();
+
+    try {
+      const res = await saareFetch('/forensics/batch/seal', {
+        method: 'POST',
+        overrideTenant: targetTenant,
+        body: JSON.stringify({
+          tenantId: targetTenant,
+          enable2of3Custody: params.enable2of3Custody !== false,
+          ...params
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return normalizeBatchSealResponse(
+          {
+            ...data,
+            tsaStatus: EXECUTION_STATUS.FAILED,
+            error: data?.message || data?.error || `HTTP ${res.status}`
+          },
+          targetTenant
+        );
+      }
+      return normalizeBatchSealResponse(data, targetTenant);
+    } catch (e) {
+      return normalizeBatchSealResponse(
+        {
+          tsaStatus: EXECUTION_STATUS.FAILED,
+          error: e?.message || 'Error al sellar lote Merkle.'
+        },
+        targetTenant
+      );
+    }
+  },
+
+  async syncVault(overrideTenant) {
+    const { tenant } = getAuthContext();
+    const activeTenant = overrideTenant !== undefined ? overrideTenant : tenant;
+    try {
+      let res = await saareFetch('/vault/sync', {
+        method: 'GET',
+        overrideTenant: activeTenant
+      });
+      if (res && res.status === 405) {
+        res = await saareFetch('/vault/sync', {
+          method: 'POST',
+          overrideTenant: activeTenant,
+          body: JSON.stringify({ tenantId: activeTenant })
+        });
+      }
+      const data = await res?.json().catch(() => ({}));
+      if (res && res.ok) {
+        return {
+          ...data,
+          ok: true,
+          status: EXECUTION_STATUS.VERIFIED
+        };
+      }
+      return {
+        ...data,
+        ok: false,
+        status: EXECUTION_STATUS.FAILED,
+        httpStatus: res?.status || 0
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        status: EXECUTION_STATUS.FAILED,
+        error: e.message
+      };
     }
   }
 };

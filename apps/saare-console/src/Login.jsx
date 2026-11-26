@@ -1,30 +1,57 @@
-// saare-console/src/Login.jsx
 import React, { useState } from 'react';
 import { api, API_HOST } from './utils/api';
 import { SAARE_CONFIG } from './config/saareState';
 
+const setDualStorage = (key, value) => {
+  if (!key) return;
+  try {
+    if (value) {
+      window.localStorage?.setItem(key, value);
+      window.sessionStorage?.setItem(key, value);
+    } else {
+      window.localStorage?.removeItem(key);
+      window.sessionStorage?.removeItem(key);
+    }
+  } catch {
+    // Ignorar restricciones de almacenamiento
+  }
+};
+
+const getDualStorage = (key) => {
+  if (!key) return '';
+  try {
+    return window.sessionStorage?.getItem(key) || window.localStorage?.getItem(key) || '';
+  } catch {
+    return '';
+  }
+};
+
 export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
   const [authMode, setAuthMode] = useState('SANDBOX');
-  const [email, setEmail] = useState(() => localStorage.getItem('saare_user_email') || '');
+  const [email, setEmail] = useState(() => getDualStorage('saare_user_email') || '');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [tenant, setTenant] = useState(() => localStorage.getItem('saare_tenant_domain') || '');
-  const [role, setRole] = useState(() => localStorage.getItem('saare_user_role') || 'CISO_ADMIN');
+  const [tenant, setTenant] = useState(() => getDualStorage('saare_tenant_domain') || '');
+  const [role, setRole] = useState(() => getDualStorage('saare_user_role') || 'CISO_ADMIN');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const persistSession = ({ token, userEmail, userRole, tenantDomain, planId, apiKey }) => {
-    if (token) {
-      localStorage.setItem('saare_token', token);
-      localStorage.setItem('saare_auth_token', token);
+    const cleanToken = String(token || '').replace(/^Bearer\s+/i, '').trim();
+    if (cleanToken) {
+      setDualStorage('saare_token', cleanToken);
+      setDualStorage('saare_auth_token', cleanToken);
     }
-    if (userEmail) localStorage.setItem('saare_user_email', userEmail);
-    if (userRole) localStorage.setItem('saare_user_role', userRole);
-    if (tenantDomain) localStorage.setItem('saare_tenant_domain', tenantDomain);
-    if (planId) localStorage.setItem('saare_plan_id', planId);
-    if (apiKey) localStorage.setItem('saare_api_key', apiKey);
-    localStorage.setItem('saare_consent_accepted', 'true');
+    if (userEmail) setDualStorage('saare_user_email', userEmail);
+    if (userRole) setDualStorage('saare_user_role', userRole);
+    if (tenantDomain) {
+      setDualStorage('saare_tenant_domain', tenantDomain);
+      setDualStorage('saare_tenant', tenantDomain);
+    }
+    if (planId) setDualStorage('saare_plan_id', planId);
+    if (apiKey) setDualStorage('saare_api_key', apiKey);
+    setDualStorage('saare_consent_accepted', 'true');
   };
 
   const handleActivationSubmit = async (e) => {
@@ -56,7 +83,9 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
     setLoading(true);
     setErrorMsg('');
 
-    const baseUrl = String(SAARE_CONFIG?.CONTROL_PLANE_URL || API_HOST || '').trim().replace(/\/+$/, '');
+    const baseUrl = String(SAARE_CONFIG?.CONTROL_PLANE_URL || API_HOST || '')
+      .trim()
+      .replace(/\/+$/, '');
 
     try {
       if (authMode === 'SANDBOX') {
@@ -102,7 +131,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
       }
 
       const authResponse = await api.login(cleanEmail, password, cleanTenant);
-      const token = authResponse.token || localStorage.getItem('saare_token') || '';
+      const token = authResponse.token || getDualStorage('saare_token') || '';
       const verifiedEmail = authResponse.user?.email || cleanEmail;
       const verifiedTenant = authResponse.user?.tenantId || cleanTenant;
       const verifiedRole = authResponse.user?.role || role;
@@ -145,7 +174,10 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         <div className="grid grid-cols-2 gap-2 p-1 bg-[#020617] border border-[#1e293b] rounded-xl">
           <button
             type="button"
-            onClick={() => { setAuthMode('SANDBOX'); setErrorMsg(''); }}
+            onClick={() => {
+              setAuthMode('SANDBOX');
+              setErrorMsg('');
+            }}
             className={`py-2.5 px-3 rounded-lg text-xs font-mono font-bold uppercase transition cursor-pointer ${
               authMode === 'SANDBOX'
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
@@ -156,7 +188,10 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
           </button>
           <button
             type="button"
-            onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); }}
+            onClick={() => {
+              setAuthMode('LOGIN');
+              setErrorMsg('');
+            }}
             className={`py-2.5 px-3 rounded-lg text-xs font-mono font-bold uppercase transition cursor-pointer ${
               authMode === 'LOGIN'
                 ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
@@ -271,7 +306,10 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
               onChange={(e) => setAcceptedTerms(e.target.checked)}
               className="mt-0.5 accent-emerald-500 cursor-pointer w-4 h-4"
             />
-            <label htmlFor="terms" className="text-[11px] text-slate-400 leading-snug cursor-pointer select-none">
+            <label
+              htmlFor="terms"
+              className="text-[11px] text-slate-400 leading-snug cursor-pointer select-none"
+            >
               Acepto los términos operativos del tenant y la trazabilidad de auditoría asociada a mi sesión.
             </label>
           </div>
@@ -279,7 +317,14 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
             <button
               type="button"
-              onClick={onBack || (() => { setEmail(''); setPassword(''); setTenant(''); })}
+              onClick={
+                onBack ||
+                (() => {
+                  setEmail('');
+                  setPassword('');
+                  setTenant('');
+                })
+              }
               className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider cursor-pointer"
             >
               {onBack ? 'VOLVER' : 'LIMPIAR'}
