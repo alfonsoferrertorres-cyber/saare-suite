@@ -4,8 +4,8 @@
   "type": "module",
   "packageManager": "pnpm@12.18.0",
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build --ui=stream",
+    "dev": "pnpm --parallel --if-present run dev",
+    "build": "pnpm -r --if-present run build",
     "preview": "pnpm --filter saare-console preview",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./despliegue_maestro.ps1"
   },
