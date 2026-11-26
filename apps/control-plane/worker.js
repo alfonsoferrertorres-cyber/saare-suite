@@ -172,6 +172,10 @@ function sanitizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
 function sanitizeProfileTag(rawValue, fallback = "DEFAULT_PROFILE") {
   if (!rawValue || typeof rawValue !== "string") return fallback;
   const cleaned = rawValue.trim().replace(/[^\w.@:-]+/g, "_").slice(0, 80);
@@ -755,6 +759,19 @@ async function ensureD1TablesExist(db) {
           compiled_hash TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
+      `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS evaluation_requests (
+          request_id TEXT PRIMARY KEY,
+          work_email TEXT NOT NULL,
+          company TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT '',
+          ai_systems TEXT NOT NULL DEFAULT '',
+          interest TEXT NOT NULL DEFAULT '',
+          requirement TEXT NOT NULL DEFAULT '',
+          source_ip TEXT DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
       `)
     ]);
 
@@ -812,6 +829,142 @@ async function handleGetForensicsManifest(env, corsHeaders) {
       "X-SAARE-Manifest-SHA256": manifestSha256,
       "X-SAARE-Manifest-Source": source
     }
+  });
+}
+
+async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp) {
+  const body = await request.json().catch(() => ({}));
+  const workEmail = sanitizeEmail(body.workEmail || body.email || "");
+  const company = String(body.company || body.organization || "").trim().slice(0, 160);
+  const role = String(body.role || "").trim().slice(0, 80);
+  const aiSystems = String(body.aiSystems || body.systems || "").trim().slice(0, 80);
+  const interest = String(body.interest || "Evaluación técnica").trim().slice(0, 120);
+  const requirement = String(body.requirement || body.usecase || "").trim().slice(0, 4000);
+
+  if (!isValidEmail(workEmail) || !company) {
+    return new Response(JSON.stringify({
+      error: "BAD_REQUEST",
+      message: "Se requieren un correo electrónico válido ('workEmail') y la organización ('company')."
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const headerReqId = String(request.headers.get("X-Request-ID") || "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  const requestId = headerReqId || `eval_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+  const createdAt = new Date().toISOString();
+
+  if (env?.DB) {
+    try {
+      await ensureD1TablesExist(env.DB);
+      await env.DB.prepare(`
+        INSERT OR REPLACE INTO evaluation_requests
+          (request_id, work_email, company, role, ai_systems, interest, requirement, source_ip, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(requestId, workEmail, company, role, aiSystems, interest, requirement, clientIp || "", createdAt).run();
+    } catch (_dbErr) {}
+  }
+
+  if (env?.EVALUATION_WEBHOOK_URL) {
+    const dispatchWebhook = async () => {
+      try {
+        await fetch(env.EVALUATION_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Request-ID": requestId },
+          body: JSON.stringify({
+            requestId,
+            workEmail,
+            company,
+            role,
+            aiSystems,
+            interest,
+            requirement,
+            createdAt
+          })
+        });
+      } catch (_whErr) {}
+    };
+    if (ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(dispatchWebhook());
+    } else {
+      await dispatchWebhook();
+    }
+  }
+
+  return new Response(JSON.stringify({
+    success: true,
+    requestId,
+    status: "RECEIVED",
+    createdAt
+  }), {
+    status: 201,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId
+    }
+  });
+}
+
+async function handleReportPdfDownload(request, env, corsHeaders) {
+  const urlObj = new URL(request.url);
+  const rawFile = String(urlObj.searchParams.get("file") || "").trim();
+  const safeFile = /^[A-Za-z0-9._-]{1,120}\.pdf$/i.test(rawFile) ? rawFile : "";
+
+  if (!safeFile) {
+    return new Response(JSON.stringify({
+      error: "BAD_REQUEST",
+      message: "Parámetro 'file' inválido. Debe indicar un nombre de archivo PDF válido."
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const kv = getKvBinding(env);
+  if (kv) {
+    try {
+      const storedBytes = await kv.get(`REPORT_PDF:${safeFile}`, { type: "arrayBuffer" });
+      if (storedBytes && storedBytes.byteLength > 0) {
+        return new Response(storedBytes, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="${safeFile}"`,
+            "Cache-Control": "private, max-age=300"
+          }
+        });
+      }
+    } catch (_kvPdfErr) {}
+  }
+
+  if (env?.REPORTS_BUCKET_URL) {
+    try {
+      const baseBucket = String(env.REPORTS_BUCKET_URL).trim().replace(/\/+$/, "");
+      const upstream = await fetch(`${baseBucket}/${encodeURIComponent(safeFile)}`);
+      if (upstream.ok) {
+        const pdfBody = await upstream.arrayBuffer();
+        return new Response(pdfBody, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="${safeFile}"`,
+            "Cache-Control": "private, max-age=300"
+          }
+        });
+      }
+    } catch (_bucketErr) {}
+  }
+
+  return new Response(JSON.stringify({
+    error: "NOT_FOUND",
+    message: `El documento '${safeFile}' no está disponible en el repositorio configurado.`
+  }), {
+    status: 404,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 }
 
@@ -1226,6 +1379,7 @@ export default {
       const urlObj = new URL(request.url);
       const lowerPath = urlObj.pathname.toLowerCase();
       const configuredDefaultTenant = resolveConfiguredDefaultTenant(env);
+      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
 
       if (request.method === "GET" && (lowerPath === "/" || lowerPath === "")) {
         return new Response(
@@ -1259,6 +1413,14 @@ export default {
 
       const path = normalizeRoutePath(urlObj.pathname);
       const method = request.method;
+
+      if ((path === "/api/v1/evaluation" || path === "/v1/evaluation" || path === "/evaluation") && method === "POST") {
+        return await handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp);
+      }
+
+      if ((path === "/api/v1/report/pdf" || path === "/v1/report/pdf" || path === "/report/pdf") && method === "GET") {
+        return await handleReportPdfDownload(request, env, corsHeaders);
+      }
 
       if ((path === "/api/v1/forensics/manifest" || path === "/v1/forensics/manifest" || path === "/forensics/manifest") && method === "GET") {
         return await handleGetForensicsManifest(env, corsHeaders);
@@ -1346,10 +1508,193 @@ export default {
         });
       }
 
+      if ((path === "/api/v1/billing/checkout" || path === "/v1/billing/checkout" || path === "/billing/checkout") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const email = sanitizeEmail(body.email);
+        const companyName = String(body.companyName || "").trim();
+        const planId = sanitizePlanId(body.planId || PLAN_IDS.PROFESSIONAL_649);
+
+        if (!isValidEmail(email) || !companyName) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'email' y 'companyName' son obligatorios." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        const cleanTenant = normalizeTenantCode(
+          body.tenantId ||
+            `TNT_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20)}_${Date.now().toString(36).toUpperCase()}`
+        );
+        const priceMap = {
+          STARTER_199: env?.STRIPE_PRICE_STARTER,
+          COMPLIANCE_249: env?.STRIPE_PRICE_STARTER,
+          PROFESSIONAL_649: env?.STRIPE_PRICE_PRO,
+          ENTERPRISE_1500: env?.STRIPE_PRICE_ENTERPRISE,
+          ENTERPRISE_1990: env?.STRIPE_PRICE_ENTERPRISE
+        };
+        const stripePriceId = body.priceId || priceMap[planId] || env?.STRIPE_PRICE_PRO;
+        const consoleBaseUrl = env?.CONSOLE_BASE_URL || `${urlObj.origin}`;
+
+        if (!env?.STRIPE_SECRET_KEY || !stripePriceId) {
+          const licenseKey = await getOrCreateTenantLicenseKey(cleanTenant, env);
+          return new Response(JSON.stringify({
+            success: true,
+            simulated: true,
+            tenantId: cleanTenant,
+            planId,
+            licenseKey,
+            checkoutUrl: `${consoleBaseUrl}/?checkout=simulated&tenant=${cleanTenant}`,
+            message: "Stripe no configurado en entorno. Alta comercial completada en modo resiliente."
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const form = new URLSearchParams({
+          mode: "subscription",
+          customer_email: email,
+          allow_promotion_codes: "true",
+          success_url: body.successUrl || `${consoleBaseUrl}/?checkout=success&tenant=${cleanTenant}`,
+          cancel_url: body.cancelUrl || `${consoleBaseUrl}/?checkout=cancelled`,
+          "line_items[0][price]": stripePriceId,
+          "line_items[0][quantity]": "1",
+          "metadata[tenantId]": cleanTenant,
+          "metadata[companyName]": companyName,
+          "metadata[adminEmail]": email,
+          "metadata[planId]": planId,
+          "subscription_data[metadata][tenantId]": cleanTenant,
+          "subscription_data[metadata][planId]": planId
+        });
+
+        const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: form.toString()
+        });
+        const session = await stripeRes.json();
+
+        if (!stripeRes.ok) {
+          return new Response(JSON.stringify({
+            error: "STRIPE_SESSION_ERROR",
+            message: session.error?.message || "No se pudo iniciar la sesión de suscripción."
+          }), {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          tenantId: cleanTenant,
+          planId,
+          checkoutUrl: session.url,
+          sessionId: session.id
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const email = sanitizeEmail(body.email);
+          const companyName = String(body.companyName || body.company || "").trim();
+          const fullName = String(body.name || email.split("@")[0] || "Evaluador Sandbox").trim();
+          const rawPassword = String(body.password || "").trim();
+
+          if (!isValidEmail(email) || !companyName || rawPassword.length < 6) {
+            return new Response(JSON.stringify({
+              error: "BAD_REQUEST",
+              message: "Indica un 'email' válido, 'companyName' y una contraseña de al menos 6 caracteres."
+            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+
+          if (env?.DB) {
+            await ensureD1TablesExist(env.DB);
+            try {
+              const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
+              if (existingUser) {
+                return new Response(JSON.stringify({
+                  error: "EMAIL_ALREADY_REGISTERED",
+                  message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
+                }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+              }
+            } catch (_d1Ex) {}
+          }
+
+          const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
+          const maxSeats = sandboxEntitlements?.maxSeats || 2;
+          const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
+
+          const sandboxTenantId = normalizeTenantCode(
+            `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`
+          );
+          const passwordHash = await hashPasswordPbkdf2(rawPassword);
+          const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
+
+          if (env?.DB) {
+            try {
+              await env.DB.batch([
+                env.DB.prepare(
+                  "INSERT OR REPLACE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json) VALUES (?, ?, ?, 'ACTIVE', ?, NULL, ?)"
+                ).bind(sandboxTenantId, `${companyName} (Sandbox)`, PLAN_IDS.SANDBOX_FREE, monthlyQuota, sandboxConfig),
+                env.DB.prepare(
+                  "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
+                ).bind(email, passwordHash, fullName, sandboxTenantId)
+              ]);
+            } catch (_dbBatchErr) {}
+          }
+
+          const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
+          const auth = new AuthMiddleware(getJwtSecret(env), env);
+          const jwtToken = await auth.signToken({
+            sub: email,
+            email,
+            tenantId: sandboxTenantId,
+            role: "CISO_ADMIN",
+            planId: PLAN_IDS.SANDBOX_FREE
+          });
+
+          return new Response(JSON.stringify({
+            success: true,
+            mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
+            token: jwtToken,
+            expiresAt: null,
+            maxSeats,
+            monthlyQuota,
+            user: {
+              email,
+              name: fullName,
+              tenantName: sandboxTenantId,
+              tenantId: sandboxTenantId,
+              apiKey,
+              role: "CISO_ADMIN",
+              planId: PLAN_IDS.SANDBOX_FREE,
+              isVerified: true
+            }
+          }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        } catch (provisionErr) {
+          return new Response(JSON.stringify({
+            error: "SANDBOX_PROVISION_EXCEPTION",
+            message: provisionErr.message || "Error interno al aprovisionar el sandbox."
+          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      try {
+        if (typeof rateLimiter.check === "function") {
+          const rateResult = await rateLimiter.check(clientIp);
+          if (rateResult && rateResult.allowed === false) {
+            return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (_e) {}
+
       const authHeader = request.headers.get("Authorization") || "";
       const rawBearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
       const headerUser = sanitizeEmail(request.headers.get("x-saare-user") || urlObj.searchParams.get("user"));
-      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
 
       let identity = null;
       try {
@@ -1570,190 +1915,6 @@ export default {
           });
         }
       }
-
-      if ((path === "/api/v1/billing/checkout" || path === "/v1/billing/checkout" || path === "/billing/checkout") && method === "POST") {
-        const body = await request.json().catch(() => ({}));
-        const email = sanitizeEmail(body.email);
-        const companyName = String(body.companyName || "").trim();
-        const planId = sanitizePlanId(body.planId || PLAN_IDS.PROFESSIONAL_649);
-
-        if (!email || !companyName) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'email' y 'companyName' son obligatorios." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
-
-        const cleanTenant = normalizeTenantCode(
-          body.tenantId ||
-            `TNT_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20)}_${Date.now().toString(36).toUpperCase()}`
-        );
-        const priceMap = {
-          STARTER_199: env?.STRIPE_PRICE_STARTER,
-          COMPLIANCE_249: env?.STRIPE_PRICE_STARTER,
-          PROFESSIONAL_649: env?.STRIPE_PRICE_PRO,
-          ENTERPRISE_1500: env?.STRIPE_PRICE_ENTERPRISE,
-          ENTERPRISE_1990: env?.STRIPE_PRICE_ENTERPRISE
-        };
-        const stripePriceId = body.priceId || priceMap[planId] || env?.STRIPE_PRICE_PRO;
-        const consoleBaseUrl = env?.CONSOLE_BASE_URL || `${urlObj.origin}`;
-
-        if (!env?.STRIPE_SECRET_KEY || !stripePriceId) {
-          const licenseKey = await getOrCreateTenantLicenseKey(cleanTenant, env);
-          return new Response(JSON.stringify({
-            success: true,
-            simulated: true,
-            tenantId: cleanTenant,
-            planId,
-            licenseKey,
-            checkoutUrl: `${consoleBaseUrl}/?checkout=simulated&tenant=${cleanTenant}`,
-            message: "Stripe no configurado en entorno. Alta comercial completada en modo resiliente."
-          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-
-        const form = new URLSearchParams({
-          mode: "subscription",
-          customer_email: email,
-          allow_promotion_codes: "true",
-          success_url: body.successUrl || `${consoleBaseUrl}/?checkout=success&tenant=${cleanTenant}`,
-          cancel_url: body.cancelUrl || `${consoleBaseUrl}/?checkout=cancelled`,
-          "line_items[0][price]": stripePriceId,
-          "line_items[0][quantity]": "1",
-          "metadata[tenantId]": cleanTenant,
-          "metadata[companyName]": companyName,
-          "metadata[adminEmail]": email,
-          "metadata[planId]": planId,
-          "subscription_data[metadata][tenantId]": cleanTenant,
-          "subscription_data[metadata][planId]": planId
-        });
-
-        const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: form.toString()
-        });
-        const session = await stripeRes.json();
-
-        if (!stripeRes.ok) {
-          return new Response(JSON.stringify({
-            error: "STRIPE_SESSION_ERROR",
-            message: session.error?.message || "No se pudo iniciar la sesión de suscripción."
-          }), {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
-
-        return new Response(JSON.stringify({
-          success: true,
-          tenantId: cleanTenant,
-          planId,
-          checkoutUrl: session.url,
-          sessionId: session.id
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
-        try {
-          const body = await request.json().catch(() => ({}));
-          const email = sanitizeEmail(body.email);
-          const companyName = String(body.companyName || body.company || "").trim();
-          const fullName = String(body.name || email.split("@")[0] || "Evaluador Sandbox").trim();
-          const rawPassword = String(body.password || "").trim();
-
-          if (!email || !companyName || rawPassword.length < 6) {
-            return new Response(JSON.stringify({
-              error: "BAD_REQUEST",
-              message: "Indica 'email', 'companyName' y una contraseña de al menos 6 caracteres."
-            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-
-          if (env?.DB) {
-            await ensureD1TablesExist(env.DB);
-            try {
-              const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
-              if (existingUser) {
-                return new Response(JSON.stringify({
-                  error: "EMAIL_ALREADY_REGISTERED",
-                  message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
-                }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-              }
-            } catch (_d1Ex) {}
-          }
-
-          const sandboxEntitlements = getPlanEntitlements(PLAN_IDS.SANDBOX_FREE);
-          const maxSeats = sandboxEntitlements?.maxSeats || 2;
-          const monthlyQuota = sandboxEntitlements?.monthlyVerdicts || 1000;
-
-          const sandboxTenantId = normalizeTenantCode(
-            `SBX_${companyName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 18)}_${Date.now().toString(36).toUpperCase()}`
-          );
-          const passwordHash = await hashPasswordPbkdf2(rawPassword);
-          const sandboxConfig = JSON.stringify({ isSandbox: true, isPerpetual: true, maxSeats });
-
-          if (env?.DB) {
-            try {
-              await env.DB.batch([
-                env.DB.prepare(
-                  "INSERT OR REPLACE INTO tenants (tenant_id, name, plan_id, status, quota, expires_at, config_json) VALUES (?, ?, ?, 'ACTIVE', ?, NULL, ?)"
-                ).bind(sandboxTenantId, `${companyName} (Sandbox)`, PLAN_IDS.SANDBOX_FREE, monthlyQuota, sandboxConfig),
-                env.DB.prepare(
-                  "INSERT OR REPLACE INTO users (email, password_hash, name, company, role, is_verified) VALUES (?, ?, ?, ?, 'CISO_ADMIN', 1)"
-                ).bind(email, passwordHash, fullName, sandboxTenantId)
-              ]);
-            } catch (_dbBatchErr) {}
-          }
-
-          const apiKey = await getOrCreateTenantLicenseKey(sandboxTenantId, env);
-          const auth = new AuthMiddleware(getJwtSecret(env), env);
-          const jwtToken = await auth.signToken({
-            sub: email,
-            email,
-            tenantId: sandboxTenantId,
-            role: "CISO_ADMIN",
-            planId: PLAN_IDS.SANDBOX_FREE
-          });
-
-          return new Response(JSON.stringify({
-            success: true,
-            mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
-            token: jwtToken,
-            expiresAt: null,
-            maxSeats,
-            monthlyQuota,
-            user: {
-              email,
-              name: fullName,
-              tenantName: sandboxTenantId,
-              tenantId: sandboxTenantId,
-              apiKey,
-              role: "CISO_ADMIN",
-              planId: PLAN_IDS.SANDBOX_FREE,
-              isVerified: true
-            }
-          }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        } catch (provisionErr) {
-          return new Response(JSON.stringify({
-            error: "SANDBOX_PROVISION_EXCEPTION",
-            message: provisionErr.message || "Error interno al aprovisionar el sandbox."
-          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-      }
-
-      try {
-        if (typeof rateLimiter.check === "function") {
-          const rateResult = await rateLimiter.check(tenantId || clientIp);
-          if (rateResult && rateResult.allowed === false) {
-            return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
-              status: 429,
-              headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
-          }
-        }
-      } catch (_e) {}
 
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
@@ -1988,8 +2149,8 @@ export default {
         }
 
         const evidenceHash = String(body.evidence_hash || "").trim();
-        if (!evidenceHash) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio." }), {
+        if (!evidenceHash || evidenceHash.length > 256) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio y debe tener un formato válido." }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
@@ -2318,8 +2479,8 @@ export default {
         const assignName = body.name || cleanAssignEmail.split("@")[0];
         const rawAssignPassword = String(body.password || "").trim();
 
-        if (!cleanAssignEmail) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio." }), {
+        if (!isValidEmail(cleanAssignEmail)) {
+          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio y debe ser válido." }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
@@ -3081,10 +3242,13 @@ export default {
           };
         }
 
-        const tenantName = normalizeTenantCode(
-          body.tenant || body.tenantId || userRecord.company || configuredDefaultTenant
-        );
         const userRole = isMasterLogin ? "CISO_ADMIN" : (userRecord.role || "DPO_GRC_LEVEL_2");
+        const requestedLoginTenant = normalizeTenantCode(body.tenant || body.tenantId || "");
+        const userBoundTenant = normalizeTenantCode(userRecord.company || "");
+        const tenantName = (isMasterLogin || userRole === "CISO_ADMIN")
+          ? (requestedLoginTenant || userBoundTenant || configuredDefaultTenant)
+          : (userBoundTenant || requestedLoginTenant || configuredDefaultTenant);
+
         const browserProfile = sanitizeProfileTag(body.browserProfile || request.headers.get("x-saare-browser-profile"), "BROWSER_PROFILE_UNSPECIFIED");
         const clientProfile = sanitizeProfileTag(body.clientProfile || request.headers.get("x-saare-client-profile"), "CLIENT_PROFILE_STANDARD");
 

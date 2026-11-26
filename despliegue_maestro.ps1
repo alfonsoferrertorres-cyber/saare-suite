@@ -29,7 +29,6 @@ if ((Get-Location).Path.EndsWith("control-plane")) {
     Set-Location ..
 }
 
-# 0.1 Validar autenticacion en Cloudflare CLI (Wrangler / API Token)
 Write-Host " -> Verificando permisos en Cloudflare..." -ForegroundColor Gray
 if (-not $env:CLOUDFLARE_API_TOKEN) {
     try {
@@ -45,7 +44,6 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
     Write-Host " -> Usando autenticacion mediante CLOUDFLARE_API_TOKEN env var." -ForegroundColor Green
 }
 
-# 0.2 Validar repositorio Git
 Write-Host " -> Verificando estado del repositorio Git..." -ForegroundColor Gray
 try {
     git rev-parse --is-inside-work-tree | Out-Null
@@ -62,7 +60,6 @@ Write-Host "`n==> [1/7] Resolviendo dependencias, empaquetando artefactos L7 y l
 pnpm install --no-frozen-lockfile
 Assert-LastExitCode -FailureMessage "Fallo al instalar dependencias con pnpm"
 
-# Limpieza de dist/ antiguos y temporales de Vite
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "saare-console/dist", "saare-suite/dist", "apps/saare-console/dist", "apps/saare-suite/dist", "control-plane/dist", "apps/control-plane/dist"
 Get-ChildItem -Recurse -Filter "vite.config.js.timestamp-*.mjs" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
@@ -290,7 +287,7 @@ if ($controlPlanePath) {
 # FASE 5: SINCRONIZACION CON REPOSITORIO GIT
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [5/7] Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
-git add .
+git add -A
 Assert-LastExitCode -FailureMessage "Fallo en git add"
 $gitStatus = git status --porcelain
 if ($gitStatus) {
