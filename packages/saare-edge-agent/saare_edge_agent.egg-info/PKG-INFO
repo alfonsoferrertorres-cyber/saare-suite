@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: saare-edge-agent
+Version: 1.0.0
+Summary: Agente Perimetral L7 Stateless y Motor de Desintoxicación Semántica S.A.A.R.E.
+Requires-Python: >=3.9

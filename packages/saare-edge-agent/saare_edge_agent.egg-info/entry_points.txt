@@ -1,0 +1,2 @@
+[console_scripts]
+saare-agent = saare_framework:main

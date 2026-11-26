@@ -9,7 +9,8 @@ param(
     [switch]$SkipSmokeTests,
     [switch]$SkipGitPush,
     [switch]$SkipNativeDeps,
-    [switch]$SkipPythonDeps
+    [switch]$SkipPythonDeps,
+    [switch]$SkipPackageInstall
 )
 
 $ErrorActionPreference = "Stop"
@@ -112,7 +113,6 @@ function Install-SidecarPythonDependencies {
             python -m pip install --upgrade -r $RequirementsFile
         }
         Assert-LastExitCode -FailureMessage "Fallo al instalar requirements.txt"
-        return
     }
 
     if ($PyprojectFile -and (Test-Path $PyprojectFile)) {
@@ -145,7 +145,20 @@ for d in deps:
             }
             Assert-LastExitCode -FailureMessage "Fallo al instalar dependencias de pyproject.toml"
         } else {
-            Write-Host " -> No se declararon dependencias en [project].dependencies dentro de pyproject.toml; se omite el build de wheel del directorio flat-layout." -ForegroundColor DarkGray
+            Write-Host " -> Sin dependencias adicionales en [project].dependencies." -ForegroundColor DarkGray
+        }
+
+        if (-not $SkipPackageInstall) {
+            Write-Host " -> Instalando paquete Python local $SidecarDir..." -ForegroundColor Gray
+            if (Get-Command "uv" -ErrorAction SilentlyContinue) {
+                uv pip install --system --no-build-isolation --no-deps $SidecarDir
+            } else {
+                python -m pip install --upgrade --no-build-isolation --no-deps $SidecarDir
+            }
+            Assert-LastExitCode -FailureMessage "Fallo al instalar el paquete Python $SidecarDir"
+            Write-Host " -> [OK] Paquete $SidecarDir instalado." -ForegroundColor Green
+        } else {
+            Write-Host " -> Instalacion del paquete local omitida por parametro (-SkipPackageInstall)." -ForegroundColor Yellow
         }
     }
 }
@@ -312,9 +325,9 @@ if ($sidecarSrc) {
         $pyprojectFile = Join-Path $sidecarSrc "pyproject.toml"
 
         if ((Test-Path $reqFile) -or (Test-Path $pyprojectFile)) {
-            Write-Host " -> Instalando librerias Python para el sidecar ($sidecarSrc)..." -ForegroundColor Gray
+            Write-Host " -> Instalando librerias y paquete Python para el sidecar ($sidecarSrc)..." -ForegroundColor Gray
             Install-SidecarPythonDependencies -SidecarDir $sidecarSrc -RequirementsFile $reqFile -PyprojectFile $pyprojectFile
-            Write-Host " -> [OK] Librerias Python del sidecar listas." -ForegroundColor Green
+            Write-Host " -> [OK] Entorno Python del sidecar listo." -ForegroundColor Green
         } else {
             Write-Host " -> Sin requirements.txt ni pyproject.toml en $sidecarSrc; se omite instalacion de paquetes Python." -ForegroundColor DarkGray
         }
