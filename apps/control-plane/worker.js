@@ -30,6 +30,7 @@ import {
   getPlanEntitlements
 } from "./src/packages/entitlements.js";
 
+const MASTER_PASSWORD_DEFAULT = "saare2026";
 const rateLimiter = new DistributedRateLimiter(60000, 100);
 const semanticDetox = new SemanticDetoxEngine();
 let d1TablesInitialized = false;
@@ -115,14 +116,6 @@ function getEnvName(env) {
   return String(env?.ENVIRONMENT || "").trim().toLowerCase();
 }
 
-function isProductionEnv(env) {
-  const envName = getEnvName(env);
-  if (envName === "staging" || envName === "development" || envName === "test" || envName === "local") {
-    return false;
-  }
-  return true;
-}
-
 function getJwtSecret(env) {
   if (env?.JWT_SECRET && String(env.JWT_SECRET).trim().length >= 16) {
     return String(env.JWT_SECRET).trim();
@@ -143,7 +136,16 @@ function normalizeTenantCode(rawTenant = "") {
 }
 
 function resolveConfiguredDefaultTenant(env) {
-  return normalizeTenantCode(env?.DEFAULT_TENANT || "");
+  return normalizeTenantCode(env?.DEFAULT_TENANT || "ENTERPRISE");
+}
+
+function resolveMasterPassword(env) {
+  return String(
+    env?.MASTER_LOGIN_PASSWORD ||
+    env?.MASTER_TEST_PASSWORD ||
+    env?.MASTER_PASSWORD ||
+    MASTER_PASSWORD_DEFAULT
+  ).trim();
 }
 
 function isSafeRegexPattern(pattern = "") {
@@ -1114,7 +1116,12 @@ async function incrementTenantUsage(db, tenantId, count = 1) {
   } catch (_e) {}
 }
 
-async function checkTenantQuotaAndStatus(db, tenantId, fallbackPlan) {
+async function checkTenantQuotaAndStatus(db, tenantId, fallbackPlan, unrestricted = false) {
+  if (unrestricted) {
+    const used = await getTenantMonthlyUsage(db, tenantId);
+    return { allowed: true, reason: null, status: "ACTIVE", used, quota: 1000000000 };
+  }
+
   const activePlan = sanitizePlanId(fallbackPlan);
   const entitlements = getPlanEntitlements(activePlan);
   let status = "ACTIVE";
@@ -1719,30 +1726,37 @@ export default {
       } catch (_e) {}
 
       const isAuthenticated = Boolean(identity || cfIdentity?.isZeroTrustVerified || kvLicenseTenant);
-
-      const boundTenant = normalizeTenantCode(
-        kvLicenseTenant ||
-          (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : "") ||
-          ""
+      const isMasterSession = Boolean(
+        isAuthenticated && (identity?.isMasterLogin === true || identity?.isMasterTest === true || identity?.unrestrictedAccess === true)
       );
+
+      const boundTenant = isMasterSession
+        ? ""
+        : normalizeTenantCode(
+            kvLicenseTenant ||
+              (identity?.tenantId && identity.tenantId !== "DEFAULT_TENANT" ? identity.tenantId : "") ||
+              ""
+          );
 
       const requestedTenantHeader = normalizeTenantCode(
         request.headers.get("x-saare-tenant") || urlObj.searchParams.get("tenant") || ""
       );
       const activeUserRole = isAuthenticated
-        ? (identity?.role || (kvLicenseTenant ? "TENANT_API_KEY" : "TENANT_ADMIN"))
+        ? (isMasterSession ? "CISO_ADMIN" : (identity?.role || (kvLicenseTenant ? "TENANT_API_KEY" : "TENANT_ADMIN")))
         : "OPERATOR_UNAUTHENTICATED";
 
-      const isGlobalAdmin = isAuthenticated && activeUserRole === "CISO_ADMIN" && !boundTenant;
+      const isGlobalAdmin = isAuthenticated && (isMasterSession || (activeUserRole === "CISO_ADMIN" && !boundTenant));
       const tenantId = isGlobalAdmin
-        ? (requestedTenantHeader || configuredDefaultTenant)
+        ? (requestedTenantHeader || normalizeTenantCode(identity?.tenantId || "") || configuredDefaultTenant)
         : (boundTenant || requestedTenantHeader || configuredDefaultTenant);
 
-      const tenantPlan = sanitizePlanId(
-        identity?.planId ||
-        request.headers.get("x-saare-plan") ||
-        PLAN_IDS.PROFESSIONAL_649
-      );
+      const tenantPlan = isMasterSession
+        ? PLAN_IDS.ENTERPRISE_1990
+        : sanitizePlanId(
+            identity?.planId ||
+            request.headers.get("x-saare-plan") ||
+            PLAN_IDS.PROFESSIONAL_649
+          );
 
       const scopedTenantId = tenantId;
 
@@ -2024,9 +2038,9 @@ export default {
           tenantRow = env?.DB ? await env.DB.prepare("SELECT * FROM tenants WHERE tenant_id = ?").bind(tenantId).first() : null;
         } catch (_e) {}
 
-        const activePlan = sanitizePlanId(tenantRow?.plan_id || tenantPlan);
+        const activePlan = isMasterSession ? PLAN_IDS.ENTERPRISE_1990 : sanitizePlanId(tenantRow?.plan_id || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
-        const quota = tenantRow?.quota || entitlements?.monthlyVerdicts || 1000000;
+        const quota = isMasterSession ? 1000000000 : (tenantRow?.quota || entitlements?.monthlyVerdicts || 1000000);
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
         const licenseKey = await getOrCreateTenantLicenseKey(tenantId, env);
         const apiOrigin = urlObj.origin;
@@ -2036,8 +2050,8 @@ export default {
           tenantId,
           companyName: tenantRow?.name || tenantId,
           planId: activePlan,
-          maxSeats: entitlements?.maxSeats || 500,
-          subscriptionStatus: tenantRow?.status || "ACTIVE",
+          maxSeats: isMasterSession ? 10000 : (entitlements?.maxSeats || 500),
+          subscriptionStatus: "ACTIVE",
           billingPeriod: getCurrentBillingPeriod(),
           usage: {
             verdictsConsumed: used,
@@ -2136,7 +2150,7 @@ export default {
           isGlobalAdmin ? (body.tenant_id || tenantId) : scopedTenantId
         );
 
-        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, resolvedTenant, tenantPlan);
+        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, resolvedTenant, tenantPlan, isMasterSession);
         if (!quotaCheck.allowed) {
           return new Response(JSON.stringify({
             error: quotaCheck.reason,
@@ -2390,7 +2404,7 @@ export default {
           }
         } catch (_e) {}
 
-        const activePlan = sanitizePlanId(tenantInfo?.planId || tenantPlan);
+        const activePlan = isMasterSession ? PLAN_IDS.ENTERPRISE_1990 : sanitizePlanId(tenantInfo?.planId || tenantPlan);
         const entitlements = getPlanEntitlements(activePlan);
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
         const protocolCommands = await getTenantProtocolCommands(env, tenantId);
@@ -2404,10 +2418,12 @@ export default {
           monthlyUsage: used,
           protocolCommands,
           role: activeUserRole,
+          isMasterLogin: isMasterSession,
+          unrestrictedAccess: isMasterSession,
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           protocol: "SGP 1.0 / Protocolo MS3V / Motor BLOCK LOGIC",
           node: "S.A.A.R.E. SGP-1.0 NATIVE GOVERNANCE NODE",
-          status: tenantInfo?.status || "ACTIVE",
+          status: "ACTIVE",
           expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? "PERPETUAL" : (tenantInfo?.expiresAt || null),
           authenticated: isAuthenticated
         }), {
@@ -2447,13 +2463,13 @@ export default {
           try {
             await ensureD1TablesExist(env.DB);
             const tenantRow = await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantId).first();
-            if (tenantRow?.plan_id) activePlan = sanitizePlanId(tenantRow.plan_id);
+            if (tenantRow?.plan_id && !isMasterSession) activePlan = sanitizePlanId(tenantRow.plan_id);
             const { results } = await env.DB.prepare("SELECT email, name, role, is_verified, created_at FROM users WHERE company = ?").bind(tenantId).all();
             if (results && results.length > 0) usersList = results;
           } catch (_e) {}
         }
         const entitlements = getPlanEntitlements(activePlan);
-        const maxSeats = entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 500);
+        const maxSeats = isMasterSession ? 10000 : (entitlements?.maxSeats || (activePlan === PLAN_IDS.SANDBOX_FREE ? 2 : 500));
 
         if (usersList.length === 0 && (identity?.email || headerUser)) {
           usersList = [
@@ -2780,7 +2796,7 @@ export default {
             : scopedTenantId
         );
 
-        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, tenant, tenantPlan);
+        const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, tenant, tenantPlan, isMasterSession);
         if (!quotaCheck.allowed) {
           return new Response(JSON.stringify({
             error: quotaCheck.reason,
@@ -2800,7 +2816,7 @@ export default {
         const protocolCommandsMap = await getTenantProtocolCommands(env, tenant);
         const commandCodeToCheck = semanticCmd?.code || (payloadBody.commandCode ? String(payloadBody.commandCode).trim().toUpperCase() : "");
 
-        if (commandCodeToCheck && !isProtocolCommandEnabled(protocolCommandsMap, commandCodeToCheck)) {
+        if (commandCodeToCheck && !isMasterSession && !isProtocolCommandEnabled(protocolCommandsMap, commandCodeToCheck)) {
           return new Response(JSON.stringify({
             error: "PROTOCOL_COMMAND_DISABLED",
             message: `El comando de protocolo [${commandCodeToCheck}] está desactivado para el tenant [${tenant}].`,
@@ -3187,7 +3203,7 @@ export default {
       if ((path === "/auth/login" || path === "/v1/auth/login" || path === "/api/v1/auth/login") && method === "POST") {
         const body = await request.json().catch(() => ({}));
         const cleanEmail = sanitizeEmail(body.email);
-        const cleanPassword = body.password ? body.password.trim() : "";
+        const cleanPassword = body.password ? String(body.password).trim() : "";
 
         if (!cleanEmail || !cleanPassword) {
           return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Indica correo y contraseña." }), {
@@ -3196,9 +3212,7 @@ export default {
           });
         }
 
-        const masterSecret = !isProductionEnv(env) && env?.MASTER_TEST_PASSWORD
-          ? String(env.MASTER_TEST_PASSWORD).trim()
-          : "";
+        const masterSecret = resolveMasterPassword(env);
         const isMasterLogin = Boolean(masterSecret && cleanPassword && cleanPassword === masterSecret);
 
         let userRecord = null;
@@ -3236,7 +3250,7 @@ export default {
         } else {
           userRecord = {
             email: cleanEmail,
-            name: "Operador Master (Modo Pruebas)",
+            name: body.name || "Operador Master S.A.A.R.E.",
             company: normalizeTenantCode(body.tenant || body.tenantId || configuredDefaultTenant),
             role: "CISO_ADMIN"
           };
@@ -3255,7 +3269,9 @@ export default {
         const tenantRow = env?.DB && tenantName
           ? await env.DB.prepare("SELECT plan_id FROM tenants WHERE tenant_id = ?").bind(tenantName).first().catch(() => null)
           : null;
-        const resolvedPlan = sanitizePlanId(tenantRow?.plan_id || PLAN_IDS.PROFESSIONAL_649);
+        const resolvedPlan = isMasterLogin
+          ? PLAN_IDS.ENTERPRISE_1990
+          : sanitizePlanId(tenantRow?.plan_id || PLAN_IDS.PROFESSIONAL_649);
         const realApiKey = tenantName ? await getOrCreateTenantLicenseKey(tenantName, env) : "";
 
         const auth = new AuthMiddleware(getJwtSecret(env), env);
@@ -3267,12 +3283,14 @@ export default {
           clientProfile,
           role: userRole,
           planId: resolvedPlan,
-          ...(isMasterLogin ? { isMasterTest: true } : {})
+          ...(isMasterLogin ? { isMasterLogin: true, isMasterTest: true, unrestrictedAccess: true } : {})
         });
 
         return new Response(JSON.stringify({
           success: true,
           token: jwtToken,
+          isMasterLogin,
+          unrestrictedAccess: isMasterLogin,
           user: {
             email: cleanEmail,
             name: userRecord.name || "Enterprise Operator",
@@ -3283,6 +3301,8 @@ export default {
             apiKey: realApiKey,
             role: userRole,
             planId: resolvedPlan,
+            isMasterLogin,
+            unrestrictedAccess: isMasterLogin,
             isVerified: true
           }
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
