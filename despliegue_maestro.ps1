@@ -246,7 +246,6 @@ if ($controlPlanePath) {
             Write-Host "[ADVERTENCIA] No se encontro el archivo schema.sql. Omitiendo migracion D1." -ForegroundColor DarkYellow
         }
 
-        # Evita error 'A non-wrangler worker-configuration.d.ts already exists'
         $dTsFile = "worker-configuration.d.ts"
         if (Test-Path $dTsFile) {
             $contentCheck = Get-Content -Path $dTsFile -Raw -ErrorAction SilentlyContinue
@@ -261,7 +260,6 @@ if ($controlPlanePath) {
         Write-Host " -> Publicando Worker a Cloudflare (saare-control-plane-prod)..." -ForegroundColor Gray
         Invoke-NativeCommand -Command "npx wrangler deploy --env production" -FailureMessage "Fallo al desplegar el Worker"
 
-        # Gestion de secreto temporal MASTER_TEST_PASSWORD en produccion
         if ($RemoveMasterTestPassword) {
             Write-Host " -> Eliminando secreto MASTER_TEST_PASSWORD en produccion..." -ForegroundColor Gray
             Invoke-NativeCommand -Command "npx wrangler secret delete MASTER_TEST_PASSWORD --env production --force" -FailureMessage "Fallo al eliminar MASTER_TEST_PASSWORD"
@@ -311,8 +309,8 @@ Write-Host "`n==> [6/7] Verificando salud del entorno de Produccion..." -Foregro
 Start-Sleep -Seconds 3
 
 $apiEndpoints = @(
-    "[https://api.saare.es/health](https://api.saare.es/health)",
-    "[https://api.saare.es/api/v1/health](https://api.saare.es/api/v1/health)"
+    "https://api.saare.es/health",
+    "https://api.saare.es/api/v1/health"
 )
 
 $apiOnline = $false
@@ -332,8 +330,8 @@ if (-not $apiOnline) {
 }
 
 $frontendsToTest = @(
-    @{ Name = "Consola GRC (saare-console)"; Url = "[https://console.saare.es](https://console.saare.es)" },
-    @{ Name = "Landing Comercial (saare-suite)"; Url = "[https://saare.es](https://saare.es)" }
+    @{ Name = "Consola GRC (saare-console)"; Url = "https://console.saare.es" },
+    @{ Name = "Landing Comercial (saare-suite)"; Url = "https://saare.es" }
 )
 
 foreach ($fe in $frontendsToTest) {
@@ -350,8 +348,8 @@ foreach ($fe in $frontendsToTest) {
 }
 
 $artifactsToTest = @(
-    @{ Name = "Extension L7 (.ZIP)"; Url = "[https://console.saare.es/deploy/saare_l7_proxy_extension.zip](https://console.saare.es/deploy/saare_l7_proxy_extension.zip)" },
-    @{ Name = "Agente Nativo Python Sidecar (.ZIP)"; Url = "[https://console.saare.es/deploy/saare_native_sidecar.zip](https://console.saare.es/deploy/saare_native_sidecar.zip)" }
+    @{ Name = "Extension L7 (.ZIP)"; Url = "https://console.saare.es/deploy/saare_l7_proxy_extension.zip" },
+    @{ Name = "Agente Nativo Python Sidecar (.ZIP)"; Url = "https://console.saare.es/deploy/saare_native_sidecar.zip" }
 )
 
 foreach ($art in $artifactsToTest) {
@@ -370,11 +368,11 @@ foreach ($art in $artifactsToTest) {
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [7/7] Ejecutando verificaciones de CORS y conectividad..." -ForegroundColor Cyan
 
-$chatEndpoint = "[https://api.saare.es/v1/chat/completions](https://api.saare.es/v1/chat/completions)"
+$chatEndpoint = "https://api.saare.es/v1/chat/completions"
 $testFailureCount = 0
 $corsOrigins = @(
-    "[https://console.saare.es](https://console.saare.es)",
-    "[https://saare.es](https://saare.es)"
+    "https://console.saare.es",
+    "https://saare.es"
 )
 
 foreach ($origin in $corsOrigins) {
