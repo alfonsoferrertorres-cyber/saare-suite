@@ -41,6 +41,10 @@ const EMPIRICAL_ROOT_HASH_PREFIX = "9a364b25d96058d4f618f3d967836872";
 const MAHALANOBIS_K_MIN = 5;
 const MAHALANOBIS_DELTA_THRESHOLD = 0.0001; // 0.01% divergencia estructural (0.0100%)
 
+const MERKLE_BATCH_THRESHOLD = 1000;
+const MERKLE_BATCH_MAX_PER_RUN = 500;
+const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+
 /**
  * Serializador Canónico RFC 8785 (JCS - JSON Canonicalization Scheme)
  * Ordena claves recursivamente y normaliza números/valores de forma determinista.
@@ -104,7 +108,7 @@ function evaluateMahalanobisL7(rawPrompt = "", rulesTriggered = [], hasMediaAtta
   const quasiIdDensity = Number(x[4]);
   const estimatedKAnonymity = Math.max(1, Math.round(10 / (1 + quasiIdDensity)));
   const kAnonymitySatisfied = quasiIdDensity === 0 ? true : estimatedKAnonymity >= MAHALANOBIS_K_MIN;
-  const divergenceDelta = Number((distance * 0.00005).toFixed(6)); // Fracción decimal (0.0001 = 0.01%)
+  const divergenceDelta = Number((distance * 0.00005).toFixed(6));
   const triggerGateFired = divergenceDelta > MAHALANOBIS_DELTA_THRESHOLD || (!kAnonymitySatisfied && quasiIdDensity > 0);
 
   return {
@@ -297,6 +301,43 @@ function sanitizeProfileTag(rawValue, fallback = "DEFAULT_PROFILE") {
   if (!rawValue || typeof rawValue !== "string") return fallback;
   const cleaned = rawValue.trim().replace(/[^\w.@:-]+/g, "_").slice(0, 80);
   return cleaned || fallback;
+}
+
+function jsonResponse(payload, status = 200, corsHeaders = {}, extraHeaders = {}) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      ...extraHeaders
+    }
+  });
+}
+
+function tenantRequiredResponse(corsHeaders, message = null) {
+  return jsonResponse({
+    error: "TENANT_REQUIRED",
+    message: message || "Se requiere la cabecera 'x-saare-tenant' o un identificador de tenant válido.",
+    success: false,
+    decision: "DENY",
+    verdict: "RECHAZADO"
+  }, 400, corsHeaders, {
+    "X-SAARE-Verdict": "DENY"
+  });
+}
+
+function tenantConflictResponse(corsHeaders, headerTenant, bodyTenant, message = null) {
+  return jsonResponse({
+    error: "TENANT_MISMATCH",
+    message: message || `Conflicto de aislamiento multitenant: cabecera (${headerTenant || "NONE"}) vs cuerpo (${bodyTenant || "NONE"}).`,
+    success: false,
+    decision: "DENY",
+    verdict: "RECHAZADO",
+    headerTenant: headerTenant || null,
+    bodyTenant: bodyTenant || null
+  }, 403, corsHeaders, {
+    "X-SAARE-Verdict": "DENY"
+  });
 }
 
 function resolveClientProfileContext(request, payloadBody = {}, identity = null, cfIdentity = null) {
@@ -710,10 +751,6 @@ function buildSgp1ProofContract({ nodeId, verdict, structuralDelta, ms3vHash, pr
   };
 }
 
-const MERKLE_BATCH_THRESHOLD = 1000;
-const MERKLE_BATCH_MAX_PER_RUN = 500;
-const MERKLE_TIME_THRESHOLD_MS = 6 * 60 * 60 * 1000;
-
 function parseSemanticCommand(promptText, env = {}, explicitCode = "") {
   const cleanExplicit = typeof explicitCode === "string" ? explicitCode.trim().toUpperCase() : "";
   const upper = typeof promptText === "string" ? promptText.toUpperCase() : "";
@@ -751,193 +788,182 @@ function parseSemanticCommand(promptText, env = {}, explicitCode = "") {
   return null;
 }
 
+const D1_CREATE_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS consolidated_traces (
+    trace_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    user_email TEXT NOT NULL DEFAULT '',
+    final_evaluator_node TEXT NOT NULL DEFAULT 'MS3V_BLOCK_LOGIC_PEP_L7',
+    decision TEXT NOT NULL DEFAULT 'ALLOW',
+    final_decision TEXT NOT NULL DEFAULT 'ALLOW',
+    final_action TEXT NOT NULL DEFAULT 'ALLOWED',
+    verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+    risk_score REAL NOT NULL DEFAULT 0,
+    execution_latency_ms REAL NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL DEFAULT '',
+    sanitized_payload TEXT NOT NULL DEFAULT '',
+    ms3v_hash TEXT NOT NULL DEFAULT '',
+    ms3v_timestamp_ns TEXT NOT NULL DEFAULT '',
+    anchored INTEGER NOT NULL DEFAULT 0,
+    metadata_json TEXT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    status TEXT NOT NULL,
+    evidence_hash TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_id TEXT UNIQUE NOT NULL,
+    trace_id TEXT NOT NULL,
+    verdictId TEXT NOT NULL,
+    decision TEXT NOT NULL DEFAULT 'ALLOW',
+    verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+    user TEXT NOT NULL DEFAULT 'anonymous',
+    tenant TEXT NOT NULL DEFAULT '',
+    prompt TEXT NOT NULL DEFAULT '',
+    responseOutput TEXT NOT NULL DEFAULT '',
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS tenants (
+    tenant_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    plan_id TEXT NOT NULL DEFAULT 'ENTERPRISE_1990',
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    quota INTEGER NOT NULL DEFAULT 1000000,
+    expires_at TEXT,
+    config_json TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS users (
+    email TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    company TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
+    is_verified INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS merkle_anchors (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    merkle_root TEXT NOT NULL,
+    batch_size INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS forensic_batches (
+    batch_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    merkle_root TEXT NOT NULL,
+    leaf_count INTEGER NOT NULL DEFAULT 0,
+    is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
+    assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
+    tsa_reference TEXT DEFAULT '',
+    tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY',
+    tsr_base64 TEXT DEFAULT '',
+    batch_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS custom_rules (
+    id TEXT NOT NULL,
+    tenant_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    action TEXT NOT NULL DEFAULT 'BLOCK',
+    priority INTEGER NOT NULL DEFAULT 100,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    description TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (tenant_id, id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS tenant_rule_settings (
+    tenant_id TEXT PRIMARY KEY,
+    rules_enabled INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS tenant_protocol_settings (
+    tenant_id TEXT PRIMARY KEY,
+    commands_json TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS tenant_usage (
+    tenant_id TEXT NOT NULL,
+    billing_period TEXT NOT NULL,
+    verdict_count INTEGER DEFAULT 0,
+    PRIMARY KEY (tenant_id, billing_period)
+  )`,
+  `CREATE TABLE IF NOT EXISTS tenant_soa_iso42001 (
+    tenant_id TEXT PRIMARY KEY,
+    role_type TEXT NOT NULL,
+    ai_act_scope TEXT NOT NULL,
+    organization_name TEXT NOT NULL,
+    approver_email TEXT NOT NULL DEFAULT '',
+    controls_json TEXT NOT NULL,
+    compiled_hash TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS evaluation_requests (
+    request_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'DEFAULT',
+    trace_id TEXT,
+    work_email TEXT NOT NULL,
+    company TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT '',
+    ai_systems TEXT NOT NULL DEFAULT '',
+    interest TEXT NOT NULL DEFAULT '',
+    requirement TEXT NOT NULL DEFAULT '',
+    source_ip TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`
+];
+
 async function ensureD1TablesExist(db) {
   if (!db) return;
   if (d1TablesInitialized) return;
-  try {
-    await db.batch([
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS consolidated_traces (
-          trace_id TEXT PRIMARY KEY,
-          tenant_id TEXT NOT NULL,
-          user_email TEXT NOT NULL,
-          final_evaluator_node TEXT NOT NULL DEFAULT 'MS3V_BLOCK_LOGIC_PEP_L7',
-          final_decision TEXT NOT NULL DEFAULT 'ALLOW',
-          final_action TEXT NOT NULL DEFAULT 'ALLOWED',
-          execution_latency_ms REAL DEFAULT 0.0,
-          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-          created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          prompt TEXT NOT NULL DEFAULT '',
-          sanitized_payload TEXT DEFAULT '',
-          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-          anchored INTEGER DEFAULT 0,
-          ms3v_hash TEXT DEFAULT '',
-          ms3v_timestamp_ns TEXT DEFAULT ''
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS cpaas_audit_logs (
-          id TEXT PRIMARY KEY,
-          tenant_id TEXT NOT NULL,
-          provider TEXT NOT NULL,
-          message_id TEXT NOT NULL,
-          recipient TEXT NOT NULL,
-          status TEXT NOT NULL,
-          evidence_hash TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS runs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          evidence_id TEXT UNIQUE NOT NULL,
-          trace_id TEXT NOT NULL,
-          verdictId TEXT NOT NULL,
-          decision TEXT NOT NULL DEFAULT 'ALLOW',
-          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-          user TEXT NOT NULL DEFAULT 'anonymous',
-          tenant TEXT NOT NULL DEFAULT '',
-          prompt TEXT DEFAULT '',
-          responseOutput TEXT DEFAULT '',
-          payload_json TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS tenants (
-          tenant_id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          plan_id TEXT NOT NULL DEFAULT 'ENTERPRISE_1990',
-          status TEXT NOT NULL DEFAULT 'ACTIVE',
-          quota INTEGER NOT NULL DEFAULT 1000000,
-          expires_at TEXT,
-          config_json TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS users (
-          email TEXT PRIMARY KEY,
-          password_hash TEXT NOT NULL,
-          name TEXT NOT NULL,
-          company TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'CISO_ADMIN',
-          is_verified INTEGER NOT NULL DEFAULT 1,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS merkle_anchors (
-          id TEXT PRIMARY KEY,
-          tenant_id TEXT NOT NULL,
-          merkle_root TEXT NOT NULL,
-          batch_size INTEGER NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS forensic_batches (
-          batch_id TEXT PRIMARY KEY,
-          tenant_id TEXT NOT NULL,
-          merkle_root TEXT NOT NULL,
-          leaf_count INTEGER NOT NULL DEFAULT 0,
-          is_qualified_eidas INTEGER NOT NULL DEFAULT 0,
-          assurance_level TEXT NOT NULL DEFAULT 'LOCAL_INTEGRITY',
-          tsa_reference TEXT DEFAULT '',
-          tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY',
-          tsr_base64 TEXT DEFAULT '',
-          batch_json TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS custom_rules (
-          id TEXT NOT NULL,
-          tenant_id TEXT NOT NULL,
-          name TEXT NOT NULL,
-          pattern TEXT NOT NULL,
-          action TEXT NOT NULL DEFAULT 'BLOCK',
-          priority INTEGER NOT NULL DEFAULT 100,
-          enabled INTEGER NOT NULL DEFAULT 1,
-          description TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          PRIMARY KEY (tenant_id, id)
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS tenant_rule_settings (
-          tenant_id TEXT PRIMARY KEY,
-          rules_enabled INTEGER NOT NULL DEFAULT 1,
-          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS tenant_protocol_settings (
-          tenant_id TEXT PRIMARY KEY,
-          commands_json TEXT NOT NULL DEFAULT '{}',
-          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS tenant_usage (
-          tenant_id TEXT NOT NULL,
-          billing_period TEXT NOT NULL,
-          verdict_count INTEGER DEFAULT 0,
-          PRIMARY KEY (tenant_id, billing_period)
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS tenant_soa_iso42001 (
-          tenant_id TEXT PRIMARY KEY,
-          role_type TEXT NOT NULL,
-          ai_act_scope TEXT NOT NULL,
-          organization_name TEXT NOT NULL,
-          approver_email TEXT NOT NULL DEFAULT '',
-          controls_json TEXT NOT NULL,
-          compiled_hash TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `),
-      db.prepare(`
-        CREATE TABLE IF NOT EXISTS evaluation_requests (
-          request_id TEXT PRIMARY KEY,
-          work_email TEXT NOT NULL,
-          company TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT '',
-          ai_systems TEXT NOT NULL DEFAULT '',
-          interest TEXT NOT NULL DEFAULT '',
-          requirement TEXT NOT NULL DEFAULT '',
-          source_ip TEXT DEFAULT '',
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `)
-    ]);
+  let allSucceeded = true;
 
-    const alterStatements = [
-      "ALTER TABLE consolidated_traces ADD COLUMN ms3v_hash TEXT DEFAULT ''",
-      "ALTER TABLE consolidated_traces ADD COLUMN ms3v_timestamp_ns TEXT DEFAULT ''",
-      "ALTER TABLE forensic_batches ADD COLUMN tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY'",
-      "ALTER TABLE forensic_batches ADD COLUMN tsr_base64 TEXT DEFAULT ''",
-      "ALTER TABLE custom_rules ADD COLUMN action TEXT NOT NULL DEFAULT 'BLOCK'",
-      "ALTER TABLE custom_rules ADD COLUMN priority INTEGER NOT NULL DEFAULT 100",
-      "ALTER TABLE custom_rules ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1",
-      "ALTER TABLE custom_rules ADD COLUMN description TEXT",
-      "ALTER TABLE custom_rules ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))"
-    ];
-
-    for (const altSql of alterStatements) {
-      try {
-        await db.prepare(altSql).run();
-      } catch (_altErr) {
-        // Columna ya existente en esquemas previos
-      }
+  for (const createSql of D1_CREATE_STATEMENTS) {
+    try {
+      await db.prepare(createSql).run();
+    } catch (err) {
+      allSucceeded = false;
+      console.error("[ensureD1TablesExist] Error creando tabla:", err?.message || err);
     }
+  }
 
+  const alterStatements = [
+    "ALTER TABLE consolidated_traces ADD COLUMN ms3v_hash TEXT DEFAULT ''",
+    "ALTER TABLE consolidated_traces ADD COLUMN ms3v_timestamp_ns TEXT DEFAULT ''",
+    "ALTER TABLE forensic_batches ADD COLUMN tsa_status TEXT DEFAULT 'LOCAL_INTEGRITY'",
+    "ALTER TABLE forensic_batches ADD COLUMN tsr_base64 TEXT DEFAULT ''",
+    "ALTER TABLE custom_rules ADD COLUMN action TEXT NOT NULL DEFAULT 'BLOCK'",
+    "ALTER TABLE custom_rules ADD COLUMN priority INTEGER NOT NULL DEFAULT 100",
+    "ALTER TABLE custom_rules ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE custom_rules ADD COLUMN description TEXT",
+    "ALTER TABLE custom_rules ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))",
+    "ALTER TABLE evaluation_requests ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'DEFAULT'",
+    "ALTER TABLE evaluation_requests ADD COLUMN trace_id TEXT"
+  ];
+
+  for (const altSql of alterStatements) {
+    try {
+      await db.prepare(altSql).run();
+    } catch (_altErr) {
+      // Columna ya existente
+    }
+  }
+
+  if (allSucceeded) {
     d1TablesInitialized = true;
-  } catch (err) {
-    console.error("[ensureD1TablesExist] Error inicializando tablas D1:", err?.message || err);
-    d1TablesInitialized = false;
   }
 }
 
@@ -952,14 +978,7 @@ async function upsertUserRecord(db, { email, passwordHash, name, company, role =
       company = excluded.company,
       role = excluded.role,
       is_verified = excluded.is_verified
-  `).bind(
-    cleanEmail,
-    passwordHash,
-    name,
-    company,
-    role,
-    isVerified ? 1 : 0
-  ).run();
+  `).bind(cleanEmail, passwordHash, name, company, role, isVerified ? 1 : 0).run();
 }
 
 async function upsertTenantRecord(db, { tenantId, name, planId, status = "ACTIVE", quota = 1000000, expiresAt = null, configJson = null }) {
@@ -1024,15 +1043,13 @@ async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp)
   const aiSystems = String(body.aiSystems || body.systems || "").trim().slice(0, 80);
   const interest = String(body.interest || "Evaluación técnica").trim().slice(0, 120);
   const requirement = String(body.requirement || body.usecase || "").trim().slice(0, 4000);
+  const tenantId = normalizeTenantCode(body.tenantId || body.tenant_id || resolveConfiguredDefaultTenant(env) || "DEFAULT");
 
   if (!isValidEmail(workEmail) || !company) {
-    return new Response(JSON.stringify({
+    return jsonResponse({
       error: "BAD_REQUEST",
       message: "Se requieren un correo electrónico válido ('workEmail') y la organización ('company')."
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    }, 400, corsHeaders);
   }
 
   const headerReqId = String(request.headers.get("X-Request-ID") || "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
@@ -1044,9 +1061,10 @@ async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp)
       await ensureD1TablesExist(env.DB);
       await env.DB.prepare(`
         INSERT INTO evaluation_requests
-          (request_id, work_email, company, role, ai_systems, interest, requirement, source_ip, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (request_id, tenant_id, work_email, company, role, ai_systems, interest, requirement, source_ip, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(request_id) DO UPDATE SET
+          tenant_id = excluded.tenant_id,
           work_email = excluded.work_email,
           company = excluded.company,
           role = excluded.role,
@@ -1054,7 +1072,7 @@ async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp)
           interest = excluded.interest,
           requirement = excluded.requirement,
           source_ip = excluded.source_ip
-      `).bind(requestId, workEmail, company, role, aiSystems, interest, requirement, clientIp || "", createdAt).run();
+      `).bind(requestId, tenantId, workEmail, company, role, aiSystems, interest, requirement, clientIp || "", createdAt).run();
     } catch (dbErr) {
       console.error("[handleEvaluationRequest] Error guardando solicitud en D1:", dbErr?.message || dbErr);
     }
@@ -1068,6 +1086,7 @@ async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp)
           headers: { "Content-Type": "application/json", "X-Request-ID": requestId },
           body: canonicalizeRfc8785({
             requestId,
+            tenantId,
             workEmail,
             company,
             role,
@@ -1088,19 +1107,13 @@ async function handleEvaluationRequest(request, env, ctx, corsHeaders, clientIp)
     }
   }
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     success: true,
     requestId,
+    tenantId,
     status: "RECEIVED",
     createdAt
-  }), {
-    status: 201,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-      "X-Request-ID": requestId
-    }
-  });
+  }, 201, corsHeaders, { "X-Request-ID": requestId });
 }
 
 async function handleReportPdfDownload(request, env, corsHeaders) {
@@ -1109,13 +1122,10 @@ async function handleReportPdfDownload(request, env, corsHeaders) {
   const safeFile = /^[A-Za-z0-9._-]{1,120}\.pdf$/i.test(rawFile) ? rawFile : "";
 
   if (!safeFile) {
-    return new Response(JSON.stringify({
+    return jsonResponse({
       error: "BAD_REQUEST",
       message: "Parámetro 'file' inválido. Debe indicar un nombre de archivo PDF válido."
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    }, 400, corsHeaders);
   }
 
   const kv = getKvBinding(env);
@@ -1159,13 +1169,10 @@ async function handleReportPdfDownload(request, env, corsHeaders) {
     }
   }
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     error: "NOT_FOUND",
     message: `El documento '${safeFile}' no está disponible en el repositorio configurado.`
-  }), {
-    status: 404,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
+  }, 404, corsHeaders);
 }
 
 async function getTenantRulesEnabled(env, tenantId) {
@@ -1478,29 +1485,22 @@ function getTitularNif(env) {
 }
 
 function unauthorizedResponse(corsHeaders, message = "Autenticación requerida.") {
-  return new Response(JSON.stringify({ error: "UNAUTHORIZED", message }), {
-    status: 401,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
+  return jsonResponse({ error: "UNAUTHORIZED", message }, 401, corsHeaders);
 }
 
 async function hashPasswordPbkdf2(password) {
-  try {
-    const iterations = 100000;
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, "0")).join("");
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-    const derived = await crypto.subtle.deriveBits(
-      { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
-      key,
-      256
-    );
-    const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
-    return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
-  } catch (_e) {
-    throw new Error("No se pudo derivar el hash PBKDF2 de forma segura.");
-  }
+  const iterations = 100000;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, "0")).join("");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    key,
+    256
+  );
+  const hashHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `pbkdf2$${iterations}$${saltHex}$${hashHex}`;
 }
 
 async function verifyPassword(stored, candidate) {
@@ -1620,23 +1620,20 @@ export default {
       const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
 
       if (request.method === "GET" && (lowerPath === "/" || lowerPath === "")) {
-        return new Response(
-          JSON.stringify({
-            service: "S.A.A.R.E. Enterprise Control Plane",
-            version: env?.SGP_SPEC_VERSION || "SGP 1.0",
-            author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
-            engine: "BLOCK LOGIC + SEMANTIC DETOX RAM + RFC 8785 JCS + MAHALANOBIS L7 + MERKLE + EIDAS + SHAMIR 2-OF-3",
-            expediente: env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
-            status: "ONLINE",
-            defaultTenant: configuredDefaultTenant || null,
-            multiProfileInterception: true,
-            resilience: "MAX_AVAILABILITY_FAIL_SAFE",
-            billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
-            sandboxMode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
-            trustAnchor: env?.TRUST_ANCHOR || null
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({
+          service: "S.A.A.R.E. Enterprise Control Plane",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0",
+          author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
+          engine: "BLOCK LOGIC + SEMANTIC DETOX RAM + RFC 8785 JCS + MAHALANOBIS L7 + MERKLE + EIDAS + SHAMIR 2-OF-3",
+          expediente: env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
+          status: "ONLINE",
+          defaultTenant: configuredDefaultTenant || null,
+          multiProfileInterception: true,
+          resilience: "MAX_AVAILABILITY_FAIL_SAFE",
+          billingMode: "MULTI_TENANT_SUBSCRIPTION_SAAS",
+          sandboxMode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
+          trustAnchor: env?.TRUST_ANCHOR || null
+        }, 200, corsHeaders);
       }
 
       let killswitchResponse = null;
@@ -1668,34 +1665,31 @@ export default {
       }
 
       if ((path === "/sgp1/status" || path === "/v1/sgp1/status" || path === "/api/v1/sgp1/status") && method === "GET") {
-        return new Response(
-          JSON.stringify({
-            status: "ACTIVE",
-            protocol: "SGP-1.0",
-            defaultTenant: configuredDefaultTenant || null,
-            expediente: env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
-            canonicalization: "RFC 8785 (JCS)",
-            mahalanobisKMin: MAHALANOBIS_K_MIN,
-            structuralDeltaRule: "|psi_Esperado - psi_Observado| < 0.01%",
-            latencyTargetMs: "<1.16",
-            failClosedMode: true,
-            zeroDiskRamOnly: true,
-            semanticDetoxVersion: semanticDetox.version,
-            custodyScheme: "SHAMIR_2_OF_3_GF256+AES-256-GCM",
-            dimensionsActive: [
-              "DIM_01_IDENTIDAD",
-              "DIM_02_ACCION",
-              "DIM_03_CONTEXTO",
-              "DIM_04_RECURSO",
-              "DIM_05_DATOS",
-              "DIM_06_RIESGO",
-              "DIM_07_POLITICA"
-            ],
-            softwareCatalog: ["LabEngine", "PerimeterShield", "EvidenceVault", "ComplianceSuite", "SAAARECoreV6", "SemanticDetoxEngine", "MahalanobisL7Engine"],
-            timestamp: new Date().toISOString()
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
-        );
+        return jsonResponse({
+          status: "ACTIVE",
+          protocol: "SGP-1.0",
+          defaultTenant: configuredDefaultTenant || null,
+          expediente: env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
+          canonicalization: "RFC 8785 (JCS)",
+          mahalanobisKMin: MAHALANOBIS_K_MIN,
+          structuralDeltaRule: "|psi_Esperado - psi_Observado| < 0.01%",
+          latencyTargetMs: "<1.16",
+          failClosedMode: true,
+          zeroDiskRamOnly: true,
+          semanticDetoxVersion: semanticDetox.version,
+          custodyScheme: "SHAMIR_2_OF_3_GF256+AES-256-GCM",
+          dimensionsActive: [
+            "DIM_01_IDENTIDAD",
+            "DIM_02_ACCION",
+            "DIM_03_CONTEXTO",
+            "DIM_04_RECURSO",
+            "DIM_05_DATOS",
+            "DIM_06_RIESGO",
+            "DIM_07_POLITICA"
+          ],
+          softwareCatalog: ["LabEngine", "PerimeterShield", "EvidenceVault", "ComplianceSuite", "SAAARECoreV6", "SemanticDetoxEngine", "MahalanobisL7Engine"],
+          timestamp: new Date().toISOString()
+        }, 200, corsHeaders, { "Cache-Control": "no-store" });
       }
 
       if ((path === "/resilience/check" || path === "/v1/resilience/check" || path === "/api/v1/resilience/check") && method === "GET") {
@@ -1714,42 +1708,33 @@ export default {
           healthy = true;
         }
 
-        return new Response(
-          JSON.stringify({
-            status: healthy ? "HEALTHY" : "DEGRADED",
-            resilience: "MAXIMUM_UPTIME_ACTIVE",
-            service: env?.WORKER_NAME || "saare-control-plane",
-            version: env?.SGP_SPEC_VERSION || "SGP 1.0",
-            engine: "BLOCK LOGIC + V6 + SemanticDetox + RFC8785 + Mahalanobis",
-            trustAnchor: env?.TRUST_ANCHOR || null,
-            timestamp: new Date().toISOString()
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
-        );
+        return jsonResponse({
+          status: healthy ? "HEALTHY" : "DEGRADED",
+          resilience: "MAXIMUM_UPTIME_ACTIVE",
+          service: env?.WORKER_NAME || "saare-control-plane",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0",
+          engine: "BLOCK LOGIC + V6 + SemanticDetox + RFC8785 + Mahalanobis",
+          trustAnchor: env?.TRUST_ANCHOR || null,
+          timestamp: new Date().toISOString()
+        }, 200, corsHeaders, { "Cache-Control": "no-store" });
       }
 
       if ((path === "/health" || path === "/v1/health" || path === "/api/health" || path === "/api/v1/health") && method === "GET") {
-        return new Response(
-          JSON.stringify({
-            status: "HEALTHY",
-            service: env?.WORKER_NAME || "saare-control-plane",
-            version: env?.SGP_SPEC_VERSION || "SGP 1.0",
-            author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
-            engine: "BLOCK LOGIC + SemanticDetox + RFC8785 + Mahalanobis",
-            defaultTenant: configuredDefaultTenant || null,
-            activeScenarios: ScenarioRegistry?.length || 10,
-            trustAnchor: env?.TRUST_ANCHOR || null,
-            timestamp: new Date().toISOString()
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }
-        );
+        return jsonResponse({
+          status: "HEALTHY",
+          service: env?.WORKER_NAME || "saare-control-plane",
+          version: env?.SGP_SPEC_VERSION || "SGP 1.0",
+          author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
+          engine: "BLOCK LOGIC + SemanticDetox + RFC8785 + Mahalanobis",
+          defaultTenant: configuredDefaultTenant || null,
+          activeScenarios: ScenarioRegistry?.length || 10,
+          trustAnchor: env?.TRUST_ANCHOR || null,
+          timestamp: new Date().toISOString()
+        }, 200, corsHeaders, { "Cache-Control": "no-store" });
       }
 
       if ((path === "/api/v1/compliance/matrix" || path === "/v1/compliance/matrix" || path === "/compliance/matrix") && method === "GET") {
-        return new Response(JSON.stringify(getLiveRegulatoryMatrix()), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse(getLiveRegulatoryMatrix(), 200, corsHeaders);
       }
 
       if ((path === "/api/v1/billing/checkout" || path === "/v1/billing/checkout" || path === "/billing/checkout") && method === "POST") {
@@ -1759,10 +1744,7 @@ export default {
         const planId = sanitizePlanId(body.planId || PLAN_IDS.PROFESSIONAL_649);
 
         if (!isValidEmail(email) || !companyName) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'email' y 'companyName' son obligatorios." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "Los campos 'email' y 'companyName' son obligatorios." }, 400, corsHeaders);
         }
 
         const cleanTenant = normalizeTenantCode(
@@ -1781,7 +1763,7 @@ export default {
 
         if (!env?.STRIPE_SECRET_KEY || !stripePriceId) {
           const licenseKey = await getOrCreateTenantLicenseKey(cleanTenant, env);
-          return new Response(JSON.stringify({
+          return jsonResponse({
             success: true,
             simulated: true,
             tenantId: cleanTenant,
@@ -1789,7 +1771,7 @@ export default {
             licenseKey,
             checkoutUrl: `${consoleBaseUrl}/?checkout=simulated&tenant=${cleanTenant}`,
             message: "Stripe no configurado en entorno. Alta comercial completada en modo resiliente."
-          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 200, corsHeaders);
         }
 
         const form = new URLSearchParams({
@@ -1819,22 +1801,19 @@ export default {
         const session = await stripeRes.json();
 
         if (!stripeRes.ok) {
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: "STRIPE_SESSION_ERROR",
             message: session.error?.message || "No se pudo iniciar la sesión de suscripción."
-          }), {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          }, 502, corsHeaders);
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           tenantId: cleanTenant,
           planId,
           checkoutUrl: session.url,
           sessionId: session.id
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/sandbox/provision" || path === "/v1/sandbox/provision" || path === "/sandbox/provision") && method === "POST") {
@@ -1846,10 +1825,10 @@ export default {
           const rawPassword = String(body.password || "").trim();
 
           if (!isValidEmail(email) || !companyName || rawPassword.length < 6) {
-            return new Response(JSON.stringify({
+            return jsonResponse({
               error: "BAD_REQUEST",
               message: "Indica un 'email' válido, 'companyName' y una contraseña de al menos 6 caracteres."
-            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }, 400, corsHeaders);
           }
 
           if (env?.DB) {
@@ -1857,10 +1836,10 @@ export default {
             try {
               const existingUser = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
               if (existingUser) {
-                return new Response(JSON.stringify({
+                return jsonResponse({
                   error: "EMAIL_ALREADY_REGISTERED",
                   message: "Este correo ya está registrado. Inicia sesión con tu contraseña."
-                }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                }, 409, corsHeaders);
               }
             } catch (d1Ex) {
               console.error("[sandbox/provision] Error verificando usuario:", d1Ex?.message || d1Ex);
@@ -1911,7 +1890,7 @@ export default {
             planId: PLAN_IDS.SANDBOX_FREE
           });
 
-          return new Response(JSON.stringify({
+          return jsonResponse({
             success: true,
             mode: "SANDBOX_FREE_2_SEATS_PERPETUAL",
             token: jwtToken,
@@ -1928,13 +1907,13 @@ export default {
               planId: PLAN_IDS.SANDBOX_FREE,
               isVerified: true
             }
-          }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 201, corsHeaders);
         } catch (provisionErr) {
           console.error("[sandbox/provision] Excepción:", provisionErr?.message || provisionErr);
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: "SANDBOX_PROVISION_EXCEPTION",
             message: provisionErr.message || "Error interno al aprovisionar el sandbox."
-          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 500, corsHeaders);
         }
       }
 
@@ -1942,10 +1921,7 @@ export default {
         if (typeof rateLimiter.check === "function") {
           const rateResult = await rateLimiter.check(clientIp);
           if (rateResult && rateResult.allowed === false) {
-            return new Response(JSON.stringify({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }), {
-              status: 429,
-              headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
+            return jsonResponse({ error: "RATE_LIMIT_EXCEEDED", message: "Límite de peticiones por minuto superado." }, 429, corsHeaders);
           }
         }
       } catch (rlErr) {
@@ -2108,10 +2084,7 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify(bundle), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse(bundle, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/forensics/batch/verify" || path === "/v1/forensics/batch/verify") && method === "POST") {
@@ -2122,10 +2095,7 @@ export default {
           merkleRoot: body.merkleRoot
         });
 
-        return new Response(JSON.stringify(verification), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse(verification, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {
@@ -2175,10 +2145,7 @@ export default {
       if ((path === "/api/v1/deploy/extension-zip" || path === "/v1/deploy/extension-zip" || path === "/deploy/extension-zip") && method === "GET") {
         const downloadUrl = env?.EXTENSION_DOWNLOAD_URL;
         if (!downloadUrl) {
-          return new Response(JSON.stringify({ error: "NOT_CONFIGURED", message: "EXTENSION_DOWNLOAD_URL no configurada." }), {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "NOT_CONFIGURED", message: "EXTENSION_DOWNLOAD_URL no configurada." }, 404, corsHeaders);
         }
         return Response.redirect(downloadUrl, 302);
       }
@@ -2186,10 +2153,7 @@ export default {
       if ((path === "/api/v1/deploy/sidecar-zip" || path === "/v1/deploy/sidecar-zip" || path === "/deploy/sidecar-zip") && method === "GET") {
         const sidecarUrl = env?.SIDECAR_DOWNLOAD_URL;
         if (!sidecarUrl) {
-          return new Response(JSON.stringify({ error: "NOT_CONFIGURED", message: "SIDECAR_DOWNLOAD_URL no configurada." }), {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "NOT_CONFIGURED", message: "SIDECAR_DOWNLOAD_URL no configurada." }, 404, corsHeaders);
         }
         return Response.redirect(sidecarUrl, 302);
       }
@@ -2199,10 +2163,7 @@ export default {
           return await handleStripeWebhook(request, env);
         } catch (stripeErr) {
           console.error("[stripe/webhook] Error procesando webhook:", stripeErr?.message || stripeErr);
-          return new Response(JSON.stringify({ error: "STRIPE_WEBHOOK_ERROR", message: stripeErr.message }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "STRIPE_WEBHOOK_ERROR", message: stripeErr.message }, 500, corsHeaders);
         }
       }
 
@@ -2236,11 +2197,11 @@ export default {
             console.error("[soa/iso42001 GET] Error consultando SOA:", soaErr?.message || soaErr);
           }
         }
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           tenant: targetTenant,
           soa: soaRecord
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/soa/iso42001" || path === "/v1/soa/iso42001" || path === "/soa/iso42001") && method === "POST") {
@@ -2250,10 +2211,7 @@ export default {
           isGlobalAdmin ? (body.tenant || scopedTenantId) : scopedTenantId
         );
         if (!targetTenant) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Se requiere un tenant válido." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "Se requiere un tenant válido." }, 400, corsHeaders);
         }
         const roleType = String(body.roleType || "INTEGRADOR_DESARROLLADOR").slice(0, 80);
         const aiActScope = String(body.aiActScope || "ALTO_RIESGO_Y_TRANSPARENCIA").slice(0, 80);
@@ -2303,22 +2261,19 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           status: "COMPILED",
           tenant: targetTenant,
           compiledHash,
           updatedAt
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/billing/usage" || path === "/v1/billing/usage" || path === "/billing/usage") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         if (!tenantId) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "No se ha especificado un tenant." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "No se ha especificado un tenant." }, 400, corsHeaders);
         }
         await ensureD1TablesExist(env.DB);
         let tenantRow = null;
@@ -2335,7 +2290,7 @@ export default {
         const licenseKey = await getOrCreateTenantLicenseKey(tenantId, env);
         const apiOrigin = urlObj.origin;
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           tenantId,
           companyName: tenantRow?.name || tenantId,
@@ -2357,16 +2312,13 @@ export default {
             bootstrapEndpoint: `${apiOrigin}/api/v1/agent/bootstrap?tenant=${tenantId}`
           },
           expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? null : (tenantRow?.expires_at || null)
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/billing/portal" || path === "/v1/billing/portal" || path === "/billing/portal") && method === "POST") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         if (!env?.STRIPE_SECRET_KEY) {
-          return new Response(JSON.stringify({ error: "BILLING_NOT_CONFIGURED", message: "STRIPE_SECRET_KEY no configurada." }), {
-            status: 503,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BILLING_NOT_CONFIGURED", message: "STRIPE_SECRET_KEY no configurada." }, 503, corsHeaders);
         }
 
         await ensureD1TablesExist(env.DB);
@@ -2381,10 +2333,7 @@ export default {
         const cfg = tenantRow?.config_json ? JSON.parse(tenantRow.config_json) : {};
 
         if (!cfg.stripeCustomerId) {
-          return new Response(JSON.stringify({ error: "NO_STRIPE_CUSTOMER", message: "Este tenant aún no tiene un cliente Stripe asociado." }), {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "NO_STRIPE_CUSTOMER", message: "Este tenant aún no tiene un cliente Stripe asociado." }, 404, corsHeaders);
         }
 
         const portalForm = new URLSearchParams({
@@ -2401,10 +2350,7 @@ export default {
         });
         const portalData = await portalRes.json();
 
-        return new Response(JSON.stringify({ success: portalRes.ok, url: portalData.url || null }), {
-          status: portalRes.ok ? 200 : 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse({ success: portalRes.ok, url: portalData.url || null }, portalRes.ok ? 200 : 502, corsHeaders);
       }
 
       if ((path === "/api/v1/agent/bootstrap" || path === "/v1/agent/bootstrap" || path === "/agent/bootstrap") && method === "GET") {
@@ -2437,29 +2383,47 @@ export default {
 
       if ((path === "/api/v1/ingest-trace" || path === "/v1/ingest-trace" || path === "/ingest-trace") && method === "POST") {
         const body = await request.json().catch(() => ({}));
+        const headerTenantRaw = normalizeTenantCode(request.headers.get("x-saare-tenant") || "");
+        const bodyTenantRaw = normalizeTenantCode(body.tenant_id || body.tenant || "");
+
+        if (headerTenantRaw && bodyTenantRaw && headerTenantRaw !== bodyTenantRaw) {
+          return tenantConflictResponse(corsHeaders, headerTenantRaw, bodyTenantRaw);
+        }
+
+        if (!isAuthenticated && !(headerTenantRaw || bodyTenantRaw)) {
+          return tenantRequiredResponse(corsHeaders);
+        }
+
+        if (boundTenant && headerTenantRaw && headerTenantRaw !== boundTenant) {
+          return tenantConflictResponse(corsHeaders, headerTenantRaw, boundTenant);
+        }
+
+        if (boundTenant && bodyTenantRaw && bodyTenantRaw !== boundTenant) {
+          return tenantConflictResponse(corsHeaders, boundTenant, bodyTenantRaw);
+        }
+
         const profileContext = resolveClientProfileContext(request, body, identity, cfIdentity);
         const resolvedTenant = normalizeTenantCode(
-          isGlobalAdmin ? (body.tenant_id || tenantId) : scopedTenantId
+          isGlobalAdmin
+            ? (headerTenantRaw || bodyTenantRaw || tenantId)
+            : (boundTenant || headerTenantRaw || bodyTenantRaw || scopedTenantId)
         );
 
         const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, resolvedTenant, tenantPlan, isMasterSession);
         if (!quotaCheck.allowed) {
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: quotaCheck.reason,
             message: quotaCheck.reason === "MONTHLY_QUOTA_EXCEEDED"
               ? "Cuota mensual de veredictos agotada para este tenant."
               : "La suscripción del tenant no está activa.",
             tenant: resolvedTenant,
             usage: { used: quotaCheck.used, quota: quotaCheck.quota, status: quotaCheck.status }
-          }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 402, corsHeaders);
         }
 
         const evidenceHash = String(body.evidence_hash || "").trim();
         if (!evidenceHash || evidenceHash.length > 256) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio y debe tener un formato válido." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "El campo 'evidence_hash' es obligatorio y debe tener un formato válido." }, 400, corsHeaders);
         }
 
         const canonicalBodyString = canonicalizeRfc8785(body);
@@ -2559,7 +2523,7 @@ export default {
 
         await incrementTenantUsage(env?.DB, resolvedTenant, 1);
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "INGESTED",
           trace_id: traceId,
           evidence_id: evidenceId,
@@ -2573,24 +2537,19 @@ export default {
           prevHash,
           sgp1: sgp7Dims,
           proof_block: sgp1Contract
-        }), {
-          status: 201,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "X-Saare-Permit": btoa(JSON.stringify({
-              protocol: "SGP-1.0",
-              verdict: decisionNorm,
-              evidence_id: evidenceId,
-              tenant: resolvedTenant,
-              browser_profile: profileContext.browserProfile,
-              client_profile: profileContext.clientProfile
-            })),
-            "X-SAARE-Tenant": resolvedTenant,
-            "X-SAARE-Browser-Profile": profileContext.browserProfile,
-            "X-SAARE-Client-Profile": profileContext.clientProfile,
-            "X-SAARE-MS3V-Hash": traceIntegrityHash
-          }
+        }, 201, corsHeaders, {
+          "X-Saare-Permit": btoa(JSON.stringify({
+            protocol: "SGP-1.0",
+            verdict: decisionNorm,
+            evidence_id: evidenceId,
+            tenant: resolvedTenant,
+            browser_profile: profileContext.browserProfile,
+            client_profile: profileContext.clientProfile
+          })),
+          "X-SAARE-Tenant": resolvedTenant,
+          "X-SAARE-Browser-Profile": profileContext.browserProfile,
+          "X-SAARE-Client-Profile": profileContext.clientProfile,
+          "X-SAARE-MS3V-Hash": traceIntegrityHash
         });
       }
 
@@ -2637,20 +2596,14 @@ export default {
             console.error("[metrics/tenants] Error consultando métricas:", mErr?.message || mErr);
           }
         }
-        return new Response(JSON.stringify({ success: true, status: "SUCCESS", data: metricsData }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse({ success: true, status: "SUCCESS", data: metricsData }, 200, corsHeaders);
       }
 
       if ((path === "/cpaas/send" || path === "/api/v1/cpaas/send" || path === "/v1/cpaas/send") && method === "POST") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
         if (!body.to || !body.body) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "Los campos 'to' y 'body' son obligatorios." }, 400, corsHeaders);
         }
 
         const priorityOrder = Array.isArray(body.priority) ? body.priority : ["twilio", "messagebird", "vonage", "infobip"];
@@ -2689,22 +2642,22 @@ export default {
             }
           }
 
-          return new Response(JSON.stringify({
+          return jsonResponse({
             success: cpaasResult.delivered !== false,
             provider: cpaasResult.provider,
             messageId: cpaasResult.messageId,
             evidenceHash,
             timestamp: new Date().toISOString()
-          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 200, corsHeaders);
         } catch (err) {
           console.error("[cpaas/send] Error en failover CPaaS:", err?.message || err);
-          return new Response(JSON.stringify({
+          return jsonResponse({
             success: false,
             resilientFallback: true,
             provider: "SAARE_RESILIENT_FALLBACK",
             messageId: `fb_${Date.now()}`,
             timestamp: new Date().toISOString()
-          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 200, corsHeaders);
         }
       }
 
@@ -2725,7 +2678,7 @@ export default {
         const used = await getTenantMonthlyUsage(env?.DB, tenantId);
         const protocolCommands = await getTenantProtocolCommands(env, tenantId);
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           valid: true,
           tenant: tenantId,
           profile_context: profileContext,
@@ -2742,15 +2695,10 @@ export default {
           status: "ACTIVE",
           expiresAt: activePlan === PLAN_IDS.SANDBOX_FREE ? "PERPETUAL" : (tenantInfo?.expiresAt || null),
           authenticated: isAuthenticated
-        }), {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "X-SAARE-Tenant": tenantId,
-            "X-SAARE-Browser-Profile": profileContext.browserProfile,
-            "X-SAARE-Client-Profile": profileContext.clientProfile
-          }
+        }, 200, corsHeaders, {
+          "X-SAARE-Tenant": tenantId,
+          "X-SAARE-Browser-Profile": profileContext.browserProfile,
+          "X-SAARE-Client-Profile": profileContext.clientProfile
         });
       }
 
@@ -2795,7 +2743,7 @@ export default {
             { email: identity?.email || headerUser, name: "Operador Principal", role: activeUserRole, is_verified: 1, created_at: new Date().toISOString().split("T")[0] }
           ];
         }
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           tenant: tenantId,
           planId: activePlan,
@@ -2803,7 +2751,7 @@ export default {
           usedSeats: usersList.length,
           remainingSeats: Math.max(0, maxSeats - usersList.length),
           users: usersList
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/executive/seats/assign" || path === "/api/v1/executive/seats/assign" || path === "/v1/executive/seats/assign") && method === "POST") {
@@ -2815,10 +2763,7 @@ export default {
         const rawAssignPassword = String(body.password || "").trim();
 
         if (!isValidEmail(cleanAssignEmail)) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio y debe ser válido." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "El email del asiento es obligatorio y debe ser válido." }, 400, corsHeaders);
         }
 
         if (env?.DB && scopedTenantId) {
@@ -2841,11 +2786,11 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           message: `Asiento asignado a ${cleanAssignEmail}`,
           assigned: { email: cleanAssignEmail, role: assignRole, name: assignName }
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "GET") {
@@ -2864,13 +2809,13 @@ export default {
             console.error("[custom-rules GET] Error consultando reglas:", err?.message || err);
           }
         }
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           tenant: scopedTenantId,
           enabled: rulesEnabled,
           protocolCommands,
           rules
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/custom-rules" || path === "/api/v1/custom-rules" || path === "/v1/custom-rules") && method === "POST") {
@@ -2956,7 +2901,7 @@ export default {
           ? await setTenantProtocolCommands(env, scopedTenantId, { ...currentCommands, ...incomingCommands })
           : currentCommands;
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           status: "SUCCESS",
           tenant: scopedTenantId,
@@ -2964,7 +2909,7 @@ export default {
           protocolCommands: nextProtocolCommands,
           presetApplied: body?.preset === "ISO_42001" ? "ISO_42001" : null,
           rules
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/subsidies/export-package" || path === "/v1/subsidies/export-package" || path === "/api/v1/subsidies/export-package") && method === "POST") {
@@ -2974,33 +2919,30 @@ export default {
         const docType = body.documentType || "ALL";
         const code = body.complianceCode || `MS3V-${grantType}-${Date.now()}`;
         const vaultBase = env?.TRUST_ANCHOR || urlObj.origin;
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           complianceCode: code,
           grantType,
           documentType: docType,
           downloadUrl: `${vaultBase}/export/${code}.zip`,
           timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/integrations/siem" || path === "/api/v1/integrations/siem") && method === "POST") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
         const body = await request.json().catch(() => ({}));
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SIEM_EVENT_DISPATCHED",
           evidenceId: body.evidenceId || "EV-SIEM-RESILIENT",
           syslogAck: true,
           timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/vault/sync" || path === "/api/v1/vault/sync") && method === "GET") {
         if (!isAuthenticated) return unauthorizedResponse(corsHeaders);
-        return new Response(JSON.stringify({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return jsonResponse({ status: "SYNCED", source: "D1_HYBRID_WORM", trustAnchor: env?.TRUST_ANCHOR || null }, 200, corsHeaders);
       }
 
       if (path.startsWith("/verify/") || path.startsWith("/api/v1/verify/")) {
@@ -3018,7 +2960,7 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           verified: Boolean(foundAnchor),
           status: foundAnchor ? "VERIFIED_MERKLE_ANCHOR" : "NOT_FOUND_IN_ANCHORS",
           merkleRoot: foundAnchor?.merkle_root || hash,
@@ -3028,7 +2970,7 @@ export default {
           author: env?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane",
           standard: "ISO/IEC 42001:2023 / ISO/IEC 27037:2012 / Art. 326 LEC / RFC 3161",
           timestamp: new Date().toISOString()
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/traces" || path === "/v1/traces" || path === "/api/v1/traces" || path === "/v1/logs" || path === "/api/traces") && method === "GET") {
@@ -3051,14 +2993,14 @@ export default {
           console.error("[traces] Error obteniendo trazas:", tErr?.message || tErr);
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: "SUCCESS",
           tenant: activeTenant,
           count: tracesList.length,
           limit: safeLimit,
           traces: tracesList,
           evidences: tracesList
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/evidence/verify" || path === "/evidence/verify") && method === "POST") {
@@ -3081,7 +3023,7 @@ export default {
           console.error("[evidence/verify] Error sellando transacción:", tsErr?.message || tsErr);
         }
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           valid: merkleProofValid === null ? true : merkleProofValid,
           merkleProofValid,
           expediente: env?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
@@ -3094,7 +3036,7 @@ export default {
           assuranceLevel: "LOCAL_INTEGRITY",
           timestampUtc: seal.timestampUtc,
           standard: "ISO/IEC 27037:2012 / RFC 3161 / eIDAS / Art. 326 LEC"
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
       if ((path === "/v1/chat/completions" || path === "/api/v1/chat/completions" || path === "/chat/completions" || path === "/v1/proxy/llm" || path === "/api/v1/proxy/llm" || path === "/proxy/llm" || path === "/api/v1/permit/issue" || path === "/api/v1/intercept") && method === "POST") {
@@ -3134,7 +3076,8 @@ export default {
             commandCode: formData.get("commandCode") || undefined,
             dossierRef: formData.get("dossierRef") || undefined,
             browserProfile: formData.get("browserProfile") || undefined,
-            clientProfile: formData.get("clientProfile") || undefined
+            clientProfile: formData.get("clientProfile") || undefined,
+            tenant: formData.get("tenant") || formData.get("tenant_id") || undefined
           };
         } else {
           payloadBody = await request.json().catch(() => ({}));
@@ -3163,23 +3106,54 @@ export default {
           }
         }
 
+        // Validación estricta de coherencia y presencia multitenant
+        const headerTenantExplicit = normalizeTenantCode(request.headers.get("x-saare-tenant") || "");
+        const bodyTenantExplicit = normalizeTenantCode(payloadBody?.tenant || payloadBody?.tenant_id || "");
+
+        if (headerTenantExplicit && bodyTenantExplicit && headerTenantExplicit !== bodyTenantExplicit) {
+          return tenantConflictResponse(corsHeaders, headerTenantExplicit, bodyTenantExplicit);
+        }
+
+        const explicitTenantInput = headerTenantExplicit || bodyTenantExplicit;
+        if (!isAuthenticated && !explicitTenantInput) {
+          return tenantRequiredResponse(corsHeaders);
+        }
+
+        if (boundTenant && headerTenantExplicit && headerTenantExplicit !== boundTenant) {
+          return tenantConflictResponse(
+            corsHeaders,
+            headerTenantExplicit,
+            boundTenant,
+            `El tenant de cabecera (${headerTenantExplicit}) no coincide con el tenant autorizado de la sesión (${boundTenant}).`
+          );
+        }
+
+        if (boundTenant && bodyTenantExplicit && bodyTenantExplicit !== boundTenant) {
+          return tenantConflictResponse(
+            corsHeaders,
+            boundTenant,
+            bodyTenantExplicit,
+            `El tenant del cuerpo (${bodyTenantExplicit}) no coincide con el tenant autorizado de la sesión (${boundTenant}).`
+          );
+        }
+
         const profileContext = resolveClientProfileContext(request, payloadBody, identity, cfIdentity);
         const tenant = normalizeTenantCode(
           isGlobalAdmin
-            ? (request.headers.get("x-saare-tenant") || payloadBody.tenant || tenantId)
-            : scopedTenantId
+            ? (headerTenantExplicit || bodyTenantExplicit || tenantId)
+            : (boundTenant || headerTenantExplicit || bodyTenantExplicit || scopedTenantId)
         );
 
         const quotaCheck = await checkTenantQuotaAndStatus(env?.DB, tenant, tenantPlan, isMasterSession);
         if (!quotaCheck.allowed) {
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: quotaCheck.reason,
             message: quotaCheck.reason === "MONTHLY_QUOTA_EXCEEDED"
               ? "Cuota mensual de veredictos agotada para este tenant."
               : "La suscripción del tenant no está activa.",
             tenant,
             usage: { used: quotaCheck.used, quota: quotaCheck.quota, status: quotaCheck.status }
-          }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 402, corsHeaders);
         }
 
         const effectiveEnv = payloadBody.dossierRef
@@ -3191,7 +3165,7 @@ export default {
         const commandCodeToCheck = semanticCmd?.code || (payloadBody.commandCode ? String(payloadBody.commandCode).trim().toUpperCase() : "");
 
         if (commandCodeToCheck && !isMasterSession && !isProtocolCommandEnabled(protocolCommandsMap, commandCodeToCheck)) {
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: "PROTOCOL_COMMAND_DISABLED",
             message: `El comando de protocolo [${commandCodeToCheck}] está desactivado para el tenant [${tenant}].`,
             commandCode: commandCodeToCheck,
@@ -3199,14 +3173,9 @@ export default {
             dossierRef: payloadBody.dossierRef || null,
             decision: "DENY",
             verdict: "RECHAZADO"
-          }), {
-            status: 403,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-              "X-SAARE-Verdict": "DENY",
-              "X-SAARE-Tenant": tenant
-            }
+          }, 403, corsHeaders, {
+            "X-SAARE-Verdict": "DENY",
+            "X-SAARE-Tenant": tenant
           });
         }
 
@@ -3216,7 +3185,6 @@ export default {
         const user = profileContext.resolvedSubject;
         const userChoice = payloadBody.userAction || "DEFAULT_POLICY";
 
-        // Etapa A: Serialización canónica RFC 8785 (JCS) del payload de entrada
         const canonicalPayloadString = canonicalizeRfc8785(
           typeof payloadBody === "object" && payloadBody !== null
             ? { ...payloadBody, prompt: rawPrompt }
@@ -3232,14 +3200,14 @@ export default {
         }
 
         if (ms3vVerdict.STATUS === "ABORT_SEQUENCE") {
-          return new Response(JSON.stringify({
+          return jsonResponse({
             error: "MS3V_BLOCK_LOGIC_SECURITY_ABORT",
             message: "Acceso bloqueado por el disyuntor lógico de la arquitectura MS3V.",
             ms3vStatus: "ABORT_SEQUENCE",
             tenant,
             profile_context: profileContext,
             author: effectiveEnv?.AUTHOR_NAME || "S.A.A.R.E. Enterprise Control Plane"
-          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }, 400, corsHeaders);
         }
 
         const rulesEnabled = await getTenantRulesEnabled(env, tenant);
@@ -3261,9 +3229,7 @@ export default {
         const sanitizedText = piiPass.sanitizedText;
         const rulesTriggered = [...new Set([...detoxResult.rulesTriggered, ...piiPass.extraRules])];
 
-        // Etapa B/C: Evaluación de distancia de Mahalanobis, k-anonymity (K_min >= 5) y disparador L7
         const mahalanobis = evaluateMahalanobisL7(rawPrompt, rulesTriggered, hasMediaAttachment);
-
         const hasSpanishId = /\b(?:\d{8}|[XYZ]\d{7})[- ]?[A-Za-z]\b/i.test(rawPrompt);
 
         let customHardBlockHit = false;
@@ -3536,7 +3502,7 @@ export default {
         const isoControls = [...new Set((detoxResult.findings || []).map(f => f.iso42001_control).filter(Boolean))];
         const alarmSeverity = strictHighRisk ? "CRITICAL" : (standardPiiRisk ? "HIGH" : "INFO");
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           spec: "SGP-1.0 MS3V + V6 Automata + Semantic Detox RAM + RFC 8785 + Mahalanobis L7",
           expediente: effectiveEnv?.EXPEDIENTE_ID || EMPIRICAL_EXPEDIENTE_REF,
@@ -3601,23 +3567,18 @@ export default {
             chainHash: traceIntegrityHash,
             timestamp: eventTimestamp
           }
-        }), {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "X-Saare-Permit": xSaarePermitHeader,
-            "X-SAARE-Verdict": finalDecision,
-            "X-SAARE-Tenant": tenant,
-            "X-SAARE-Browser-Profile": profileContext.browserProfile,
-            "X-SAARE-Client-Profile": profileContext.clientProfile,
-            "X-SAARE-Witness-Tag": "[MS3V-COMPLIANCE-L7-OK]",
-            "X-SAARE-Provider": providerMeta.name,
-            "X-SAARE-Latency-Ms": latencyMs.toString(),
-            "X-SAARE-MS3V-Hash": traceIntegrityHash,
-            "X-SAARE-MS3V-Timestamp": ms3vVerdict.TS,
-            "X-SAARE-Proof-Status": "VERIFIED_ED25519"
-          }
+        }, 200, corsHeaders, {
+          "X-Saare-Permit": xSaarePermitHeader,
+          "X-SAARE-Verdict": finalDecision,
+          "X-SAARE-Tenant": tenant,
+          "X-SAARE-Browser-Profile": profileContext.browserProfile,
+          "X-SAARE-Client-Profile": profileContext.clientProfile,
+          "X-SAARE-Witness-Tag": "[MS3V-COMPLIANCE-L7-OK]",
+          "X-SAARE-Provider": providerMeta.name,
+          "X-SAARE-Latency-Ms": latencyMs.toString(),
+          "X-SAARE-MS3V-Hash": traceIntegrityHash,
+          "X-SAARE-MS3V-Timestamp": ms3vVerdict.TS,
+          "X-SAARE-Proof-Status": "VERIFIED_ED25519"
         });
       }
 
@@ -3627,10 +3588,7 @@ export default {
         const cleanPassword = body.password ? String(body.password).trim() : "";
 
         if (!cleanEmail || !cleanPassword) {
-          return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Indica correo y contraseña." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          return jsonResponse({ error: "BAD_REQUEST", message: "Indica correo y contraseña." }, 400, corsHeaders);
         }
 
         const masterSecret = resolveMasterPassword(env);
@@ -3664,10 +3622,7 @@ export default {
                 role: "CISO_ADMIN"
               };
             } else {
-              return new Response(JSON.stringify({ error: "Credenciales de custodio inválidas o usuario no encontrado." }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-              });
+              return jsonResponse({ error: "Credenciales de custodio inválidas o usuario no encontrado." }, 401, corsHeaders);
             }
           }
         } else {
@@ -3712,7 +3667,7 @@ export default {
           ...(isMasterLogin ? { isMasterLogin: true, isMasterTest: true, unrestrictedAccess: true } : {})
         });
 
-        return new Response(JSON.stringify({
+        return jsonResponse({
           success: true,
           token: jwtToken,
           isMasterLogin,
@@ -3731,24 +3686,21 @@ export default {
             unrestrictedAccess: isMasterLogin,
             isVerified: true
           }
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }, 200, corsHeaders);
       }
 
-      return new Response(
-        JSON.stringify({ error: "NOT_FOUND", message: `La ruta [${request.method} ${request.url}] no existe en S.A.A.R.E. Control Plane.` }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({
+        error: "NOT_FOUND",
+        message: `La ruta [${request.method} ${request.url}] no existe en S.A.A.R.E. Control Plane.`
+      }, 404, corsHeaders);
     } catch (globalErr) {
       console.error("[fetch globalErr] Error no controlado en control plane:", globalErr?.message || globalErr);
-      return new Response(
-        JSON.stringify({
-          status: "RESILIENT_FAIL_SAFE_RECOVERY",
-          error: "INTERNAL_CONTROL_PLANE_RECOVERED",
-          message: globalErr?.message || "Error controlado por el núcleo de alta disponibilidad SGP 1.0",
-          timestamp: new Date().toISOString()
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({
+        status: "RESILIENT_FAIL_SAFE_RECOVERY",
+        error: "INTERNAL_CONTROL_PLANE_RECOVERED",
+        message: globalErr?.message || "Error controlado por el núcleo de alta disponibilidad SGP 1.0",
+        timestamp: new Date().toISOString()
+      }, 500, corsHeaders);
     }
   },
 

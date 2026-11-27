@@ -48,40 +48,59 @@ export class EvidenceVaultEngine {
     if (!this.env || !this.env.DB || EvidenceVaultEngine.schemaInitialized) return;
 
     try {
-      await this.env.DB.exec(`
-        CREATE TABLE IF NOT EXISTS consolidated_traces (
-          trace_id TEXT PRIMARY KEY,
-          tenant_id TEXT NOT NULL,
-          user_email TEXT NOT NULL,
-          final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER_PEP_L7',
-          final_decision TEXT NOT NULL DEFAULT 'ALLOW',
-          final_action TEXT NOT NULL DEFAULT 'ALLOWED',
-          execution_latency_ms REAL DEFAULT 0.0,
-          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-          created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          prompt TEXT NOT NULL DEFAULT '',
-          sanitized_payload TEXT DEFAULT '',
-          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-          anchored INTEGER DEFAULT 0,
-          ms3v_hash TEXT DEFAULT '',
-          ms3v_timestamp_ns TEXT DEFAULT ''
-        );
+      await this.env.DB.batch([
+        this.env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS consolidated_traces (
+            trace_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            user_email TEXT NOT NULL DEFAULT '',
+            final_evaluator_node TEXT NOT NULL DEFAULT 'EDGE_WORKER_PEP_L7',
+            final_decision TEXT NOT NULL DEFAULT 'ALLOW',
+            final_action TEXT NOT NULL DEFAULT 'ALLOWED',
+            execution_latency_ms REAL DEFAULT 0.0,
+            timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            prompt TEXT NOT NULL DEFAULT '',
+            sanitized_payload TEXT DEFAULT '',
+            verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+            anchored INTEGER DEFAULT 0,
+            ms3v_hash TEXT DEFAULT '',
+            ms3v_timestamp_ns TEXT DEFAULT ''
+          )
+        `),
+        this.env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            evidence_id TEXT UNIQUE NOT NULL,
+            trace_id TEXT NOT NULL,
+            verdictId TEXT NOT NULL,
+            decision TEXT NOT NULL DEFAULT 'ALLOW',
+            verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
+            user TEXT NOT NULL DEFAULT 'anonymous',
+            tenant TEXT NOT NULL DEFAULT 'DEFAULT_TENANT',
+            prompt TEXT DEFAULT '',
+            responseOutput TEXT DEFAULT '',
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          )
+        `)
+      ]);
 
-        CREATE TABLE IF NOT EXISTS runs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          evidence_id TEXT UNIQUE NOT NULL,
-          trace_id TEXT NOT NULL,
-          verdictId TEXT NOT NULL,
-          decision TEXT NOT NULL DEFAULT 'ALLOW',
-          verdict TEXT NOT NULL DEFAULT 'PERMITIDO',
-          user TEXT NOT NULL DEFAULT 'anonymous',
-          tenant TEXT NOT NULL DEFAULT 'DEFAULT_TENANT',
-          prompt TEXT DEFAULT '',
-          responseOutput TEXT DEFAULT '',
-          payload_json TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-      `);
+      const alterStatements = [
+        "ALTER TABLE consolidated_traces ADD COLUMN ms3v_hash TEXT DEFAULT ''",
+        "ALTER TABLE consolidated_traces ADD COLUMN ms3v_timestamp_ns TEXT DEFAULT ''",
+        "ALTER TABLE consolidated_traces ADD COLUMN sanitized_payload TEXT DEFAULT ''",
+        "ALTER TABLE consolidated_traces ADD COLUMN verdict TEXT NOT NULL DEFAULT 'PERMITIDO'"
+      ];
+
+      for (const sql of alterStatements) {
+        try {
+          await this.env.DB.prepare(sql).run();
+        } catch (_altErr) {
+          // Columna ya existe
+        }
+      }
+
       EvidenceVaultEngine.schemaInitialized = true;
     } catch (err) {
       EvidenceVaultEngine.schemaInitialized = false;
