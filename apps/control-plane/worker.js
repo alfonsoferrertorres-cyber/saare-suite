@@ -9,7 +9,7 @@ import { SemanticDetoxEngine } from "./src/middleware/semanticDetoxEngine.js";
 
 import { handleStripeWebhook } from "./src/services/stripeWebhook.js";
 import { TenantManager } from "./src/services/tenantManager.js";
-import { computeSha256 } from "./src/services/keyManager.js";
+import { EnterpriseKeyManager, computeSha256 } from "./src/services/keyManager.js";
 import { EvidenceVaultEngine } from "./src/engines/evidenceVaultEngine.js";
 import { TelemetryServer } from "./src/services/telemetryServer.js";
 import { generateProofBundle } from "./src/services/proofBundle.js";
@@ -2096,6 +2096,66 @@ export default {
         });
 
         return jsonResponse(verification, 200, corsHeaders);
+      }
+
+      if ((path === "/api/v1/forensics/signature/verify" || path === "/v1/forensics/signature/verify") && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const headerTenant = normalizeTenantCode(request.headers.get("x-saare-tenant") || "");
+        const bodyTenant = normalizeTenantCode(body.tenantId || body.tenant_id || "");
+
+        if (headerTenant && bodyTenant && headerTenant !== bodyTenant) {
+          return tenantConflictResponse(corsHeaders, headerTenant, bodyTenant);
+        }
+
+        const targetTenant = normalizeTenantCode(
+          isGlobalAdmin
+            ? (headerTenant || bodyTenant || scopedTenantId)
+            : (boundTenant || headerTenant || bodyTenant || scopedTenantId)
+        );
+
+        const traceId = String(body.traceId || body.trace_id || "").trim();
+        const verdictId = String(body.verdictId || body.verdict_id || "").trim();
+        const signatureHex = String(body.ed25519Signature || body.signature || "").trim();
+
+        let payloadHash = String(body.payloadHash || body.payload_hash || "").trim();
+        let timestamp = String(body.timestamp || "").trim();
+
+        if ((!payloadHash || !timestamp) && traceId && targetTenant && env?.DB) {
+          try {
+            await ensureD1TablesExist(env.DB);
+            const row = await env.DB.prepare(
+              "SELECT prompt, timestamp FROM consolidated_traces WHERE trace_id = ? AND tenant_id = ? LIMIT 1"
+            ).bind(traceId, targetTenant).first();
+
+            if (row) {
+              if (!payloadHash) payloadHash = await computeSha256(row.prompt || "");
+              if (!timestamp) timestamp = row.timestamp;
+            }
+          } catch (dbSigErr) {
+            console.error("[forensics/signature/verify] Error consultando traza en D1:", dbSigErr?.message || dbSigErr);
+          }
+        }
+
+        const canonicalSignPayload = `${targetTenant}|${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
+        const keyManager = new EnterpriseKeyManager(env);
+        const verification = await keyManager.verifyEd25519Signature(
+          canonicalSignPayload,
+          signatureHex,
+          targetTenant,
+          body.publicKeyPem || null
+        );
+
+        return jsonResponse({
+          verified: verification.valid,
+          reason: verification.reason,
+          tenantId: targetTenant,
+          traceId,
+          verdictId,
+          payloadHash,
+          timestamp,
+          canonicalSignPayload,
+          standard: "RFC 8032 (Ed25519) / RFC 8785 / ISO/IEC 27037:2012"
+        }, 200, corsHeaders);
       }
 
       if ((path === "/api/v1/deploy/gpo-policy" || path === "/v1/deploy/gpo-policy" || path === "/deploy/gpo-policy") && (method === "GET" || method === "POST")) {

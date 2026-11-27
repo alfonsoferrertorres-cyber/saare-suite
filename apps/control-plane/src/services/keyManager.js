@@ -1,4 +1,4 @@
-// control-plane/src/services/keyManager.js — Firma Criptográfica Web Crypto & Resiliencia Ed25519
+// control-plane/src/services/keyManager.js — Firma y Verificación Criptográfica Web Crypto Ed25519 (Multitenant)
 export const CANONICAL_HASH = "SHA-256";
 export const CANONICAL_SIG = "Ed25519";
 
@@ -12,25 +12,45 @@ export async function computeSha256(data) {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-let cachedCryptoKey = null;
-let cachedRawPem = null;
+const signKeyCache = new Map();
+const verifyKeyCache = new Map();
+
+function normalizeTenantSuffix(tenantId = "") {
+  return String(tenantId || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, "_");
+}
 
 export class EnterpriseKeyManager {
   constructor(env) {
     this.env = env;
   }
 
-  getActivePrivateKey() {
-    const raw = this.env?.ED25519_PRIVATE_KEY;
+  getActivePrivateKey(tenantId = "") {
+    const suffix = normalizeTenantSuffix(tenantId);
+    const tenantKey = suffix ? this.env?.[`ED25519_PRIVATE_KEY_${suffix}`] : null;
+    const raw = tenantKey || this.env?.ED25519_PRIVATE_KEY;
     return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
   }
 
-  hasPrivateKeyConfigured() {
-    return Boolean(this.getActivePrivateKey());
+  getActivePublicKey(tenantId = "") {
+    const suffix = normalizeTenantSuffix(tenantId);
+    const tenantPubKey = suffix ? this.env?.[`ED25519_PUBLIC_KEY_${suffix}`] : null;
+    const raw = tenantPubKey || this.env?.ED25519_PUBLIC_KEY;
+    return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
   }
 
-  async deriveEd25519Signature(data) {
-    const privateKeyRaw = this.getActivePrivateKey();
+  hasPrivateKeyConfigured(tenantId = "") {
+    return Boolean(this.getActivePrivateKey(tenantId));
+  }
+
+  hasPublicKeyConfigured(tenantId = "") {
+    return Boolean(this.getActivePublicKey(tenantId));
+  }
+
+  async deriveEd25519Signature(data, tenantId = "") {
+    const privateKeyRaw = this.getActivePrivateKey(tenantId);
     const encoder = new TextEncoder();
     const dataToSign = typeof data === "string" ? data : JSON.stringify(data);
 
@@ -40,20 +60,21 @@ export class EnterpriseKeyManager {
     }
 
     try {
-      if (!cachedCryptoKey || cachedRawPem !== privateKeyRaw) {
-        cachedCryptoKey = await crypto.subtle.importKey(
+      let signKey = signKeyCache.get(privateKeyRaw);
+      if (!signKey) {
+        signKey = await crypto.subtle.importKey(
           "pkcs8",
           this.pemToArrayBuffer(privateKeyRaw),
           { name: "Ed25519" },
           false,
           ["sign"]
         );
-        cachedRawPem = privateKeyRaw;
+        signKeyCache.set(privateKeyRaw, signKey);
       }
 
       const signatureBuffer = await crypto.subtle.sign(
         "Ed25519",
-        cachedCryptoKey,
+        signKey,
         encoder.encode(dataToSign)
       );
 
@@ -67,6 +88,66 @@ export class EnterpriseKeyManager {
       );
       const fallbackHash = await computeSha256(dataToSign);
       return `ED25519_EMERGENCY_SIG_${fallbackHash.substring(0, 32).toUpperCase()}`;
+    }
+  }
+
+  async verifyEd25519Signature(data, signatureHex, tenantId = "", overridePublicPem = null) {
+    const publicKeyRaw = overridePublicPem || this.getActivePublicKey(tenantId);
+    const cleanSig = String(signatureHex || "").trim();
+
+    if (!publicKeyRaw) {
+      return {
+        valid: false,
+        reason: "MISSING_ED25519_PUBLIC_KEY",
+        tenantId: normalizeTenantSuffix(tenantId) || "GLOBAL"
+      };
+    }
+
+    if (!/^[0-9a-fA-F]{128}$/.test(cleanSig)) {
+      return {
+        valid: false,
+        reason: "INVALID_ED25519_SIGNATURE_HEX_FORMAT",
+        tenantId: normalizeTenantSuffix(tenantId) || "GLOBAL"
+      };
+    }
+
+    try {
+      let verifyKey = verifyKeyCache.get(publicKeyRaw);
+      if (!verifyKey) {
+        verifyKey = await crypto.subtle.importKey(
+          "spki",
+          this.pemToArrayBuffer(publicKeyRaw),
+          { name: "Ed25519" },
+          false,
+          ["verify"]
+        );
+        verifyKeyCache.set(publicKeyRaw, verifyKey);
+      }
+
+      const sigBytes = new Uint8Array(
+        cleanSig.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))
+      );
+      const encoder = new TextEncoder();
+      const dataToVerify = typeof data === "string" ? data : JSON.stringify(data);
+
+      const isValid = await crypto.subtle.verify(
+        "Ed25519",
+        verifyKey,
+        sigBytes,
+        encoder.encode(dataToVerify)
+      );
+
+      return {
+        valid: Boolean(isValid),
+        reason: isValid ? "VERIFIED_ED25519_SPKI" : "SIGNATURE_MISMATCH",
+        tenantId: normalizeTenantSuffix(tenantId) || "GLOBAL"
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        reason: `VERIFY_ERROR: ${error.message}`,
+        tenantId: normalizeTenantSuffix(tenantId) || "GLOBAL"
+      };
     }
   }
 
@@ -87,7 +168,7 @@ export class EnterpriseKeyManager {
           return bytes.buffer;
         }
       } catch {
-        // Continuar con el tratamiento estándar de PEM
+        // Continuar con tratamiento PEM estándar
       }
     }
 

@@ -87,7 +87,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
   const canonicalSignPayload = `${tenantId}|${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
   const ed25519Signature =
     safeEvidence.cryptoSeal ||
-    (await keyManager.deriveEd25519Signature(canonicalSignPayload));
+    (await keyManager.deriveEd25519Signature(canonicalSignPayload, tenantId));
 
   const TsaClass = TimestampingEngine?.default || TimestampingEngine;
   const tsaEngine = new TsaClass(
@@ -128,6 +128,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
       verdictId,
       payloadHash,
       ed25519Signature,
+      publicKeyConfigured: keyManager.hasPublicKeyConfigured(tenantId),
       merkleRoot: safeEvidence.merkleRoot || tsaSeal.rootHash,
       tsaHash: tsaSeal.tsaHash,
       rfc3161Timestamp: tsaSeal.timestampUtc,
