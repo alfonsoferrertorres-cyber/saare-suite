@@ -1,13 +1,31 @@
 // packages/merkle-eidas/merkleTree.js — Árbol de Merkle SHA-256 y Pruebas de Inclusión (SGP 1.0)
 
+function canonicalizeValue(val) {
+  if (val === null || typeof val !== "object") {
+    if (typeof val === "number" && Object.is(val, -0)) {
+      return "0";
+    }
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return "[" + val.map((item) => canonicalizeValue(item)).join(",") + "]";
+  }
+  const keys = Object.keys(val).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalizeValue(val[k])).join(",") + "}";
+}
+
 async function sha256Hex(input) {
-  const text = typeof input === "string" ? input : JSON.stringify(input);
+  const text = typeof input === "string" ? input : canonicalizeValue(input);
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function isValidSha256Hex(hash = "") {
+  return /^[0-9a-fA-F]{64}$/.test(String(hash || "").trim());
 }
 
 /**
@@ -56,7 +74,7 @@ export async function buildMerkleBatch(evidences = []) {
 
   const leafEntries = await Promise.all(
     list.map(async (ev, idx) => ({
-      index: idx,
+      originalIndex: idx,
       evidenceId: String(ev?.evidence_id || ev?.id || ev?.trace_id || `LEAF-${idx}`),
       leafHash: await computeLeafHash(ev)
     }))
@@ -69,43 +87,51 @@ export async function buildMerkleBatch(evidences = []) {
   });
 
   const proofsByLeafIndex = leafEntries.map(() => []);
-  let currentLevel = leafEntries.map((entry) => entry.leafHash);
-  const levels = [currentLevel];
 
-  while (currentLevel.length > 1) {
-    const workingLevel =
-      currentLevel.length % 2 === 1
-        ? [...currentLevel, currentLevel[currentLevel.length - 1]]
-        : [...currentLevel];
+  // Cada nodo de un nivel guarda su hash y el conjunto de índices de hojas bajo ese nodo
+  let currentNodes = leafEntries.map((entry, idx) => ({
+    hash: entry.leafHash,
+    leafIndices: [idx]
+  }));
 
-    const nextLevel = [];
+  const levels = [currentNodes.map((n) => n.hash)];
 
-    for (let i = 0; i < workingLevel.length; i += 2) {
-      const left = workingLevel[i];
-      const right = workingLevel[i + 1];
-      const parentHash = await sha256Hex(`${left}:${right}`);
-      nextLevel.push(parentHash);
+  while (currentNodes.length > 1) {
+    const workingNodes =
+      currentNodes.length % 2 === 1
+        ? [...currentNodes, { hash: currentNodes[currentNodes.length - 1].hash, leafIndices: [] }]
+        : [...currentNodes];
 
-      // Registrar hermano para todas las hojas bajo el subárbol izquierdo
-      for (let leafIdx = 0; leafIdx < leafEntries.length; leafIdx++) {
-        const subtreeSize = Math.pow(2, levels.length - 1);
-        const startLeaf = i * subtreeSize;
-        const midLeaf = startLeaf + subtreeSize;
-        const endLeaf = (i + 2) * subtreeSize;
+    const nextNodes = [];
 
-        if (leafIdx >= startLeaf && leafIdx < midLeaf) {
-          proofsByLeafIndex[leafIdx].push({ hash: right, position: "right" });
-        } else if (leafIdx >= midLeaf && leafIdx < endLeaf) {
-          proofsByLeafIndex[leafIdx].push({ hash: left, position: "left" });
+    for (let i = 0; i < workingNodes.length; i += 2) {
+      const left = workingNodes[i];
+      const right = workingNodes[i + 1];
+      const parentHash = await sha256Hex(`${left.hash}:${right.hash}`);
+
+      // Si `right` es un nodo duplicado de relleno (sin hojas propias), no se añade como hermano
+      // porque el hash que se combina en ese nivel ya es `left.hash` (duplicado en el bucle de verificación)
+      if (right.leafIndices.length > 0) {
+        for (const leafIdx of left.leafIndices) {
+          proofsByLeafIndex[leafIdx].push({ hash: right.hash, position: "right" });
         }
       }
+
+      for (const leafIdx of right.leafIndices) {
+        proofsByLeafIndex[leafIdx].push({ hash: left.hash, position: "left" });
+      }
+
+      nextNodes.push({
+        hash: parentHash,
+        leafIndices: [...left.leafIndices, ...right.leafIndices]
+      });
     }
 
-    currentLevel = nextLevel;
-    levels.push(currentLevel);
+    currentNodes = nextNodes;
+    levels.push(currentNodes.map((n) => n.hash));
   }
 
-  const merkleRoot = currentLevel[0];
+  const merkleRoot = currentNodes[0].hash;
   const leaves = leafEntries.map((entry, idx) => ({
     index: idx,
     evidenceId: entry.evidenceId,
@@ -129,14 +155,16 @@ export async function buildMerkleBatch(evidences = []) {
  * @returns {Promise<boolean>}
  */
 export async function verifyMerkleProof(leafHash, proof = [], expectedRoot = "") {
-  if (!leafHash || !expectedRoot) return false;
+  const cleanLeaf = String(leafHash || "").trim().toLowerCase();
+  const cleanRoot = String(expectedRoot || "").trim().toLowerCase();
+  if (!isValidSha256Hex(cleanLeaf) || !isValidSha256Hex(cleanRoot)) return false;
 
-  let computed = String(leafHash).trim().toLowerCase();
+  let computed = cleanLeaf;
   const steps = Array.isArray(proof) ? proof : [];
 
   for (const step of steps) {
     const sibling = String(step?.hash || "").trim().toLowerCase();
-    if (!sibling) return false;
+    if (!isValidSha256Hex(sibling)) return false;
 
     if (step.position === "left") {
       computed = await sha256Hex(`${sibling}:${computed}`);
@@ -147,7 +175,7 @@ export async function verifyMerkleProof(leafHash, proof = [], expectedRoot = "")
     }
   }
 
-  return computed === String(expectedRoot).trim().toLowerCase();
+  return computed === cleanRoot;
 }
 
 export default {

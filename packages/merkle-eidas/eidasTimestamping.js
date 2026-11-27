@@ -24,11 +24,102 @@ function hexToBytes32(hex) {
 }
 
 function bytesToBase64(bytes) {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  if (!bytes || bytes.length === 0) return "";
+  const chunkSize = 0x8000;
+  const chunks = [];
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const slice = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    let binary = "";
+    for (let j = 0; j < slice.length; j++) {
+      binary += String.fromCharCode(slice[j]);
+    }
+    chunks.push(btoa(binary));
   }
-  return btoa(binary);
+  return chunks.join("");
+}
+
+/**
+ * Lee una longitud ASN.1 DER en `offset`.
+ * Devuelve `{ length, nextOffset }` o `null` si está truncada o no es válida.
+ */
+function readDerLength(bytes, offset) {
+  if (!bytes || offset >= bytes.length) return null;
+  const first = bytes[offset];
+  if (first === 0x80) return null; // Indefinite length no válida en DER estricto
+  if ((first & 0x80) === 0) {
+    return { length: first, nextOffset: offset + 1 };
+  }
+  const numOctets = first & 0x7f;
+  if (numOctets > 4 || offset + 1 + numOctets > bytes.length) return null;
+  let length = 0;
+  for (let i = 0; i < numOctets; i++) {
+    length = (length << 8) | bytes[offset + 1 + i];
+    if (length < 0) return null;
+  }
+  return { length, nextOffset: offset + 1 + numOctets };
+}
+
+/**
+ * Lee un TLV ASN.1 DER en `offset`.
+ */
+function readDerTlv(bytes, offset) {
+  if (!bytes || offset >= bytes.length) return null;
+  const tag = bytes[offset];
+  const lenInfo = readDerLength(bytes, offset + 1);
+  if (!lenInfo) return null;
+  const valueStart = lenInfo.nextOffset;
+  const valueEnd = valueStart + lenInfo.length;
+  if (valueEnd > bytes.length) return null;
+  return {
+    tag,
+    length: lenInfo.length,
+    valueStart,
+    valueEnd,
+    nextOffset: valueEnd
+  };
+}
+
+/**
+ * Parsea la respuesta DER RFC 3161 (`TimeStampResp ::= SEQUENCE { status PKIStatusInfo, timeStampToken ... }`)
+ * y verifica que `PKIStatus` sea 0 (granted) o 1 (grantedWithMods).
+ */
+function parseRfc3161Response(bytes) {
+  if (!bytes || bytes.length < 7) {
+    return { granted: false, status: null, hasToken: false, reason: "Respuesta ASN.1 DER vacía o truncada" };
+  }
+
+  const outerResp = readDerTlv(bytes, 0);
+  if (!outerResp || outerResp.tag !== 0x30) {
+    return { granted: false, status: null, hasToken: false, reason: "La respuesta no es una SEQUENCE ASN.1 válida" };
+  }
+
+  const statusInfo = readDerTlv(bytes, outerResp.valueStart);
+  if (!statusInfo || statusInfo.tag !== 0x30) {
+    return { granted: false, status: null, hasToken: false, reason: "PKIStatusInfo ausente o inválido en TimeStampResp" };
+  }
+
+  const pkiStatus = readDerTlv(bytes, statusInfo.valueStart);
+  if (!pkiStatus || pkiStatus.tag !== 0x02 || pkiStatus.length < 1 || pkiStatus.length > 4) {
+    return { granted: false, status: null, hasToken: false, reason: "PKIStatus INTEGER no encontrado en PKIStatusInfo" };
+  }
+
+  let statusVal = 0;
+  for (let i = pkiStatus.valueStart; i < pkiStatus.valueEnd; i++) {
+    statusVal = (statusVal << 8) | bytes[i];
+  }
+
+  const hasToken = statusInfo.nextOffset < outerResp.valueEnd;
+  const granted = (statusVal === 0 || statusVal === 1) && hasToken;
+
+  if (!granted) {
+    const reason =
+      statusVal === 0 || statusVal === 1
+        ? "PKIStatus concedido pero falta timeStampToken en TimeStampResp"
+        : `PKIStatus no concedido (valor=${statusVal})`;
+    return { granted: false, status: statusVal, hasToken, reason };
+  }
+
+  return { granted: true, status: statusVal, hasToken: true, reason: null };
 }
 
 /**
@@ -63,30 +154,18 @@ function buildRfc3161Sha256Query(cleanRootHex) {
   return query;
 }
 
-/**
- * Verifica que la respuesta DER contenga un PKIStatusInfo con status = 0 (granted) o 1 (grantedWithMods).
- */
-function isGrantedRfc3161Reply(bytes) {
-  if (!bytes || bytes.length < 12 || bytes[0] !== 0x30) return false;
-  for (let i = 2; i < Math.min(bytes.length - 5, 24); i++) {
-    if (
-      bytes[i] === 0x30 &&
-      bytes[i + 1] === 0x03 &&
-      bytes[i + 2] === 0x02 &&
-      bytes[i + 3] === 0x01 &&
-      (bytes[i + 4] === 0x00 || bytes[i + 4] === 0x01)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function shouldUseBinaryRfc3161(tsaUrl, options, env) {
   if (options?.protocol === "json" || env?.EIDAS_TSA_PROTOCOL === "json") return false;
   if (options?.protocol === "rfc3161" || env?.EIDAS_TSA_PROTOCOL === "rfc3161") return true;
   const lower = String(tsaUrl || "").toLowerCase();
   return lower.includes("/tsr") || lower.includes("freetsa") || lower.includes("digicert") || lower.includes("sectigo");
+}
+
+function isTsaFallbackAllowed(options, env) {
+  if (typeof options?.allowFallback === "boolean") return options.allowFallback;
+  const raw = env?.EIDAS_ALLOW_FALLBACK ?? env?.ALLOW_TSA_FALLBACK;
+  if (raw === undefined || raw === null || raw === "") return true;
+  return String(raw).trim().toLowerCase() !== "false" && String(raw).trim() !== "0";
 }
 
 /**
@@ -168,8 +247,9 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
       }
 
       const tsrBytes = new Uint8Array(await response.arrayBuffer());
-      if (!isGrantedRfc3161Reply(tsrBytes)) {
-        throw new Error("La respuesta ASN.1 RFC 3161 no indica PKIStatus concedido");
+      const parsedReply = parseRfc3161Response(tsrBytes);
+      if (!parsedReply.granted) {
+        throw new Error(`La respuesta ASN.1 RFC 3161 no indica PKIStatus concedido (${parsedReply.reason})`);
       }
 
       const tsrBase64 = bytesToBase64(tsrBytes);
@@ -201,6 +281,7 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
         sealHash: rfc3161SealHash,
         tsaReference: `RFC3161-${hostTag}-${rfc3161SealHash.slice(0, 12).toUpperCase()}`,
         provider: tsaUrl,
+        pkiStatus: parsedReply.status,
         tsqBase64,
         tsrBase64,
         qualificationNote: "Sello de tiempo electrónico RFC 3161 obtenido de TSA externa (eIDAS Art. 41.1)"
@@ -280,6 +361,10 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
         : "Comprobante de sellado temporal obtenido desde endpoint TSA"
     });
   } catch (error) {
+    if (!isTsaFallbackAllowed(options, env)) {
+      throw new Error(`Fallo en sellado TSA (${tsaUrl}): ${error?.message || "Error desconocido"}`);
+    }
+
     return Object.freeze({
       status: "SEALED_FALLBACK_LOCAL",
       mode: "LOCAL_FALLBACK_ON_TSA_ERROR",
