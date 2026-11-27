@@ -11,6 +11,7 @@ param(
     [string]$CommitMessage = "chore(release): despliegue maestro v9.3",
     [switch]$RotateEd25519Keys,
     [switch]$VerifyEd25519Signature,
+    [switch]$SkipEd25519Verify,
     [switch]$ConfigureMasterTestPassword,
     [switch]$RemoveMasterTestPassword,
     [switch]$SkipSmokeTests,
@@ -900,7 +901,7 @@ if (-not $SkipSmokeTests) {
 }
 
 # 7.3 Validacion forense Ed25519 end-to-end (/api/v1/forensics/signature/verify)
-if ($VerifyEd25519Signature -or $RotateEd25519Keys) {
+if (-not $SkipSmokeTests -and -not $SkipEd25519Verify) {
     $sigTenant = ($SmokeTenants | Select-Object -First 1)
     if ([string]::IsNullOrWhiteSpace($sigTenant)) { $sigTenant = "ENTERPRISE" }
 
