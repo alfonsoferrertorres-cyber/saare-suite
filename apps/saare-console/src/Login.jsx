@@ -181,16 +181,16 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 font-sans text-slate-100">
-      <div className="bg-[#0b0f19] border border-[#1e293b] rounded-2xl max-w-xl w-full p-8 shadow-2xl space-y-6">
-        <div className="p-4 bg-[#020617] border border-[#1e293b] rounded-xl text-center">
-          <h1 className="text-base font-black text-[#f59e0b] tracking-wider uppercase">
+    <div className="min-h-screen bg-[#e9eaec] flex items-center justify-center p-4 font-sans text-[#1a1d20]">
+      <div className="bg-[#f6f6f5] border border-[#c8ccd1] rounded-2xl max-w-xl w-full p-8 shadow-xl space-y-6">
+        <div className="p-4 bg-[#e4e2dc] border border-[#c8ccd1] rounded-xl text-center">
+          <h1 className="text-base font-black text-[#1a1d20] tracking-wider uppercase">
             Sistema de Alineamiento, Auditoría y Resiliencia Estructural
           </h1>
-          <p className="text-[11px] text-slate-400 font-mono mt-1">S.A.A.R.E. CONSOLE GRC</p>
+          <p className="text-[11px] text-[#4a5258] font-mono mt-1">S.A.A.R.E. CONSOLE GRC</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 p-1 bg-[#020617] border border-[#1e293b] rounded-xl">
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#e4e2dc] border border-[#c8ccd1] rounded-xl">
           <button
             type="button"
             onClick={() => {
@@ -199,8 +199,8 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
             }}
             className={`py-2.5 px-3 rounded-lg text-xs font-mono font-bold uppercase transition cursor-pointer ${
               authMode === 'SANDBOX'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#4a5258] text-[#f6f6f5] border border-[#1a1d20]'
+                : 'text-[#4a5258] hover:text-[#1a1d20]'
             }`}
           >
             Alta Sandbox
@@ -213,8 +213,8 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
             }}
             className={`py-2.5 px-3 rounded-lg text-xs font-mono font-bold uppercase transition cursor-pointer ${
               authMode === 'LOGIN'
-                ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#4a5258] text-[#f6f6f5] border border-[#1a1d20]'
+                : 'text-[#4a5258] hover:text-[#1a1d20]'
             }`}
           >
             Acceso Operador
@@ -222,18 +222,18 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         </div>
 
         <div className="text-center space-y-2">
-          <h2 className="text-base font-extrabold uppercase text-slate-100 tracking-wide">
+          <h2 className="text-base font-extrabold uppercase text-[#1a1d20] tracking-wide">
             {authMode === 'SANDBOX'
               ? 'ALTA DE ENTORNO SANDBOX MULTITENANT'
               : 'ACCESO A NODO MULTITENANT Y BÓVEDA D1'}
           </h2>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+          <p className="text-xs text-[#4a5258] leading-relaxed max-w-md mx-auto">
             Configura tu sesión aislada por tenant para operar en la consola GRC.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-lg text-center font-mono">
+          <div className="p-3 bg-[#e4e2dc] border border-[#4a5258] text-[#1a1d20] text-xs rounded-lg text-center font-mono">
             {errorMsg}
           </div>
         )}
@@ -241,7 +241,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         <form onSubmit={handleActivationSubmit} className="space-y-4">
           {authMode === 'SANDBOX' && (
             <div>
-              <label className="block text-[11px] font-mono font-bold text-emerald-400 uppercase mb-1">
+              <label className="block text-[11px] font-mono font-bold text-[#4a5258] uppercase mb-1">
                 NOMBRE DEL RESPONSABLE:
               </label>
               <input
@@ -250,13 +250,13 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nombre y apellidos"
-                className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-[#b5b7b9] rounded-lg px-3 py-2.5 text-xs font-mono text-[#1a1d20] placeholder:text-[#6c737c] focus:outline-none focus:border-[#4a5258]"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+            <label className="block text-[11px] font-mono font-bold text-[#4a5258] uppercase mb-1">
               CORREO CORPORATIVO:
             </label>
             <input
@@ -265,12 +265,12 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="operador@organizacion.es"
-              className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
+              className="w-full bg-white border border-[#b5b7b9] rounded-lg px-3 py-2.5 text-xs font-mono text-[#1a1d20] placeholder:text-[#6c737c] focus:outline-none focus:border-[#4a5258]"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+            <label className="block text-[11px] font-mono font-bold text-[#4a5258] uppercase mb-1">
               CONTRASEÑA:
             </label>
             <input
@@ -279,13 +279,13 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
-              className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
+              className="w-full bg-white border border-[#b5b7b9] rounded-lg px-3 py-2.5 text-xs font-mono text-[#1a1d20] placeholder:text-[#6c737c] focus:outline-none focus:border-[#4a5258]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+              <label className="block text-[11px] font-mono font-bold text-[#4a5258] uppercase mb-1">
                 EMPRESA / TENANT:
               </label>
               <input
@@ -294,19 +294,19 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
                 value={tenant}
                 onChange={(e) => setTenant(e.target.value)}
                 placeholder="Identificador de tenant"
-                className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-500"
+                className="w-full bg-white border border-[#b5b7b9] rounded-lg px-3 py-2.5 text-xs font-mono text-[#1a1d20] placeholder:text-[#6c737c] focus:outline-none focus:border-[#4a5258]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-mono font-bold text-sky-400 uppercase mb-1">
+              <label className="block text-[11px] font-mono font-bold text-[#4a5258] uppercase mb-1">
                 ROL DE OPERADOR:
               </label>
               <select
                 value={authMode === 'SANDBOX' ? 'CISO_ADMIN' : role}
                 disabled={authMode === 'SANDBOX'}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-[#020617] border border-[#1e293b] rounded-lg px-3 py-2.5 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-sky-500 cursor-pointer disabled:opacity-80"
+                className="w-full bg-white border border-[#b5b7b9] rounded-lg px-3 py-2.5 text-xs font-mono text-[#1a1d20] font-bold focus:outline-none focus:border-[#4a5258] cursor-pointer disabled:opacity-80"
               >
                 <option value="CISO_ADMIN">CISO ADMIN (L4)</option>
                 <option value="CISO_SECOPS_LEVEL_3">SECOPS (L3)</option>
@@ -323,11 +323,11 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
               id="terms"
               checked={acceptedTerms}
               onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-0.5 accent-emerald-500 cursor-pointer w-4 h-4"
+              className="mt-0.5 accent-[#4a5258] cursor-pointer w-4 h-4"
             />
             <label
               htmlFor="terms"
-              className="text-[11px] text-slate-400 leading-snug cursor-pointer select-none"
+              className="text-[11px] text-[#4a5258] leading-snug cursor-pointer select-none"
             >
               Acepto los términos operativos del tenant y la trazabilidad de auditoría asociada a mi sesión.
             </label>
@@ -344,7 +344,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
                   setTenant('');
                 })
               }
-              className="w-full py-3 bg-[#1e293b] hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition uppercase tracking-wider cursor-pointer"
+              className="w-full py-3 bg-[#e4e2dc] hover:bg-[#d8dadf] text-[#1a1d20] border border-[#b5b7b9] rounded-xl text-xs font-bold transition uppercase tracking-wider cursor-pointer"
             >
               {onBack ? 'VOLVER' : 'LIMPIAR'}
             </button>
@@ -352,7 +352,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
             <button
               type="submit"
               disabled={!acceptedTerms || loading}
-              className="w-full py-3 bg-[#10b981] hover:bg-[#059669] disabled:bg-slate-800 text-slate-950 font-black rounded-xl text-xs transition uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 bg-[#4a5258] hover:bg-[#1a1d20] disabled:bg-[#c8ccd1] disabled:text-[#4a5258] text-[#f6f6f5] font-black rounded-xl text-xs transition uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading
                 ? 'PROCESANDO...'
@@ -364,7 +364,7 @@ export default function Login({ onLoginSuccess, onBack, selectedPlan = '' }) {
         </form>
 
         {SAARE_CONFIG?.TRUST_ANCHOR && (
-          <div className="text-center text-[10px] font-mono text-slate-500 border-t border-[#1e293b] pt-3">
+          <div className="text-center text-[10px] font-mono text-[#6c737c] border-t border-[#c8ccd1] pt-3">
             Trust Anchor: {SAARE_CONFIG.TRUST_ANCHOR}
           </div>
         )}

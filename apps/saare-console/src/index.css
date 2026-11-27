@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --bg-main: #030712;
-  --bg-shell: #070b14;
-  --bg-card: #0b0f19;
-  --bg-elevated: #0f172a;
-  --bg-subcard: #020617;
-  --border-color: #1e293b;
-  --border-subtle: rgba(30, 41, 59, 0.75);
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent-cyan: #38bdf8;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-violet: #8b5cf6;
-  --accent-rose: #ef4444;
+  color-scheme: light;
+  --bg-main: #e9eaec;
+  --bg-shell: #f1f2f4;
+  --bg-card: #f6f6f5;
+  --bg-elevated: #e4e2dc;
+  --bg-subcard: #ececed;
+  --border-color: #c8ccd1;
+  --border-subtle: rgba(154, 160, 168, 0.45);
+  --text-primary: #1a1d20;
+  --text-secondary: #4a5258;
+  --text-muted: #6c737c;
+  --accent-cyan: #4a5258;
+  --accent-emerald: #3b464d;
+  --accent-amber: #5a564e;
+  --accent-violet: #535860;
+  --accent-rose: #644b4d;
 }
 
 html,
@@ -45,17 +45,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #b5b7b9;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #8e949c;
 }
 
 ::selection {
-  background-color: #0284c7;
-  color: #ffffff;
+  background-color: #4a5258;
+  color: #f6f6f5;
 }
 
 .saare-mono {
@@ -80,7 +80,7 @@ body {
   overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: var(--bg-subcard);
+  background: var(--bg-card);
 }
 
 .saare-table {
@@ -96,8 +96,8 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted);
-  background: var(--bg-shell);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
@@ -105,7 +105,7 @@ body {
 .saare-table td {
   padding: 9px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  color: #e2e8f0;
+  color: var(--text-primary);
   vertical-align: middle;
 }
 
@@ -114,7 +114,7 @@ body {
 }
 
 .saare-table tbody tr:hover td {
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(216, 218, 223, 0.55);
 }
 
 @media print {

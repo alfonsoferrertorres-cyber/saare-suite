@@ -17,20 +17,21 @@ import SoaIso42001CompilerButton from './components/SoaIso42001CompilerButton';
 import { SAARE_CONFIG } from './config/saareState';
 import apiService from './services/apiService';
 
-// Estilo minimalista corporativo articulado en torno a CR-4043-1
+// Estilo minimalista corporativo gris suave articulado en torno a CR-4043-1
 const CR_PALETTE = {
   cr4043: '#B5B7B9',
-  cr4043Soft: '#D8DADF',
+  cr4043Soft: '#4A5258',
   cr4001: '#F6F6F5',
   cr4012: '#E4E2DC',
   cr4206Slate: '#4A5258',
   cr4206Charcoal: '#1A1D20',
-  surfaceDark: '#121519',
-  surfaceCard: '#181C21',
-  borderNeutral: '#5A6067',
-  borderSubtle: '#2C323A',
-  textPrimary: '#F4F5F7',
-  textSecondary: '#C5C9CF'
+  surfaceDark: '#E4E2DC',
+  surfaceCard: '#F6F6F5',
+  surfaceInput: '#FFFFFF',
+  borderNeutral: '#B5B7B9',
+  borderSubtle: '#C8CCD1',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258'
 };
 
 const SAARE_PROTOCOL_COMMANDS = [
@@ -1963,7 +1964,7 @@ function SaareConsoleInner() {
             style={{
               fontSize: '10px',
               fontWeight: '800',
-              color: CR_PALETTE.cr4043,
+              color: CR_PALETTE.textSecondary,
               textTransform: 'uppercase',
               letterSpacing: '0.06em'
             }}
@@ -1977,7 +1978,7 @@ function SaareConsoleInner() {
 
         <div
           style={{
-            background: CR_PALETTE.surfaceDark,
+            background: CR_PALETTE.surfaceCard,
             border: `1px solid ${CR_PALETTE.borderNeutral}`,
             borderRadius: '6px',
             padding: '10px 12px',
@@ -2006,7 +2007,7 @@ function SaareConsoleInner() {
           </div>
           <div>
             <strong style={{ color: CR_PALETTE.textSecondary }}>Flujo / Ciclo:</strong>{' '}
-            <span className="saare-mono" style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.67rem' }}>
+            <span className="saare-mono" style={{ color: CR_PALETTE.textSecondary, fontSize: '0.67rem' }}>
               {activeInspectedTrace.lifecycle || 'INBOUND_RAM -> POLICY_CHECK -> D1_CHAINED'}
             </span>
           </div>
@@ -2026,7 +2027,7 @@ function SaareConsoleInner() {
           )}
           <div style={{ wordBreak: 'break-all' }}>
             <strong style={{ color: CR_PALETTE.textSecondary }}>Hash:</strong>{' '}
-            <span className="saare-mono" style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.67rem' }}>
+            <span className="saare-mono" style={{ color: CR_PALETTE.textSecondary, fontSize: '0.67rem' }}>
               {activeInspectedTrace.hash || activeInspectedTrace.merkleRoot || '—'}
             </span>
           </div>
@@ -2041,7 +2042,7 @@ function SaareConsoleInner() {
               padding: '6px 8px',
               borderRadius: '6px',
               border: `1px solid ${CR_PALETTE.borderNeutral}`,
-              background: CR_PALETTE.surfaceDark,
+              background: CR_PALETTE.surfaceInput,
               color: CR_PALETTE.textPrimary,
               fontSize: '0.7rem',
               fontWeight: '700'
@@ -2062,9 +2063,9 @@ function SaareConsoleInner() {
                 flex: 1,
                 padding: '7px 10px',
                 borderRadius: '6px',
-                border: `1px solid ${CR_PALETTE.cr4043}`,
-                background: CR_PALETTE.cr4043,
-                color: CR_PALETTE.cr4206Charcoal,
+                border: `1px solid ${CR_PALETTE.cr4206Slate}`,
+                background: CR_PALETTE.cr4206Slate,
+                color: CR_PALETTE.cr4001,
                 fontSize: '0.7rem',
                 fontWeight: '800',
                 cursor: 'pointer'
@@ -2079,7 +2080,7 @@ function SaareConsoleInner() {
                 padding: '7px 10px',
                 borderRadius: '6px',
                 border: `1px solid ${CR_PALETTE.borderNeutral}`,
-                background: CR_PALETTE.surfaceCard,
+                background: CR_PALETTE.surfaceDark,
                 color: CR_PALETTE.textPrimary,
                 fontSize: '0.7rem',
                 fontWeight: '700',
@@ -2135,7 +2136,7 @@ function SaareConsoleInner() {
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
-                border: `1px solid ${CR_PALETTE.cr4043}`,
+                border: `1px solid ${CR_PALETTE.cr4206Slate}`,
                 background: CR_PALETTE.cr4206Slate,
                 color: CR_PALETTE.cr4001,
                 fontSize: '0.74rem',
@@ -2287,15 +2288,15 @@ function SaareConsoleInner() {
             position: 'fixed',
             bottom: '20px',
             right: '20px',
-            background: CR_PALETTE.cr4043,
-            color: CR_PALETTE.cr4206Charcoal,
-            border: `1px solid ${CR_PALETTE.cr4206Slate}`,
+            background: CR_PALETTE.cr4206Slate,
+            color: CR_PALETTE.cr4001,
+            border: `1px solid ${CR_PALETTE.cr4206Charcoal}`,
             padding: '12px 20px',
             borderRadius: '8px',
             zIndex: 10000,
             fontWeight: '800',
             fontSize: '0.82rem',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.45)'
+            boxShadow: '0 8px 20px rgba(26, 29, 32, 0.16)'
           }}
         >
           {governanceStatus}
@@ -2313,8 +2314,8 @@ function SaareConsoleInner() {
               marginBottom: '16px',
               padding: '14px 18px',
               background: CR_PALETTE.surfaceCard,
-              border: `1px solid ${CR_PALETTE.cr4043}`,
-              borderLeft: `4px solid ${CR_PALETTE.cr4043}`,
+              border: `1px solid ${CR_PALETTE.borderNeutral}`,
+              borderLeft: `4px solid ${CR_PALETTE.cr4206Slate}`,
               borderRadius: '10px',
               display: 'flex',
               justifyContent: 'space-between',
@@ -2324,7 +2325,7 @@ function SaareConsoleInner() {
             }}
           >
             <div>
-              <div style={{ fontWeight: '800', color: CR_PALETTE.cr4043Soft, fontSize: '0.88rem' }}>
+              <div style={{ fontWeight: '800', color: CR_PALETTE.textPrimary, fontSize: '0.88rem' }}>
                 Entorno multitenant pendiente de sesión — CR-4043-1
               </div>
               <div style={{ color: CR_PALETTE.textSecondary, fontSize: '0.76rem', marginTop: '3px' }}>
@@ -2340,9 +2341,9 @@ function SaareConsoleInner() {
               }}
               style={{
                 padding: '8px 14px',
-                background: CR_PALETTE.cr4043,
-                color: CR_PALETTE.cr4206Charcoal,
-                border: `1px solid ${CR_PALETTE.cr4206Slate}`,
+                background: CR_PALETTE.cr4206Slate,
+                color: CR_PALETTE.cr4001,
+                border: `1px solid ${CR_PALETTE.cr4206Charcoal}`,
                 borderRadius: '6px',
                 fontWeight: '800',
                 fontSize: '0.75rem',
@@ -2364,7 +2365,7 @@ function SaareConsoleInner() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(18, 21, 25, 0.85)',
+            background: 'rgba(26, 29, 32, 0.45)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2375,17 +2376,18 @@ function SaareConsoleInner() {
           <div
             style={{
               background: CR_PALETTE.surfaceCard,
-              border: `1px solid ${CR_PALETTE.cr4043}`,
+              border: `1px solid ${CR_PALETTE.borderNeutral}`,
               borderRadius: '12px',
               maxWidth: '440px',
               width: '100%',
               padding: '22px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px'
+              gap: '12px',
+              boxShadow: '0 14px 30px rgba(26, 29, 32, 0.18)'
             }}
           >
-            <strong style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.95rem' }}>
+            <strong style={{ color: CR_PALETTE.textPrimary, fontSize: '0.95rem' }}>
               Confirmar ejecución de {pendingDangerCommand.code}
             </strong>
             <p style={{ margin: 0, color: CR_PALETTE.textSecondary, fontSize: '0.78rem', lineHeight: 1.45 }}>
@@ -2420,9 +2422,9 @@ function SaareConsoleInner() {
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
-                  border: `1px solid ${CR_PALETTE.cr4043}`,
-                  background: CR_PALETTE.cr4043,
-                  color: CR_PALETTE.cr4206Charcoal,
+                  border: `1px solid ${CR_PALETTE.cr4206Charcoal}`,
+                  background: CR_PALETTE.cr4206Slate,
+                  color: CR_PALETTE.cr4001,
                   fontSize: '0.75rem',
                   fontWeight: '800',
                   cursor: 'pointer'
@@ -2440,7 +2442,7 @@ function SaareConsoleInner() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(18, 21, 25, 0.85)',
+            background: 'rgba(26, 29, 32, 0.45)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2451,11 +2453,12 @@ function SaareConsoleInner() {
           <div
             style={{
               background: CR_PALETTE.surfaceCard,
-              border: `1px solid ${CR_PALETTE.cr4043}`,
+              border: `1px solid ${CR_PALETTE.borderNeutral}`,
               borderRadius: '12px',
               maxWidth: '460px',
               width: '100%',
-              padding: '24px'
+              padding: '24px',
+              boxShadow: '0 16px 34px rgba(26, 29, 32, 0.2)'
             }}
           >
             <div
@@ -2495,9 +2498,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: `1px solid ${authTab === 'TOKEN' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
-                  background: authTab === 'TOKEN' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
-                  color: authTab === 'TOKEN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
+                  border: `1px solid ${authTab === 'TOKEN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.borderNeutral}`,
+                  background: authTab === 'TOKEN' ? CR_PALETTE.cr4206Slate : CR_PALETTE.surfaceDark,
+                  color: authTab === 'TOKEN' ? CR_PALETTE.cr4001 : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2515,9 +2518,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: `1px solid ${authTab === 'LOGIN' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
-                  background: authTab === 'LOGIN' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
-                  color: authTab === 'LOGIN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
+                  border: `1px solid ${authTab === 'LOGIN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.borderNeutral}`,
+                  background: authTab === 'LOGIN' ? CR_PALETTE.cr4206Slate : CR_PALETTE.surfaceDark,
+                  color: authTab === 'LOGIN' ? CR_PALETTE.cr4001 : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2535,9 +2538,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: `1px solid ${authTab === 'SANDBOX' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
-                  background: authTab === 'SANDBOX' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
-                  color: authTab === 'SANDBOX' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
+                  border: `1px solid ${authTab === 'SANDBOX' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.borderNeutral}`,
+                  background: authTab === 'SANDBOX' ? CR_PALETTE.cr4206Slate : CR_PALETTE.surfaceDark,
+                  color: authTab === 'SANDBOX' ? CR_PALETTE.cr4001 : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2561,7 +2564,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, token: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
@@ -2578,7 +2581,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
@@ -2592,7 +2595,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
@@ -2612,7 +2615,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, companyName: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
@@ -2625,7 +2628,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
@@ -2644,7 +2647,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
@@ -2659,7 +2662,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
@@ -2672,7 +2675,7 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: CR_PALETTE.surfaceDark,
+                      background: CR_PALETTE.surfaceInput,
                       border: `1px solid ${CR_PALETTE.borderNeutral}`,
                       color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
@@ -2687,9 +2690,9 @@ function SaareConsoleInner() {
                   style={{
                     padding: '8px 12px',
                     background: CR_PALETTE.surfaceDark,
-                    border: `1px solid ${CR_PALETTE.cr4043}`,
+                    border: `1px solid ${CR_PALETTE.cr4206Slate}`,
                     borderRadius: '6px',
-                    color: CR_PALETTE.cr4043Soft,
+                    color: CR_PALETTE.textPrimary,
                     fontSize: '0.78rem'
                   }}
                 >
@@ -2702,9 +2705,9 @@ function SaareConsoleInner() {
                 disabled={authSubmitting}
                 style={{
                   padding: '11px',
-                  background: CR_PALETTE.cr4043,
-                  color: CR_PALETTE.cr4206Charcoal,
-                  border: `1px solid ${CR_PALETTE.cr4206Slate}`,
+                  background: CR_PALETTE.cr4206Slate,
+                  color: CR_PALETTE.cr4001,
+                  border: `1px solid ${CR_PALETTE.cr4206Charcoal}`,
                   borderRadius: '6px',
                   fontWeight: '900',
                   cursor: 'pointer'
