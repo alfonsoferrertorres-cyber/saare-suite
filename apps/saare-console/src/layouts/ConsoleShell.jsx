@@ -3,6 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { useConsole } from '../context/ConsoleContext';
 import { EXECUTION_STATUS } from '../domain/contracts';
 
+const ROLE_LABELS = {
+  PLATFORM_ADMIN: 'Platform Admin',
+  CISO_ADMIN: 'CISO Admin',
+  CISO_SECOPS_LEVEL_3: 'SecOps L3',
+  TENANT_ADMIN: 'Tenant Admin',
+  DPO_GRC_LEVEL_2: 'DPO / GRC L2',
+  BOARD_EXECUTIVE_LEVEL_1: 'Executive L1',
+  OPERATIONAL_AGENT_USER: 'Operational Agent',
+  READ_ONLY: 'Read Only'
+};
+
+function formatRoleLabel(role) {
+  const clean = String(role || '').trim();
+  if (!clean) return 'Sin rol';
+  return ROLE_LABELS[clean] || clean.replace(/_/g, ' ');
+}
+
 export default function ConsoleShell({
   children,
   detailPanel = null,
@@ -65,6 +82,7 @@ export default function ConsoleShell({
   const isRuntimeOk = Boolean(nodeStatus?.healthy);
   const showShellActivityLog =
     activeRoute?.id !== 'overview' && Array.isArray(activityLog) && activityLog.length > 0;
+  const isReadOnlyRole = !role || role === 'READ_ONLY';
 
   return (
     <div
@@ -132,9 +150,26 @@ export default function ConsoleShell({
               >
                 {nodeStatus?.status || 'NO_DISPONIBLE'}
               </span>
+              <span
+                title={role || 'READ_ONLY'}
+                aria-label={`Rol activo: ${formatRoleLabel(role)}`}
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: '700',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  whiteSpace: 'nowrap',
+                  background: isReadOnlyRole ? '#111827' : 'rgba(2, 132, 199, 0.16)',
+                  color: isReadOnlyRole ? '#cbd5e1' : '#7dd3fc',
+                  border: `1px solid ${isReadOnlyRole ? '#334155' : '#0284c7'}`
+                }}
+              >
+                Rol: {formatRoleLabel(role)}
+              </span>
             </div>
             <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
               {activeRoute?.label} · Modo PEP: {nodeStatus?.mode || 'FAIL-CLOSED'}
+              {tenantId ? ` · Tenant: ${tenantId}` : ''}
             </div>
           </div>
         </div>
@@ -437,8 +472,8 @@ export default function ConsoleShell({
                 {sessionSummary?.isConfigured ? 'Vinculada' : 'Sin configurar'}
               </span>
             </div>
-            <div>
-              <strong style={{ color: '#e2e8f0' }}>Rol:</strong> {role}
+            <div title={role || 'READ_ONLY'}>
+              <strong style={{ color: '#e2e8f0' }}>Rol:</strong> {formatRoleLabel(role)}
             </div>
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <strong style={{ color: '#e2e8f0' }}>Usuario:</strong> {userEmail || 'No autenticado'}

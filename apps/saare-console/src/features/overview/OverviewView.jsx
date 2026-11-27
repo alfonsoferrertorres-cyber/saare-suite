@@ -39,26 +39,37 @@ export default function OverviewView({
     setLoadingKpis(true);
     try {
       const [kpiRes, traces] = await Promise.all([
-        typeof apiService.getKpis === 'function' ? apiService.getKpis() : Promise.resolve(null),
+        typeof apiService.getKpis === 'function'
+          ? apiService.getKpis({ tenant: tenantId || undefined })
+          : Promise.resolve(null),
         typeof apiService.getTelemetryTraces === 'function'
           ? apiService.getTelemetryTraces({ tenant: tenantId || undefined, limit: 50 })
           : Promise.resolve([])
       ]);
 
-      const sourceTraces =
-        Array.isArray(traces) && traces.length > 0
-          ? traces
-          : Array.isArray(evidences)
-          ? evidences
-          : [];
+      const remoteList = Array.isArray(traces)
+        ? traces
+        : Array.isArray(traces?.traces)
+        ? traces.traces
+        : Array.isArray(traces?.evidences)
+        ? traces.evidences
+        : [];
+
+      const matchingEvidences = Array.isArray(evidences)
+        ? tenantId
+          ? evidences.filter((item) => !item?.tenant || item.tenant === tenantId)
+          : evidences
+        : [];
+
+      const sourceTraces = remoteList.length > 0 ? remoteList : matchingEvidences;
 
       const pendingCount = sourceTraces.filter(
-        (t) => !t.batchId && t.tsaStatus !== 'TSA_VERIFIED' && Number(t.anchored || 0) === 0
+        (t) => !t?.batchId && t?.tsaStatus !== 'TSA_VERIFIED' && Number(t?.anchored || 0) === 0
       ).length;
 
       const fallbackTotal = sourceTraces.length;
       const fallbackDenied = sourceTraces.filter(
-        (t) => t.verdict === 'DENY' || t.decision === 'DENY'
+        (t) => t?.verdict === 'DENY' || t?.verdict === 'RECHAZADO' || t?.decision === 'DENY'
       ).length;
       const fallbackAllowed = Math.max(0, fallbackTotal - fallbackDenied);
 
@@ -69,10 +80,15 @@ export default function OverviewView({
         pendingConsolidation: Number(kpiRes?.pendingConsolidation ?? pendingCount)
       });
     } catch {
-      const fallbackTotal = Array.isArray(evidences) ? evidences.length : 0;
-      const fallbackDenied = Array.isArray(evidences)
-        ? evidences.filter((t) => t.verdict === 'DENY' || t.decision === 'DENY').length
-        : 0;
+      const matchingEvidences = Array.isArray(evidences)
+        ? tenantId
+          ? evidences.filter((item) => !item?.tenant || item.tenant === tenantId)
+          : evidences
+        : [];
+      const fallbackTotal = matchingEvidences.length;
+      const fallbackDenied = matchingEvidences.filter(
+        (t) => t?.verdict === 'DENY' || t?.verdict === 'RECHAZADO' || t?.decision === 'DENY'
+      ).length;
       setKpis({
         totalInterceptions: fallbackTotal,
         allowedActions: Math.max(0, fallbackTotal - fallbackDenied),
@@ -86,7 +102,7 @@ export default function OverviewView({
 
   useEffect(() => {
     loadOverviewMetrics();
-  }, [loadOverviewMetrics, tenantId]);
+  }, [loadOverviewMetrics]);
 
   const handleRefreshAll = async () => {
     const tasks = [refreshNodeStatus(), loadOverviewMetrics()];
@@ -97,6 +113,10 @@ export default function OverviewView({
   };
 
   const isRuntimeOk = Boolean(nodeStatus?.healthy);
+  const canEvaluateL7 =
+    can(CONSOLE_ACTIONS.EVALUATE_SIMULATION) || can(CONSOLE_ACTIONS.EXECUTE_L7_INFERENCE);
+  const canVerifyEvidence =
+    can(CONSOLE_ACTIONS.VERIFY_SIGNATURE) || can(CONSOLE_ACTIONS.SYNC_VAULT);
   const verificationStatus = lastVerification?.status || EXECUTION_STATUS.NOT_RUN;
 
   const verificationLabel =
@@ -105,6 +125,11 @@ export default function OverviewView({
       : verificationStatus === EXECUTION_STATUS.FAILED
       ? 'FAILED'
       : 'NOT_RUN';
+
+  const blockRate =
+    kpis.totalInterceptions > 0
+      ? ((kpis.deniedActions / kpis.totalInterceptions) * 100).toFixed(1)
+      : '0.0';
 
   const cardStyle = {
     background: '#0b0f19',
@@ -125,9 +150,21 @@ export default function OverviewView({
     letterSpacing: '0.06em'
   };
 
+  const secondaryBtnStyle = {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    background: '#111827',
+    color: '#cbd5e1',
+    border: '1px solid #334155',
+    fontSize: '0.74rem',
+    fontWeight: '700',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      {/* Cabecera de estado del nodo y acciones rápidas */}
+      {/* Cabecera primaria: estado del nodo, Fail-Closed y acciones nucleares */}
       <section
         style={{
           background: '#0b0f19',
@@ -143,7 +180,7 @@ export default function OverviewView({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={labelStyle}>Estado general del nodo</span>
+            <span style={labelStyle}>Estado operativo y PEP</span>
             <span
               style={{
                 fontSize: '0.7rem',
@@ -158,44 +195,42 @@ export default function OverviewView({
             >
               {nodeStatus?.status || 'NO_DISPONIBLE'}
             </span>
-            {billingInfo?.planId && (
-              <span
-                style={{
-                  fontSize: '0.68rem',
-                  fontWeight: '800',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  background: '#0f172a',
-                  color: '#7dd3fc',
-                  border: '1px solid #0284c7'
-                }}
-              >
-                Plan: {billingInfo.planId}
-              </span>
-            )}
+            <span
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: '800',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                background: '#0f172a',
+                color: '#7dd3fc',
+                border: '1px solid #0284c7'
+              }}
+            >
+              PEP: {nodeStatus?.mode || 'FAIL-CLOSED'}
+            </span>
           </div>
 
           <div style={{ fontSize: '0.8rem', color: '#cbd5e1', wordBreak: 'break-word' }}>
-            Tenant: <strong>{tenantId || 'Sin tenant seleccionado'}</strong> · Ruta:{' '}
-            <strong>{routeMode}</strong> · Modo PEP:{' '}
-            <strong>{nodeStatus?.mode || 'FAIL-CLOSED'}</strong>
+            Tenant: <strong>{tenantId || 'Sin tenant vinculado'}</strong> · Ruta:{' '}
+            <strong>{routeMode}</strong>
+            {billingInfo?.planId ? ` · Plan: ${billingInfo.planId}` : ''}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <button
             type="button"
-            disabled={!can(CONSOLE_ACTIONS.EVALUATE_SIMULATION) && !can(CONSOLE_ACTIONS.EXECUTE_L7_INFERENCE)}
+            disabled={!canEvaluateL7}
             onClick={() => navigateTo(routes.RUNTIME)}
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
-              background: '#0284c7',
-              color: '#ffffff',
+              background: canEvaluateL7 ? '#0284c7' : '#1e293b',
+              color: canEvaluateL7 ? '#ffffff' : '#64748b',
               border: 'none',
               fontSize: '0.75rem',
               fontWeight: '800',
-              cursor: 'pointer',
+              cursor: canEvaluateL7 ? 'pointer' : 'not-allowed',
               whiteSpace: 'nowrap'
             }}
           >
@@ -204,84 +239,22 @@ export default function OverviewView({
 
           <button
             type="button"
-            disabled={!can(CONSOLE_ACTIONS.VERIFY_SIGNATURE) && !can(CONSOLE_ACTIONS.SYNC_VAULT)}
+            disabled={!canVerifyEvidence}
             onClick={() => navigateTo(routes.EVIDENCE)}
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
               background: '#111827',
-              color: '#e2e8f0',
+              color: canVerifyEvidence ? '#e2e8f0' : '#64748b',
               border: '1px solid #334155',
               fontSize: '0.75rem',
               fontWeight: '800',
-              cursor: 'pointer',
+              cursor: canVerifyEvidence ? 'pointer' : 'not-allowed',
               whiteSpace: 'nowrap'
             }}
           >
             Verificar evidencias
           </button>
-
-          {typeof onOpenExecutiveView === 'function' && (
-            <button
-              type="button"
-              onClick={onOpenExecutiveView}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                background: '#0f172a',
-                color: '#7dd3fc',
-                border: '1px solid #0284c7',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Vista ejecutiva
-            </button>
-          )}
-
-          {typeof onStartStripeUpgrade === 'function' && (
-            <button
-              type="button"
-              disabled={isBillingLoading}
-              onClick={() => onStartStripeUpgrade('PROFESSIONAL_649')}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                background: '#065f46',
-                color: '#ecfdf5',
-                border: '1px solid #10b981',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                cursor: isBillingLoading ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {isBillingLoading ? 'Facturación...' : 'Mejorar plan'}
-            </button>
-          )}
-
-          {typeof onOpenStripePortal === 'function' && billingInfo?.planId && (
-            <button
-              type="button"
-              disabled={isBillingLoading}
-              onClick={onOpenStripePortal}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                background: '#111827',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                cursor: isBillingLoading ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Portal facturación
-            </button>
-          )}
 
           {!tenantId && typeof onOpenAuthModal === 'function' && (
             <button
@@ -308,15 +281,9 @@ export default function OverviewView({
             disabled={loadingNode || loadingKpis}
             onClick={handleRefreshAll}
             style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              background: '#070b14',
+              ...secondaryBtnStyle,
               color: '#94a3b8',
-              border: '1px solid #334155',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: loadingNode || loadingKpis ? 'wait' : 'pointer',
-              whiteSpace: 'nowrap'
+              cursor: loadingNode || loadingKpis ? 'wait' : 'pointer'
             }}
           >
             {loadingNode || loadingKpis ? 'Actualizando...' : 'Actualizar'}
@@ -324,15 +291,25 @@ export default function OverviewView({
         </div>
       </section>
 
-      {/* Indicadores clave */}
+      {/* Indicadores clave de inspección, bloqueo y consolidación */}
       <section
         aria-label="Indicadores operativos"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
           gap: '12px'
         }}
       >
+        <div style={cardStyle}>
+          <span style={labelStyle}>Inspecciones L7</span>
+          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+            {loadingKpis ? '—' : kpis.totalInterceptions}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            Permitidas: {kpis.allowedActions} · Denegadas: {kpis.deniedActions} ({blockRate}%)
+          </span>
+        </div>
+
         <div style={cardStyle}>
           <span style={labelStyle}>Runtime</span>
           <strong
@@ -346,16 +323,6 @@ export default function OverviewView({
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
             Nodo: {nodeStatus?.nodeId || '—'}
-          </span>
-        </div>
-
-        <div style={cardStyle}>
-          <span style={labelStyle}>Inspecciones L7</span>
-          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
-            {loadingKpis ? '—' : kpis.totalInterceptions}
-          </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Permitidas: {kpis.allowedActions} · Denegadas: {kpis.deniedActions}
           </span>
         </div>
 
@@ -441,14 +408,20 @@ export default function OverviewView({
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{ev.summary}</span>
+                    <span style={{ color: '#e2e8f0', fontWeight: '600', wordBreak: 'break-word' }}>
+                      {ev.summary}
+                    </span>
                     <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
                       {ev.module} · {ev.action} · {ev.timestamp}
                     </span>
                   </div>
                   <span
                     className="saare-mono"
-                    style={{ color: '#94a3b8', whiteSpace: 'nowrap', fontSize: '0.72rem' }}
+                    style={{
+                      color: failed ? '#fca5a5' : '#94a3b8',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.72rem'
+                    }}
                   >
                     [{ev.status}]{ev.traceId ? ` · trace: ${ev.traceId}` : ''}
                   </span>
@@ -458,6 +431,66 @@ export default function OverviewView({
           </div>
         )}
       </section>
+
+      {/* Acciones secundarias: vista ejecutiva y gestión de suscripción */}
+      {(typeof onOpenExecutiveView === 'function' ||
+        typeof onStartStripeUpgrade === 'function' ||
+        (typeof onOpenStripePortal === 'function' && billingInfo?.planId)) && (
+        <section
+          aria-label="Acciones secundarias"
+          style={{
+            ...cardStyle,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+            padding: '12px 16px'
+          }}
+        >
+          <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+            Informes ejecutivos y gestión de suscripción
+          </span>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {typeof onOpenExecutiveView === 'function' && (
+              <button type="button" onClick={onOpenExecutiveView} style={secondaryBtnStyle}>
+                Vista ejecutiva
+              </button>
+            )}
+
+            {typeof onStartStripeUpgrade === 'function' && (
+              <button
+                type="button"
+                disabled={isBillingLoading}
+                onClick={() => onStartStripeUpgrade('PROFESSIONAL_649')}
+                style={{
+                  ...secondaryBtnStyle,
+                  borderColor: '#10b981',
+                  color: '#6ee7b7',
+                  cursor: isBillingLoading ? 'wait' : 'pointer'
+                }}
+              >
+                {isBillingLoading ? 'Facturación...' : 'Mejorar plan'}
+              </button>
+            )}
+
+            {typeof onOpenStripePortal === 'function' && billingInfo?.planId && (
+              <button
+                type="button"
+                disabled={isBillingLoading}
+                onClick={onOpenStripePortal}
+                style={{
+                  ...secondaryBtnStyle,
+                  cursor: isBillingLoading ? 'wait' : 'pointer'
+                }}
+              >
+                Portal facturación
+              </button>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,408 +1,134 @@
 // saare-console/src/features/evidence/EvidenceView.jsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useConsole } from '../../context/ConsoleContext';
-import { apiService, saareFetch } from '../../services/apiService';
-import {
-  CONSOLE_ACTIONS,
-  EXECUTION_STATUS,
-  EVIDENCE_LIFECYCLE
-} from '../../domain/contracts';
-import GovernanceToolbar from '../../components/GovernanceToolbar';
-
-function toDetailPanelPayload(trace, verificationInfo = null, inclusionStatus = '') {
-  if (!trace) return null;
-  const baseLifecycle = trace.lifecycle || EVIDENCE_LIFECYCLE.CREATED;
-  const computedLifecycle =
-    inclusionStatus === 'VERIFIED' && baseLifecycle === EVIDENCE_LIFECYCLE.CREATED
-      ? EVIDENCE_LIFECYCLE.BATCHED
-      : baseLifecycle;
-
-  return {
-    id: trace.id,
-    evidenceId: trace.evidenceId || trace.traceId || trace.id,
-    verdict: trace.verdict || trace.rawVerdict || 'ALLOW',
-    lifecycle: inclusionStatus ? `${computedLifecycle} · Merkle: ${inclusionStatus}` : computedLifecycle,
-    hash: trace.hash || trace.merkleRoot || verificationInfo?.payloadDigest || '',
-    raw: trace
-  };
-}
+import { CONSOLE_ACTIONS } from '../../domain/contracts';
 
 export default function EvidenceView({
   evidences = [],
   forensicBatch = null,
   isSealingBatch = false,
   inclusionStatusByEvidence = {},
-  onSelectEvidence,
+  isFetchingVault = false,
+  tenantRulesEnabled = true,
+  onToggleTenantRules,
+  onSyncVault,
   onSealForensicBatch,
   onDownloadForensicBatchBundle,
   onDownloadTsaToken,
   onVerifyEvidenceInclusion,
   onOpenPdfReport,
-  onOpenExportModal,
-  onExportLecActa
+  onExportTracesJson,
+  onExportSovereigntyCert,
+  onSelectEvidence
 }) {
-  const {
-    tenantId,
-    can,
-    setLastVerification,
-    pushActivity
-  } = useConsole();
+  const { tenantId, can } = useConsole();
 
-  const [traces, setTraces] = useState([]);
-  const [loadingTraces, setLoadingTraces] = useState(false);
-  const [syncBusy, setSyncBusy] = useState(false);
-  const [verdictFilter, setVerdictFilter] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [decisionFilter, setDecisionFilter] = useState('ALL'); // 'ALL' | 'DENY' | 'ALLOW'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [showRawJson, setShowRawJson] = useState(false);
+  const [confirmDisableRules, setConfirmDisableRules] = useState(false);
 
-  const [selectedTrace, setSelectedTrace] = useState(null);
-  const [verifyingId, setVerifyingId] = useState('');
-  const [verificationMap, setVerificationMap] = useState({});
+  const cleanTenant = String(tenantId || '').trim();
+  const canVerify = can(CONSOLE_ACTIONS.VERIFY_SIGNATURE) || can(CONSOLE_ACTIONS.SYNC_VAULT);
+  const canToggleRules = can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES);
 
-  const [sealPreviewOpen, setSealPreviewOpen] = useState(false);
-  const [sealBusy, setSealBusy] = useState(false);
-  const [lastBatch, setLastBatch] = useState(null);
-  const [bannerMessage, setBannerMessage] = useState('');
-  const [bannerTone, setBannerTone] = useState('info'); // 'info' | 'success' | 'error'
+  const scopedEvidences = useMemo(() => {
+    const list = Array.isArray(evidences) ? evidences : [];
+    if (!cleanTenant) return list;
+    return list.filter((item) => !item?.tenant || item.tenant === cleanTenant);
+  }, [evidences, cleanTenant]);
 
-  const showBanner = useCallback((msg, tone = 'info') => {
-    setBannerMessage(msg);
-    setBannerTone(tone);
-  }, []);
+  const filteredEvidences = useMemo(() => {
+    const q = String(searchQuery || '').trim().toLowerCase();
+    return scopedEvidences.filter((ev) => {
+      const decision = String(ev?.decision || '').toUpperCase();
+      if (decisionFilter !== 'ALL' && decision !== decisionFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const haystack = [
+        ev?.id,
+        ev?.cat,
+        ev?.prompt,
+        ev?.verdict,
+        ev?.merkleRoot
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [scopedEvidences, decisionFilter, searchQuery]);
 
-  const loadTraces = useCallback(async () => {
-    setLoadingTraces(true);
-    try {
-      const list = await apiService.getTelemetryTraces({
-        tenant: tenantId || undefined,
-        limit: 100
-      });
-      const safeList = Array.isArray(list) ? list : [];
-      setTraces(safeList);
-      setSelectedTrace((prev) => {
-        if (!prev) return safeList[0] || null;
-        return safeList.find((item) => item.id === prev.id) || safeList[0] || null;
-      });
-    } catch (err) {
-      if (Array.isArray(evidences) && evidences.length > 0) {
-        const fallbackList = evidences.map((ev) => ({
+  const deniedCount = useMemo(
+    () => scopedEvidences.filter((ev) => String(ev?.decision || '').toUpperCase() === 'DENY').length,
+    [scopedEvidences]
+  );
+  const allowedCount = Math.max(0, scopedEvidences.length - deniedCount);
+
+  const verifiedCount = useMemo(
+    () =>
+      Object.values(inclusionStatusByEvidence || {}).filter((status) => status === 'VERIFIED')
+        .length,
+    [inclusionStatusByEvidence]
+  );
+
+  const hasBatch = Boolean(forensicBatch?.batchId || forensicBatch?.merkleRoot);
+
+  const selectedEvidence = useMemo(
+    () => filteredEvidences.find((ev) => ev.id === selectedId) || null,
+    [filteredEvidences, selectedId]
+  );
+
+  const handleSelectRow = (ev) => {
+    const nextId = selectedId === ev.id ? '' : ev.id;
+    setSelectedId(nextId);
+    if (!nextId) {
+      setShowRawJson(false);
+    }
+    if (typeof onSelectEvidence === 'function') {
+      if (!nextId) {
+        onSelectEvidence(null);
+      } else {
+        onSelectEvidence({
           id: ev.id,
           evidenceId: ev.id,
-          traceId: ev.id,
-          tenantId: ev.tenant || tenantId || '',
-          user: ev.user || '',
-          timestamp: ev.rawTimestamp || ev.time || '',
-          promptPreview: ev.prompt || '—',
-          verdict: ev.decision || 'ALLOW',
-          rawVerdict: ev.verdict || ev.decision || 'ALLOW',
-          policyVersion: 'SGP-1.0',
-          hash: ev.merkleRoot || '',
-          signatureStatus: EXECUTION_STATUS.NOT_RUN,
-          batchId: forensicBatch?.batchId || '',
-          tsaStatus: forensicBatch?.timestampSeal?.status || 'NOT_RUN',
-          lifecycle: ev.merkleRoot ? EVIDENCE_LIFECYCLE.BATCHED : EVIDENCE_LIFECYCLE.CREATED,
-          latencyMs: Number(ev.latency || 0) || 0,
+          verdict: ev.verdict || ev.decision || 'N/A',
+          lifecycle: ev.decision === 'DENY' ? 'SANITIZED_EX_ANTE' : 'RECORDED',
+          hash: ev.merkleRoot || ev.rawJson?.ms3v_hash || '',
           raw: ev
-        }));
-        setTraces(fallbackList);
-        setSelectedTrace((prev) => prev || fallbackList[0] || null);
-      } else {
-        setTraces([]);
-        showBanner(err?.message || 'No se pudieron recuperar las trazas de la bóveda.', 'error');
-      }
-    } finally {
-      setLoadingTraces(false);
-    }
-  }, [tenantId, evidences, forensicBatch, showBanner]);
-
-  useEffect(() => {
-    loadTraces();
-  }, [loadTraces]);
-
-  const activeBatchSummary = useMemo(() => {
-    if (forensicBatch?.batchId) {
-      const tsaStatus = forensicBatch.timestampSeal?.status || 'TSA_PENDING';
-      const isVerified = tsaStatus === 'TSA_VERIFIED' || forensicBatch.isQualifiedEidas;
-      return {
-        batchId: forensicBatch.batchId,
-        merkleRoot: forensicBatch.merkleRoot || '',
-        lifecycle: isVerified ? EVIDENCE_LIFECYCLE.TSA_VERIFIED : EVIDENCE_LIFECYCLE.SEALED_FALLBACK_LOCAL,
-        tsaStatus,
-        hasTsr: Boolean(forensicBatch.timestampSeal?.tsrBase64),
-        ok: true
-      };
-    }
-    if (lastBatch?.ok) {
-      return {
-        batchId: lastBatch.batchId,
-        merkleRoot: lastBatch.merkleRoot || '',
-        lifecycle: lastBatch.lifecycle,
-        tsaStatus: lastBatch.tsaStatus,
-        hasTsr: false,
-        ok: true
-      };
-    }
-    return null;
-  }, [forensicBatch, lastBatch]);
-
-  useEffect(() => {
-    if (typeof onSelectEvidence === 'function') {
-      const incKey = selectedTrace?.evidenceId || selectedTrace?.id || '';
-      const incStatus = inclusionStatusByEvidence[selectedTrace?.id] || inclusionStatusByEvidence[incKey] || '';
-      onSelectEvidence(
-        toDetailPanelPayload(selectedTrace, verificationMap[selectedTrace?.id] || null, incStatus)
-      );
-    }
-  }, [selectedTrace, verificationMap, inclusionStatusByEvidence, onSelectEvidence]);
-
-  const handleSyncVault = async () => {
-    if (syncBusy) return;
-    if (!can(CONSOLE_ACTIONS.SYNC_VAULT)) {
-      showBanner('Permiso denegado para sincronizar la bóveda.', 'error');
-      return;
-    }
-
-    setSyncBusy(true);
-    showBanner(`Sincronizando bóveda D1 para ${tenantId || 'contexto actual'}...`, 'info');
-
-    try {
-      const syncRes = await apiService.syncVault();
-      await loadTraces();
-      const ok = Boolean(syncRes?.ok !== false && syncRes?.status !== EXECUTION_STATUS.FAILED);
-      showBanner(
-        ok
-          ? `Bóveda sincronizada para ${tenantId || 'tenant actual'}.`
-          : `Sincronización con incidencias (${syncRes?.error || 'revisar estado'}).`,
-        ok ? 'success' : 'error'
-      );
-      pushActivity({
-        module: 'EVIDENCE',
-        action: 'SYNC_VAULT',
-        status: ok ? EXECUTION_STATUS.VERIFIED : EXECUTION_STATUS.FAILED,
-        summary: `Sincronización de bóveda (${tenantId || 'sin tenant'}).`
-      });
-    } catch (err) {
-      showBanner(err?.message || 'Error al sincronizar la bóveda.', 'error');
-    } finally {
-      setSyncBusy(false);
-    }
-  };
-
-  const handleVerifyRow = async (trace) => {
-    if (!trace || verifyingId) return;
-    if (!can(CONSOLE_ACTIONS.VERIFY_SIGNATURE) && !can(CONSOLE_ACTIONS.VERIFY_MERKLE_INCLUSION)) {
-      showBanner('Permiso denegado para verificar evidencias.', 'error');
-      return;
-    }
-
-    const hashToCheck = trace.hash || trace.evidenceId || trace.traceId;
-    if (!hashToCheck) {
-      showBanner('La evidencia seleccionada no dispone de hash ni identificador verificable.', 'error');
-      return;
-    }
-
-    setVerifyingId(trace.id);
-    showBanner(`Verificando integridad y firma de ${trace.evidenceId || trace.id}...`, 'info');
-
-    try {
-      const result = await apiService.verifyEvidenceSignature(hashToCheck, {
-        evidenceId: trace.evidenceId,
-        traceId: trace.traceId,
-        merkleRoot: trace.batchId ? undefined : hashToCheck
-      });
-
-      setVerificationMap((prev) => ({
-        ...prev,
-        [trace.id]: result
-      }));
-      setLastVerification(result);
-
-      if (typeof onVerifyEvidenceInclusion === 'function' && forensicBatch?.merkleRoot) {
-        await onVerifyEvidenceInclusion({
-          id: trace.evidenceId || trace.id,
-          rawJson: { evidence_id: trace.evidenceId || trace.traceId || trace.id }
         });
       }
-
-      const ok = Boolean(result?.verified && result?.status === EXECUTION_STATUS.VERIFIED);
-      showBanner(
-        ok
-          ? `Verificación ${result.status} para ${trace.evidenceId || trace.id}.`
-          : `Verificación ${result?.status || EXECUTION_STATUS.FAILED}: ${
-              result?.error || 'no confirmada por el servidor.'
-            }`,
-        ok ? 'success' : 'error'
-      );
-
-      pushActivity({
-        module: 'EVIDENCE',
-        action: 'VERIFY_EVIDENCE',
-        status: ok ? EXECUTION_STATUS.VERIFIED : EXECUTION_STATUS.FAILED,
-        traceId: result?.traceId || trace.traceId || '',
-        summary: `Verificación ${result?.status || 'FAILED'} en evidencia ${
-          trace.evidenceId || trace.id
-        }.`
-      });
-    } catch (err) {
-      const failedObj = {
-        status: EXECUTION_STATUS.FAILED,
-        verified: false,
-        error: err?.message || 'Error durante la verificación.'
-      };
-      setVerificationMap((prev) => ({ ...prev, [trace.id]: failedObj }));
-      setLastVerification(failedObj);
-      showBanner(failedObj.error, 'error');
-    } finally {
-      setVerifyingId('');
     }
   };
 
-  const handleConfirmSealBatch = async () => {
-    if (sealBusy || isSealingBatch) return;
-    if (!can(CONSOLE_ACTIONS.SEAL_MERKLE_BATCH)) {
-      showBanner('Permiso denegado para sellar lotes Merkle.', 'error');
-      return;
-    }
+  const handleToggleRulesClick = async () => {
+    if (typeof onToggleTenantRules !== 'function' || !canToggleRules) return;
 
-    setSealBusy(true);
-    showBanner('Solicitando sellado de lote Merkle + RFC 3161...', 'info');
-
-    try {
-      if (typeof onSealForensicBatch === 'function') {
-        await onSealForensicBatch();
-        setSealPreviewOpen(false);
-        await loadTraces();
+    if (tenantRulesEnabled) {
+      if (!confirmDisableRules) {
+        setConfirmDisableRules(true);
         return;
       }
-
-      const batchResult = await apiService.sealMerkleBatch({
-        tenantId: tenantId || undefined,
-        enable2of3Custody: true
-      });
-
-      setLastBatch(batchResult);
-      setSealPreviewOpen(false);
-
-      const ok = Boolean(batchResult?.ok);
-      showBanner(
-        ok
-          ? `Lote ${batchResult.batchId} procesado · Estado: ${batchResult.lifecycle} (TSA: ${batchResult.tsaStatus}).`
-          : `Sellado no completado [${batchResult?.status || EXECUTION_STATUS.FAILED}].`,
-        ok ? 'success' : 'error'
-      );
-
-      pushActivity({
-        module: 'EVIDENCE',
-        action: 'SEAL_MERKLE_BATCH',
-        status: batchResult?.status || EXECUTION_STATUS.FAILED,
-        summary: ok
-          ? `Lote ${batchResult.batchId} en estado ${batchResult.lifecycle}.`
-          : 'Fallo al sellar lote Merkle.'
-      });
-
-      if (ok) {
-        await loadTraces();
-      }
-    } catch (err) {
-      showBanner(err?.message || 'Error al sellar el lote Merkle.', 'error');
-    } finally {
-      setSealBusy(false);
-    }
-  };
-
-  const handleDownloadLastBatch = () => {
-    if (typeof onDownloadForensicBatchBundle === 'function' && forensicBatch) {
-      onDownloadForensicBatchBundle();
+      setConfirmDisableRules(false);
+      await onToggleTenantRules(false);
       return;
     }
-    if (!lastBatch || typeof window === 'undefined' || typeof document === 'undefined') return;
-    const blob = new Blob([JSON.stringify(lastBatch, null, 2)], {
-      type: 'application/json;charset=utf-8'
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lote_merkle_${lastBatch.batchId || tenantId || 'evidencia'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    setConfirmDisableRules(false);
+    await onToggleTenantRules(true);
   };
 
-  const handleExportSingleEvidence = async (trace) => {
-    if (!trace) return;
-    try {
-      const res = await saareFetch(
-        `/traces/${encodeURIComponent(trace.id)}`,
-        {
-          method: 'GET',
-          overrideTenant: trace.tenantId || tenantId || undefined
-        }
-      );
-      const detail = res.ok ? await res.json().catch(() => ({})) : {};
-      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-        const blob = new Blob(
-          [
-            JSON.stringify(
-              {
-                exportedAt: new Date().toISOString(),
-                evidence: trace,
-                verification: verificationMap[trace.id] || null,
-                serverDetail: detail
-              },
-              null,
-              2
-            )
-          ],
-          { type: 'application/json;charset=utf-8' }
-        );
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `evidencia_${trace.evidenceId || trace.id}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-      showBanner(`Evidencia ${trace.evidenceId || trace.id} exportada en JSON.`, 'success');
-    } catch (err) {
-      showBanner(err?.message || 'No se pudo exportar la evidencia.', 'error');
-    }
-  };
-
-  const filteredTraces = useMemo(() => {
-    return traces.filter((t) => {
-      const matchesVerdict = verdictFilter === 'ALL' || t.verdict === verdictFilter;
-      const q = searchTerm.trim().toLowerCase();
-      const matchesQuery =
-        !q ||
-        String(t.evidenceId || '').toLowerCase().includes(q) ||
-        String(t.traceId || '').toLowerCase().includes(q) ||
-        String(t.hash || '').toLowerCase().includes(q) ||
-        String(t.promptPreview || '').toLowerCase().includes(q);
-      return matchesVerdict && matchesQuery;
-    });
-  }, [traces, verdictFilter, searchTerm]);
-
-  const verifiedCount = useMemo(() => {
-    return traces.filter(
-      (t) =>
-        verificationMap[t.id]?.status === EXECUTION_STATUS.VERIFIED ||
-        t.signatureStatus === EXECUTION_STATUS.VERIFIED
-    ).length;
-  }, [traces, verificationMap]);
-
-  const activeHash = selectedTrace?.hash || activeBatchSummary?.merkleRoot || '';
-  const isSealingNow = sealBusy || isSealingBatch;
-
-  const sectionStyle = {
+  const cardStyle = {
     background: '#0b0f19',
     border: '1px solid #1e293b',
     borderRadius: '10px',
-    padding: '16px',
+    padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px'
+    gap: '10px',
+    minWidth: 0
   };
 
   const labelStyle = {
@@ -413,458 +139,426 @@ export default function EvidenceView({
     letterSpacing: '0.06em'
   };
 
-  const bannerColor =
-    bannerTone === 'error' ? '#fca5a5' : bannerTone === 'success' ? '#6ee7b7' : '#7dd3fc';
-  const bannerBorder =
-    bannerTone === 'error' ? '#ef4444' : bannerTone === 'success' ? '#10b981' : '#0284c7';
+  const secondaryBtnStyle = {
+    padding: '7px 12px',
+    borderRadius: '6px',
+    background: '#111827',
+    color: '#e2e8f0',
+    border: '1px solid #334155',
+    fontSize: '0.73rem',
+    fontWeight: '700',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      {bannerMessage && (
-        <div
-          role="status"
-          style={{
-            padding: '10px 14px',
-            borderRadius: '8px',
-            background: '#020617',
-            borderLeft: `3px solid ${bannerBorder}`,
-            fontSize: '0.76rem',
-            color: bannerColor,
-            fontWeight: '600'
-          }}
-        >
-          {bannerMessage}
-        </div>
-      )}
-
-      {/* Métricas forenses rápidas */}
-      <div
+      {/* Prioridad 1: Resumen forense y sellado de lote Merkle / RFC 3161 */}
+      <section
+        aria-label="Resumen de evidencias e integridad criptográfica"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
           gap: '12px'
         }}
       >
-        <div style={sectionStyle}>
-          <span style={labelStyle}>Trazas en bóveda</span>
-          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
-            {traces.length}
+        <div style={cardStyle}>
+          <span style={labelStyle}>Evidencias registradas</span>
+          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+            {scopedEvidences.length}
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Filtradas: {filteredTraces.length}
+            Permitidas: {allowedCount} · Denegadas: {deniedCount}
           </span>
         </div>
 
-        <div style={sectionStyle}>
-          <span style={labelStyle}>Firmas verificadas</span>
-          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#34d399' }}>
-            {verifiedCount}
-          </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Ed25519 / inclusión</span>
-        </div>
-
-        <div style={sectionStyle}>
-          <span style={labelStyle}>Estado TSA / Lote</span>
-          <strong className="saare-mono" style={{ fontSize: '0.95rem', color: '#38bdf8' }}>
-            {activeBatchSummary?.tsaStatus || 'SIN_LOTE'}
+        <div style={cardStyle}>
+          <span style={labelStyle}>Verificaciones de integridad</span>
+          <strong
+            className="saare-mono"
+            style={{
+              fontSize: '1.15rem',
+              color: verifiedCount > 0 ? '#34d399' : '#cbd5e1'
+            }}
+          >
+            {verifiedCount} / {scopedEvidences.length}
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            {activeBatchSummary?.batchId || 'Sin lote activo'}
+            {verifiedCount === 0 && scopedEvidences.length > 0
+              ? 'Sin verificaciones ejecutadas aún'
+              : 'Pruebas verificadas en sesión'}
           </span>
         </div>
-      </div>
 
-      {/* Acciones de custodia, firma y exportación */}
-      <GovernanceToolbar targetHash={activeHash} tenantId={tenantId} />
+        <div style={cardStyle}>
+          <span style={labelStyle}>Lote Merkle y TSA</span>
+          <strong
+            className="saare-mono"
+            style={{
+              fontSize: '1.05rem',
+              color: hasBatch ? '#38bdf8' : '#cbd5e1'
+            }}
+          >
+            {hasBatch ? forensicBatch.batchId : 'SIN_LOTE'}
+          </strong>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {forensicBatch?.merkleRoot
+              ? `Raíz: ${forensicBatch.merkleRoot}`
+              : 'Sin lote consolidado aún (pendiente de sellado)'}
+          </span>
+        </div>
 
-      {(typeof onOpenExportModal === 'function' || typeof onExportLecActa === 'function') && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {typeof onOpenExportModal === 'function' && (
-            <button
-              type="button"
-              onClick={onOpenExportModal}
-              style={{
-                padding: '7px 12px',
-                borderRadius: '6px',
-                background: '#111827',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                fontSize: '0.73rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Exportar informe / acta
-            </button>
-          )}
-          {typeof onExportLecActa === 'function' && (
-            <button
-              type="button"
-              onClick={onExportLecActa}
-              style={{
-                padding: '7px 12px',
-                borderRadius: '6px',
-                background: '#111827',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                fontSize: '0.73rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Acta Art. 326 LEC / ISO 27037
-            </button>
-          )}
+        <div style={cardStyle}>
+          <span style={labelStyle}>Sellado temporal TSA</span>
+          <strong
+            className="saare-mono"
+            style={{
+              fontSize: '1.05rem',
+              color: forensicBatch?.timestampSeal?.status ? '#34d399' : '#94a3b8'
+            }}
+          >
+            {forensicBatch?.timestampSeal?.status || forensicBatch?.assuranceLevel || 'PENDIENTE'}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            Tenant: {cleanTenant || 'Sin asignar'}
+          </span>
+        </div>
+      </section>
+
+      {/* Nota aclaratoria cuando hay trazas pero aún no hay lote sellado ni verificaciones */}
+      {scopedEvidences.length > 0 && (!hasBatch || verifiedCount === 0) && (
+        <div
+          role="note"
+          style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: '#070b14',
+            border: '1px solid #1e293b',
+            borderLeft: '3px solid #38bdf8',
+            fontSize: '0.75rem',
+            color: '#cbd5e1',
+            lineHeight: 1.45
+          }}
+        >
+          <strong>Estado esperado antes de consolidar:</strong> existen {scopedEvidences.length}{' '}
+          evidencia(s) en bóveda, pero todavía no se ha sellado un lote Merkle ni verificado
+          pruebas de inclusión. Esto indica que la consolidación o verificación aún no se ha
+          ejecutado, no un fallo del sistema.
         </div>
       )}
 
-      {/* Lote forense Merkle + RFC 3161 */}
-      <section style={sectionStyle}>
+      {/* Prioridad 2: Controles principales de bóveda, sellado forense y verificación */}
+      <section style={cardStyle} aria-label="Controles forenses y de bóveda">
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '10px',
+            gap: '8px',
             flexWrap: 'wrap'
           }}
         >
-          <div>
-            <span style={labelStyle}>Lote forense · Árbol de Merkle + Sellado RFC 3161</span>
-            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '4px' }}>
-              {activeBatchSummary
-                ? `Último lote: ${activeBatchSummary.batchId} · Estado: ${activeBatchSummary.lifecycle} · TSA: ${activeBatchSummary.tsaStatus}`
-                : 'No se ha generado ningún lote en la sesión actual.'}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              disabled={isSealingNow || !can(CONSOLE_ACTIONS.SEAL_MERKLE_BATCH)}
-              onClick={() => setSealPreviewOpen((prev) => !prev)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '6px',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '0.75rem',
-                fontWeight: '800',
-                cursor: isSealingNow ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {sealPreviewOpen ? 'Cerrar previsualización' : 'Preparar sellado de lote'}
-            </button>
-
-            {activeBatchSummary?.ok && (
-              <button
-                type="button"
-                onClick={handleDownloadLastBatch}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  background: '#111827',
-                  color: '#e2e8f0',
-                  border: '1px solid #334155',
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Descargar lote (.JSON)
-              </button>
-            )}
-
-            {activeBatchSummary?.hasTsr && typeof onDownloadTsaToken === 'function' && (
-              <button
-                type="button"
-                onClick={onDownloadTsaToken}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  background: '#065f46',
-                  color: '#ecfdf5',
-                  border: '1px solid #10b981',
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Descargar sello (.TSR)
-              </button>
-            )}
-          </div>
-        </div>
-
-        {sealPreviewOpen && (
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: '8px',
-              background: '#020617',
-              border: '1px solid #0284c7',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              fontSize: '0.76rem'
-            }}
-          >
-            <strong>Previsualización previa al sellado</strong>
-            <div style={{ color: '#cbd5e1' }}>
-              Tenant objetivo: <strong>{tenantId || 'Contexto por defecto'}</strong> · Trazas
-              cargadas: <strong>{traces.length}</strong> · Custodia: <strong>2-DE-3</strong>
-            </div>
-            <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-              El estado final ({EVIDENCE_LIFECYCLE.TSA_VERIFIED},{' '}
-              {EVIDENCE_LIFECYCLE.SEALED_FALLBACK_LOCAL} o {EVIDENCE_LIFECYCLE.TSA_PENDING})
-              dependerá exclusivamente de la respuesta del servidor y de la TSA.
-            </div>
-            <div>
-              <button
-                type="button"
-                disabled={isSealingNow}
-                onClick={handleConfirmSealBatch}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  background: '#059669',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: '800',
-                  cursor: isSealingNow ? 'wait' : 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {isSealingNow ? 'Sellando lote...' : 'Confirmar y sellar lote'}
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Bóveda D1 y trazas */}
-      <section style={sectionStyle}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '10px',
-            flexWrap: 'wrap'
-          }}
-        >
-          <span style={labelStyle}>
-            Bóveda D1 · Trazas y evidencias ({filteredTraces.length} de {traces.length})
-          </span>
+          <span style={labelStyle}>Bóveda de evidencias y pruebas de inclusión</span>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por ID, hash o consulta..."
-              style={{
-                padding: '6px 10px',
-                borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
-                fontSize: '0.75rem',
-                minWidth: '190px'
-              }}
-            />
+            {typeof onSyncVault === 'function' && (
+              <button
+                type="button"
+                disabled={isFetchingVault || !cleanTenant}
+                onClick={() => onSyncVault(cleanTenant)}
+                style={{
+                  ...secondaryBtnStyle,
+                  opacity: !cleanTenant ? 0.6 : 1,
+                  cursor: isFetchingVault ? 'wait' : 'pointer'
+                }}
+              >
+                {isFetchingVault ? 'Sincronizando...' : 'Sincronizar bóveda'}
+              </button>
+            )}
 
-            <select
-              aria-label="Filtrar por veredicto"
-              value={verdictFilter}
-              onChange={(e) => setVerdictFilter(e.target.value)}
-              style={{
-                padding: '6px 10px',
-                borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
-                fontSize: '0.75rem'
-              }}
-            >
-              <option value="ALL">Todos los veredictos</option>
-              <option value="ALLOW">ALLOW</option>
-              <option value="DENY">DENY</option>
-              <option value="SANITIZED">SANITIZED</option>
-              <option value="REVIEW">REVIEW</option>
-            </select>
+            {typeof onSealForensicBatch === 'function' && (
+              <button
+                type="button"
+                disabled={isSealingBatch || !cleanTenant}
+                onClick={onSealForensicBatch}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  background: !cleanTenant ? '#1e293b' : '#0284c7',
+                  color: !cleanTenant ? '#64748b' : '#ffffff',
+                  border: 'none',
+                  fontSize: '0.73rem',
+                  fontWeight: '800',
+                  cursor: isSealingBatch ? 'wait' : !cleanTenant ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {isSealingBatch ? 'Sellando lote...' : 'Sellar lote Merkle'}
+              </button>
+            )}
 
-            <button
-              type="button"
-              disabled={syncBusy || loadingTraces}
-              onClick={handleSyncVault}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: '#111827',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                cursor: syncBusy || loadingTraces ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {syncBusy || loadingTraces ? 'Sincronizando...' : 'Sincronizar bóveda'}
-            </button>
+            {forensicBatch && typeof onDownloadForensicBatchBundle === 'function' && (
+              <button type="button" onClick={onDownloadForensicBatchBundle} style={secondaryBtnStyle}>
+                Descargar lote JSON
+              </button>
+            )}
+
+            {forensicBatch?.timestampSeal?.tsrBase64 && typeof onDownloadTsaToken === 'function' && (
+              <button type="button" onClick={onDownloadTsaToken} style={secondaryBtnStyle}>
+                Descargar sello (.tsr)
+              </button>
+            )}
+
+            {typeof onToggleTenantRules === 'function' && (
+              <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  disabled={!canToggleRules}
+                  onClick={handleToggleRulesClick}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '6px',
+                    background: !canToggleRules
+                      ? '#1e293b'
+                      : confirmDisableRules
+                      ? '#7f1d1d'
+                      : tenantRulesEnabled
+                      ? '#064e3b'
+                      : '#111827',
+                    color: !canToggleRules
+                      ? '#64748b'
+                      : confirmDisableRules
+                      ? '#fecaca'
+                      : tenantRulesEnabled
+                      ? '#6ee7b7'
+                      : '#fbbf24',
+                    border: `1px solid ${
+                      !canToggleRules
+                        ? '#334155'
+                        : confirmDisableRules
+                        ? '#ef4444'
+                        : tenantRulesEnabled
+                        ? '#10b981'
+                        : '#d97706'
+                    }`,
+                    fontSize: '0.73rem',
+                    fontWeight: '800',
+                    cursor: canToggleRules ? 'pointer' : 'not-allowed',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {confirmDisableRules
+                    ? 'Confirmar desactivar reglas'
+                    : tenantRulesEnabled
+                    ? 'Reglas tenant: ACTIVAS'
+                    : 'Activar reglas tenant'}
+                </button>
+
+                {confirmDisableRules && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDisableRules(false)}
+                    style={secondaryBtnStyle}
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {filteredTraces.length === 0 ? (
-          <div style={{ fontSize: '0.78rem', color: '#94a3b8', padding: '12px 0' }}>
-            {loadingTraces
-              ? 'Cargando trazas de evidencia...'
-              : 'No hay trazas disponibles para los filtros actuales.'}
+        {/* Filtros de decisión y búsqueda */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {['ALL', 'DENY', 'ALLOW'].map((mode) => {
+            const active = decisionFilter === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setDecisionFilter(mode)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  background: active ? '#0f172a' : '#111827',
+                  color: active ? '#38bdf8' : '#94a3b8',
+                  border: `1px solid ${active ? '#0284c7' : '#334155'}`,
+                  fontSize: '0.71rem',
+                  fontWeight: '800',
+                  cursor: 'pointer'
+                }}
+              >
+                {mode === 'ALL' ? 'Todas' : mode}
+              </button>
+            );
+          })}
+
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por ID, categoría, veredicto o hash..."
+            style={{
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: '#020617',
+              color: '#f8fafc',
+              border: '1px solid #334155',
+              fontSize: '0.74rem',
+              minWidth: '220px',
+              flex: 1
+            }}
+          />
+        </div>
+
+        {/* Tabla de evidencias */}
+        {filteredEvidences.length === 0 ? (
+          <div style={{ fontSize: '0.76rem', color: '#94a3b8', padding: '8px 0' }}>
+            No hay evidencias que coincidan con el filtro actual.
           </div>
         ) : (
-          <div className="saare-table-wrap">
-            <table className="saare-table" aria-label="Registro forense de trazas y evidencias">
+          <div style={{ overflowX: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.74rem',
+                textAlign: 'left'
+              }}
+            >
               <thead>
-                <tr>
-                  <th>Evidencia / Traza</th>
-                  <th>Veredicto</th>
-                  <th>Ciclo / Firma</th>
-                  <th>Consulta / Hash</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
+                <tr style={{ borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
+                  <th style={{ padding: '8px 6px' }}>ID / Hora</th>
+                  <th style={{ padding: '8px 6px' }}>Decisión</th>
+                  <th style={{ padding: '8px 6px' }}>Categoría</th>
+                  <th style={{ padding: '8px 6px' }}>Carga / Resumen</th>
+                  <th style={{ padding: '8px 6px' }}>Inclusión</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTraces.map((tr) => {
-                  const isSelected = selectedTrace?.id === tr.id;
-                  const checkInfo = verificationMap[tr.id];
-                  const verStatus = checkInfo?.status || tr.signatureStatus || EXECUTION_STATUS.NOT_RUN;
-                  const incStatus =
-                    inclusionStatusByEvidence[tr.id] ||
-                    inclusionStatusByEvidence[tr.evidenceId] ||
-                    inclusionStatusByEvidence[tr.traceId] ||
-                    '';
+                {filteredEvidences.map((ev) => {
+                  const isDeny = String(ev?.decision || '').toUpperCase() === 'DENY';
+                  const isSelected = selectedId === ev.id;
+                  const inclusionState = inclusionStatusByEvidence?.[ev.id];
 
                   return (
                     <tr
-                      key={tr.id}
-                      onClick={() => setSelectedTrace(tr)}
+                      key={ev.id}
+                      tabIndex={0}
+                      onClick={() => handleSelectRow(ev)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectRow(ev);
+                        }
+                      }}
                       style={{
-                        cursor: 'pointer',
-                        background: isSelected ? 'rgba(2, 132, 199, 0.14)' : undefined
+                        borderBottom: '1px solid #111827',
+                        background: isSelected ? '#0f172a' : 'transparent',
+                        cursor: 'pointer'
                       }}
                     >
-                      <td className="saare-mono" style={{ fontWeight: '700', color: '#f8fafc' }}>
-                        {tr.evidenceId || tr.id}
-                      </td>
-                      <td>
-                        <span
-                          style={{
-                            fontSize: '0.68rem',
-                            fontWeight: '800',
-                            padding: '2px 8px',
-                            borderRadius: '999px',
-                            whiteSpace: 'nowrap',
-                            background: '#1e293b',
-                            color: '#e2e8f0'
-                          }}
-                        >
-                          {tr.verdict}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.72rem', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
-                        {tr.lifecycle} · {verStatus}
-                        {incStatus ? ` · Merkle: ${incStatus}` : ''}
-                      </td>
-                      <td style={{ maxWidth: '280px' }}>
-                        <div
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            color: '#e2e8f0'
-                          }}
-                        >
-                          {tr.promptPreview}
+                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
+                        <div className="saare-mono" style={{ color: '#f8fafc', fontWeight: '700' }}>
+                          {ev.id}
                         </div>
-                        <div
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{ev.time || '—'}</div>
+                      </td>
+
+                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
+                        <span
                           className="saare-mono"
                           style={{
+                            padding: '2px 7px',
+                            borderRadius: '999px',
                             fontSize: '0.68rem',
-                            color: '#64748b',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            fontWeight: '800',
+                            background: isDeny
+                              ? 'rgba(127, 29, 29, 0.5)'
+                              : 'rgba(6, 78, 59, 0.5)',
+                            color: isDeny ? '#fca5a5' : '#6ee7b7',
+                            border: `1px solid ${isDeny ? '#ef4444' : '#10b981'}`
                           }}
                         >
-                          {tr.hash || 'Sin hash'}
-                        </div>
+                          {ev.decision || 'ALLOW'}
+                        </span>
                       </td>
-                      <td className="saare-mono" style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                        {tr.timestamp || '—'}
+
+                      <td style={{ padding: '8px 6px', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                        {ev.cat || '—'}
                       </td>
-                      <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
-                          <button
-                            type="button"
-                            disabled={Boolean(verifyingId)}
-                            onClick={() => handleVerifyRow(tr)}
-                            style={{
-                              padding: '5px 9px',
-                              borderRadius: '5px',
-                              background: '#0284c7',
-                              color: '#ffffff',
-                              border: 'none',
-                              fontSize: '0.7rem',
-                              fontWeight: '700',
-                              cursor: verifyingId ? 'wait' : 'pointer'
-                            }}
-                          >
-                            {verifyingId === tr.id ? 'Verificando...' : 'Verificar'}
-                          </button>
+
+                      <td
+                        style={{
+                          padding: '8px 6px',
+                          color: '#cbd5e1',
+                          maxWidth: '300px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {ev.prompt || '—'}
+                      </td>
+
+                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
+                        <span className="saare-mono" style={{ fontSize: '0.69rem', color: '#94a3b8' }}>
+                          {inclusionState || 'NO_VERIFICADA'}
+                        </span>
+                      </td>
+
+                      <td
+                        style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          {typeof onVerifyEvidenceInclusion === 'function' && (
+                            <button
+                              type="button"
+                              disabled={!canVerify || !hasBatch}
+                              onClick={() => onVerifyEvidenceInclusion(ev)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '5px',
+                                background: '#111827',
+                                color: canVerify && hasBatch ? '#7dd3fc' : '#64748b',
+                                border: '1px solid #334155',
+                                fontSize: '0.69rem',
+                                fontWeight: '700',
+                                cursor: canVerify && hasBatch ? 'pointer' : 'not-allowed'
+                              }}
+                            >
+                              Verificar
+                            </button>
+                          )}
 
                           {typeof onOpenPdfReport === 'function' && (
                             <button
                               type="button"
-                              onClick={() => onOpenPdfReport(tr.raw || tr)}
+                              onClick={() => onOpenPdfReport(ev)}
                               style={{
-                                padding: '5px 9px',
+                                padding: '4px 8px',
                                 borderRadius: '5px',
-                                background: '#0f172a',
-                                color: '#7dd3fc',
-                                border: '1px solid #0284c7',
-                                fontSize: '0.7rem',
+                                background: '#111827',
+                                color: '#e2e8f0',
+                                border: '1px solid #334155',
+                                fontSize: '0.69rem',
                                 fontWeight: '700',
                                 cursor: 'pointer'
                               }}
                             >
-                              PDF
+                              Informe
                             </button>
                           )}
-
-                          <button
-                            type="button"
-                            onClick={() => handleExportSingleEvidence(tr)}
-                            style={{
-                              padding: '5px 9px',
-                              borderRadius: '5px',
-                              background: '#111827',
-                              color: '#e2e8f0',
-                              border: '1px solid #334155',
-                              fontSize: '0.7rem',
-                              fontWeight: '700',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            JSON
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -873,6 +567,62 @@ export default function EvidenceView({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* Prioridad 3: Exportaciones secundarias y detalle JSON */}
+      <section style={cardStyle} aria-label="Exportaciones y detalle de registro">
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={labelStyle}>Exportaciones y certificaciones de soporte</span>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {typeof onExportTracesJson === 'function' && (
+              <button type="button" onClick={onExportTracesJson} style={secondaryBtnStyle}>
+                Exportar trazas (JSON)
+              </button>
+            )}
+
+            {typeof onExportSovereigntyCert === 'function' && (
+              <button type="button" onClick={onExportSovereigntyCert} style={secondaryBtnStyle}>
+                Certificado soberanía D1
+              </button>
+            )}
+
+            {selectedEvidence && (
+              <button
+                type="button"
+                onClick={() => setShowRawJson((prev) => !prev)}
+                style={secondaryBtnStyle}
+              >
+                {showRawJson ? 'Ocultar JSON raw' : 'Ver JSON raw'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showRawJson && selectedEvidence && (
+          <pre
+            className="saare-mono"
+            style={{
+              margin: 0,
+              padding: '10px 12px',
+              borderRadius: '6px',
+              background: '#020617',
+              color: '#cbd5e1',
+              fontSize: '0.69rem',
+              overflowX: 'auto'
+            }}
+          >
+            {JSON.stringify(selectedEvidence.rawJson || selectedEvidence, null, 2)}
+          </pre>
         )}
       </section>
     </div>

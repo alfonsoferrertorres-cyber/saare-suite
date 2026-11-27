@@ -17,6 +17,22 @@ import SoaIso42001CompilerButton from './components/SoaIso42001CompilerButton';
 import { SAARE_CONFIG } from './config/saareState';
 import apiService from './services/apiService';
 
+// Estilo minimalista corporativo articulado en torno a CR-4043-1
+const CR_PALETTE = {
+  cr4043: '#B5B7B9',
+  cr4043Soft: '#D8DADF',
+  cr4001: '#F6F6F5',
+  cr4012: '#E4E2DC',
+  cr4206Slate: '#4A5258',
+  cr4206Charcoal: '#1A1D20',
+  surfaceDark: '#121519',
+  surfaceCard: '#181C21',
+  borderNeutral: '#5A6067',
+  borderSubtle: '#2C323A',
+  textPrimary: '#F4F5F7',
+  textSecondary: '#C5C9CF'
+};
+
 const SAARE_PROTOCOL_COMMANDS = [
   {
     label: 'Auditoría Forense',
@@ -184,8 +200,7 @@ const redactSensitiveText = (value = '') => {
     .replace(/\b\d{8}[- ]?[A-Za-z]\b/g, '[DNI_REDACTED]')
     .replace(/\b[XYZ]\d{7}[- ]?[A-Za-z]\b/gi, '[NIE_REDACTED]')
     .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, '[IBAN_REDACTED]')
-    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]')
-    .replace(/\b(?:\d[ -]*?){13,16}\b/g, '[CARD_REDACTED]');
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]');
 };
 
 const isValidTenantId = (id = '') => {
@@ -271,7 +286,7 @@ function SaareConsoleInner() {
     return initial;
   });
 
-  const [secondaryMode, setSecondaryMode] = useState(''); // '' | 'EXECUTIVE' | 'SUBSIDIES'
+  const [secondaryMode, setSecondaryMode] = useState('');
   const [activeTab, setActiveTab] = useState('GLOBAL');
   const [governanceStatus, setGovernanceStatus] = useState('');
   const [timeStr, setTimeStr] = useState('');
@@ -305,6 +320,7 @@ function SaareConsoleInner() {
   const [showFriaModal, setShowFriaModal] = useState(false);
   const [selectedEvidenceForPdf, setSelectedEvidenceForPdf] = useState(null);
   const [selectedEvidenceDetail, setSelectedEvidenceDetail] = useState(null);
+  const [exportFormat, setExportFormat] = useState('ACTA_LEC');
 
   const [pendingDangerCommand, setPendingDangerCommand] = useState(null);
 
@@ -368,6 +384,10 @@ function SaareConsoleInner() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    setSecondaryMode('');
+  }, [activeRoute?.id]);
 
   useEffect(() => {
     const hasOpenModal =
@@ -812,6 +832,7 @@ function SaareConsoleInner() {
 
         return {
           id: item.trace_id || item.id || `EV-L7-${1000 + idx}`,
+          evidenceId: item.evidence_id || item.trace_id || item.id || `EV-L7-${1000 + idx}`,
           time: item.timestamp
             ? new Date(item.timestamp).toLocaleTimeString()
             : new Date().toLocaleTimeString(),
@@ -824,6 +845,9 @@ function SaareConsoleInner() {
             : redactSensitiveText(item.responseOutput || item.response || ''),
           verdict: item.verdict || (isDeny ? 'RECHAZADO' : 'PERMITIDO'),
           decision: isDeny ? 'DENY' : 'ALLOW',
+          lifecycle: isDeny
+            ? 'INBOUND_RAM -> POLICY_DENY -> FAIL_CLOSED -> D1_SEALED'
+            : 'INBOUND_RAM -> DLP_CLEAN -> ALLOW -> D1_CHAINED',
           anchored: item.anchored !== undefined ? item.anchored : 0,
           type: isDeny ? 'PRIVACIDAD' : 'WORKFLOWS',
           user: item.user || '',
@@ -831,6 +855,7 @@ function SaareConsoleInner() {
             ? normalizeTenantId(item.tenant_id || item.tenant)
             : activeTenantId,
           merkleRoot: item.ms3v_hash || item.merkle_root || item.merkleRoot || '',
+          hash: item.ms3v_hash || item.merkle_root || item.merkleRoot || '',
           latency: item.execution_latency_ms || item.latency || 0,
           rawJson: item
         };
@@ -914,6 +939,12 @@ function SaareConsoleInner() {
 
         const mapped = mapEvidences(traces, targetTenant);
         setEvidences(mapped);
+        setSelectedEvidenceDetail((prev) => {
+          if (!mapped.length) return null;
+          if (!prev) return mapped[0];
+          const prevId = prev.evidenceId || prev.id;
+          return mapped.find((m) => (m.evidenceId || m.id) === prevId) || mapped[0];
+        });
         triggerGovernance(`Bóveda D1 [${targetTenant}] sincronizada (${mapped.length} registros).`);
 
         await Promise.all([
@@ -922,6 +953,7 @@ function SaareConsoleInner() {
         ]);
       } catch {
         setEvidences([]);
+        setSelectedEvidenceDetail(null);
         triggerGovernance(`Bóveda D1 [${targetTenant}] sin registros o error de conexión.`);
       } finally {
         setIsFetchingVault(false);
@@ -1070,24 +1102,24 @@ function SaareConsoleInner() {
   <meta charset="utf-8" />
   <title>Certificado de Anclaje y Soberanía D1 - ${tenantId}</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; margin: 36px; line-height: 1.45; }
-    .header { border-bottom: 2px solid #0284c7; padding-bottom: 14px; margin-bottom: 20px; }
-    h1 { font-size: 20px; margin: 0 0 6px 0; color: #0f172a; }
-    .sub { font-size: 12px; color: #475569; }
-    h2 { font-size: 13px; text-transform: uppercase; color: #0369a1; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 22px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-    th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-    th { background: #f1f5f9; }
+    body { font-family: system-ui, -apple-system, sans-serif; color: #1A1D20; background: #F6F6F5; margin: 36px; line-height: 1.45; }
+    .header { border-bottom: 2px solid #4A5258; padding-bottom: 14px; margin-bottom: 20px; }
+    h1 { font-size: 20px; margin: 0 0 6px 0; color: #1A1D20; }
+    .sub { font-size: 12px; color: #4A5258; }
+    h2 { font-size: 13px; text-transform: uppercase; color: #1A1D20; border-bottom: 1px solid #B5B7B9; padding-bottom: 4px; margin-top: 22px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; background: #FFFFFF; }
+    th, td { border: 1px solid #B5B7B9; padding: 8px; text-align: left; }
+    th { background: #E4E2DC; color: #1A1D20; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; word-break: break-all; }
-    .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; font-size: 12px; }
-    .footer { margin-top: 28px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-    @media print { body { margin: 18px; } }
+    .box { background: #FFFFFF; border: 1px solid #B5B7B9; padding: 12px; border-radius: 6px; font-size: 12px; }
+    .footer { margin-top: 28px; font-size: 11px; color: #4A5258; border-top: 1px solid #B5B7B9; padding-top: 10px; }
+    @media print { body { margin: 18px; background: #FFFFFF; } }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>CERTIFICADO DE ANCLAJE TÉCNICO Y SOBERANÍA D1 (SGP 1.0)</h1>
-    <div class="sub">Emitido por S.A.A.R.E. Control Plane · Fecha UTC: <strong>${issuedAt}</strong></div>
+    <div class="sub">Emitido por S.A.A.R.E. Control Plane · Perfil CR-4043-1 · Fecha UTC: <strong>${issuedAt}</strong></div>
   </div>
 
   <div class="box">
@@ -1472,7 +1504,8 @@ function SaareConsoleInner() {
   const handleDownloadEnterpriseGpoReg = async () => {
     try {
       const query = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : '';
-      const res = await fetch(getApiEndpoint(`/api/v1/deploy/gpo-policy${query}`));
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const res = await fetch(getApiEndpoint(`/api/v1/deploy/gpo-policy${query}`), { headers });
       if (res.ok) {
         const regText = await res.text();
         triggerBlobDownload(
@@ -1483,12 +1516,12 @@ function SaareConsoleInner() {
         triggerGovernance(`Directiva GPO generada para [${tenantId || 'cliente'}].`);
         return;
       }
-    } catch {}
+    } catch {
+      // Continuar con plantilla local sin credenciales embebidas
+    }
 
     const gateway = getApiEndpoint('/v1/chat/completions');
     const trustAnchor = SAARE_CONFIG?.TRUST_ANCHOR || '';
-    const licenseKey =
-      billingInfo?.credentials?.licenseKey || authToken || readStorageItem('saare_api_key') || '';
     const extensionId = String(SAARE_CONFIG?.EXTENSION_ID || '').trim();
 
     const lines = [
@@ -1496,7 +1529,7 @@ function SaareConsoleInner() {
       '',
       `[HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\3rdparty\\extensions\\${extensionId || 'SAARE_EXTENSION'}\\policy]`,
       `"TenantId"="${tenantId}"`,
-      `"LicenseKey"="${licenseKey}"`,
+      '"LicenseKey"=""',
       `"ProxyGateway"="${gateway}"`,
       `"TrustAnchor"="${trustAnchor}"`,
       '"FailClosed"=dword:00000001',
@@ -1508,7 +1541,7 @@ function SaareConsoleInner() {
       `SAARE_L7_POLICY_${tenantId || 'cliente'}.reg`,
       'text/plain;charset=utf-8'
     );
-    triggerGovernance(`Directiva GPO generada para [${tenantId || 'cliente'}].`);
+    triggerGovernance(`Plantilla GPO generada para [${tenantId || 'cliente'}].`);
   };
 
   const handleDownloadK8sManifest = () => {
@@ -1532,7 +1565,7 @@ function SaareConsoleInner() {
     triggerGovernance('Manifiesto YAML K8s generado.');
   };
 
-  const handleDownloadIso42001Dossier = () => {
+  const handleDownloadIso42001Dossier = useCallback(() => {
     const inspections = evidences.length;
     const denied = evidences.filter((e) => e.decision === 'DENY').length;
     const allowed = inspections - denied;
@@ -1581,9 +1614,18 @@ function SaareConsoleInner() {
       'application/json;charset=utf-8'
     );
     triggerGovernance(`Dossier ISO 42001 / RGPD descargado para [${tenantId || 'cliente'}].`);
-  };
+  }, [
+    evidences,
+    tenantId,
+    billingInfo,
+    forensicBatch,
+    tenantRulesEnabled,
+    customRules,
+    protocolCommandsEnabled,
+    triggerGovernance
+  ]);
 
-  const handleExportTracesJson = () => {
+  const handleExportTracesJson = useCallback(() => {
     const payload = {
       exportedAt: new Date().toISOString(),
       tenantId: tenantId || 'UNASSIGNED',
@@ -1606,7 +1648,7 @@ function SaareConsoleInner() {
       'application/json;charset=utf-8'
     );
     triggerGovernance(`Exportadas ${evidences.length} trazas en JSON para [${tenantId || 'cliente'}].`);
-  };
+  }, [tenantId, evidences, triggerGovernance]);
 
   const handleOpenPdfReport = useCallback((evidence) => {
     setSelectedEvidenceForPdf(evidence);
@@ -1659,7 +1701,7 @@ function SaareConsoleInner() {
     triggerGovernance('Teaser técnico descargado.');
   };
 
-  const handleExportLecActa = () => {
+  const handleExportLecActa = useCallback(() => {
     triggerBlobDownload(
       JSON.stringify(
         {
@@ -1680,7 +1722,7 @@ function SaareConsoleInner() {
       `acta-lec-iso27037-${(tenantId || 'cliente').toLowerCase()}-${Date.now()}.json`
     );
     triggerGovernance('Acta probatoria Art. 326 LEC / ISO 27037 generada.');
-  };
+  }, [tenantId, evidences, triggerGovernance]);
 
   const handleDownloadIso27037Manifest = useCallback(async () => {
     try {
@@ -1718,6 +1760,37 @@ function SaareConsoleInner() {
       triggerGovernance('No se pudo obtener el manifiesto ISO/IEC 27037 desde la API.');
     }
   }, [tenantId, authToken, handleUnauthorizedSession, triggerGovernance]);
+
+  const handleUnifiedEvidenceExport = useCallback(
+    async (format = exportFormat) => {
+      switch (format) {
+        case 'ISO_42001':
+          handleDownloadIso42001Dossier();
+          break;
+        case 'ISO_27037':
+          await handleDownloadIso27037Manifest();
+          break;
+        case 'TRACES_JSON':
+          handleExportTracesJson();
+          break;
+        case 'SOVEREIGNTY_CERT':
+          await handleExportTenantSovereigntyCertificate();
+          break;
+        case 'ACTA_LEC':
+        default:
+          handleExportLecActa();
+          break;
+      }
+    },
+    [
+      exportFormat,
+      handleDownloadIso42001Dossier,
+      handleDownloadIso27037Manifest,
+      handleExportTracesJson,
+      handleExportTenantSovereigntyCertificate,
+      handleExportLecActa
+    ]
+  );
 
   const runProtocolCommandNow = useCallback(
     async (cmd) => {
@@ -1866,6 +1939,8 @@ function SaareConsoleInner() {
     }
   };
 
+  const activeInspectedTrace = selectedEvidenceDetail || evidences[0] || null;
+
   const totalInspecciones = evidences.length;
   const totalDeny = evidences.filter((e) => e.decision === 'DENY').length;
   const tasaBloqueo =
@@ -1874,86 +1949,146 @@ function SaareConsoleInner() {
   const isUnconfiguredClient = !authToken && !tenantId;
 
   const detailPanel =
-    activeRoute?.id === routes.EVIDENCE.id && selectedEvidenceDetail ? (
+    activeRoute?.id === routes.EVIDENCE.id && activeInspectedTrace ? (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.75rem' }}>
         <div
           style={{
-            fontSize: '10px',
-            fontWeight: '800',
-            color: '#38bdf8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em'
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '6px'
           }}
         >
-          Ficha técnica de evidencia
+          <span
+            style={{
+              fontSize: '10px',
+              fontWeight: '800',
+              color: CR_PALETTE.cr4043,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em'
+            }}
+          >
+            Ficha técnica de evidencia · CR-4043-1
+          </span>
+          <span style={{ fontSize: '0.66rem', color: CR_PALETTE.textSecondary }}>
+            {tenantId || 'TENANT'}
+          </span>
         </div>
+
         <div
           style={{
-            background: '#020617',
-            border: '1px solid #1e293b',
+            background: CR_PALETTE.surfaceDark,
+            border: `1px solid ${CR_PALETTE.borderNeutral}`,
             borderRadius: '6px',
-            padding: '12px',
+            padding: '10px 12px',
             display: 'flex',
             flexDirection: 'column',
             gap: '6px'
           }}
         >
           <div>
-            <strong style={{ color: '#94a3b8' }}>ID:</strong>{' '}
-            <span className="saare-mono" style={{ color: '#f8fafc', fontWeight: '700' }}>
-              {selectedEvidenceDetail.evidenceId || selectedEvidenceDetail.id}
+            <strong style={{ color: CR_PALETTE.textSecondary }}>ID:</strong>{' '}
+            <span className="saare-mono" style={{ color: CR_PALETTE.textPrimary, fontWeight: '700' }}>
+              {activeInspectedTrace.evidenceId || activeInspectedTrace.id}
             </span>
           </div>
           <div>
-            <strong style={{ color: '#94a3b8' }}>Veredicto:</strong>{' '}
-            <span className="saare-mono" style={{ color: '#f8fafc' }}>
-              {selectedEvidenceDetail.verdict}
+            <strong style={{ color: CR_PALETTE.textSecondary }}>Tenant:</strong>{' '}
+            <span className="saare-mono" style={{ color: CR_PALETTE.textPrimary }}>
+              {activeInspectedTrace.tenant || tenantId || '—'}
             </span>
           </div>
           <div>
-            <strong style={{ color: '#94a3b8' }}>Ciclo:</strong>{' '}
-            <span style={{ color: '#cbd5e1' }}>{selectedEvidenceDetail.lifecycle}</span>
+            <strong style={{ color: CR_PALETTE.textSecondary }}>Veredicto:</strong>{' '}
+            <span className="saare-mono" style={{ color: CR_PALETTE.textPrimary }}>
+              {activeInspectedTrace.verdict || activeInspectedTrace.decision}
+            </span>
           </div>
+          <div>
+            <strong style={{ color: CR_PALETTE.textSecondary }}>Flujo / Ciclo:</strong>{' '}
+            <span className="saare-mono" style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.67rem' }}>
+              {activeInspectedTrace.lifecycle || 'INBOUND_RAM -> POLICY_CHECK -> D1_CHAINED'}
+            </span>
+          </div>
+          <div>
+            <strong style={{ color: CR_PALETTE.textSecondary }}>Prompt:</strong>{' '}
+            <span style={{ color: CR_PALETTE.textSecondary }}>
+              {activeInspectedTrace.prompt || '(Sin instrucción)'}
+            </span>
+          </div>
+          {activeInspectedTrace.responseOutput && (
+            <div>
+              <strong style={{ color: CR_PALETTE.textSecondary }}>Salida:</strong>{' '}
+              <span style={{ color: CR_PALETTE.textSecondary }}>
+                {activeInspectedTrace.responseOutput}
+              </span>
+            </div>
+          )}
           <div style={{ wordBreak: 'break-all' }}>
-            <strong style={{ color: '#94a3b8' }}>Hash:</strong>{' '}
-            <span className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.68rem' }}>
-              {selectedEvidenceDetail.hash || '—'}
+            <strong style={{ color: CR_PALETTE.textSecondary }}>Hash:</strong>{' '}
+            <span className="saare-mono" style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.67rem' }}>
+              {activeInspectedTrace.hash || activeInspectedTrace.merkleRoot || '—'}
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => handleOpenPdfReport(selectedEvidenceDetail.raw || selectedEvidenceDetail)}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <select
+            aria-label="Tipo de acta o informe a exportar"
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
             style={{
-              padding: '7px 12px',
+              padding: '6px 8px',
               borderRadius: '6px',
-              border: 'none',
-              background: '#0284c7',
-              color: '#fff',
-              fontSize: '0.72rem',
-              fontWeight: '800',
-              cursor: 'pointer'
+              border: `1px solid ${CR_PALETTE.borderNeutral}`,
+              background: CR_PALETTE.surfaceDark,
+              color: CR_PALETTE.textPrimary,
+              fontSize: '0.7rem',
+              fontWeight: '700'
             }}
           >
-            Informe PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowExportModal(true)}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '6px',
-              border: '1px solid #334155',
-              background: '#111827',
-              color: '#e2e8f0',
-              fontSize: '0.72rem',
-              fontWeight: '700',
-              cursor: 'pointer'
-            }}
-          >
-            Exportar acta
-          </button>
+            <option value="ACTA_LEC">Acta LEC / ISO 27037 (.json)</option>
+            <option value="ISO_42001">Dossier ISO 42001 / RGPD (.json)</option>
+            <option value="ISO_27037">Manifiesto ISO/IEC 27037 (.json)</option>
+            <option value="TRACES_JSON">Trazas L7 (.json)</option>
+            <option value="SOVEREIGNTY_CERT">Certificado Soberanía D1 (Imprimir/HTML)</option>
+          </select>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleUnifiedEvidenceExport(exportFormat)}
+              style={{
+                flex: 1,
+                padding: '7px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${CR_PALETTE.cr4043}`,
+                background: CR_PALETTE.cr4043,
+                color: CR_PALETTE.cr4206Charcoal,
+                fontSize: '0.7rem',
+                fontWeight: '800',
+                cursor: 'pointer'
+              }}
+            >
+              Exportar acta/informe
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpenPdfReport(activeInspectedTrace.raw || activeInspectedTrace)}
+              style={{
+                padding: '7px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                background: CR_PALETTE.surfaceCard,
+                color: CR_PALETTE.textPrimary,
+                fontSize: '0.7rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Informe PDF
+            </button>
+          </div>
         </div>
       </div>
     ) : null;
@@ -1984,9 +2119,9 @@ function SaareConsoleInner() {
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
-                border: '1px solid #334155',
-                background: '#111827',
-                color: '#e2e8f0',
+                border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                background: CR_PALETTE.surfaceCard,
+                color: CR_PALETTE.textPrimary,
                 fontSize: '0.74rem',
                 fontWeight: '700',
                 cursor: 'pointer'
@@ -2000,9 +2135,9 @@ function SaareConsoleInner() {
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
-                border: '1px solid #d97706',
-                background: '#451a03',
-                color: '#fcd34d',
+                border: `1px solid ${CR_PALETTE.cr4043}`,
+                background: CR_PALETTE.cr4206Slate,
+                color: CR_PALETTE.cr4001,
                 fontSize: '0.74rem',
                 fontWeight: '800',
                 cursor: 'pointer'
@@ -2106,6 +2241,7 @@ function SaareConsoleInner() {
       onGenerateAuditToken: handleGenerateAuditToken,
       onDownloadTechnicalTeaser: handleDownloadTechnicalTeaser,
       onExportLecActa: handleExportLecActa,
+      onUnifiedEvidenceExport: handleUnifiedEvidenceExport,
       onTriggerGovernance: triggerGovernance,
       SoaCompilerSlot: (
         <SoaIso42001CompilerButton
@@ -2151,14 +2287,15 @@ function SaareConsoleInner() {
             position: 'fixed',
             bottom: '20px',
             right: '20px',
-            background: '#059669',
-            color: '#fff',
+            background: CR_PALETTE.cr4043,
+            color: CR_PALETTE.cr4206Charcoal,
+            border: `1px solid ${CR_PALETTE.cr4206Slate}`,
             padding: '12px 20px',
             borderRadius: '8px',
             zIndex: 10000,
             fontWeight: '800',
             fontSize: '0.82rem',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+            boxShadow: '0 10px 25px rgba(0,0,0,0.45)'
           }}
         >
           {governanceStatus}
@@ -2175,8 +2312,9 @@ function SaareConsoleInner() {
             style={{
               marginBottom: '16px',
               padding: '14px 18px',
-              background: '#0b0f19',
-              border: '1px solid #f59e0b',
+              background: CR_PALETTE.surfaceCard,
+              border: `1px solid ${CR_PALETTE.cr4043}`,
+              borderLeft: `4px solid ${CR_PALETTE.cr4043}`,
               borderRadius: '10px',
               display: 'flex',
               justifyContent: 'space-between',
@@ -2186,11 +2324,11 @@ function SaareConsoleInner() {
             }}
           >
             <div>
-              <div style={{ fontWeight: '800', color: '#fbbf24', fontSize: '0.88rem' }}>
-                Entorno listo para configurar — Sin token ni tenant vinculado
+              <div style={{ fontWeight: '800', color: CR_PALETTE.cr4043Soft, fontSize: '0.88rem' }}>
+                Entorno multitenant pendiente de sesión — CR-4043-1
               </div>
-              <div style={{ color: '#cbd5e1', fontSize: '0.76rem', marginTop: '3px' }}>
-                Introduce tu Token Bearer / API Key y tu Tenant ID para conectar la consola con tu bóveda de auditoría.
+              <div style={{ color: CR_PALETTE.textSecondary, fontSize: '0.76rem', marginTop: '3px' }}>
+                Carga tu Token Bearer / API Key e identificador de Tenant para operar sobre la bóveda D1 aislada.
               </div>
             </div>
             <button
@@ -2202,16 +2340,16 @@ function SaareConsoleInner() {
               }}
               style={{
                 padding: '8px 14px',
-                background: '#d97706',
-                color: '#fff',
-                border: 'none',
+                background: CR_PALETTE.cr4043,
+                color: CR_PALETTE.cr4206Charcoal,
+                border: `1px solid ${CR_PALETTE.cr4206Slate}`,
                 borderRadius: '6px',
                 fontWeight: '800',
                 fontSize: '0.75rem',
                 cursor: 'pointer'
               }}
             >
-              CARGAR TOKEN DE CLIENTE
+              CARGAR TOKEN
             </button>
           </div>
         )}
@@ -2226,7 +2364,7 @@ function SaareConsoleInner() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(2, 6, 23, 0.85)',
+            background: 'rgba(18, 21, 25, 0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2236,8 +2374,8 @@ function SaareConsoleInner() {
         >
           <div
             style={{
-              background: '#14070a',
-              border: '1px solid #ef4444',
+              background: CR_PALETTE.surfaceCard,
+              border: `1px solid ${CR_PALETTE.cr4043}`,
               borderRadius: '12px',
               maxWidth: '440px',
               width: '100%',
@@ -2247,10 +2385,10 @@ function SaareConsoleInner() {
               gap: '12px'
             }}
           >
-            <strong style={{ color: '#fca5a5', fontSize: '0.95rem' }}>
+            <strong style={{ color: CR_PALETTE.cr4043Soft, fontSize: '0.95rem' }}>
               Confirmar ejecución de {pendingDangerCommand.code}
             </strong>
-            <p style={{ margin: 0, color: '#fecaca', fontSize: '0.78rem', lineHeight: 1.45 }}>
+            <p style={{ margin: 0, color: CR_PALETTE.textSecondary, fontSize: '0.78rem', lineHeight: 1.45 }}>
               Vas a ejecutar <strong>{pendingDangerCommand.label}</strong> sobre el tenant{' '}
               <strong className="saare-mono">{tenantId || 'SIN_TENANT'}</strong>. Esta acción quedará
               registrada en la actividad de sesión.
@@ -2262,9 +2400,9 @@ function SaareConsoleInner() {
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
-                  border: '1px solid #334155',
-                  background: '#111827',
-                  color: '#e2e8f0',
+                  border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                  background: CR_PALETTE.surfaceDark,
+                  color: CR_PALETTE.textPrimary,
                   fontSize: '0.75rem',
                   fontWeight: '700',
                   cursor: 'pointer'
@@ -2282,9 +2420,9 @@ function SaareConsoleInner() {
                 style={{
                   padding: '8px 14px',
                   borderRadius: '6px',
-                  border: '1px solid #ef4444',
-                  background: '#991b1b',
-                  color: '#ffffff',
+                  border: `1px solid ${CR_PALETTE.cr4043}`,
+                  background: CR_PALETTE.cr4043,
+                  color: CR_PALETTE.cr4206Charcoal,
                   fontSize: '0.75rem',
                   fontWeight: '800',
                   cursor: 'pointer'
@@ -2302,7 +2440,7 @@ function SaareConsoleInner() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(2, 6, 23, 0.85)',
+            background: 'rgba(18, 21, 25, 0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2312,8 +2450,8 @@ function SaareConsoleInner() {
         >
           <div
             style={{
-              background: '#0b0f19',
-              border: '1px solid #38bdf8',
+              background: CR_PALETTE.surfaceCard,
+              border: `1px solid ${CR_PALETTE.cr4043}`,
               borderRadius: '12px',
               maxWidth: '460px',
               width: '100%',
@@ -2328,7 +2466,7 @@ function SaareConsoleInner() {
                 marginBottom: '16px'
               }}
             >
-              <h3 style={{ margin: 0, color: '#38bdf8', fontSize: '1.05rem', fontWeight: '900' }}>
+              <h3 style={{ margin: 0, color: CR_PALETTE.textPrimary, fontSize: '1.05rem', fontWeight: '900' }}>
                 Acceso y Carga de Token — S.A.A.R.E.
               </h3>
               <button
@@ -2337,7 +2475,7 @@ function SaareConsoleInner() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: CR_PALETTE.textSecondary,
                   fontSize: '1.2rem',
                   cursor: 'pointer'
                 }}
@@ -2357,9 +2495,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: 'none',
-                  background: authTab === 'TOKEN' ? '#d97706' : '#1e293b',
-                  color: '#fff',
+                  border: `1px solid ${authTab === 'TOKEN' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
+                  background: authTab === 'TOKEN' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
+                  color: authTab === 'TOKEN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2377,9 +2515,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: 'none',
-                  background: authTab === 'LOGIN' ? '#0284c7' : '#1e293b',
-                  color: '#fff',
+                  border: `1px solid ${authTab === 'LOGIN' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
+                  background: authTab === 'LOGIN' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
+                  color: authTab === 'LOGIN' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2397,9 +2535,9 @@ function SaareConsoleInner() {
                   flex: 1,
                   padding: '8px',
                   borderRadius: '6px',
-                  border: 'none',
-                  background: authTab === 'SANDBOX' ? '#059669' : '#1e293b',
-                  color: '#fff',
+                  border: `1px solid ${authTab === 'SANDBOX' ? CR_PALETTE.cr4043 : CR_PALETTE.borderSubtle}`,
+                  background: authTab === 'SANDBOX' ? CR_PALETTE.cr4043 : CR_PALETTE.surfaceDark,
+                  color: authTab === 'SANDBOX' ? CR_PALETTE.cr4206Charcoal : CR_PALETTE.textSecondary,
                   fontWeight: '800',
                   fontSize: '0.72rem',
                   cursor: 'pointer'
@@ -2423,9 +2561,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, token: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#38bdf8',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
                       fontFamily: 'monospace',
                       fontSize: '0.78rem',
@@ -2440,9 +2578,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
                       fontSize: '0.8rem'
                     }}
@@ -2454,9 +2592,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
                       fontSize: '0.8rem'
                     }}
@@ -2474,9 +2612,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, companyName: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
                     }}
                   />
@@ -2487,9 +2625,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
                     }}
                   />
@@ -2506,9 +2644,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
                     }}
                   />
@@ -2521,9 +2659,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px'
                     }}
                   />
@@ -2534,9 +2672,9 @@ function SaareConsoleInner() {
                     onChange={(e) => setAuthForm({ ...authForm, tenantId: e.target.value })}
                     style={{
                       padding: '10px',
-                      background: '#020617',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      background: CR_PALETTE.surfaceDark,
+                      border: `1px solid ${CR_PALETTE.borderNeutral}`,
+                      color: CR_PALETTE.textPrimary,
                       borderRadius: '6px',
                       fontSize: '0.8rem'
                     }}
@@ -2548,10 +2686,10 @@ function SaareConsoleInner() {
                 <div
                   style={{
                     padding: '8px 12px',
-                    background: 'rgba(239, 68, 68, 0.15)',
-                    border: '1px solid #ef4444',
+                    background: CR_PALETTE.surfaceDark,
+                    border: `1px solid ${CR_PALETTE.cr4043}`,
                     borderRadius: '6px',
-                    color: '#fca5a5',
+                    color: CR_PALETTE.cr4043Soft,
                     fontSize: '0.78rem'
                   }}
                 >
@@ -2564,10 +2702,9 @@ function SaareConsoleInner() {
                 disabled={authSubmitting}
                 style={{
                   padding: '11px',
-                  background:
-                    authTab === 'TOKEN' ? '#d97706' : authTab === 'SANDBOX' ? '#059669' : '#0284c7',
-                  color: '#fff',
-                  border: 'none',
+                  background: CR_PALETTE.cr4043,
+                  color: CR_PALETTE.cr4206Charcoal,
+                  border: `1px solid ${CR_PALETTE.cr4206Slate}`,
                   borderRadius: '6px',
                   fontWeight: '900',
                   cursor: 'pointer'

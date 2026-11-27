@@ -108,6 +108,7 @@ export default function GovernanceView({
   const cleanTenant = String(tenantId || '').trim();
   const tenantLabel = cleanTenant || 'Sin asignar';
   const fileTenantSlug = cleanTenant || 'CONTEXTO';
+  const canManageRules = can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES);
 
   const docCounts = useMemo(() => {
     return GOVERNANCE_ITEMS.reduce(
@@ -225,6 +226,7 @@ export default function GovernanceView({
           apiService.getNodeStatus(cleanTenant || undefined),
           apiService.getTelemetryTraces({ tenant: cleanTenant || undefined, limit: 50 })
         ]);
+        const traceList = Array.isArray(traces) ? traces : [];
         exportedData = {
           tenantId: cleanTenant || null,
           generatedAt: new Date().toISOString(),
@@ -232,11 +234,11 @@ export default function GovernanceView({
           certificationDisclaimer:
             'Informe técnico generado por la consola; no equivale a dictamen o certificación acreditada.',
           nodeStatus,
-          tracesCount: traces.length,
-          traces
+          tracesCount: traceList.length,
+          traces: traceList
         };
         filename = `informe_oficial_${fileTenantSlug}.json`;
-        summaryMsg = `Informe oficial [${item.documentState}] exportado (${traces.length} trazas).`;
+        summaryMsg = `Informe oficial [${item.documentState}] exportado (${traceList.length} trazas).`;
       } else if (item.key === 'technical_manifest') {
         const res = await saareFetch('/forensics/manifest', {
           method: 'GET',
@@ -284,6 +286,27 @@ export default function GovernanceView({
 
   const handleRuleSubmit = async (e) => {
     e.preventDefault();
+    if (!canManageRules) {
+      setFeedback('Permiso denegado para modificar reglas DLP con el rol actual.', 'error');
+      return;
+    }
+
+    const name = String(activeRuleForm?.name || '').trim();
+    const pattern = String(activeRuleForm?.pattern || '').trim();
+    if (!name || !pattern) {
+      setFeedback('Indica un nombre y una expresión regular para la regla.', 'error');
+      return;
+    }
+
+    try {
+      // Validar expresión regular antes de delegar
+      // eslint-disable-next-line no-new
+      new RegExp(pattern);
+    } catch {
+      setFeedback('La expresión regular introducida no es válida.', 'error');
+      return;
+    }
+
     if (typeof onSaveCustomRule === 'function') {
       await onSaveCustomRule(e);
       return;
@@ -295,6 +318,8 @@ export default function GovernanceView({
     statusTone === 'error' ? '#fca5a5' : statusTone === 'success' ? '#6ee7b7' : '#7dd3fc';
   const bannerBorder =
     statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#0284c7';
+
+  const rulesList = Array.isArray(customRules) ? customRules : [];
 
   const cardStyle = {
     background: '#0b0f19',
@@ -317,9 +342,9 @@ export default function GovernanceView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      {/* Resumen documental y políticas GRC */}
+      {/* Prioridad 1: Estado de políticas DLP, reglas y contexto normativo */}
       <section
-        aria-label="Indicadores de gobernanza y políticas"
+        aria-label="Indicadores de políticas y gobernanza"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
@@ -327,17 +352,7 @@ export default function GovernanceView({
         }}
       >
         <div style={cardStyle}>
-          <span style={labelStyle}>Artefactos GRC</span>
-          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
-            {GOVERNANCE_ITEMS.length}
-          </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            {docCounts.draft} borrador · {docCounts.reviewed} revisado · {docCounts.approved} aprobado
-          </span>
-        </div>
-
-        <div style={cardStyle}>
-          <span style={labelStyle}>Reglas DLP activas</span>
+          <span style={labelStyle}>Reglas DLP</span>
           <strong
             className="saare-mono"
             style={{ fontSize: '1.2rem', color: tenantRulesEnabled ? '#34d399' : '#fbbf24' }}
@@ -345,7 +360,7 @@ export default function GovernanceView({
             {tenantRulesEnabled ? 'ACTIVAS' : 'INACTIVAS'}
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Reglas personalizadas: {Array.isArray(customRules) ? customRules.length : 0}
+            Reglas personalizadas: {rulesList.length}
           </span>
         </div>
 
@@ -356,73 +371,183 @@ export default function GovernanceView({
           </strong>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Tenant: {tenantLabel}</span>
         </div>
+
+        <div style={cardStyle}>
+          <span style={labelStyle}>Artefactos GRC</span>
+          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
+            {GOVERNANCE_ITEMS.length}
+          </strong>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            {docCounts.draft} borrador · {docCounts.reviewed} revisado · {docCounts.approved} aprobado
+          </span>
+        </div>
       </section>
 
-      {/* Aviso normativo y accesos directos de gobernanza */}
+      {/* Prioridad 2: Políticas DLP y reglas personalizadas */}
       <section style={cardStyle}>
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             flexWrap: 'wrap'
           }}
         >
-          <span style={labelStyle}>Gobernanza, evaluaciones y documentación GRC</span>
-          <span style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
-            Tenant activo: <strong>{tenantLabel}</strong>
+          <span style={labelStyle}>
+            Políticas DLP y reglas personalizadas ({rulesList.length})
           </span>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {typeof onToggleTenantRules === 'function' && (
+              <button
+                type="button"
+                disabled={isRulesLoading || !canManageRules}
+                onClick={() => onToggleTenantRules(!tenantRulesEnabled)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: !canManageRules
+                    ? '#1e293b'
+                    : tenantRulesEnabled
+                    ? '#059669'
+                    : '#334155',
+                  color: !canManageRules ? '#64748b' : '#ffffff',
+                  border: 'none',
+                  fontSize: '0.72rem',
+                  fontWeight: '800',
+                  cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {tenantRulesEnabled ? 'Reglas ACTIVAS' : 'Reglas INACTIVAS'}
+              </button>
+            )}
+
+            {typeof onApplyIso42001 === 'function' && (
+              <button
+                type="button"
+                disabled={isRulesLoading || !canManageRules}
+                onClick={onApplyIso42001}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: '#111827',
+                  color: canManageRules ? '#e2e8f0' : '#64748b',
+                  border: '1px solid #334155',
+                  fontSize: '0.72rem',
+                  fontWeight: '800',
+                  cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
+                }}
+              >
+                Aplicar preset ISO 42001
+              </button>
+            )}
+          </div>
         </div>
 
-        <p style={{ margin: 0, fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.45 }}>
-          Los artefactos generados desde la consola se clasifican por estado documental (
-          <strong>{DOCUMENT_LIFECYCLE.DRAFT}</strong>, <strong>{DOCUMENT_LIFECYCLE.REVIEWED}</strong>{' '}
-          o <strong>{DOCUMENT_LIFECYCLE.APPROVED}</strong>). Una plantilla, evaluación interna o
-          informe técnico no equivale a una certificación acreditada por organismo externo.
-        </p>
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {typeof onOpenFriaModal === 'function' && (
-            <button
-              type="button"
-              onClick={onOpenFriaModal}
+        {typeof onSaveCustomRule === 'function' && (
+          <form onSubmit={handleRuleSubmit} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={activeRuleForm.name || ''}
+              onChange={(e) => updateRuleForm({ ...activeRuleForm, name: e.target.value })}
+              placeholder="Nombre de la regla (ej: Bloqueo NIF)"
               style={{
-                padding: '7px 12px',
+                padding: '7px 10px',
                 borderRadius: '6px',
-                background: '#0f172a',
-                color: '#7dd3fc',
-                border: '1px solid #0284c7',
-                fontSize: '0.73rem',
-                fontWeight: '700',
-                cursor: 'pointer'
+                background: '#020617',
+                color: '#f8fafc',
+                border: '1px solid #334155',
+                fontSize: '0.75rem',
+                minWidth: '180px'
               }}
-            >
-              Asistente FRIA (Art. 27)
-            </button>
-          )}
-
-          {typeof onOpenSubsidiesHub === 'function' && (
-            <button
-              type="button"
-              onClick={onOpenSubsidiesHub}
+            />
+            <input
+              type="text"
+              value={activeRuleForm.pattern || ''}
+              onChange={(e) => updateRuleForm({ ...activeRuleForm, pattern: e.target.value })}
+              placeholder="Expresión regular (ej: \\b\\d{8}[A-Z]\\b)"
               style={{
-                padding: '7px 12px',
+                padding: '7px 10px',
                 borderRadius: '6px',
-                background: '#451a03',
-                color: '#fcd34d',
-                border: '1px solid #d97706',
-                fontSize: '0.73rem',
+                background: '#020617',
+                color: '#f8fafc',
+                border: '1px solid #334155',
+                fontSize: '0.75rem',
+                minWidth: '220px',
+                flex: 1
+              }}
+            />
+            <button
+              type="submit"
+              disabled={isRulesLoading || !canManageRules}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '6px',
+                background: canManageRules ? '#0284c7' : '#1e293b',
+                color: canManageRules ? '#ffffff' : '#64748b',
+                border: 'none',
+                fontSize: '0.74rem',
                 fontWeight: '800',
-                cursor: 'pointer'
+                cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
               }}
             >
-              Hub de Subvenciones
+              Guardar regla
             </button>
-          )}
+          </form>
+        )}
 
-          {SoaCompilerSlot}
-        </div>
+        {rulesList.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {rulesList.map((rule) => (
+              <div
+                key={rule.id || rule.name}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  background: '#020617',
+                  border: '1px solid #1e293b',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.74rem'
+                }}
+              >
+                <div style={{ minWidth: 0, wordBreak: 'break-all' }}>
+                  <strong style={{ color: '#f8fafc' }}>{rule.name}</strong>{' '}
+                  <code className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.7rem' }}>
+                    {rule.pattern}
+                  </code>
+                </div>
+                {typeof onRemoveCustomRule === 'function' && rule.id && (
+                  <button
+                    type="button"
+                    disabled={isRulesLoading || !canManageRules}
+                    onClick={() => onRemoveCustomRule(rule.id)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '5px',
+                      background: '#111827',
+                      color: canManageRules ? '#fca5a5' : '#64748b',
+                      border: '1px solid #334155',
+                      fontSize: '0.7rem',
+                      fontWeight: '700',
+                      cursor: isRulesLoading
+                        ? 'wait'
+                        : canManageRules
+                        ? 'pointer'
+                        : 'not-allowed',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {statusMessage && (
@@ -468,7 +593,73 @@ export default function GovernanceView({
         </div>
       )}
 
-      {/* Catálogo de operaciones GRC */}
+      {/* Prioridad 3: Documentación GRC, evaluaciones y subvenciones (segundo plano) */}
+      <section style={cardStyle}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={labelStyle}>Documentación GRC, evaluaciones y subvenciones</span>
+          <span style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
+            Tenant activo: <strong>{tenantLabel}</strong>
+          </span>
+        </div>
+
+        <p style={{ margin: 0, fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.45 }}>
+          Los artefactos generados desde la consola se clasifican por estado documental (
+          <strong>{DOCUMENT_LIFECYCLE.DRAFT}</strong>, <strong>{DOCUMENT_LIFECYCLE.REVIEWED}</strong>{' '}
+          o <strong>{DOCUMENT_LIFECYCLE.APPROVED}</strong>). Una plantilla, evaluación interna o
+          informe técnico no equivale a una certificación acreditada por organismo externo.
+        </p>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {typeof onOpenFriaModal === 'function' && (
+            <button
+              type="button"
+              onClick={onOpenFriaModal}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '6px',
+                background: '#0f172a',
+                color: '#7dd3fc',
+                border: '1px solid #0284c7',
+                fontSize: '0.73rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Asistente FRIA (Art. 27)
+            </button>
+          )}
+
+          {typeof onOpenSubsidiesHub === 'function' && (
+            <button
+              type="button"
+              onClick={onOpenSubsidiesHub}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '6px',
+                background: '#111827',
+                color: '#fcd34d',
+                border: '1px solid #78350f',
+                fontSize: '0.73rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Hub de Subvenciones
+            </button>
+          )}
+
+          {SoaCompilerSlot}
+        </div>
+      </section>
+
       <section
         aria-label="Operaciones de cumplimiento y documentación"
         style={{
@@ -554,164 +745,6 @@ export default function GovernanceView({
             </article>
           );
         })}
-      </section>
-
-      {/* Reglas DLP y preset ISO 42001 */}
-      <section style={cardStyle}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '10px',
-            flexWrap: 'wrap'
-          }}
-        >
-          <span style={labelStyle}>
-            Políticas DLP y reglas personalizadas ({Array.isArray(customRules) ? customRules.length : 0})
-          </span>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {typeof onToggleTenantRules === 'function' && (
-              <button
-                type="button"
-                disabled={isRulesLoading || !can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES)}
-                onClick={() => onToggleTenantRules(!tenantRulesEnabled)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: tenantRulesEnabled ? '#059669' : '#334155',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '0.72rem',
-                  fontWeight: '800',
-                  cursor: isRulesLoading ? 'wait' : 'pointer'
-                }}
-              >
-                {tenantRulesEnabled ? 'Reglas ACTIVAS' : 'Reglas INACTIVAS'}
-              </button>
-            )}
-
-            {typeof onApplyIso42001 === 'function' && (
-              <button
-                type="button"
-                disabled={isRulesLoading || !can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES)}
-                onClick={onApplyIso42001}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: '#111827',
-                  color: '#e2e8f0',
-                  border: '1px solid #334155',
-                  fontSize: '0.72rem',
-                  fontWeight: '800',
-                  cursor: isRulesLoading ? 'wait' : 'pointer'
-                }}
-              >
-                Aplicar preset ISO 42001
-              </button>
-            )}
-          </div>
-        </div>
-
-        {typeof onSaveCustomRule === 'function' && (
-          <form onSubmit={handleRuleSubmit} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              type="text"
-              value={activeRuleForm.name || ''}
-              onChange={(e) => updateRuleForm({ ...activeRuleForm, name: e.target.value })}
-              placeholder="Nombre de la regla (ej: Bloqueo NIF)"
-              style={{
-                padding: '7px 10px',
-                borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
-                fontSize: '0.75rem',
-                minWidth: '180px'
-              }}
-            />
-            <input
-              type="text"
-              value={activeRuleForm.pattern || ''}
-              onChange={(e) => updateRuleForm({ ...activeRuleForm, pattern: e.target.value })}
-              placeholder="Expresión regular (ej: \\b\\d{8}[A-Z]\\b)"
-              style={{
-                padding: '7px 10px',
-                borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
-                fontSize: '0.75rem',
-                minWidth: '220px',
-                flex: 1
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isRulesLoading || !can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES)}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '6px',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '0.74rem',
-                fontWeight: '800',
-                cursor: isRulesLoading ? 'wait' : 'pointer'
-              }}
-            >
-              Guardar regla
-            </button>
-          </form>
-        )}
-
-        {Array.isArray(customRules) && customRules.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {customRules.map((rule) => (
-              <div
-                key={rule.id || rule.name}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  background: '#020617',
-                  border: '1px solid #1e293b',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '0.74rem'
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <strong style={{ color: '#f8fafc' }}>{rule.name}</strong>{' '}
-                  <code className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.7rem' }}>
-                    {rule.pattern}
-                  </code>
-                </div>
-                {typeof onRemoveCustomRule === 'function' && rule.id && (
-                  <button
-                    type="button"
-                    disabled={isRulesLoading}
-                    onClick={() => onRemoveCustomRule(rule.id)}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '5px',
-                      background: '#111827',
-                      color: '#fca5a5',
-                      border: '1px solid #334155',
-                      fontSize: '0.7rem',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Eliminar
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );

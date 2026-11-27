@@ -9,6 +9,17 @@ import {
   normalizeSignatureVerifyResponse
 } from '../domain/contracts';
 
+const isComplianceOrAuditRole = (roleValue = '') => {
+  const normalized = String(roleValue || '').trim().toUpperCase();
+  return (
+    normalized.includes('DPO') ||
+    normalized.includes('GRC') ||
+    normalized.includes('AUDITOR') ||
+    normalized.includes('EXECUTIVE') ||
+    normalized.includes('BOARD')
+  );
+};
+
 export default function GovernanceToolbar({
   targetHash = '',
   tenantId = '',
@@ -27,6 +38,7 @@ export default function GovernanceToolbar({
 }) {
   const {
     tenantId: contextTenantId,
+    role: contextRole,
     can,
     setLastVerification,
     pushActivity
@@ -36,11 +48,18 @@ export default function GovernanceToolbar({
   const [statusTone, setStatusTone] = useState('info'); // 'info' | 'success' | 'error'
   const [localRulesEnabled, setLocalRulesEnabled] = useState(Boolean(rulesEnabled));
   const [busyAction, setBusyAction] = useState('');
+  const [showSecondaryDocs, setShowSecondaryDocs] = useState(() =>
+    isComplianceOrAuditRole(contextRole)
+  );
   const timerRef = useRef(null);
 
   useEffect(() => {
     setLocalRulesEnabled(Boolean(rulesEnabled));
   }, [rulesEnabled]);
+
+  useEffect(() => {
+    setShowSecondaryDocs(isComplianceOrAuditRole(contextRole));
+  }, [contextRole]);
 
   useEffect(() => {
     return () => {
@@ -559,65 +578,39 @@ export default function GovernanceToolbar({
             letterSpacing: '0.06em'
           }}
         >
-          Acciones de Gobernanza &amp; Auditoría Operativa
+          Control Activo L7 &amp; Custodia Criptográfica
         </h3>
-        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-          Tenant: <strong className="saare-mono" style={{ color: '#e2e8f0' }}>{tenantLabel}</strong>
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+            Tenant: <strong className="saare-mono" style={{ color: '#e2e8f0' }}>{tenantLabel}</strong>
+          </span>
+          <button
+            type="button"
+            aria-expanded={showSecondaryDocs}
+            onClick={() => setShowSecondaryDocs((prev) => !prev)}
+            style={{
+              padding: '5px 10px',
+              borderRadius: '6px',
+              border: '1px solid #334155',
+              background: showSecondaryDocs ? '#1e293b' : '#0f172a',
+              color: '#cbd5e1',
+              fontSize: '0.7rem',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            {showSecondaryDocs
+              ? 'Ocultar exportables GRC / Subvenciones / Actas'
+              : 'Módulos documentales (GRC, Subvenciones, Actas)'}
+          </button>
+        </div>
       </div>
 
+      {/* Núcleo operativo B2B: Protección activa L7, Custodia y Credenciales */}
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'stretch' }}>
-        {/* Dominio 1: Evidencias y Custodia */}
+        {/* Dominio 1: Operación y Políticas L7 */}
         <div style={groupBox}>
-          <span style={groupLabel}>Evidencias y Custodia</span>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.VERIFY_SIGNATURE)}
-              onClick={() => handleVerify()}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.VERIFY_SIGNATURE)),
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none'
-              }}
-            >
-              Verificar Firma (Ed25519)
-            </button>
-
-            <button
-              type="button"
-              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_CUSTODY)}
-              onClick={handleExportCustody}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_CUSTODY)),
-                background: '#111827',
-                color: '#e2e8f0',
-                border: '1px solid #334155'
-              }}
-            >
-              Exportar Custodia
-            </button>
-
-            <button
-              type="button"
-              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_LEC_ACTA)}
-              onClick={handleExportLecActa}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_LEC_ACTA)),
-                background: '#1e1b4b',
-                color: '#e0e7ff',
-                border: '1px solid #6366f1'
-              }}
-            >
-              Acta LEC / ISO 27037
-            </button>
-          </div>
-        </div>
-
-        {/* Dominio 2: Operación y Políticas L7 */}
-        <div style={groupBox}>
-          <span style={groupLabel}>Operación y Políticas L7</span>
+          <span style={groupLabel}>Protección Activa y Políticas L7</span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -653,91 +646,43 @@ export default function GovernanceToolbar({
           </div>
         </div>
 
-        {/* Dominio 3: GRC, Informes y Dossiers */}
+        {/* Dominio 2: Evidencias y Custodia */}
         <div style={groupBox}>
-          <span style={groupLabel}>GRC, Informes y Dossiers</span>
+          <span style={groupLabel}>Integridad y Cadena de Custodia</span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
-              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT)}
-              onClick={handleOpenFriaModal}
+              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.VERIFY_SIGNATURE)}
+              onClick={() => handleVerify()}
               style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT)),
-                background: '#059669',
-                color: '#ffffff',
-                border: 'none'
-              }}
-            >
-              Evaluación FRIA (Art. 27)
-            </button>
-
-            <button
-              type="button"
-              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE)}
-              onClick={handleExportGovernancePackage}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE)),
-                background: 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)',
-                color: '#ffffff',
-                border: 'none'
-              }}
-            >
-              4 Plantillas GRC
-            </button>
-
-            <button
-              type="button"
-              disabled={
-                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER)
-              }
-              onClick={handleExportGrantDossier}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER)),
-                background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                color: '#ffffff',
-                border: 'none'
-              }}
-            >
-              Dossier Subvenciones
-            </button>
-
-            <button
-              type="button"
-              disabled={
-                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT)
-              }
-              onClick={handleOpenReportModal}
-              style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT)),
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.VERIFY_SIGNATURE)),
                 background: '#0284c7',
                 color: '#ffffff',
                 border: 'none'
               }}
             >
-              Informes Oficiales (PDF)
+              Verificar Firma (Ed25519)
             </button>
 
             <button
               type="button"
-              disabled={
-                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)
-              }
-              onClick={handleDownloadTeaser}
+              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_CUSTODY)}
+              onClick={handleExportCustody}
               style={{
-                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)),
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_CUSTODY)),
                 background: '#111827',
-                color: '#cbd5e1',
+                color: '#e2e8f0',
                 border: '1px solid #334155'
               }}
             >
-              Teaser Técnico
+              Exportar Custodia
             </button>
           </div>
         </div>
 
-        {/* Dominio 4: Credenciales */}
+        {/* Dominio 3: Credenciales */}
         <div style={groupBox}>
-          <span style={groupLabel}>Credenciales</span>
+          <span style={groupLabel}>Credenciales de Auditoría</span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -757,6 +702,117 @@ export default function GovernanceToolbar({
           </div>
         </div>
       </div>
+
+      {/* Módulo complementario plegable: GRC, Informes Oficiales, Actas y Subvenciones */}
+      {showSecondaryDocs && (
+        <div
+          style={{
+            marginTop: '10px',
+            padding: '10px 12px',
+            background: '#070b14',
+            borderRadius: '8px',
+            border: '1px dashed #334155',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}
+        >
+          <span style={groupLabel}>
+            Exportables Complementarios (Compliance, Peritaje y Subvenciones)
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT)}
+              onClick={handleOpenFriaModal}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT)),
+                background: '#064e3b',
+                color: '#a7f3d0',
+                border: '1px solid #059669'
+              }}
+            >
+              Evaluación FRIA (Art. 27)
+            </button>
+
+            <button
+              type="button"
+              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE)}
+              onClick={handleExportGovernancePackage}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE)),
+                background: '#0f172a',
+                color: '#7dd3fc',
+                border: '1px solid #0284c7'
+              }}
+            >
+              4 Plantillas GRC
+            </button>
+
+            <button
+              type="button"
+              disabled={Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_LEC_ACTA)}
+              onClick={handleExportLecActa}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_LEC_ACTA)),
+                background: '#1e1b4b',
+                color: '#e0e7ff',
+                border: '1px solid #6366f1'
+              }}
+            >
+              Acta LEC / ISO 27037
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT)
+              }
+              onClick={handleOpenReportModal}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT)),
+                background: '#111827',
+                color: '#e2e8f0',
+                border: '1px solid #334155'
+              }}
+            >
+              Informes Oficiales (PDF)
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER)
+              }
+              onClick={handleExportGrantDossier}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER)),
+                background: '#111827',
+                color: '#c4b5fd',
+                border: '1px solid #6d28d9'
+              }}
+            >
+              Dossier Subvenciones
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                Boolean(busyAction) || !isActionAllowed(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)
+              }
+              onClick={handleDownloadTeaser}
+              style={{
+                ...btnBase(isActionAllowed(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)),
+                background: '#111827',
+                color: '#94a3b8',
+                border: '1px solid #334155'
+              }}
+            >
+              Teaser Técnico
+            </button>
+          </div>
+        </div>
+      )}
 
       {status && (
         <div
