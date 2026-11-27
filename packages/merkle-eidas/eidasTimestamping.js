@@ -38,6 +38,45 @@ function bytesToBase64(bytes) {
   return chunks.join("");
 }
 
+function concatBytes(...arrays) {
+  const total = arrays.reduce((sum, arr) => sum + (arr ? arr.length : 0), 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const arr of arrays) {
+    if (!arr || arr.length === 0) continue;
+    out.set(arr, offset);
+    offset += arr.length;
+  }
+  return out;
+}
+
+/**
+ * Codifica una longitud ASN.1 DER en forma corta (<= 127) o larga (>= 128).
+ */
+function encodeDerLength(length) {
+  if (!Number.isInteger(length) || length < 0) {
+    throw new Error(`Longitud ASN.1 DER inválida: ${length}`);
+  }
+  if (length < 0x80) {
+    return new Uint8Array([length]);
+  }
+  const octets = [];
+  let rem = length;
+  while (rem > 0) {
+    octets.unshift(rem & 0xff);
+    rem >>= 8;
+  }
+  return new Uint8Array([0x80 | octets.length, ...octets]);
+}
+
+/**
+ * Construye un TLV ASN.1 DER: tag + length + value.
+ */
+function encodeDerTlv(tag, valueBytes) {
+  const val = valueBytes instanceof Uint8Array ? valueBytes : new Uint8Array(valueBytes || []);
+  return concatBytes(new Uint8Array([tag]), encodeDerLength(val.length), val);
+}
+
 /**
  * Lee una longitud ASN.1 DER en `offset`.
  * Devuelve `{ length, nextOffset }` o `null` si está truncada o no es válida.
@@ -123,35 +162,31 @@ function parseRfc3161Response(bytes) {
 }
 
 /**
- * Construye una petición ASN.1 DER TimeStampReq (RFC 3161) para un digest SHA-256 de 32 bytes.
+ * Construye una petición ASN.1 DER TimeStampReq (RFC 3161) válida para un digest SHA-256 de 32 bytes.
+ * OID SHA-256: 2.16.840.1.101.3.4.2.1 -> 60 86 48 01 65 03 04 02 01
  */
 function buildRfc3161Sha256Query(cleanRootHex) {
   const digestBytes = hexToBytes32(cleanRootHex);
+
+  const versionDer = encodeDerTlv(0x02, new Uint8Array([0x01]));
+  const sha256OidDer = encodeDerTlv(
+    0x06,
+    new Uint8Array([0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
+  );
+  const algIdDer = encodeDerTlv(0x30, concatBytes(sha256OidDer, new Uint8Array([0x05, 0x00])));
+  const hashedMsgDer = encodeDerTlv(0x04, digestBytes);
+  const messageImprintDer = encodeDerTlv(0x30, concatBytes(algIdDer, hashedMsgDer));
+
   const nonceBytes = new Uint8Array(8);
   crypto.getRandomValues(nonceBytes);
   nonceBytes[0] &= 0x7f;
+  if (nonceBytes[0] === 0) nonceBytes[0] = 0x01;
+  const nonceDer = encodeDerTlv(0x02, nonceBytes);
 
-  const prefix = new Uint8Array([
-    0x30, 0x41,
-    0x02, 0x01, 0x01,
-    0x30, 0x31,
-    0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00,
-    0x04, 0x20
-  ]);
-  const noncePrefix = new Uint8Array([0x02, 0x08]);
-  const certReqTrue = new Uint8Array([0x01, 0x01, 0xff]);
+  const certReqDer = encodeDerTlv(0x01, new Uint8Array([0xff]));
 
-  const query = new Uint8Array(
-    prefix.length + digestBytes.length + noncePrefix.length + nonceBytes.length + certReqTrue.length
-  );
-  let offset = 0;
-  query.set(prefix, offset); offset += prefix.length;
-  query.set(digestBytes, offset); offset += digestBytes.length;
-  query.set(noncePrefix, offset); offset += noncePrefix.length;
-  query.set(nonceBytes, offset); offset += nonceBytes.length;
-  query.set(certReqTrue, offset);
-
-  return query;
+  const reqBody = concatBytes(versionDer, messageImprintDer, nonceDer, certReqDer);
+  return encodeDerTlv(0x30, reqBody);
 }
 
 function shouldUseBinaryRfc3161(tsaUrl, options, env) {
@@ -231,7 +266,9 @@ export async function timestampMerkleRoot(params = {}, env = {}, options = {}) {
         "Content-Type": "application/timestamp-query",
         "Accept": "application/timestamp-reply"
       };
-      if (tsaApiKey) {
+      // FreeTSA es un servicio RFC 3161 público; no envíes Authorization Bearer a hosts freetsa.org salvo que se fuerce
+      const isPublicFreeTsa = String(tsaUrl).toLowerCase().includes("freetsa.org");
+      if (tsaApiKey && (!isPublicFreeTsa || options?.forceAuth === true)) {
         headers.Authorization = `Bearer ${tsaApiKey}`;
       }
 
