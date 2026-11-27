@@ -510,7 +510,7 @@ try {
         }
     }
     Write-Host " -> Sincronizando tipos TypeScript de Wrangler..." -ForegroundColor Gray
-    pnpm exec wrangler types
+    pnpm exec wrangler types --env production
     Assert-LastExitCode -FailureMessage "Fallo al generar tipos con wrangler types"
 } finally {
     Pop-Location
@@ -567,7 +567,7 @@ try {
 
     if ($sqlPath) {
         Write-Host " -> Aplicando esquema relacional D1 ($sqlPath) en remoto..." -ForegroundColor Gray
-        pnpm exec wrangler d1 execute saare-vault-d1 --remote --file="$sqlPath" --yes
+        pnpm exec wrangler d1 execute saare-vault-d1 --env production --remote --file="$sqlPath" --yes
         Assert-LastExitCode -FailureMessage "Fallo al aplicar schema.sql en D1"
         Write-Host " -> [OK] Esquema D1 aplicado correctamente." -ForegroundColor Green
     } else {
@@ -606,14 +606,14 @@ if ($SkipGitPush) {
     if ($gitStatus) {
         $currentBranch = (git branch --show-current).Trim()
         if (-not $currentBranch) {
-            $currentBranch = "main"
+            $currentBranch = "HEAD"
         }
 
         git commit -m "chore(release): despliegue maestro v9.2"
         Assert-LastExitCode -FailureMessage "Fallo en git commit"
         git push origin HEAD
         Assert-LastExitCode -FailureMessage "Fallo en git push"
-        Write-Host " -> [OK] Cambios subidos correctamente a GitHub (Rama: $currentBranch)." -ForegroundColor Green
+        Write-Host " -> [OK] Cambios subidos correctamente a GitHub (Ref: $currentBranch)." -ForegroundColor Green
     } else {
         Write-Host " -> No hay cambios pendientes en Git." -ForegroundColor Yellow
     }
