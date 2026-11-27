@@ -243,9 +243,14 @@ function Rotate-Ed25519KeyPairInCloudflare {
 
         $pubContentLf = ((Get-Content -Path $tempPub -Raw) -replace "`r`n", "`n").TrimEnd("`r", "`n") + "`n"
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText((Join-Path (Get-Location) $PublicKeyOut), $pubContentLf, $utf8NoBom)
+        $resolvedOut = if ([System.IO.Path]::IsPathRooted($PublicKeyOut)) {
+            $PublicKeyOut
+        } else {
+            Join-Path (Get-Location) $PublicKeyOut
+        }
+        [System.IO.File]::WriteAllText($resolvedOut, $pubContentLf, $utf8NoBom)
 
-        Write-Host " -> [OK] Par Ed25519 rotado en production y clave publica guardada en '$PublicKeyOut'." -ForegroundColor Green
+        Write-Host " -> [OK] Par Ed25519 rotado en production y clave publica guardada en '$resolvedOut'." -ForegroundColor Green
     } finally {
         foreach ($f in @($tempPriv, $tempPub)) {
             if ($f -and (Test-Path $f)) {
@@ -318,6 +323,7 @@ if ($repoRoot -and (Test-Path $repoRoot)) {
 if ((Get-Location).Path.EndsWith("control-plane")) {
     Set-Location ..
 }
+$workspaceRoot = (Get-Location).Path
 
 Ensure-NativeTool -CommandName "git" -WingetId "Git.Git" -DisplayName "Git"
 Ensure-NativeTool -CommandName "node" -WingetId "OpenJS.NodeJS.LTS" -DisplayName "Node.js LTS"
@@ -607,12 +613,17 @@ Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-suite"
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [5/7] Aplicando esquemas D1, secretos y desplegando Control Plane Worker..." -ForegroundColor Cyan
 
-if ($RotateEd25519Keys) {
-    Rotate-Ed25519KeyPairInCloudflare -PublicKeyOut $PublicKeyOutputPath
-}
-
 Push-Location $controlPlanePath
 try {
+    if ($RotateEd25519Keys) {
+        $pubOutTarget = if ([System.IO.Path]::IsPathRooted($PublicKeyOutputPath)) {
+            $PublicKeyOutputPath
+        } else {
+            Join-Path $workspaceRoot $PublicKeyOutputPath
+        }
+        Rotate-Ed25519KeyPairInCloudflare -PublicKeyOut $pubOutTarget
+    }
+
     $sqlPath = $null
     if (Test-Path "schema.sql") {
         $sqlPath = "schema.sql"
@@ -686,9 +697,9 @@ if ($SkipGitPush) {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS, HUMO, MULTITENANT & ED25519
+# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS, HUMO Y MULTITENANT
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS, humo, aislacion multitenant y Ed25519..." -ForegroundColor Cyan
+Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS, humo y aislacion multitenant..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 
 $testFailureCount = 0
@@ -900,8 +911,8 @@ if (-not $SkipSmokeTests) {
     }
 }
 
-# 7.3 Validacion forense Ed25519 end-to-end (/api/v1/forensics/signature/verify)
-if (-not $SkipSmokeTests -and -not $SkipEd25519Verify) {
+# 7.3 Validacion forense Ed25519 opcional (/api/v1/forensics/signature/verify)
+if (-not $SkipSmokeTests -and -not $SkipEd25519Verify -and $VerifyEd25519Signature) {
     $sigTenant = ($SmokeTenants | Select-Object -First 1)
     if ([string]::IsNullOrWhiteSpace($sigTenant)) { $sigTenant = "ENTERPRISE" }
 
@@ -931,10 +942,18 @@ if (-not $SkipSmokeTests -and -not $SkipEd25519Verify) {
             $verifyPayload["publicKeyPem"] = ((Get-Content -Path $PublicKeyOutputPath -Raw) -replace "`r`n", "`n").Trim()
         }
 
+        $verifyHeaders = @{
+            "Content-Type"   = "application/json"
+            "x-saare-tenant" = $sigTenant
+        }
+        if (-not [string]::IsNullOrWhiteSpace($effectiveToken)) {
+            $verifyHeaders["Authorization"] = "Bearer $effectiveToken"
+        }
+
         try {
             $verifyRes = Invoke-RestMethod -Uri "https://api.saare.es/api/v1/forensics/signature/verify" `
                 -Method Post `
-                -Headers @{ "Content-Type" = "application/json"; "x-saare-tenant" = $sigTenant } `
+                -Headers $verifyHeaders `
                 -Body ($verifyPayload | ConvertTo-Json) `
                 -TimeoutSec 10
 
@@ -945,7 +964,11 @@ if (-not $SkipSmokeTests -and -not $SkipEd25519Verify) {
                 $testFailureCount++
             }
         } catch {
-            Write-Host " -> [FALLO] Error invocando /api/v1/forensics/signature/verify: $($_.Exception.Message)" -ForegroundColor Red
+            $errDetail = $_.Exception.Message
+            if ($_.ErrorDetails -and -not [string]::IsNullOrWhiteSpace($_.ErrorDetails.Message)) {
+                $errDetail = "$errDetail | $($_.ErrorDetails.Message)"
+            }
+            Write-Host " -> [FALLO] Error invocando /api/v1/forensics/signature/verify: $errDetail" -ForegroundColor Red
             $testFailureCount++
         }
     } else {
