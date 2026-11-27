@@ -45,7 +45,7 @@ enabled = true
 
 [env.production.observability.logs]
 enabled = true
-head_sampling_rate = 1
+head_sampling_rate = 0.25
 invocation_logs = true
 
 [env.production.triggers]

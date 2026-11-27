@@ -1,10 +1,16 @@
 ﻿# ==============================================================================
-# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.2 - Hardened)
+# SCRIPT MAESTRO DE PRODUCCION INTEGRAL S.A.A.R.E. Enterprise (v9.3 - Hardened)
 # ==============================================================================
 param(
     [string[]]$SmokeTenants = @("ENTERPRISE", "PRO", "STARTER"),
     [string]$SmokeToken = "",
+    [string]$SmokeEmail = "",
+    [string]$SmokePassword = "",
     [string]$CrossTenantProbeId = "TENANT_ISOLATION_PROBE",
+    [string]$PublicKeyOutputPath = "saare_ed25519_public.pem",
+    [string]$CommitMessage = "chore(release): despliegue maestro v9.3",
+    [switch]$RotateEd25519Keys,
+    [switch]$VerifyEd25519Signature,
     [switch]$ConfigureMasterTestPassword,
     [switch]$RemoveMasterTestPassword,
     [switch]$SkipSmokeTests,
@@ -202,6 +208,52 @@ function Get-HttpStatusSafe {
     return $null
 }
 
+function Convert-PemToLfBase64 {
+    param([Parameter(Mandatory = $true)][string]$PemPath)
+    $raw = Get-Content -Path $PemPath -Raw
+    $normalizedLf = ($raw -replace "`r`n", "`n").TrimEnd("`r", "`n") + "`n"
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    return [Convert]::ToBase64String($utf8NoBom.GetBytes($normalizedLf))
+}
+
+function Rotate-Ed25519KeyPairInCloudflare {
+    param(
+        [Parameter(Mandatory = $true)][string]$PublicKeyOut
+    )
+    $tempPriv = Join-Path $env:TEMP ("saare_ed25519_priv_" + [guid]::NewGuid().ToString("N") + ".pem")
+    $tempPub  = Join-Path $env:TEMP ("saare_ed25519_pub_" + [guid]::NewGuid().ToString("N") + ".pem")
+
+    try {
+        Write-Host " -> Generando nuevo par criptografico Ed25519 (PKCS#8 / SPKI)..." -ForegroundColor Yellow
+        & openssl genpkey -algorithm ED25519 -out $tempPriv
+        Assert-LastExitCode -FailureMessage "Fallo al generar clave privada Ed25519 con OpenSSL"
+
+        & openssl pkey -in $tempPriv -pubout -out $tempPub
+        Assert-LastExitCode -FailureMessage "Fallo al derivar clave publica Ed25519 con OpenSSL"
+
+        $privB64 = Convert-PemToLfBase64 -PemPath $tempPriv
+        $pubB64  = Convert-PemToLfBase64 -PemPath $tempPub
+
+        $privB64 | pnpm exec wrangler secret put ED25519_PRIVATE_KEY --env production
+        Assert-LastExitCode -FailureMessage "Fallo al actualizar secreto ED25519_PRIVATE_KEY en production"
+
+        $pubB64 | pnpm exec wrangler secret put ED25519_PUBLIC_KEY --env production
+        Assert-LastExitCode -FailureMessage "Fallo al actualizar secreto ED25519_PUBLIC_KEY en production"
+
+        $pubContentLf = ((Get-Content -Path $tempPub -Raw) -replace "`r`n", "`n").TrimEnd("`r", "`n") + "`n"
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText((Join-Path (Get-Location) $PublicKeyOut), $pubContentLf, $utf8NoBom)
+
+        Write-Host " -> [OK] Par Ed25519 rotado en production y clave publica guardada en '$PublicKeyOut'." -ForegroundColor Green
+    } finally {
+        foreach ($f in @($tempPriv, $tempPub)) {
+            if ($f -and (Test-Path $f)) {
+                Remove-Item -Path $f -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 function Invoke-TenantChatProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Endpoint,
@@ -215,7 +267,7 @@ function Invoke-TenantChatProbe {
         "Content-Type"            = "application/json"
         "x-saare-tenant"          = $HeaderTenant
         "x-saare-browser-profile" = "AUDIT_PROBE"
-        "x-saare-client-profile"  = "DEPLOY_PIPELINE_V9_2"
+        "x-saare-client-profile"  = "DEPLOY_PIPELINE_V9_3"
     }
     if (-not [string]::IsNullOrWhiteSpace($Token)) {
         $headers["Authorization"] = "Bearer $Token"
@@ -550,9 +602,13 @@ pnpm exec wrangler pages deploy "$suiteDist" --project-name=saare-suite --branch
 Assert-LastExitCode -FailureMessage "Fallo al desplegar saare-suite"
 
 # ------------------------------------------------------------------------------
-# FASE 5: MIGRACIONES DE BASE DE DATOS, SECRETOS & CONTROL PLANE WORKER
+# FASE 5: MIGRACIONES DE BASE DE DATOS, SECRETOS ED25519 & CONTROL PLANE WORKER
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [5/7] Aplicando esquemas D1, secretos y desplegando Control Plane Worker..." -ForegroundColor Cyan
+
+if ($RotateEd25519Keys) {
+    Rotate-Ed25519KeyPairInCloudflare -PublicKeyOut $PublicKeyOutputPath
+}
 
 Push-Location $controlPlanePath
 try {
@@ -597,6 +653,15 @@ try {
 # FASE 6: SINCRONIZACION DEL RELEASE CON GITHUB (TRAS DESPLIEGUE EXITOSO)
 # ------------------------------------------------------------------------------
 Write-Host "`n==> [6/7] Sincronizando repositorio con GitHub..." -ForegroundColor Cyan
+
+$privateKeyLeaks = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+    $_.FullName -notmatch "\\(\.git|node_modules)\\" -and
+    $_.Name -match "private.*\.pem$|.*_private\.pem$"
+}
+if ($privateKeyLeaks) {
+    throw "Se detectaron posibles archivos de clave privada en el repositorio: $($privateKeyLeaks.FullName -join ', '). Eliminarlos antes de sincronizar con Git."
+}
+
 if ($SkipGitPush) {
     Write-Host " -> Se omitio la sincronizacion Git por parametro (-SkipGitPush)." -ForegroundColor Yellow
 } else {
@@ -609,7 +674,7 @@ if ($SkipGitPush) {
             $currentBranch = "HEAD"
         }
 
-        git commit -m "chore(release): despliegue maestro v9.2"
+        git commit -m $CommitMessage
         Assert-LastExitCode -FailureMessage "Fallo en git commit"
         git push origin HEAD
         Assert-LastExitCode -FailureMessage "Fallo en git push"
@@ -620,9 +685,9 @@ if ($SkipGitPush) {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS, HUMO & MULTITENANT
+# FASE 7: VERIFICACION INTEGRAL DE SALUD, ARTEFACTOS, CORS, HUMO, MULTITENANT & ED25519
 # ------------------------------------------------------------------------------
-Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS, humo y aislacion multitenant..." -ForegroundColor Cyan
+Write-Host "`n==> [7/7] Verificando salud, artefactos, CORS, humo, aislacion multitenant y Ed25519..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 
 $testFailureCount = 0
@@ -730,6 +795,25 @@ foreach ($origin in $corsOrigins) {
     }
 }
 
+$effectiveToken = $SmokeToken
+if ([string]::IsNullOrWhiteSpace($effectiveToken) -and -not [string]::IsNullOrWhiteSpace($SmokeEmail) -and -not [string]::IsNullOrWhiteSpace($SmokePassword)) {
+    try {
+        $loginBody = @{
+            email    = $SmokeEmail
+            password = $SmokePassword
+            tenantId = ($SmokeTenants | Select-Object -First 1)
+        } | ConvertTo-Json
+        $loginRes = Invoke-RestMethod -Uri "https://api.saare.es/api/v1/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -TimeoutSec 10
+        if ($loginRes -and $loginRes.token) {
+            $effectiveToken = $loginRes.token
+        }
+    } catch {
+        Write-Host " -> [AVISO] No se pudo obtener JWT previo con -SmokeEmail/-SmokePassword: $($_.Exception.Message)" -ForegroundColor DarkYellow
+    }
+}
+
+$lastSmokeResponse = $null
+
 if (-not $SkipSmokeTests) {
     $tenantsToRun = @($SmokeTenants | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
     if ($tenantsToRun.Count -eq 0) {
@@ -737,9 +821,10 @@ if (-not $SkipSmokeTests) {
     }
 
     foreach ($tId in $tenantsToRun) {
-        $probe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $tId -BodyTenant $tId -Token $SmokeToken -PromptText "Verificacion de conectividad ex-ante [$tId]."
+        $probe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $tId -BodyTenant $tId -Token $effectiveToken -PromptText "Verificacion de conectividad ex-ante [$tId]."
         $isSuccess = ($probe.Ok -and $null -ne $probe.Response -and ($probe.Response.PSObject.Properties.Match("success").Count -gt 0) -and ($probe.Response.success -eq $true))
         if ($isSuccess) {
+            $lastSmokeResponse = $probe.Response
             $respTenant = $null
             if ($probe.Response.PSObject.Properties.Match("tenant_id").Count -gt 0) {
                 $respTenant = [string]$probe.Response.tenant_id
@@ -761,12 +846,11 @@ if (-not $SkipSmokeTests) {
     }
 
     if (-not $SkipMultiTenantChecks) {
-        # 7.1 Validacion de rechazo ante ausencia de tenant (si el backend exige tenant explicito)
         $noTenantHeaders = @{
             "Content-Type" = "application/json"
         }
-        if (-not [string]::IsNullOrWhiteSpace($SmokeToken)) {
-            $noTenantHeaders["Authorization"] = "Bearer $SmokeToken"
+        if (-not [string]::IsNullOrWhiteSpace($effectiveToken)) {
+            $noTenantHeaders["Authorization"] = "Bearer $effectiveToken"
         }
         $noTenantBody = @{
             prompt   = "Sonda sin cabecera de tenant."
@@ -791,7 +875,6 @@ if (-not $SkipSmokeTests) {
             }
         }
 
-        # 7.2 Validacion de coherencia/aislacion cuando x-saare-tenant y body.tenant_id difieren
         $primaryTenant = $tenantsToRun[0]
         $mismatchTenant = if ($CrossTenantProbeId -and ($CrossTenantProbeId -ne $primaryTenant)) {
             $CrossTenantProbeId
@@ -799,7 +882,7 @@ if (-not $SkipSmokeTests) {
             "TENANT_MISMATCH_PROBE"
         }
 
-        $mismatchProbe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $primaryTenant -BodyTenant $mismatchTenant -Token $SmokeToken -PromptText "Sonda de coherencia multitenant."
+        $mismatchProbe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $primaryTenant -BodyTenant $mismatchTenant -Token $effectiveToken -PromptText "Sonda de coherencia multitenant."
         if (-not $mismatchProbe.Ok -and ($mismatchProbe.StatusCode -in @(400, 401, 403, 409, 422))) {
             Write-Host " -> [OK] Conflicto de tenant (header=$primaryTenant vs body=$mismatchTenant) bloqueado (HTTP $($mismatchProbe.StatusCode))." -ForegroundColor Green
         } elseif ($mismatchProbe.Ok -and $mismatchProbe.Response) {
@@ -816,9 +899,63 @@ if (-not $SkipSmokeTests) {
     }
 }
 
+# 7.3 Validacion forense Ed25519 end-to-end (/api/v1/forensics/signature/verify)
+if ($VerifyEd25519Signature -or $RotateEd25519Keys) {
+    $sigTenant = ($SmokeTenants | Select-Object -First 1)
+    if ([string]::IsNullOrWhiteSpace($sigTenant)) { $sigTenant = "ENTERPRISE" }
+
+    if ($null -eq $lastSmokeResponse) {
+        $sigProbe = Invoke-TenantChatProbe -Endpoint $chatEndpoint -HeaderTenant $sigTenant -BodyTenant $sigTenant -Token $effectiveToken -PromptText "Validacion forense Ed25519 en pipeline."
+        if ($sigProbe.Ok) {
+            $lastSmokeResponse = $sigProbe.Response
+        }
+    }
+
+    $pbNode = $null
+    if ($null -ne $lastSmokeResponse -and $null -ne $lastSmokeResponse.proofBundle) {
+        $pbNode = $lastSmokeResponse.proofBundle.proofBundle
+    }
+
+    if ($null -ne $pbNode -and -not [string]::IsNullOrWhiteSpace([string]$pbNode.ed25519Signature)) {
+        $verifyPayload = @{
+            tenantId         = [string]$pbNode.tenantId
+            traceId          = [string]$lastSmokeResponse.trace_id
+            verdictId        = [string]$pbNode.verdictId
+            payloadHash      = [string]$pbNode.payloadHash
+            timestamp        = [string]$pbNode.rfc3161Timestamp
+            ed25519Signature = [string]$pbNode.ed25519Signature
+        }
+
+        if ($PublicKeyOutputPath -and (Test-Path $PublicKeyOutputPath)) {
+            $verifyPayload["publicKeyPem"] = ((Get-Content -Path $PublicKeyOutputPath -Raw) -replace "`r`n", "`n").Trim()
+        }
+
+        try {
+            $verifyRes = Invoke-RestMethod -Uri "https://api.saare.es/api/v1/forensics/signature/verify" `
+                -Method Post `
+                -Headers @{ "Content-Type" = "application/json"; "x-saare-tenant" = $sigTenant } `
+                -Body ($verifyPayload | ConvertTo-Json) `
+                -TimeoutSec 10
+
+            if ($verifyRes -and ($verifyRes.verified -eq $true)) {
+                Write-Host " -> [OK] Firma forense Ed25519 verificada en produccion (traceId=$($lastSmokeResponse.trace_id), reason=$($verifyRes.reason))." -ForegroundColor Green
+            } else {
+                Write-Host " -> [FALLO] Verificacion Ed25519 devolvio verified=False (reason=$($verifyRes.reason), traceId=$($lastSmokeResponse.trace_id))." -ForegroundColor Red
+                $testFailureCount++
+            }
+        } catch {
+            Write-Host " -> [FALLO] Error invocando /api/v1/forensics/signature/verify: $($_.Exception.Message)" -ForegroundColor Red
+            $testFailureCount++
+        }
+    } else {
+        Write-Host " -> [FALLO] La respuesta del chat no incluyo proofBundle.proofBundle.ed25519Signature para verificar." -ForegroundColor Red
+        $testFailureCount++
+    }
+}
+
 if ($testFailureCount -gt 0) {
     Write-Host "`n[COMPLETADO CON FALLOS] Fallos detectados: $testFailureCount" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "`n==> [OK] Despliegue maestro completado correctamente." -ForegroundColor Green
+Write-Host "`n==> [OK] Despliegue maestro v9.3 completado y verificado correctamente." -ForegroundColor Green
