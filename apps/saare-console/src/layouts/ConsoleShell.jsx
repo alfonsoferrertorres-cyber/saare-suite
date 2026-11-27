@@ -3,6 +3,22 @@ import React, { useState, useEffect } from 'react';
 import { useConsole } from '../context/ConsoleContext';
 import { EXECUTION_STATUS } from '../domain/contracts';
 
+const SHELL_PALETTE = {
+  pageBg: '#E4E2DC',
+  panelBg: '#F6F6F5',
+  insetBg: '#FFFFFF',
+  hoverBg: '#ECEAE4',
+  activeBg: '#4A5258',
+  activeText: '#F6F6F5',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258',
+  textMuted: '#5C646B',
+  border: '#B5B7B9',
+  borderSubtle: '#C8CCD1',
+  charcoal: '#1A1D20',
+  slate: '#4A5258'
+};
+
 const ROLE_LABELS = {
   PLATFORM_ADMIN: 'Platform Admin',
   CISO_ADMIN: 'CISO Admin',
@@ -88,8 +104,8 @@ export default function ConsoleShell({
     <div
       style={{
         minHeight: '100vh',
-        background: '#030712',
-        color: '#f8fafc',
+        background: SHELL_PALETTE.pageBg,
+        color: SHELL_PALETTE.textPrimary,
         display: 'flex',
         flexDirection: 'column',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -101,8 +117,8 @@ export default function ConsoleShell({
           position: 'sticky',
           top: 0,
           zIndex: 30,
-          background: '#070b14',
-          borderBottom: '1px solid #1e293b',
+          background: SHELL_PALETTE.panelBg,
+          borderBottom: `1px solid ${SHELL_PALETTE.border}`,
           padding: '10px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -119,9 +135,9 @@ export default function ConsoleShell({
             style={{
               padding: '6px 10px',
               borderRadius: '6px',
-              background: '#111827',
-              color: '#e2e8f0',
-              border: '1px solid #334155',
+              background: SHELL_PALETTE.insetBg,
+              color: SHELL_PALETTE.textPrimary,
+              border: `1px solid ${SHELL_PALETTE.border}`,
               fontSize: '0.75rem',
               fontWeight: '700',
               cursor: 'pointer',
@@ -133,7 +149,14 @@ export default function ConsoleShell({
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.88rem', fontWeight: '800', letterSpacing: '0.04em' }}>
+              <span
+                style={{
+                  fontSize: '0.88rem',
+                  fontWeight: '800',
+                  letterSpacing: '0.04em',
+                  color: SHELL_PALETTE.textPrimary
+                }}
+              >
                 S.A.A.R.E. CONSOLE
               </span>
               <span
@@ -143,9 +166,9 @@ export default function ConsoleShell({
                   padding: '2px 8px',
                   borderRadius: '999px',
                   whiteSpace: 'nowrap',
-                  background: isRuntimeOk ? 'rgba(6, 78, 59, 0.7)' : 'rgba(69, 10, 10, 0.7)',
-                  color: isRuntimeOk ? '#6ee7b7' : '#fca5a5',
-                  border: `1px solid ${isRuntimeOk ? '#10b981' : '#ef4444'}`
+                  background: isRuntimeOk ? '#DCE3DF' : '#E7D8D6',
+                  color: isRuntimeOk ? '#1F3A2D' : '#5C231E',
+                  border: `1px solid ${isRuntimeOk ? '#7C9487' : '#B88984'}`
                 }}
               >
                 {nodeStatus?.status || 'NO_DISPONIBLE'}
@@ -159,15 +182,15 @@ export default function ConsoleShell({
                   padding: '2px 8px',
                   borderRadius: '999px',
                   whiteSpace: 'nowrap',
-                  background: isReadOnlyRole ? '#111827' : 'rgba(2, 132, 199, 0.16)',
-                  color: isReadOnlyRole ? '#cbd5e1' : '#7dd3fc',
-                  border: `1px solid ${isReadOnlyRole ? '#334155' : '#0284c7'}`
+                  background: isReadOnlyRole ? SHELL_PALETTE.pageBg : '#D8DEE3',
+                  color: SHELL_PALETTE.textPrimary,
+                  border: `1px solid ${SHELL_PALETTE.border}`
                 }}
               >
                 Rol: {formatRoleLabel(role)}
               </span>
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            <div style={{ fontSize: '0.72rem', color: SHELL_PALETTE.textSecondary }}>
               {activeRoute?.label} · Modo PEP: {nodeStatus?.mode || 'FAIL-CLOSED'}
               {tenantId ? ` · Tenant: ${tenantId}` : ''}
             </div>
@@ -184,9 +207,9 @@ export default function ConsoleShell({
               style={{
                 padding: '6px 10px',
                 borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
+                background: SHELL_PALETTE.insetBg,
+                color: SHELL_PALETTE.textPrimary,
+                border: `1px solid ${SHELL_PALETTE.border}`,
                 fontSize: '0.75rem',
                 fontWeight: '600'
               }}
@@ -209,9 +232,9 @@ export default function ConsoleShell({
                 style={{
                   padding: '6px 10px',
                   borderRadius: '6px',
-                  background: '#020617',
-                  color: '#f8fafc',
-                  border: '1px solid #334155',
+                  background: SHELL_PALETTE.insetBg,
+                  color: SHELL_PALETTE.textPrimary,
+                  border: `1px solid ${SHELL_PALETTE.border}`,
                   fontSize: '0.75rem',
                   width: '150px'
                 }}
@@ -221,9 +244,9 @@ export default function ConsoleShell({
                 style={{
                   padding: '6px 10px',
                   borderRadius: '6px',
-                  background: '#111827',
-                  color: '#e2e8f0',
-                  border: '1px solid #334155',
+                  background: SHELL_PALETTE.insetBg,
+                  color: SHELL_PALETTE.textPrimary,
+                  border: `1px solid ${SHELL_PALETTE.border}`,
                   fontSize: '0.72rem',
                   fontWeight: '700',
                   cursor: 'pointer',
@@ -243,7 +266,7 @@ export default function ConsoleShell({
               display: 'inline-flex',
               borderRadius: '6px',
               overflow: 'hidden',
-              border: '1px solid #334155'
+              border: `1px solid ${SHELL_PALETTE.border}`
             }}
           >
             <button
@@ -257,8 +280,8 @@ export default function ConsoleShell({
                 cursor: routeBusy ? 'wait' : 'pointer',
                 border: 'none',
                 whiteSpace: 'nowrap',
-                background: routeMode === 'CLOUD_EDGE' ? '#0284c7' : '#020617',
-                color: routeMode === 'CLOUD_EDGE' ? '#ffffff' : '#94a3b8'
+                background: routeMode === 'CLOUD_EDGE' ? SHELL_PALETTE.activeBg : SHELL_PALETTE.insetBg,
+                color: routeMode === 'CLOUD_EDGE' ? SHELL_PALETTE.activeText : SHELL_PALETTE.textSecondary
               }}
             >
               Cloud Edge
@@ -273,10 +296,11 @@ export default function ConsoleShell({
                 fontWeight: '700',
                 cursor: routeBusy ? 'wait' : 'pointer',
                 border: 'none',
-                borderLeft: '1px solid #334155',
+                borderLeft: `1px solid ${SHELL_PALETTE.border}`,
                 whiteSpace: 'nowrap',
-                background: routeMode === 'LOCAL_SIDECAR' ? '#0284c7' : '#020617',
-                color: routeMode === 'LOCAL_SIDECAR' ? '#ffffff' : '#94a3b8'
+                background:
+                  routeMode === 'LOCAL_SIDECAR' ? SHELL_PALETTE.activeBg : SHELL_PALETTE.insetBg,
+                color: routeMode === 'LOCAL_SIDECAR' ? SHELL_PALETTE.activeText : SHELL_PALETTE.textSecondary
               }}
             >
               Local Sidecar
@@ -290,9 +314,9 @@ export default function ConsoleShell({
             style={{
               padding: '6px 10px',
               borderRadius: '6px',
-              background: '#111827',
-              color: '#cbd5e1',
-              border: '1px solid #334155',
+              background: SHELL_PALETTE.insetBg,
+              color: SHELL_PALETTE.textPrimary,
+              border: `1px solid ${SHELL_PALETTE.border}`,
               fontSize: '0.72rem',
               fontWeight: '700',
               cursor: loadingNode ? 'wait' : 'pointer',
@@ -311,9 +335,9 @@ export default function ConsoleShell({
               style={{
                 padding: '6px 10px',
                 borderRadius: '6px',
-                background: '#450a0a',
-                color: '#fca5a5',
-                border: '1px solid #dc2626',
+                background: '#E7D8D6',
+                color: '#5C231E',
+                border: '1px solid #B88984',
                 fontSize: '0.72rem',
                 fontWeight: '700',
                 cursor: 'pointer',
@@ -329,11 +353,11 @@ export default function ConsoleShell({
       {routeError && (
         <div
           style={{
-            background: '#450a0a',
-            color: '#fecaca',
+            background: '#E7D8D6',
+            color: '#5C231E',
             padding: '8px 16px',
             fontSize: '0.75rem',
-            borderBottom: '1px solid #dc2626'
+            borderBottom: '1px solid #B88984'
           }}
         >
           Aviso de ruta: {routeError}
@@ -345,8 +369,8 @@ export default function ConsoleShell({
         <nav
           aria-label="Navegación móvil"
           style={{
-            background: '#070b14',
-            borderBottom: '1px solid #1e293b',
+            background: SHELL_PALETTE.panelBg,
+            borderBottom: `1px solid ${SHELL_PALETTE.border}`,
             padding: '10px 16px',
             display: 'flex',
             flexDirection: 'column',
@@ -364,9 +388,9 @@ export default function ConsoleShell({
                   textAlign: 'left',
                   padding: '9px 12px',
                   borderRadius: '6px',
-                  background: active ? '#0f172a' : 'transparent',
-                  color: active ? '#38bdf8' : '#cbd5e1',
-                  border: active ? '1px solid #0284c7' : '1px solid transparent',
+                  background: active ? SHELL_PALETTE.activeBg : 'transparent',
+                  color: active ? SHELL_PALETTE.activeText : SHELL_PALETTE.textPrimary,
+                  border: active ? `1px solid ${SHELL_PALETTE.charcoal}` : '1px solid transparent',
                   fontSize: '0.8rem',
                   fontWeight: active ? '800' : '600',
                   cursor: 'pointer'
@@ -395,8 +419,8 @@ export default function ConsoleShell({
           style={{
             width: '240px',
             flexShrink: 0,
-            background: '#070b14',
-            borderRight: '1px solid #1e293b',
+            background: SHELL_PALETTE.panelBg,
+            borderRight: `1px solid ${SHELL_PALETTE.border}`,
             padding: '14px 12px',
             display: 'flex',
             flexDirection: 'column',
@@ -409,7 +433,7 @@ export default function ConsoleShell({
               style={{
                 fontSize: '10px',
                 fontWeight: '800',
-                color: '#64748b',
+                color: SHELL_PALETTE.textMuted,
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
                 padding: '0 8px 6px'
@@ -429,9 +453,9 @@ export default function ConsoleShell({
                     textAlign: 'left',
                     padding: '9px 10px',
                     borderRadius: '6px',
-                    background: active ? '#0f172a' : 'transparent',
-                    color: active ? '#38bdf8' : '#cbd5e1',
-                    border: active ? '1px solid #0284c7' : '1px solid transparent',
+                    background: active ? SHELL_PALETTE.activeBg : 'transparent',
+                    color: active ? SHELL_PALETTE.activeText : SHELL_PALETTE.textPrimary,
+                    border: active ? `1px solid ${SHELL_PALETTE.charcoal}` : '1px solid transparent',
                     fontSize: '0.78rem',
                     fontWeight: active ? '800' : '600',
                     cursor: 'pointer',
@@ -448,38 +472,48 @@ export default function ConsoleShell({
             style={{
               padding: '10px',
               borderRadius: '8px',
-              background: '#020617',
-              border: '1px solid #1e293b',
+              background: SHELL_PALETTE.insetBg,
+              border: `1px solid ${SHELL_PALETTE.border}`,
               fontSize: '0.72rem',
-              color: '#94a3b8',
+              color: SHELL_PALETTE.textSecondary,
               display: 'flex',
               flexDirection: 'column',
               gap: '5px'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-              <span style={{ color: '#e2e8f0', fontWeight: '700' }}>Sesión</span>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span style={{ color: SHELL_PALETTE.textPrimary, fontWeight: '700' }}>Sesión</span>
               <span
                 style={{
                   fontSize: '0.65rem',
                   fontWeight: '700',
                   padding: '1px 6px',
                   borderRadius: '999px',
-                  background: sessionSummary?.isConfigured ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                  color: sessionSummary?.isConfigured ? '#6ee7b7' : '#fbbf24'
+                  background: sessionSummary?.isConfigured ? '#DCE3DF' : '#ECE4CF',
+                  color: sessionSummary?.isConfigured ? '#1F3A2D' : '#574313',
+                  border: `1px solid ${sessionSummary?.isConfigured ? '#8CA397' : '#C7B27B'}`
                 }}
               >
                 {sessionSummary?.isConfigured ? 'Vinculada' : 'Sin configurar'}
               </span>
             </div>
             <div title={role || 'READ_ONLY'}>
-              <strong style={{ color: '#e2e8f0' }}>Rol:</strong> {formatRoleLabel(role)}
+              <strong style={{ color: SHELL_PALETTE.textPrimary }}>Rol:</strong> {formatRoleLabel(role)}
             </div>
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              <strong style={{ color: '#e2e8f0' }}>Usuario:</strong> {userEmail || 'No autenticado'}
+              <strong style={{ color: SHELL_PALETTE.textPrimary }}>Usuario:</strong>{' '}
+              {userEmail || 'No autenticado'}
             </div>
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              <strong style={{ color: '#e2e8f0' }}>Tenant:</strong> {tenantId || 'Sin asignar'}
+              <strong style={{ color: SHELL_PALETTE.textPrimary }}>Tenant:</strong>{' '}
+              {tenantId || 'Sin asignar'}
             </div>
           </div>
         </aside>
@@ -498,7 +532,7 @@ export default function ConsoleShell({
           <div
             style={{
               paddingBottom: '12px',
-              borderBottom: '1px solid #1e293b',
+              borderBottom: `1px solid ${SHELL_PALETTE.border}`,
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'baseline',
@@ -507,11 +541,18 @@ export default function ConsoleShell({
             }}
           >
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#f8fafc' }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: '1.2rem',
+                  fontWeight: '800',
+                  color: SHELL_PALETTE.textPrimary
+                }}
+              >
                 {activeRoute?.label}
               </h1>
               {activeRoute?.description && (
-                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: SHELL_PALETTE.textSecondary }}>
                   {activeRoute.description}
                 </p>
               )}
@@ -519,7 +560,7 @@ export default function ConsoleShell({
             <span
               style={{
                 fontSize: '0.7rem',
-                color: '#64748b',
+                color: SHELL_PALETTE.textMuted,
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
               }}
             >
@@ -536,9 +577,9 @@ export default function ConsoleShell({
               style={{
                 marginTop: 'auto',
                 padding: '12px 14px',
-                background: '#070b14',
+                background: SHELL_PALETTE.panelBg,
                 borderRadius: '8px',
-                border: '1px solid #1e293b'
+                border: `1px solid ${SHELL_PALETTE.border}`
               }}
             >
               <div
@@ -554,7 +595,7 @@ export default function ConsoleShell({
                   style={{
                     fontSize: '10px',
                     fontWeight: '800',
-                    color: '#64748b',
+                    color: SHELL_PALETTE.textMuted,
                     textTransform: 'uppercase',
                     letterSpacing: '0.06em'
                   }}
@@ -568,7 +609,7 @@ export default function ConsoleShell({
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#94a3b8',
+                      color: SHELL_PALETTE.textSecondary,
                       fontSize: '0.7rem',
                       cursor: 'pointer',
                       textDecoration: 'underline'
@@ -593,14 +634,14 @@ export default function ConsoleShell({
                         fontSize: '0.73rem',
                         padding: '6px 10px',
                         borderRadius: '6px',
-                        background: '#020617',
-                        borderLeft: `3px solid ${isFailed ? '#ef4444' : '#38bdf8'}`
+                        background: SHELL_PALETTE.insetBg,
+                        borderLeft: `3px solid ${isFailed ? '#9E3B33' : SHELL_PALETTE.slate}`
                       }}
                     >
-                      <span style={{ color: '#e2e8f0' }}>{item.summary}</span>
+                      <span style={{ color: SHELL_PALETTE.textPrimary }}>{item.summary}</span>
                       <span
                         style={{
-                          color: '#94a3b8',
+                          color: SHELL_PALETTE.textSecondary,
                           whiteSpace: 'nowrap',
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
                         }}
@@ -623,8 +664,8 @@ export default function ConsoleShell({
               width: '320px',
               flex: '1 1 280px',
               maxWidth: '420px',
-              background: '#070b14',
-              borderLeft: '1px solid #1e293b',
+              background: SHELL_PALETTE.panelBg,
+              borderLeft: `1px solid ${SHELL_PALETTE.border}`,
               padding: '16px',
               minWidth: 0
             }}

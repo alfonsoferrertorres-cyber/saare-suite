@@ -4,6 +4,22 @@ import { useConsole } from '../../context/ConsoleContext';
 import { apiService } from '../../services/apiService';
 import { CONSOLE_ACTIONS, EXECUTION_STATUS } from '../../domain/contracts';
 
+const OVERVIEW_PALETTE = {
+  cardBg: '#F6F6F5',
+  insetBg: '#FFFFFF',
+  mutedBg: '#E4E2DC',
+  primaryBtnBg: '#4A5258',
+  primaryBtnText: '#F6F6F5',
+  secondaryBtnBg: '#FFFFFF',
+  secondaryBtnText: '#1A1D20',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258',
+  textMuted: '#5C646B',
+  border: '#B5B7B9',
+  charcoal: '#1A1D20',
+  slate: '#4A5258'
+};
+
 export default function OverviewView({
   evidences = [],
   billingInfo = null,
@@ -132,8 +148,8 @@ export default function OverviewView({
       : '0.0';
 
   const cardStyle = {
-    background: '#0b0f19',
-    border: '1px solid #1e293b',
+    background: OVERVIEW_PALETTE.cardBg,
+    border: `1px solid ${OVERVIEW_PALETTE.border}`,
     borderRadius: '10px',
     padding: '14px 16px',
     display: 'flex',
@@ -145,7 +161,7 @@ export default function OverviewView({
   const labelStyle = {
     fontSize: '10px',
     fontWeight: '800',
-    color: '#94a3b8',
+    color: OVERVIEW_PALETTE.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em'
   };
@@ -153,9 +169,9 @@ export default function OverviewView({
   const secondaryBtnStyle = {
     padding: '8px 12px',
     borderRadius: '6px',
-    background: '#111827',
-    color: '#cbd5e1',
-    border: '1px solid #334155',
+    background: OVERVIEW_PALETTE.secondaryBtnBg,
+    color: OVERVIEW_PALETTE.secondaryBtnText,
+    border: `1px solid ${OVERVIEW_PALETTE.border}`,
     fontSize: '0.74rem',
     fontWeight: '700',
     cursor: 'pointer',
@@ -167,8 +183,8 @@ export default function OverviewView({
       {/* Cabecera primaria: estado del nodo, Fail-Closed y acciones nucleares */}
       <section
         style={{
-          background: '#0b0f19',
-          border: '1px solid #1e293b',
+          background: OVERVIEW_PALETTE.cardBg,
+          border: `1px solid ${OVERVIEW_PALETTE.border}`,
           borderRadius: '10px',
           padding: '16px',
           display: 'flex',
@@ -188,9 +204,9 @@ export default function OverviewView({
                 padding: '2px 8px',
                 borderRadius: '999px',
                 whiteSpace: 'nowrap',
-                background: isRuntimeOk ? 'rgba(6, 78, 59, 0.7)' : 'rgba(69, 10, 10, 0.7)',
-                color: isRuntimeOk ? '#6ee7b7' : '#fca5a5',
-                border: `1px solid ${isRuntimeOk ? '#10b981' : '#ef4444'}`
+                background: isRuntimeOk ? '#DCE3DF' : '#E7D8D6',
+                color: isRuntimeOk ? '#1F3A2D' : '#5C231E',
+                border: `1px solid ${isRuntimeOk ? '#7C9487' : '#B88984'}`
               }}
             >
               {nodeStatus?.status || 'NO_DISPONIBLE'}
@@ -201,18 +217,24 @@ export default function OverviewView({
                 fontWeight: '800',
                 padding: '2px 8px',
                 borderRadius: '999px',
-                background: '#0f172a',
-                color: '#7dd3fc',
-                border: '1px solid #0284c7'
+                background: OVERVIEW_PALETTE.mutedBg,
+                color: OVERVIEW_PALETTE.textPrimary,
+                border: `1px solid ${OVERVIEW_PALETTE.border}`
               }}
             >
               PEP: {nodeStatus?.mode || 'FAIL-CLOSED'}
             </span>
           </div>
 
-          <div style={{ fontSize: '0.8rem', color: '#cbd5e1', wordBreak: 'break-word' }}>
-            Tenant: <strong>{tenantId || 'Sin tenant vinculado'}</strong> · Ruta:{' '}
-            <strong>{routeMode}</strong>
+          <div
+            style={{
+              fontSize: '0.8rem',
+              color: OVERVIEW_PALETTE.textSecondary,
+              wordBreak: 'break-word'
+            }}
+          >
+            Tenant: <strong style={{ color: OVERVIEW_PALETTE.textPrimary }}>{tenantId || 'Sin tenant vinculado'}</strong> ·
+            Ruta: <strong style={{ color: OVERVIEW_PALETTE.textPrimary }}>{routeMode}</strong>
             {billingInfo?.planId ? ` · Plan: ${billingInfo.planId}` : ''}
           </div>
         </div>
@@ -225,9 +247,9 @@ export default function OverviewView({
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
-              background: canEvaluateL7 ? '#0284c7' : '#1e293b',
-              color: canEvaluateL7 ? '#ffffff' : '#64748b',
-              border: 'none',
+              background: canEvaluateL7 ? OVERVIEW_PALETTE.primaryBtnBg : OVERVIEW_PALETTE.mutedBg,
+              color: canEvaluateL7 ? OVERVIEW_PALETTE.primaryBtnText : OVERVIEW_PALETTE.textMuted,
+              border: `1px solid ${canEvaluateL7 ? OVERVIEW_PALETTE.charcoal : OVERVIEW_PALETTE.border}`,
               fontSize: '0.75rem',
               fontWeight: '800',
               cursor: canEvaluateL7 ? 'pointer' : 'not-allowed',
@@ -244,9 +266,9 @@ export default function OverviewView({
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
-              background: '#111827',
-              color: canVerifyEvidence ? '#e2e8f0' : '#64748b',
-              border: '1px solid #334155',
+              background: OVERVIEW_PALETTE.secondaryBtnBg,
+              color: canVerifyEvidence ? OVERVIEW_PALETTE.textPrimary : OVERVIEW_PALETTE.textMuted,
+              border: `1px solid ${OVERVIEW_PALETTE.border}`,
               fontSize: '0.75rem',
               fontWeight: '800',
               cursor: canVerifyEvidence ? 'pointer' : 'not-allowed',
@@ -263,9 +285,9 @@ export default function OverviewView({
               style={{
                 padding: '8px 12px',
                 borderRadius: '6px',
-                background: '#d97706',
-                color: '#ffffff',
-                border: 'none',
+                background: OVERVIEW_PALETTE.mutedBg,
+                color: OVERVIEW_PALETTE.textPrimary,
+                border: `1px solid ${OVERVIEW_PALETTE.charcoal}`,
                 fontSize: '0.75rem',
                 fontWeight: '800',
                 cursor: 'pointer',
@@ -282,7 +304,7 @@ export default function OverviewView({
             onClick={handleRefreshAll}
             style={{
               ...secondaryBtnStyle,
-              color: '#94a3b8',
+              color: OVERVIEW_PALETTE.textSecondary,
               cursor: loadingNode || loadingKpis ? 'wait' : 'pointer'
             }}
           >
@@ -302,10 +324,13 @@ export default function OverviewView({
       >
         <div style={cardStyle}>
           <span style={labelStyle}>Inspecciones L7</span>
-          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+          <strong
+            className="saare-mono"
+            style={{ fontSize: '1.15rem', color: OVERVIEW_PALETTE.textPrimary }}
+          >
             {loadingKpis ? '—' : kpis.totalInterceptions}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.72rem', color: OVERVIEW_PALETTE.textSecondary }}>
             Permitidas: {kpis.allowedActions} · Denegadas: {kpis.deniedActions} ({blockRate}%)
           </span>
         </div>
@@ -316,22 +341,27 @@ export default function OverviewView({
             className="saare-mono"
             style={{
               fontSize: '1.15rem',
-              color: isRuntimeOk ? '#34d399' : '#f87171'
+              color: isRuntimeOk ? '#1F3A2D' : '#5C231E'
             }}
           >
             {nodeStatus?.status || 'NO_DISPONIBLE'}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.72rem', color: OVERVIEW_PALETTE.textSecondary }}>
             Nodo: {nodeStatus?.nodeId || '—'}
           </span>
         </div>
 
         <div style={cardStyle}>
           <span style={labelStyle}>Evidencias pendientes</span>
-          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+          <strong
+            className="saare-mono"
+            style={{ fontSize: '1.15rem', color: OVERVIEW_PALETTE.textPrimary }}
+          >
             {loadingKpis ? '—' : kpis.pendingConsolidation}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Por consolidar en lote</span>
+          <span style={{ fontSize: '0.72rem', color: OVERVIEW_PALETTE.textSecondary }}>
+            Por consolidar en lote
+          </span>
         </div>
 
         <div style={cardStyle}>
@@ -342,10 +372,10 @@ export default function OverviewView({
               fontSize: '1.15rem',
               color:
                 verificationStatus === EXECUTION_STATUS.VERIFIED
-                  ? '#34d399'
+                  ? '#1F3A2D'
                   : verificationStatus === EXECUTION_STATUS.FAILED
-                  ? '#f87171'
-                  : '#94a3b8'
+                  ? '#5C231E'
+                  : OVERVIEW_PALETTE.textSecondary
             }}
           >
             {verificationLabel}
@@ -353,7 +383,7 @@ export default function OverviewView({
           <span
             style={{
               fontSize: '0.72rem',
-              color: '#94a3b8',
+              color: OVERVIEW_PALETTE.textSecondary,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
@@ -378,13 +408,16 @@ export default function OverviewView({
           }}
         >
           <span style={labelStyle}>Actividad reciente</span>
-          <span className="saare-mono" style={{ fontSize: '0.72rem', color: '#64748b' }}>
+          <span
+            className="saare-mono"
+            style={{ fontSize: '0.72rem', color: OVERVIEW_PALETTE.textMuted }}
+          >
             {activityLog.length} evento(s) en sesión
           </span>
         </div>
 
         {activityLog.length === 0 ? (
-          <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+          <div style={{ fontSize: '0.78rem', color: OVERVIEW_PALETTE.textSecondary }}>
             No hay operaciones registradas en la sesión actual.
           </div>
         ) : (
@@ -402,23 +435,30 @@ export default function OverviewView({
                     flexWrap: 'wrap',
                     padding: '8px 12px',
                     borderRadius: '6px',
-                    background: '#020617',
-                    borderLeft: `3px solid ${failed ? '#ef4444' : '#38bdf8'}`,
+                    background: OVERVIEW_PALETTE.insetBg,
+                    border: `1px solid ${OVERVIEW_PALETTE.border}`,
+                    borderLeft: `3px solid ${failed ? '#9E3B33' : OVERVIEW_PALETTE.slate}`,
                     fontSize: '0.75rem'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span style={{ color: '#e2e8f0', fontWeight: '600', wordBreak: 'break-word' }}>
+                    <span
+                      style={{
+                        color: OVERVIEW_PALETTE.textPrimary,
+                        fontWeight: '600',
+                        wordBreak: 'break-word'
+                      }}
+                    >
                       {ev.summary}
                     </span>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                    <span style={{ fontSize: '0.68rem', color: OVERVIEW_PALETTE.textMuted }}>
                       {ev.module} · {ev.action} · {ev.timestamp}
                     </span>
                   </div>
                   <span
                     className="saare-mono"
                     style={{
-                      color: failed ? '#fca5a5' : '#94a3b8',
+                      color: failed ? '#5C231E' : OVERVIEW_PALETTE.textSecondary,
                       whiteSpace: 'nowrap',
                       fontSize: '0.72rem'
                     }}
@@ -448,7 +488,7 @@ export default function OverviewView({
             padding: '12px 16px'
           }}
         >
-          <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.74rem', color: OVERVIEW_PALETTE.textSecondary }}>
             Informes ejecutivos y gestión de suscripción
           </span>
 
@@ -466,8 +506,9 @@ export default function OverviewView({
                 onClick={() => onStartStripeUpgrade('PROFESSIONAL_649')}
                 style={{
                   ...secondaryBtnStyle,
-                  borderColor: '#10b981',
-                  color: '#6ee7b7',
+                  background: OVERVIEW_PALETTE.mutedBg,
+                  borderColor: OVERVIEW_PALETTE.slate,
+                  color: OVERVIEW_PALETTE.textPrimary,
                   cursor: isBillingLoading ? 'wait' : 'pointer'
                 }}
               >
