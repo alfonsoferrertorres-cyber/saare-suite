@@ -71,7 +71,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
     safeEvidence.timestamp || safeEvidence.created_at || Date.now()
   );
   const validDate = !Number.isNaN(parsedDate.getTime()) ? parsedDate : new Date();
-  const timestamp = validDate.toISOString();
+  const signTimestamp = validDate.toISOString();
   const year = validDate.getUTCFullYear();
 
   const runId =
@@ -84,7 +84,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
     safeEvidence.trace_id || `tr_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
 
   const keyManager = new EnterpriseKeyManager(env);
-  const canonicalSignPayload = `${tenantId}|${verdictId}|${traceId}|${payloadHash}|${timestamp}`;
+  const canonicalSignPayload = `${tenantId}|${verdictId}|${traceId}|${payloadHash}|${signTimestamp}`;
   const ed25519Signature =
     safeEvidence.cryptoSeal ||
     (await keyManager.deriveEd25519Signature(canonicalSignPayload, tenantId));
@@ -96,7 +96,7 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
   const externalTsaHash =
     safeEvidence.tsaHash || env?.SAFE_CREATIVE_TSA_HASH || null;
   const tsaSeal = await tsaEngine.sealTransaction(
-    { tenantId, verdictId, payloadHash, ed25519Signature },
+    { tenantId, verdictId, payloadHash, ed25519Signature, timestamp: signTimestamp },
     externalTsaHash
   );
 
@@ -131,7 +131,8 @@ export async function generateProofBundle(rawEvidence = {}, env = {}) {
       publicKeyConfigured: keyManager.hasPublicKeyConfigured(tenantId),
       merkleRoot: safeEvidence.merkleRoot || tsaSeal.rootHash,
       tsaHash: tsaSeal.tsaHash,
-      rfc3161Timestamp: tsaSeal.timestampUtc,
+      rfc3161Timestamp: signTimestamp,
+      tsaTimestamp: tsaSeal.timestampUtc,
       isQualifiedTSA,
       policyVersion: safeEvidence.policyVersion || "v1.0.0",
       controlVersion: safeEvidence.controlVersion || "v1.0.0",
