@@ -1,4 +1,4 @@
-// control-plane/keyManager.js — Firma Criptográfica Web Crypto & Resiliencia Ed25519
+// control-plane/src/services/keyManager.js — Firma Criptográfica Web Crypto & Resiliencia Ed25519
 export const CANONICAL_HASH = "SHA-256";
 export const CANONICAL_SIG = "Ed25519";
 
@@ -71,7 +71,27 @@ export class EnterpriseKeyManager {
   }
 
   pemToArrayBuffer(pem) {
-    const b64Lines = pem
+    let cleaned = String(pem || "").trim();
+    const compactB64 = cleaned.replace(/[\r\n\s]+/g, "");
+
+    if (!cleaned.includes("-----BEGIN") && /^[A-Za-z0-9+/=]+$/.test(compactB64)) {
+      try {
+        const onceDecoded = atob(compactB64);
+        if (onceDecoded.includes("-----BEGIN")) {
+          cleaned = onceDecoded;
+        } else {
+          const bytes = new Uint8Array(onceDecoded.length);
+          for (let i = 0; i < onceDecoded.length; i++) {
+            bytes[i] = onceDecoded.charCodeAt(i);
+          }
+          return bytes.buffer;
+        }
+      } catch {
+        // Continuar con el tratamiento estándar de PEM
+      }
+    }
+
+    const b64Lines = cleaned
       .replace(/-----(BEGIN|END)[^-----]+-----/g, "")
       .replace(/[\r\n\s]+/g, "");
     const b64Decoded = atob(b64Lines);
