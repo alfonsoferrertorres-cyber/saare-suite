@@ -2,6 +2,8 @@
 export const CANONICAL_HASH = "SHA-256";
 export const CANONICAL_SIG = "Ed25519";
 
+const MAX_KEY_CACHE_SIZE = 100;
+
 export async function computeSha256(data) {
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(
@@ -14,6 +16,16 @@ export async function computeSha256(data) {
 
 const signKeyCache = new Map();
 const verifyKeyCache = new Map();
+
+function cacheSetBounded(cacheMap, key, value) {
+  if (cacheMap.size >= MAX_KEY_CACHE_SIZE && !cacheMap.has(key)) {
+    const oldestKey = cacheMap.keys().next().value;
+    if (oldestKey !== undefined) {
+      cacheMap.delete(oldestKey);
+    }
+  }
+  cacheMap.set(key, value);
+}
 
 function normalizeTenantSuffix(tenantId = "") {
   return String(tenantId || "")
@@ -69,7 +81,7 @@ export class EnterpriseKeyManager {
           false,
           ["sign"]
         );
-        signKeyCache.set(privateKeyRaw, signKey);
+        cacheSetBounded(signKeyCache, privateKeyRaw, signKey);
       }
 
       const signatureBuffer = await crypto.subtle.sign(
@@ -121,7 +133,7 @@ export class EnterpriseKeyManager {
           false,
           ["verify"]
         );
-        verifyKeyCache.set(publicKeyRaw, verifyKey);
+        cacheSetBounded(verifyKeyCache, publicKeyRaw, verifyKey);
       }
 
       const sigBytes = new Uint8Array(
@@ -173,8 +185,11 @@ export class EnterpriseKeyManager {
     }
 
     const b64Lines = cleaned
-      .replace(/-----(BEGIN|END)[^-----]+-----/g, "")
-      .replace(/[\r\n\s]+/g, "");
+      .split(/\r?\n/)
+      .filter((line) => !line.trim().startsWith("-----"))
+      .join("")
+      .replace(/[^A-Za-z0-9+/=]/g, "");
+
     const b64Decoded = atob(b64Lines);
     const buffer = new Uint8Array(b64Decoded.length);
     for (let i = 0; i < b64Decoded.length; i++) {
