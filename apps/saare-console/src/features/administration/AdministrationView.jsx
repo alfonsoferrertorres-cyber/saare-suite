@@ -4,6 +4,21 @@ import { useConsole } from '../../context/ConsoleContext';
 import { apiService, saareFetch } from '../../services/apiService';
 import { CONSOLE_ACTIONS, EXECUTION_STATUS } from '../../domain/contracts';
 
+const ADMIN_PALETTE = {
+  cardBg: '#F6F6F5',
+  insetBg: '#FFFFFF',
+  mutedBg: '#E4E2DC',
+  primaryBtnBg: '#4A5258',
+  primaryBtnText: '#F6F6F5',
+  secondaryBtnBg: '#FFFFFF',
+  secondaryBtnText: '#1A1D20',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258',
+  textMuted: '#5C646B',
+  border: '#B5B7B9',
+  charcoal: '#1A1D20'
+};
+
 function maskCredentialRef(rawRef = '') {
   const clean = String(rawRef || '').trim();
   if (!clean) return 'No disponible';
@@ -170,7 +185,7 @@ export default function AdministrationView({
 
   const handleDownloadManifest = async () => {
     if (manifestBusy) return;
-    if (!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)) {
+    if (!can(CONSOLE_ACTIONS.EXPORT_CUSTODY) && !can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)) {
       setFeedback('Permiso denegado para descargar manifiestos.', 'error');
       return;
     }
@@ -256,8 +271,8 @@ export default function AdministrationView({
   };
 
   const sectionStyle = {
-    background: '#0b0f19',
-    border: '1px solid #1e293b',
+    background: ADMIN_PALETTE.cardBg,
+    border: `1px solid ${ADMIN_PALETTE.border}`,
     borderRadius: '10px',
     padding: '16px',
     display: 'flex',
@@ -268,7 +283,7 @@ export default function AdministrationView({
   const labelStyle = {
     fontSize: '10px',
     fontWeight: '800',
-    color: '#94a3b8',
+    color: ADMIN_PALETTE.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em'
   };
@@ -276,9 +291,9 @@ export default function AdministrationView({
   const buttonSecondaryStyle = {
     padding: '8px 14px',
     borderRadius: '6px',
-    background: '#111827',
-    color: '#e2e8f0',
-    border: '1px solid #334155',
+    background: ADMIN_PALETTE.secondaryBtnBg,
+    color: ADMIN_PALETTE.secondaryBtnText,
+    border: `1px solid ${ADMIN_PALETTE.border}`,
     fontSize: '0.75rem',
     fontWeight: '800',
     cursor: 'pointer',
@@ -286,9 +301,29 @@ export default function AdministrationView({
   };
 
   const bannerColor =
-    statusTone === 'error' ? '#fca5a5' : statusTone === 'success' ? '#6ee7b7' : '#7dd3fc';
+    statusTone === 'error'
+      ? '#5C231E'
+      : statusTone === 'success'
+        ? '#1F3A2D'
+        : ADMIN_PALETTE.textPrimary;
+  const bannerBg =
+    statusTone === 'error'
+      ? '#E7D8D6'
+      : statusTone === 'success'
+        ? '#DCE3DF'
+        : ADMIN_PALETTE.cardBg;
   const bannerBorder =
-    statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#0284c7';
+    statusTone === 'error'
+      ? '#9E3B33'
+      : statusTone === 'success'
+        ? '#6D8779'
+        : ADMIN_PALETTE.primaryBtnBg;
+
+  const canManageTenants = can(CONSOLE_ACTIONS.MANAGE_TENANTS);
+  const canManageCredentials = can(CONSOLE_ACTIONS.MANAGE_CREDENTIALS);
+  const canDownloadAssets = can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS);
+  const canExportCustody = can(CONSOLE_ACTIONS.EXPORT_CUSTODY);
+  const canExportGrc = can(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -298,11 +333,12 @@ export default function AdministrationView({
           style={{
             padding: '10px 14px',
             borderRadius: '8px',
-            background: '#020617',
+            background: bannerBg,
+            border: `1px solid ${ADMIN_PALETTE.border}`,
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
             color: bannerColor,
-            fontWeight: '600'
+            fontWeight: '700'
           }}
         >
           {statusMessage}
@@ -329,9 +365,9 @@ export default function AdministrationView({
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  background: '#d97706',
-                  color: '#ffffff',
-                  border: 'none',
+                  background: ADMIN_PALETTE.primaryBtnBg,
+                  color: ADMIN_PALETTE.primaryBtnText,
+                  border: `1px solid ${ADMIN_PALETTE.charcoal}`,
                   fontSize: '0.72rem',
                   fontWeight: '800',
                   cursor: 'pointer',
@@ -353,17 +389,25 @@ export default function AdministrationView({
           </div>
         </div>
 
-        <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-          Tenant activo: <strong>{tenantLabel}</strong> · Usuario:{' '}
-          <strong>{userEmail || 'No autenticado'}</strong> · Rol: <strong>{role}</strong>
+        <div style={{ fontSize: '0.78rem', color: ADMIN_PALETTE.textSecondary, lineHeight: 1.5 }}>
+          Tenant activo: <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{tenantLabel}</strong> ·
+          Usuario:{' '}
+          <strong style={{ color: ADMIN_PALETTE.textPrimary }}>
+            {userEmail || 'No autenticado'}
+          </strong>{' '}
+          · Rol: <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{role}</strong>
           {billingInfo?.planId ? (
             <>
-              {' '}· Plan: <strong>{billingInfo.planId}</strong>
+              {' '}· Plan:{' '}
+              <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{billingInfo.planId}</strong>
             </>
           ) : null}
         </div>
 
-        <form onSubmit={handleApplyTenantContext} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <form
+          onSubmit={handleApplyTenantContext}
+          style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
+        >
           <input
             type="text"
             aria-label="Identificador de tenant"
@@ -373,25 +417,25 @@ export default function AdministrationView({
             style={{
               padding: '8px 10px',
               borderRadius: '6px',
-              background: '#020617',
-              color: '#f8fafc',
-              border: '1px solid #334155',
+              background: ADMIN_PALETTE.insetBg,
+              color: ADMIN_PALETTE.textPrimary,
+              border: `1px solid ${ADMIN_PALETTE.border}`,
               fontSize: '0.78rem',
               minWidth: '220px'
             }}
           />
           <button
             type="submit"
-            disabled={!can(CONSOLE_ACTIONS.MANAGE_TENANTS)}
+            disabled={!canManageTenants}
             style={{
               padding: '8px 14px',
               borderRadius: '6px',
-              background: can(CONSOLE_ACTIONS.MANAGE_TENANTS) ? '#0284c7' : '#1e293b',
-              color: can(CONSOLE_ACTIONS.MANAGE_TENANTS) ? '#ffffff' : '#64748b',
-              border: 'none',
+              background: canManageTenants ? ADMIN_PALETTE.primaryBtnBg : ADMIN_PALETTE.mutedBg,
+              color: canManageTenants ? ADMIN_PALETTE.primaryBtnText : ADMIN_PALETTE.textMuted,
+              border: `1px solid ${canManageTenants ? ADMIN_PALETTE.charcoal : ADMIN_PALETTE.border}`,
               fontSize: '0.75rem',
               fontWeight: '800',
-              cursor: can(CONSOLE_ACTIONS.MANAGE_TENANTS) ? 'pointer' : 'not-allowed',
+              cursor: canManageTenants ? 'pointer' : 'not-allowed',
               whiteSpace: 'nowrap'
             }}
           >
@@ -424,17 +468,19 @@ export default function AdministrationView({
             )}
             <button
               type="button"
-              disabled={licenseBusy || !can(CONSOLE_ACTIONS.MANAGE_CREDENTIALS)}
+              disabled={licenseBusy || !canManageCredentials}
               onClick={handleVerifyCredential}
               style={{
                 padding: '8px 14px',
                 borderRadius: '6px',
-                background: '#059669',
-                color: '#ffffff',
-                border: 'none',
+                background: canManageCredentials ? ADMIN_PALETTE.primaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canManageCredentials ? ADMIN_PALETTE.primaryBtnText : ADMIN_PALETTE.textMuted,
+                border: `1px solid ${
+                  canManageCredentials ? ADMIN_PALETTE.charcoal : ADMIN_PALETTE.border
+                }`,
                 fontSize: '0.75rem',
                 fontWeight: '800',
-                cursor: licenseBusy ? 'wait' : 'pointer',
+                cursor: licenseBusy ? 'wait' : canManageCredentials ? 'pointer' : 'not-allowed',
                 whiteSpace: 'nowrap'
               }}
             >
@@ -443,9 +489,10 @@ export default function AdministrationView({
           </div>
         </div>
 
-        <p style={{ margin: 0, fontSize: '0.74rem', color: '#94a3b8' }}>
+        <p style={{ margin: 0, fontSize: '0.74rem', color: ADMIN_PALETTE.textSecondary }}>
           Por seguridad, las credenciales completas nunca se muestran ni se copian en texto plano en
-          la interfaz.
+          la interfaz. Para conexión directa por red al Gateway API (`/v1/chat/completions`), utiliza
+          la credencial vinculada al tenant y la cabecera `x-saare-tenant`.
         </p>
 
         {licenseSummary && (
@@ -454,40 +501,58 @@ export default function AdministrationView({
             style={{
               padding: '12px',
               borderRadius: '6px',
-              background: '#020617',
-              border: '1px solid #1e293b',
+              background: ADMIN_PALETTE.insetBg,
+              border: `1px solid ${ADMIN_PALETTE.border}`,
               fontSize: '0.74rem',
-              color: '#cbd5e1',
+              color: ADMIN_PALETTE.textSecondary,
               display: 'flex',
               flexDirection: 'column',
               gap: '4px'
             }}
           >
             <div>
-              Tenant: <strong>{licenseSummary.tenant}</strong> · Rol:{' '}
-              <strong>{licenseSummary.role}</strong> · Plan: <strong>{licenseSummary.plan}</strong>
+              Tenant: <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{licenseSummary.tenant}</strong>{' '}
+              · Rol: <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{licenseSummary.role}</strong>{' '}
+              · Plan: <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{licenseSummary.plan}</strong>
             </div>
             <div>
-              Referencia parcial: <strong>{licenseSummary.keyRef}</strong> · Expiración:{' '}
-              <strong>{licenseSummary.expiresAt}</strong>
+              Referencia parcial:{' '}
+              <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{licenseSummary.keyRef}</strong> ·
+              Expiración:{' '}
+              <strong style={{ color: ADMIN_PALETTE.textPrimary }}>{licenseSummary.expiresAt}</strong>
             </div>
           </div>
         )}
       </section>
 
-      {/* 3. Despliegue de agentes y manifiestos */}
+      {/* 3. Despliegue de agentes y paquetes estándar */}
       <section style={sectionStyle}>
-        <span style={labelStyle}>3. Despliegue de agentes y manifiestos</span>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={labelStyle}>3. Paquetes y configuraciones de despliegue</span>
+          <span style={{ fontSize: '0.72rem', color: ADMIN_PALETTE.textSecondary }}>
+            4 modos instalables/configurables (Gateway API opera directo por red)
+          </span>
+        </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {typeof onDownloadL7Extension === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
+              disabled={!canDownloadAssets}
               onClick={onDownloadL7Extension}
               style={{
                 ...buttonSecondaryStyle,
-                cursor: can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS) ? 'pointer' : 'not-allowed'
+                background: canDownloadAssets ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canDownloadAssets ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+                cursor: canDownloadAssets ? 'pointer' : 'not-allowed'
               }}
             >
               Extensión L7 (.ZIP)
@@ -496,11 +561,13 @@ export default function AdministrationView({
 
           <button
             type="button"
-            disabled={!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
+            disabled={!canDownloadAssets}
             onClick={handleDownloadSidecar}
             style={{
               ...buttonSecondaryStyle,
-              cursor: can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS) ? 'pointer' : 'not-allowed'
+              background: canDownloadAssets ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+              color: canDownloadAssets ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+              cursor: canDownloadAssets ? 'pointer' : 'not-allowed'
             }}
           >
             Sidecar L7 (.ZIP / Bootstrap)
@@ -509,11 +576,13 @@ export default function AdministrationView({
           {typeof onDownloadGpoReg === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
+              disabled={!canDownloadAssets}
               onClick={onDownloadGpoReg}
               style={{
                 ...buttonSecondaryStyle,
-                cursor: can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS) ? 'pointer' : 'not-allowed'
+                background: canDownloadAssets ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canDownloadAssets ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+                cursor: canDownloadAssets ? 'pointer' : 'not-allowed'
               }}
             >
               Directiva GPO (.REG)
@@ -523,54 +592,40 @@ export default function AdministrationView({
           {typeof onDownloadK8sManifest === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
+              disabled={!canDownloadAssets}
               onClick={onDownloadK8sManifest}
               style={{
                 ...buttonSecondaryStyle,
-                cursor: can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS) ? 'pointer' : 'not-allowed'
+                background: canDownloadAssets ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canDownloadAssets ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+                cursor: canDownloadAssets ? 'pointer' : 'not-allowed'
               }}
             >
               Manifiesto K8s (.YAML)
             </button>
           )}
-
-          <button
-            type="button"
-            disabled={manifestBusy || !can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)}
-            onClick={handleDownloadManifest}
-            style={{
-              ...buttonSecondaryStyle,
-              cursor: manifestBusy
-                ? 'wait'
-                : can(CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS)
-                  ? 'pointer'
-                  : 'not-allowed'
-            }}
-          >
-            {manifestBusy ? 'Descargando...' : 'Manifiesto ISO 27037 (.JSON)'}
-          </button>
         </div>
       </section>
 
-      {/* 4. Certificados, dossiers y exportación */}
+      {/* 4. Certificados, manifiestos forenses y exportación */}
       <section style={sectionStyle}>
-        <span style={labelStyle}>4. Certificados, dossiers y exportación</span>
+        <span style={labelStyle}>4. Certificados, manifiestos forenses y exportación</span>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {typeof onExportSovereigntyCert === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.EXPORT_CUSTODY)}
+              disabled={!canExportCustody}
               onClick={onExportSovereigntyCert}
               style={{
                 padding: '8px 14px',
                 borderRadius: '6px',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
+                background: canExportCustody ? ADMIN_PALETTE.primaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canExportCustody ? ADMIN_PALETTE.primaryBtnText : ADMIN_PALETTE.textMuted,
+                border: `1px solid ${canExportCustody ? ADMIN_PALETTE.charcoal : ADMIN_PALETTE.border}`,
                 fontSize: '0.75rem',
                 fontWeight: '800',
-                cursor: can(CONSOLE_ACTIONS.EXPORT_CUSTODY) ? 'pointer' : 'not-allowed',
+                cursor: canExportCustody ? 'pointer' : 'not-allowed',
                 whiteSpace: 'nowrap'
               }}
             >
@@ -581,25 +636,53 @@ export default function AdministrationView({
           {typeof onDownloadIso42001Dossier === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE)}
+              disabled={!canExportGrc}
               onClick={onDownloadIso42001Dossier}
               style={{
                 ...buttonSecondaryStyle,
-                cursor: can(CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE) ? 'pointer' : 'not-allowed'
+                background: canExportGrc ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canExportGrc ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+                cursor: canExportGrc ? 'pointer' : 'not-allowed'
               }}
             >
               Dossier ISO 42001 (.JSON)
             </button>
           )}
 
+          <button
+            type="button"
+            disabled={manifestBusy || (!canExportCustody && !canDownloadAssets)}
+            onClick={handleDownloadManifest}
+            style={{
+              ...buttonSecondaryStyle,
+              background:
+                canExportCustody || canDownloadAssets
+                  ? ADMIN_PALETTE.secondaryBtnBg
+                  : ADMIN_PALETTE.mutedBg,
+              color:
+                canExportCustody || canDownloadAssets
+                  ? ADMIN_PALETTE.textPrimary
+                  : ADMIN_PALETTE.textMuted,
+              cursor: manifestBusy
+                ? 'wait'
+                : canExportCustody || canDownloadAssets
+                  ? 'pointer'
+                  : 'not-allowed'
+            }}
+          >
+            {manifestBusy ? 'Descargando...' : 'Manifiesto ISO 27037 (.JSON)'}
+          </button>
+
           {typeof onExportTracesJson === 'function' && (
             <button
               type="button"
-              disabled={!can(CONSOLE_ACTIONS.EXPORT_CUSTODY)}
+              disabled={!canExportCustody}
               onClick={onExportTracesJson}
               style={{
                 ...buttonSecondaryStyle,
-                cursor: can(CONSOLE_ACTIONS.EXPORT_CUSTODY) ? 'pointer' : 'not-allowed'
+                background: canExportCustody ? ADMIN_PALETTE.secondaryBtnBg : ADMIN_PALETTE.mutedBg,
+                color: canExportCustody ? ADMIN_PALETTE.textPrimary : ADMIN_PALETTE.textMuted,
+                cursor: canExportCustody ? 'pointer' : 'not-allowed'
               }}
             >
               Exportar trazas (.JSON)

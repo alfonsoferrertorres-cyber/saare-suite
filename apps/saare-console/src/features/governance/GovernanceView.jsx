@@ -21,7 +21,13 @@ const GOV_PALETTE = {
   textMuted: '#5C646B',
   border: '#B5B7B9',
   charcoal: '#1A1D20',
-  slate: '#4A5258'
+  slate: '#4A5258',
+  allowBg: '#E3ECE7',
+  allowText: '#1B4332',
+  allowBorder: '#749C88',
+  denyBg: '#F3E4E2',
+  denyText: '#6B211B',
+  denyBorder: '#B87A74'
 };
 
 const CCN_STIC_863_BLOCKS = [
@@ -211,7 +217,10 @@ export default function GovernanceView({
 
       if (item.key === 'fria_soa') {
         if (typeof onDownloadIso42001Dossier === 'function') {
-          onDownloadIso42001Dossier();
+          const dossierRes = await onDownloadIso42001Dossier();
+          if (dossierRes && dossierRes.ok === false) {
+            throw new Error(dossierRes.error || 'No se pudo exportar el dossier FRIA / SoA');
+          }
           summaryMsg = `Dossier FRIA / SoA ISO 42001 exportado [${item.documentState}].`;
           setLastArtifact({
             title: item.title,
@@ -373,11 +382,23 @@ export default function GovernanceView({
   };
 
   const bannerColor =
-    statusTone === 'error' ? '#5C231E' : statusTone === 'success' ? '#1F3A2D' : GOV_PALETTE.textPrimary;
+    statusTone === 'error'
+      ? GOV_PALETTE.denyText
+      : statusTone === 'success'
+        ? GOV_PALETTE.allowText
+        : GOV_PALETTE.textPrimary;
   const bannerBg =
-    statusTone === 'error' ? '#E7D8D6' : statusTone === 'success' ? '#DCE3DF' : GOV_PALETTE.cardBg;
+    statusTone === 'error'
+      ? GOV_PALETTE.denyBg
+      : statusTone === 'success'
+        ? GOV_PALETTE.allowBg
+        : GOV_PALETTE.cardBg;
   const bannerBorder =
-    statusTone === 'error' ? '#9E3B33' : statusTone === 'success' ? '#6D8779' : GOV_PALETTE.slate;
+    statusTone === 'error'
+      ? GOV_PALETTE.denyBorder
+      : statusTone === 'success'
+        ? GOV_PALETTE.allowBorder
+        : GOV_PALETTE.slate;
 
   const rulesList = Array.isArray(customRules) ? customRules : [];
 
@@ -402,7 +423,6 @@ export default function GovernanceView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      {/* Prioridad 1: Estado de políticas DLP, reglas y contexto normativo */}
       <section
         aria-label="Indicadores de políticas y gobernanza"
         style={{
@@ -417,7 +437,8 @@ export default function GovernanceView({
             className="saare-mono"
             style={{
               fontSize: '1.2rem',
-              color: tenantRulesEnabled ? '#1F3A2D' : '#574313'
+              color: tenantRulesEnabled ? GOV_PALETTE.allowText : GOV_PALETTE.textSecondary,
+              fontVariantNumeric: 'tabular-nums'
             }}
           >
             {tenantRulesEnabled ? 'ACTIVAS' : 'INACTIVAS'}
@@ -444,7 +465,11 @@ export default function GovernanceView({
           <span style={labelStyle}>Artefactos GRC</span>
           <strong
             className="saare-mono"
-            style={{ fontSize: '1.2rem', color: GOV_PALETTE.textPrimary }}
+            style={{
+              fontSize: '1.2rem',
+              color: GOV_PALETTE.textPrimary,
+              fontVariantNumeric: 'tabular-nums'
+            }}
           >
             {GOVERNANCE_ITEMS.length}
           </strong>
@@ -454,7 +479,6 @@ export default function GovernanceView({
         </div>
       </section>
 
-      {/* Prioridad 2: Políticas DLP y reglas personalizadas */}
       <section style={cardStyle}>
         <div
           style={{
@@ -481,13 +505,13 @@ export default function GovernanceView({
                   background: !canManageRules
                     ? GOV_PALETTE.mutedBg
                     : tenantRulesEnabled
-                    ? GOV_PALETTE.primaryBtnBg
-                    : GOV_PALETTE.secondaryBtnBg,
+                      ? GOV_PALETTE.primaryBtnBg
+                      : GOV_PALETTE.secondaryBtnBg,
                   color: !canManageRules
                     ? GOV_PALETTE.textMuted
                     : tenantRulesEnabled
-                    ? GOV_PALETTE.primaryBtnText
-                    : GOV_PALETTE.textPrimary,
+                      ? GOV_PALETTE.primaryBtnText
+                      : GOV_PALETTE.textPrimary,
                   border: `1px solid ${GOV_PALETTE.border}`,
                   fontSize: '0.72rem',
                   fontWeight: '800',
@@ -607,15 +631,15 @@ export default function GovernanceView({
                       padding: '4px 10px',
                       borderRadius: '5px',
                       background: GOV_PALETTE.mutedBg,
-                      color: canManageRules ? '#5C231E' : GOV_PALETTE.textMuted,
+                      color: canManageRules ? GOV_PALETTE.denyText : GOV_PALETTE.textMuted,
                       border: `1px solid ${GOV_PALETTE.border}`,
                       fontSize: '0.7rem',
                       fontWeight: '700',
                       cursor: isRulesLoading
                         ? 'wait'
                         : canManageRules
-                        ? 'pointer'
-                        : 'not-allowed',
+                          ? 'pointer'
+                          : 'not-allowed',
                       whiteSpace: 'nowrap'
                     }}
                   >
@@ -635,7 +659,7 @@ export default function GovernanceView({
             padding: '10px 14px',
             borderRadius: '8px',
             background: bannerBg,
-            border: `1px solid ${GOV_PALETTE.border}`,
+            border: `1px solid ${bannerBorder}`,
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
             color: bannerColor,
@@ -675,7 +699,6 @@ export default function GovernanceView({
         </div>
       )}
 
-      {/* Alineación con las 5 categorías de CCN-STIC 863 para consultoría */}
       <section aria-label="Alineación CCN-STIC 863" style={cardStyle}>
         <div
           style={{
@@ -735,7 +758,6 @@ export default function GovernanceView({
         </div>
       </section>
 
-      {/* Prioridad 3: Documentación GRC, evaluaciones y subvenciones */}
       <section style={cardStyle}>
         <div
           style={{

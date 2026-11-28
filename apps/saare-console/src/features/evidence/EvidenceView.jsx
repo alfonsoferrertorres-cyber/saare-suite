@@ -3,14 +3,62 @@ import React, { useState, useMemo } from 'react';
 import { useConsole } from '../../context/ConsoleContext';
 import { CONSOLE_ACTIONS } from '../../domain/contracts';
 
+const EVIDENCE_PALETTE = {
+  cardBg: '#F6F6F5',
+  insetBg: '#FFFFFF',
+  mutedBg: '#E4E2DC',
+  primaryBtnBg: '#1A1D20',
+  primaryBtnText: '#F6F6F5',
+  secondaryBtnBg: '#FFFFFF',
+  secondaryBtnText: '#1A1D20',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258',
+  textMuted: '#5C646B',
+  border: '#B5B7B9',
+  charcoal: '#1A1D20',
+  allowBg: '#E3ECE7',
+  allowText: '#1B4332',
+  allowBorder: '#749C88',
+  denyBg: '#F3E4E2',
+  denyText: '#6B211B',
+  denyBorder: '#B87A74',
+  neutralBadgeBg: '#ECEAE4'
+};
+
+function extractEvidenceHash(ev) {
+  if (!ev) return '';
+  return (
+    ev.hash ||
+    ev.merkleRoot ||
+    ev.leafHash ||
+    ev.rawJson?.ms3v_hash ||
+    ev.rawJson?.hash ||
+    ev.rawJson?.merkleRoot ||
+    ''
+  );
+}
+
+function extractEvidenceReason(ev) {
+  if (!ev) return 'Sin detalle adicional';
+  return (
+    ev.reason ||
+    ev.policy ||
+    ev.ruleName ||
+    ev.rawJson?.reason ||
+    ev.rawJson?.policy ||
+    ev.rawJson?.verdictReason ||
+    (String(ev.decision || '').toUpperCase() === 'DENY'
+      ? 'Bloqueo preventivo por regla o umbral de seguridad'
+      : 'Evaluación conforme sin incidencia crítica')
+  );
+}
+
 export default function EvidenceView({
   evidences = [],
   forensicBatch = null,
   isSealingBatch = false,
   inclusionStatusByEvidence = {},
   isFetchingVault = false,
-  tenantRulesEnabled = true,
-  onToggleTenantRules,
   onSyncVault,
   onSealForensicBatch,
   onDownloadForensicBatchBundle,
@@ -27,11 +75,10 @@ export default function EvidenceView({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [showRawJson, setShowRawJson] = useState(false);
-  const [confirmDisableRules, setConfirmDisableRules] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
 
   const cleanTenant = String(tenantId || '').trim();
   const canVerify = can(CONSOLE_ACTIONS.VERIFY_SIGNATURE) || can(CONSOLE_ACTIONS.SYNC_VAULT);
-  const canToggleRules = can(CONSOLE_ACTIONS.TOGGLE_TENANT_RULES);
 
   const scopedEvidences = useMemo(() => {
     const list = Array.isArray(evidences) ? evidences : [];
@@ -52,7 +99,8 @@ export default function EvidenceView({
         ev?.cat,
         ev?.prompt,
         ev?.verdict,
-        ev?.merkleRoot
+        ev?.merkleRoot,
+        extractEvidenceHash(ev)
       ]
         .filter(Boolean)
         .join(' ')
@@ -84,6 +132,7 @@ export default function EvidenceView({
   const handleSelectRow = (ev) => {
     const nextId = selectedId === ev.id ? '' : ev.id;
     setSelectedId(nextId);
+    setCopiedHash(false);
     if (!nextId) {
       setShowRawJson(false);
     }
@@ -96,33 +145,28 @@ export default function EvidenceView({
           evidenceId: ev.id,
           verdict: ev.verdict || ev.decision || 'N/A',
           lifecycle: ev.decision === 'DENY' ? 'SANITIZED_EX_ANTE' : 'RECORDED',
-          hash: ev.merkleRoot || ev.rawJson?.ms3v_hash || '',
+          hash: extractEvidenceHash(ev),
           raw: ev
         });
       }
     }
   };
 
-  const handleToggleRulesClick = async () => {
-    if (typeof onToggleTenantRules !== 'function' || !canToggleRules) return;
-
-    if (tenantRulesEnabled) {
-      if (!confirmDisableRules) {
-        setConfirmDisableRules(true);
-        return;
-      }
-      setConfirmDisableRules(false);
-      await onToggleTenantRules(false);
-      return;
+  const handleCopyHash = async (hashValue) => {
+    const cleanHash = String(hashValue || '').trim();
+    if (!cleanHash || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(cleanHash);
+      setCopiedHash(true);
+      window.setTimeout(() => setCopiedHash(false), 1800);
+    } catch {
+      setCopiedHash(false);
     }
-
-    setConfirmDisableRules(false);
-    await onToggleTenantRules(true);
   };
 
   const cardStyle = {
-    background: '#0b0f19',
-    border: '1px solid #1e293b',
+    background: EVIDENCE_PALETTE.cardBg,
+    border: `1px solid ${EVIDENCE_PALETTE.border}`,
     borderRadius: '10px',
     padding: '14px 16px',
     display: 'flex',
@@ -134,7 +178,7 @@ export default function EvidenceView({
   const labelStyle = {
     fontSize: '10px',
     fontWeight: '800',
-    color: '#94a3b8',
+    color: EVIDENCE_PALETTE.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em'
   };
@@ -142,14 +186,17 @@ export default function EvidenceView({
   const secondaryBtnStyle = {
     padding: '7px 12px',
     borderRadius: '6px',
-    background: '#111827',
-    color: '#e2e8f0',
-    border: '1px solid #334155',
+    background: EVIDENCE_PALETTE.secondaryBtnBg,
+    color: EVIDENCE_PALETTE.secondaryBtnText,
+    border: `1px solid ${EVIDENCE_PALETTE.border}`,
     fontSize: '0.73rem',
     fontWeight: '700',
     cursor: 'pointer',
     whiteSpace: 'nowrap'
   };
+
+  const selectedHash = extractEvidenceHash(selectedEvidence);
+  const selectedReason = extractEvidenceReason(selectedEvidence);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -164,10 +211,23 @@ export default function EvidenceView({
       >
         <div style={cardStyle}>
           <span style={labelStyle}>Evidencias registradas</span>
-          <strong className="saare-mono" style={{ fontSize: '1.15rem', color: '#f8fafc' }}>
+          <strong
+            className="saare-mono"
+            style={{
+              fontSize: '1.15rem',
+              color: EVIDENCE_PALETTE.textPrimary,
+              fontVariantNumeric: 'tabular-nums'
+            }}
+          >
             {scopedEvidences.length}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              color: EVIDENCE_PALETTE.textSecondary,
+              fontVariantNumeric: 'tabular-nums'
+            }}
+          >
             Permitidas: {allowedCount} · Denegadas: {deniedCount}
           </span>
         </div>
@@ -178,12 +238,13 @@ export default function EvidenceView({
             className="saare-mono"
             style={{
               fontSize: '1.15rem',
-              color: verifiedCount > 0 ? '#34d399' : '#cbd5e1'
+              color: EVIDENCE_PALETTE.textPrimary,
+              fontVariantNumeric: 'tabular-nums'
             }}
           >
             {verifiedCount} / {scopedEvidences.length}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.72rem', color: EVIDENCE_PALETTE.textSecondary }}>
             {verifiedCount === 0 && scopedEvidences.length > 0
               ? 'Sin verificaciones ejecutadas aún'
               : 'Pruebas verificadas en sesión'}
@@ -194,17 +255,15 @@ export default function EvidenceView({
           <span style={labelStyle}>Lote Merkle y TSA</span>
           <strong
             className="saare-mono"
-            style={{
-              fontSize: '1.05rem',
-              color: hasBatch ? '#38bdf8' : '#cbd5e1'
-            }}
+            style={{ fontSize: '1.05rem', color: EVIDENCE_PALETTE.textPrimary }}
           >
             {hasBatch ? forensicBatch.batchId : 'SIN_LOTE'}
           </strong>
           <span
+            className="saare-mono"
             style={{
               fontSize: '0.7rem',
-              color: '#94a3b8',
+              color: EVIDENCE_PALETTE.textSecondary,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
@@ -218,40 +277,54 @@ export default function EvidenceView({
 
         <div style={cardStyle}>
           <span style={labelStyle}>Sellado temporal TSA</span>
-          <strong
-            className="saare-mono"
-            style={{
-              fontSize: '1.05rem',
-              color: forensicBatch?.timestampSeal?.status ? '#34d399' : '#94a3b8'
-            }}
-          >
-            {forensicBatch?.timestampSeal?.status || forensicBatch?.assuranceLevel || 'PENDIENTE'}
-          </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              className="saare-mono"
+              style={{
+                padding: '3px 8px',
+                borderRadius: '999px',
+                fontSize: '0.76rem',
+                fontWeight: '800',
+                background: forensicBatch?.timestampSeal?.status
+                  ? EVIDENCE_PALETTE.allowBg
+                  : EVIDENCE_PALETTE.neutralBadgeBg,
+                color: forensicBatch?.timestampSeal?.status
+                  ? EVIDENCE_PALETTE.allowText
+                  : EVIDENCE_PALETTE.textSecondary,
+                border: `1px solid ${
+                  forensicBatch?.timestampSeal?.status
+                    ? EVIDENCE_PALETTE.allowBorder
+                    : EVIDENCE_PALETTE.border
+                }`
+              }}
+            >
+              {forensicBatch?.timestampSeal?.status || forensicBatch?.assuranceLevel || 'PENDIENTE'}
+            </span>
+          </span>
+          <span style={{ fontSize: '0.72rem', color: EVIDENCE_PALETTE.textSecondary }}>
             Tenant: {cleanTenant || 'Sin asignar'}
           </span>
         </div>
       </section>
 
-      {/* Nota aclaratoria cuando hay trazas pero aún no hay lote sellado ni verificaciones */}
+      {/* Nota compacta cuando hay trazas pero aún no hay lote sellado ni verificaciones */}
       {scopedEvidences.length > 0 && (!hasBatch || verifiedCount === 0) && (
         <div
           role="note"
           style={{
-            padding: '10px 14px',
+            padding: '8px 12px',
             borderRadius: '8px',
-            background: '#070b14',
-            border: '1px solid #1e293b',
-            borderLeft: '3px solid #38bdf8',
-            fontSize: '0.75rem',
-            color: '#cbd5e1',
-            lineHeight: 1.45
+            background: EVIDENCE_PALETTE.cardBg,
+            border: `1px solid ${EVIDENCE_PALETTE.border}`,
+            borderLeft: `3px solid ${EVIDENCE_PALETTE.primaryBtnBg}`,
+            fontSize: '0.73rem',
+            color: EVIDENCE_PALETTE.textSecondary,
+            lineHeight: 1.4
           }}
         >
-          <strong>Estado esperado antes de consolidar:</strong> existen {scopedEvidences.length}{' '}
-          evidencia(s) en bóveda, pero todavía no se ha sellado un lote Merkle ni verificado
-          pruebas de inclusión. Esto indica que la consolidación o verificación aún no se ha
-          ejecutado, no un fallo del sistema.
+          <strong style={{ color: EVIDENCE_PALETTE.textPrimary }}>Estado inicial normal:</strong>{' '}
+          {scopedEvidences.length} evidencia(s) en bóveda sin lote Merkle sellado ni pruebas de
+          inclusión verificadas todavía.
         </div>
       )}
 
@@ -276,8 +349,11 @@ export default function EvidenceView({
                 onClick={() => onSyncVault(cleanTenant)}
                 style={{
                   ...secondaryBtnStyle,
-                  opacity: !cleanTenant ? 0.6 : 1,
-                  cursor: isFetchingVault ? 'wait' : 'pointer'
+                  background: !cleanTenant
+                    ? EVIDENCE_PALETTE.mutedBg
+                    : EVIDENCE_PALETTE.secondaryBtnBg,
+                  color: !cleanTenant ? EVIDENCE_PALETTE.textMuted : EVIDENCE_PALETTE.textPrimary,
+                  cursor: isFetchingVault ? 'wait' : !cleanTenant ? 'not-allowed' : 'pointer'
                 }}
               >
                 {isFetchingVault ? 'Sincronizando...' : 'Sincronizar bóveda'}
@@ -290,11 +366,17 @@ export default function EvidenceView({
                 disabled={isSealingBatch || !cleanTenant}
                 onClick={onSealForensicBatch}
                 style={{
-                  padding: '7px 12px',
+                  padding: '7px 14px',
                   borderRadius: '6px',
-                  background: !cleanTenant ? '#1e293b' : '#0284c7',
-                  color: !cleanTenant ? '#64748b' : '#ffffff',
-                  border: 'none',
+                  background: !cleanTenant
+                    ? EVIDENCE_PALETTE.mutedBg
+                    : EVIDENCE_PALETTE.primaryBtnBg,
+                  color: !cleanTenant
+                    ? EVIDENCE_PALETTE.textMuted
+                    : EVIDENCE_PALETTE.primaryBtnText,
+                  border: `1px solid ${
+                    !cleanTenant ? EVIDENCE_PALETTE.border : EVIDENCE_PALETTE.charcoal
+                  }`,
                   fontSize: '0.73rem',
                   fontWeight: '800',
                   cursor: isSealingBatch ? 'wait' : !cleanTenant ? 'not-allowed' : 'pointer',
@@ -316,63 +398,6 @@ export default function EvidenceView({
                 Descargar sello (.tsr)
               </button>
             )}
-
-            {typeof onToggleTenantRules === 'function' && (
-              <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  disabled={!canToggleRules}
-                  onClick={handleToggleRulesClick}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: '6px',
-                    background: !canToggleRules
-                      ? '#1e293b'
-                      : confirmDisableRules
-                      ? '#7f1d1d'
-                      : tenantRulesEnabled
-                      ? '#064e3b'
-                      : '#111827',
-                    color: !canToggleRules
-                      ? '#64748b'
-                      : confirmDisableRules
-                      ? '#fecaca'
-                      : tenantRulesEnabled
-                      ? '#6ee7b7'
-                      : '#fbbf24',
-                    border: `1px solid ${
-                      !canToggleRules
-                        ? '#334155'
-                        : confirmDisableRules
-                        ? '#ef4444'
-                        : tenantRulesEnabled
-                        ? '#10b981'
-                        : '#d97706'
-                    }`,
-                    fontSize: '0.73rem',
-                    fontWeight: '800',
-                    cursor: canToggleRules ? 'pointer' : 'not-allowed',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {confirmDisableRules
-                    ? 'Confirmar desactivar reglas'
-                    : tenantRulesEnabled
-                    ? 'Reglas tenant: ACTIVAS'
-                    : 'Activar reglas tenant'}
-                </button>
-
-                {confirmDisableRules && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDisableRules(false)}
-                    style={secondaryBtnStyle}
-                  >
-                    Cancelar
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -388,9 +413,15 @@ export default function EvidenceView({
                 style={{
                   padding: '5px 10px',
                   borderRadius: '6px',
-                  background: active ? '#0f172a' : '#111827',
-                  color: active ? '#38bdf8' : '#94a3b8',
-                  border: `1px solid ${active ? '#0284c7' : '#334155'}`,
+                  background: active
+                    ? EVIDENCE_PALETTE.primaryBtnBg
+                    : EVIDENCE_PALETTE.secondaryBtnBg,
+                  color: active
+                    ? EVIDENCE_PALETTE.primaryBtnText
+                    : EVIDENCE_PALETTE.textSecondary,
+                  border: `1px solid ${
+                    active ? EVIDENCE_PALETTE.charcoal : EVIDENCE_PALETTE.border
+                  }`,
                   fontSize: '0.71rem',
                   fontWeight: '800',
                   cursor: 'pointer'
@@ -409,9 +440,9 @@ export default function EvidenceView({
             style={{
               padding: '6px 10px',
               borderRadius: '6px',
-              background: '#020617',
-              color: '#f8fafc',
-              border: '1px solid #334155',
+              background: EVIDENCE_PALETTE.insetBg,
+              color: EVIDENCE_PALETTE.textPrimary,
+              border: `1px solid ${EVIDENCE_PALETTE.border}`,
               fontSize: '0.74rem',
               minWidth: '220px',
               flex: 1
@@ -421,7 +452,7 @@ export default function EvidenceView({
 
         {/* Tabla de evidencias */}
         {filteredEvidences.length === 0 ? (
-          <div style={{ fontSize: '0.76rem', color: '#94a3b8', padding: '8px 0' }}>
+          <div style={{ fontSize: '0.76rem', color: EVIDENCE_PALETTE.textSecondary, padding: '8px 0' }}>
             No hay evidencias que coincidan con el filtro actual.
           </div>
         ) : (
@@ -435,13 +466,18 @@ export default function EvidenceView({
               }}
             >
               <thead>
-                <tr style={{ borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
-                  <th style={{ padding: '8px 6px' }}>ID / Hora</th>
-                  <th style={{ padding: '8px 6px' }}>Decisión</th>
-                  <th style={{ padding: '8px 6px' }}>Categoría</th>
-                  <th style={{ padding: '8px 6px' }}>Carga / Resumen</th>
-                  <th style={{ padding: '8px 6px' }}>Inclusión</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Acciones</th>
+                <tr
+                  style={{
+                    borderBottom: `1px solid ${EVIDENCE_PALETTE.border}`,
+                    color: EVIDENCE_PALETTE.textMuted
+                  }}
+                >
+                  <th style={{ padding: '8px 8px' }}>ID / Hora</th>
+                  <th style={{ padding: '8px 8px' }}>Decisión</th>
+                  <th style={{ padding: '8px 8px' }}>Categoría</th>
+                  <th style={{ padding: '8px 8px' }}>Carga / Resumen</th>
+                  <th style={{ padding: '8px 8px' }}>Inclusión</th>
+                  <th style={{ padding: '8px 8px', textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -449,6 +485,7 @@ export default function EvidenceView({
                   const isDeny = String(ev?.decision || '').toUpperCase() === 'DENY';
                   const isSelected = selectedId === ev.id;
                   const inclusionState = inclusionStatusByEvidence?.[ev.id];
+                  const isVerified = inclusionState === 'VERIFIED';
 
                   return (
                     <tr
@@ -462,19 +499,37 @@ export default function EvidenceView({
                         }
                       }}
                       style={{
-                        borderBottom: '1px solid #111827',
-                        background: isSelected ? '#0f172a' : 'transparent',
+                        borderBottom: `1px solid ${EVIDENCE_PALETTE.mutedBg}`,
+                        borderLeft: isSelected
+                          ? `3px solid ${EVIDENCE_PALETTE.charcoal}`
+                          : '3px solid transparent',
+                        background: isSelected ? EVIDENCE_PALETTE.insetBg : 'transparent',
                         cursor: 'pointer'
                       }}
                     >
-                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
-                        <div className="saare-mono" style={{ color: '#f8fafc', fontWeight: '700' }}>
+                      <td style={{ padding: '8px 8px', whiteSpace: 'nowrap' }}>
+                        <div
+                          className="saare-mono"
+                          style={{
+                            color: EVIDENCE_PALETTE.textPrimary,
+                            fontWeight: '700',
+                            fontVariantNumeric: 'tabular-nums'
+                          }}
+                        >
                           {ev.id}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{ev.time || '—'}</div>
+                        <div
+                          style={{
+                            fontSize: '0.68rem',
+                            color: EVIDENCE_PALETTE.textMuted,
+                            fontVariantNumeric: 'tabular-nums'
+                          }}
+                        >
+                          {ev.time || '—'}
+                        </div>
                       </td>
 
-                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '8px 8px', whiteSpace: 'nowrap' }}>
                         <span
                           className="saare-mono"
                           style={{
@@ -483,24 +538,32 @@ export default function EvidenceView({
                             fontSize: '0.68rem',
                             fontWeight: '800',
                             background: isDeny
-                              ? 'rgba(127, 29, 29, 0.5)'
-                              : 'rgba(6, 78, 59, 0.5)',
-                            color: isDeny ? '#fca5a5' : '#6ee7b7',
-                            border: `1px solid ${isDeny ? '#ef4444' : '#10b981'}`
+                              ? EVIDENCE_PALETTE.denyBg
+                              : EVIDENCE_PALETTE.allowBg,
+                            color: isDeny ? EVIDENCE_PALETTE.denyText : EVIDENCE_PALETTE.allowText,
+                            border: `1px solid ${
+                              isDeny ? EVIDENCE_PALETTE.denyBorder : EVIDENCE_PALETTE.allowBorder
+                            }`
                           }}
                         >
                           {ev.decision || 'ALLOW'}
                         </span>
                       </td>
 
-                      <td style={{ padding: '8px 6px', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                      <td
+                        style={{
+                          padding: '8px 8px',
+                          color: EVIDENCE_PALETTE.textSecondary,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
                         {ev.cat || '—'}
                       </td>
 
                       <td
                         style={{
-                          padding: '8px 6px',
-                          color: '#cbd5e1',
+                          padding: '8px 8px',
+                          color: EVIDENCE_PALETTE.textPrimary,
                           maxWidth: '300px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -510,14 +573,31 @@ export default function EvidenceView({
                         {ev.prompt || '—'}
                       </td>
 
-                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
-                        <span className="saare-mono" style={{ fontSize: '0.69rem', color: '#94a3b8' }}>
+                      <td style={{ padding: '8px 8px', whiteSpace: 'nowrap' }}>
+                        <span
+                          className="saare-mono"
+                          style={{
+                            padding: '2px 7px',
+                            borderRadius: '999px',
+                            fontSize: '0.68rem',
+                            fontWeight: '700',
+                            background: isVerified
+                              ? EVIDENCE_PALETTE.allowBg
+                              : EVIDENCE_PALETTE.neutralBadgeBg,
+                            color: isVerified
+                              ? EVIDENCE_PALETTE.allowText
+                              : EVIDENCE_PALETTE.textSecondary,
+                            border: `1px solid ${
+                              isVerified ? EVIDENCE_PALETTE.allowBorder : EVIDENCE_PALETTE.border
+                            }`
+                          }}
+                        >
                           {inclusionState || 'NO_VERIFICADA'}
                         </span>
                       </td>
 
                       <td
-                        style={{ padding: '8px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}
+                        style={{ padding: '8px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
@@ -529,9 +609,16 @@ export default function EvidenceView({
                               style={{
                                 padding: '4px 8px',
                                 borderRadius: '5px',
-                                background: '#111827',
-                                color: canVerify && hasBatch ? '#7dd3fc' : '#64748b',
-                                border: '1px solid #334155',
+                                background: 'transparent',
+                                color:
+                                  canVerify && hasBatch
+                                    ? EVIDENCE_PALETTE.textPrimary
+                                    : EVIDENCE_PALETTE.textMuted,
+                                border: `1px solid ${
+                                  canVerify && hasBatch
+                                    ? EVIDENCE_PALETTE.border
+                                    : EVIDENCE_PALETTE.mutedBg
+                                }`,
                                 fontSize: '0.69rem',
                                 fontWeight: '700',
                                 cursor: canVerify && hasBatch ? 'pointer' : 'not-allowed'
@@ -548,9 +635,9 @@ export default function EvidenceView({
                               style={{
                                 padding: '4px 8px',
                                 borderRadius: '5px',
-                                background: '#111827',
-                                color: '#e2e8f0',
-                                border: '1px solid #334155',
+                                background: 'transparent',
+                                color: EVIDENCE_PALETTE.textPrimary,
+                                border: `1px solid ${EVIDENCE_PALETTE.border}`,
                                 fontSize: '0.69rem',
                                 fontWeight: '700',
                                 cursor: 'pointer'
@@ -570,8 +657,102 @@ export default function EvidenceView({
         )}
       </section>
 
-      {/* Prioridad 3: Exportaciones secundarias y detalle JSON */}
-      <section style={cardStyle} aria-label="Exportaciones y detalle de registro">
+      {/* Detalle legible de la evidencia seleccionada para inspección forense */}
+      {selectedEvidence && (
+        <section
+          aria-label="Detalle de evidencia seleccionada"
+          style={{
+            ...cardStyle,
+            background: EVIDENCE_PALETTE.insetBg
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap'
+            }}
+          >
+            <span style={labelStyle}>
+              Evidencia seleccionada · <span className="saare-mono">{selectedEvidence.id}</span>
+            </span>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {selectedHash && (
+                <button
+                  type="button"
+                  onClick={() => handleCopyHash(selectedHash)}
+                  style={secondaryBtnStyle}
+                >
+                  {copiedHash ? 'Hash copiado' : 'Copiar hash'}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowRawJson((prev) => !prev)}
+                style={secondaryBtnStyle}
+              >
+                {showRawJson ? 'Ocultar JSON raw' : 'Ver JSON raw'}
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '10px',
+              fontSize: '0.73rem',
+              color: EVIDENCE_PALETTE.textSecondary
+            }}
+          >
+            <div>
+              <strong style={{ color: EVIDENCE_PALETTE.textPrimary }}>Veredicto:</strong>{' '}
+              <span className="saare-mono">
+                {selectedEvidence.verdict || selectedEvidence.decision || 'N/A'}
+              </span>
+            </div>
+            <div>
+              <strong style={{ color: EVIDENCE_PALETTE.textPrimary }}>Motivo / Regla:</strong>{' '}
+              {selectedReason}
+            </div>
+            <div
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <strong style={{ color: EVIDENCE_PALETTE.textPrimary }}>Hash / Hoja:</strong>{' '}
+              <span className="saare-mono">{selectedHash || 'No registrado en fila'}</span>
+            </div>
+          </div>
+
+          {showRawJson && (
+            <pre
+              className="saare-mono"
+              style={{
+                margin: 0,
+                padding: '10px 12px',
+                borderRadius: '6px',
+                background: EVIDENCE_PALETTE.cardBg,
+                border: `1px solid ${EVIDENCE_PALETTE.border}`,
+                color: EVIDENCE_PALETTE.textPrimary,
+                fontSize: '0.69rem',
+                overflowX: 'auto'
+              }}
+            >
+              {JSON.stringify(selectedEvidence.rawJson || selectedEvidence, null, 2)}
+            </pre>
+          )}
+        </section>
+      )}
+
+      {/* Prioridad 3: Exportaciones y certificaciones de soporte */}
+      <section style={cardStyle} aria-label="Exportaciones y certificaciones de soporte">
         <div
           style={{
             display: 'flex',
@@ -595,35 +776,8 @@ export default function EvidenceView({
                 Certificado soberanía D1
               </button>
             )}
-
-            {selectedEvidence && (
-              <button
-                type="button"
-                onClick={() => setShowRawJson((prev) => !prev)}
-                style={secondaryBtnStyle}
-              >
-                {showRawJson ? 'Ocultar JSON raw' : 'Ver JSON raw'}
-              </button>
-            )}
           </div>
         </div>
-
-        {showRawJson && selectedEvidence && (
-          <pre
-            className="saare-mono"
-            style={{
-              margin: 0,
-              padding: '10px 12px',
-              borderRadius: '6px',
-              background: '#020617',
-              color: '#cbd5e1',
-              fontSize: '0.69rem',
-              overflowX: 'auto'
-            }}
-          >
-            {JSON.stringify(selectedEvidence.rawJson || selectedEvidence, null, 2)}
-          </pre>
-        )}
       </section>
     </div>
   );
