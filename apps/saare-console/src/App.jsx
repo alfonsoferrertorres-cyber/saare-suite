@@ -1156,6 +1156,7 @@ function SaareConsoleInner() {
       <tr><td>EU AI Act (Art. 12 y 27)</td><td>Trazabilidad y evaluación de impacto (FRIA)</td><td>Registro encadenado por hash y módulo de auditoría FRIA en consola (${inspections} inspecciones).</td></tr>
       <tr><td>RGPD (Art. 5 y 25)</td><td>Minimización y privacidad desde el diseño</td><td>Sanitización ex-ante en RAM antes de persistencia (${denied} bloqueos DLP).</td></tr>
       <tr><td>DORA (UE 2022/2554)</td><td>Resiliencia operativa digital en TIC</td><td>Política Fail-Closed y aislamiento lógico por <code>tenant_id</code>.</td></tr>
+      <tr><td>CCN-STIC 863 (ENS)</td><td>Guardrails, acceso, trazabilidad y gobernanza IA</td><td>Controles en runtime/D1 y soporte documental FRIA/SoA sujeto a revisión del consultor.</td></tr>
       <tr><td>Art. 326 LEC</td><td>Integridad y verificabilidad documental</td><td>Firma Ed25519, árbol de Merkle y sellado temporal RFC 3161 verificables por lote.</td></tr>
     </tbody>
   </table>

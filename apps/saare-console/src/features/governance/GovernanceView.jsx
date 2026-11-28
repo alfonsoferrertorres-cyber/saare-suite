@@ -8,10 +8,65 @@ import {
   EXECUTION_STATUS
 } from '../../domain/contracts';
 
+const GOV_PALETTE = {
+  cardBg: '#F6F6F5',
+  insetBg: '#FFFFFF',
+  mutedBg: '#E4E2DC',
+  primaryBtnBg: '#4A5258',
+  primaryBtnText: '#F6F6F5',
+  secondaryBtnBg: '#FFFFFF',
+  secondaryBtnText: '#1A1D20',
+  textPrimary: '#1A1D20',
+  textSecondary: '#4A5258',
+  textMuted: '#5C646B',
+  border: '#B5B7B9',
+  charcoal: '#1A1D20',
+  slate: '#4A5258'
+};
+
+const CCN_STIC_863_BLOCKS = [
+  {
+    id: 'CCN-1',
+    title: '1. Filtrado y guardrails en tiempo de ejecución',
+    codes: 'op.exp.2 · mp.s.2',
+    saareCoverage: 'PEP / interceptación ex-ante, políticas DLP y Fail-Closed en runtime',
+    consultorTask: 'Revisar reglas de entrada/salida, PII y contención de acciones/agentes'
+  },
+  {
+    id: 'CCN-2',
+    title: '2. Acceso, identidad y segregación',
+    codes: 'op.acc.1–4 · op.ext.4',
+    saareCoverage: 'Aislamiento por tenant_id, roles/sesiones y control de conectores',
+    consultorTask: 'Validar permisos en RAG/repositorios, segregación de funciones y flujos externos'
+  },
+  {
+    id: 'CCN-3',
+    title: '3. Registro, trazabilidad, vigilancia y HITL/HOTL',
+    codes: 'op.exp.8 · op.mon.1/3 · P1–P2',
+    saareCoverage: 'Trazas en bóveda D1, lotes Merkle, sellado RFC 3161 y actividad de sesión',
+    consultorTask: 'Verificar cadena de custodia, alertas/anomalías y aprobaciones/controles humanos'
+  },
+  {
+    id: 'CCN-4',
+    title: '4. Inventario, ciclo de vida, calidad/sesgos y continuidad',
+    codes: 'op.exp.1/3/5/7 · mp.sw.1 · mp.info.6',
+    saareCoverage: 'Versionado/reglas por tenant, trazas de evaluación y respaldo/recuperación',
+    consultorTask: 'Mantener catálogo de activos/modelos, pruebas adversarias/sesgos y planes de respaldo'
+  },
+  {
+    id: 'CCN-5',
+    title: '5. Gobernanza, cumplimiento y alfabetización',
+    codes: 'org.1–4 · mp.per.3–4 · mp.info.1',
+    saareCoverage: 'Asistente FRIA (Art. 27), SoA ISO/IEC 42001, matriz GRC y certificados',
+    consultorTask: 'Documentar clasificación RIA, riesgos R01–R08, EIPD/Art. 27 y formación por rol'
+  }
+];
+
 const GOVERNANCE_ITEMS = [
   {
     key: 'fria_soa',
     title: 'Evaluación FRIA (Art. 27) y SoA ISO/IEC 42001',
+    ccnTag: 'CCN-5 · org.1–4 / mp.info.1',
     scope: 'Evaluación interna y declaración de aplicabilidad',
     documentState: DOCUMENT_LIFECYCLE.DRAFT,
     permission: CONSOLE_ACTIONS.RUN_FRIA_ASSESSMENT,
@@ -21,6 +76,7 @@ const GOVERNANCE_ITEMS = [
   {
     key: 'grc_templates',
     title: 'Paquete de 4 Plantillas GRC y Matriz Normativa',
+    ccnTag: 'CCN-5 · org.1–4',
     scope: 'Documentación base de gobernanza y riesgo',
     documentState: DOCUMENT_LIFECYCLE.DRAFT,
     permission: CONSOLE_ACTIONS.EXPORT_GRC_PACKAGE,
@@ -30,6 +86,7 @@ const GOVERNANCE_ITEMS = [
   {
     key: 'grant_dossier',
     title: 'Dossier de Subvenciones',
+    ccnTag: 'CCN-5 · Gobernanza y expedientes',
     scope: 'Soporte documental de elegibilidad / expediente',
     documentState: DOCUMENT_LIFECYCLE.DRAFT,
     permission: CONSOLE_ACTIONS.EXPORT_GRANT_DOSSIER,
@@ -39,6 +96,7 @@ const GOVERNANCE_ITEMS = [
   {
     key: 'official_report',
     title: 'Informe Oficial del Tenant',
+    ccnTag: 'CCN-3 · op.exp.8 / op.mon.3',
     scope: 'Reporte operativo de estado y trazas observadas',
     documentState: DOCUMENT_LIFECYCLE.REVIEWED,
     permission: CONSOLE_ACTIONS.EXPORT_OFFICIAL_REPORT,
@@ -48,6 +106,7 @@ const GOVERNANCE_ITEMS = [
   {
     key: 'technical_manifest',
     title: 'Manifiesto / Teaser Técnico',
+    ccnTag: 'CCN-3 / CCN-4 · op.exp.8',
     scope: 'Especificación técnica de arquitectura y forense',
     documentState: DOCUMENT_LIFECYCLE.APPROVED,
     permission: CONSOLE_ACTIONS.DOWNLOAD_DEPLOYMENT_ASSETS,
@@ -98,7 +157,7 @@ export default function GovernanceView({
 
   const [busyKey, setBusyKey] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
-  const [statusTone, setStatusTone] = useState('info'); // 'info' | 'success' | 'error'
+  const [statusTone, setStatusTone] = useState('info');
   const [lastArtifact, setLastArtifact] = useState(null);
   const [localRuleForm, setLocalRuleForm] = useState({ name: '', pattern: '' });
 
@@ -299,7 +358,6 @@ export default function GovernanceView({
     }
 
     try {
-      // Validar expresión regular antes de delegar
       // eslint-disable-next-line no-new
       new RegExp(pattern);
     } catch {
@@ -315,15 +373,17 @@ export default function GovernanceView({
   };
 
   const bannerColor =
-    statusTone === 'error' ? '#fca5a5' : statusTone === 'success' ? '#6ee7b7' : '#7dd3fc';
+    statusTone === 'error' ? '#5C231E' : statusTone === 'success' ? '#1F3A2D' : GOV_PALETTE.textPrimary;
+  const bannerBg =
+    statusTone === 'error' ? '#E7D8D6' : statusTone === 'success' ? '#DCE3DF' : GOV_PALETTE.cardBg;
   const bannerBorder =
-    statusTone === 'error' ? '#ef4444' : statusTone === 'success' ? '#10b981' : '#0284c7';
+    statusTone === 'error' ? '#9E3B33' : statusTone === 'success' ? '#6D8779' : GOV_PALETTE.slate;
 
   const rulesList = Array.isArray(customRules) ? customRules : [];
 
   const cardStyle = {
-    background: '#0b0f19',
-    border: '1px solid #1e293b',
+    background: GOV_PALETTE.cardBg,
+    border: `1px solid ${GOV_PALETTE.border}`,
     borderRadius: '10px',
     padding: '14px 16px',
     display: 'flex',
@@ -335,7 +395,7 @@ export default function GovernanceView({
   const labelStyle = {
     fontSize: '10px',
     fontWeight: '800',
-    color: '#94a3b8',
+    color: GOV_PALETTE.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em'
   };
@@ -352,32 +412,43 @@ export default function GovernanceView({
         }}
       >
         <div style={cardStyle}>
-          <span style={labelStyle}>Reglas DLP</span>
+          <span style={labelStyle}>Reglas DLP · CCN-1 (op.exp.2)</span>
           <strong
             className="saare-mono"
-            style={{ fontSize: '1.2rem', color: tenantRulesEnabled ? '#34d399' : '#fbbf24' }}
+            style={{
+              fontSize: '1.2rem',
+              color: tenantRulesEnabled ? '#1F3A2D' : '#574313'
+            }}
           >
             {tenantRulesEnabled ? 'ACTIVAS' : 'INACTIVAS'}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.72rem', color: GOV_PALETTE.textSecondary }}>
             Reglas personalizadas: {rulesList.length}
           </span>
         </div>
 
         <div style={cardStyle}>
           <span style={labelStyle}>Contexto normativo</span>
-          <strong className="saare-mono" style={{ fontSize: '0.95rem', color: '#38bdf8' }}>
-            ISO/IEC 42001 · FRIA
+          <strong
+            className="saare-mono"
+            style={{ fontSize: '0.9rem', color: GOV_PALETTE.textPrimary }}
+          >
+            ISO/IEC 42001 · CCN-STIC 863
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Tenant: {tenantLabel}</span>
+          <span style={{ fontSize: '0.72rem', color: GOV_PALETTE.textSecondary }}>
+            Tenant: {tenantLabel}
+          </span>
         </div>
 
         <div style={cardStyle}>
           <span style={labelStyle}>Artefactos GRC</span>
-          <strong className="saare-mono" style={{ fontSize: '1.2rem', color: '#f8fafc' }}>
+          <strong
+            className="saare-mono"
+            style={{ fontSize: '1.2rem', color: GOV_PALETTE.textPrimary }}
+          >
             {GOVERNANCE_ITEMS.length}
           </strong>
-          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.72rem', color: GOV_PALETTE.textSecondary }}>
             {docCounts.draft} borrador · {docCounts.reviewed} revisado · {docCounts.approved} aprobado
           </span>
         </div>
@@ -408,12 +479,16 @@ export default function GovernanceView({
                   padding: '6px 12px',
                   borderRadius: '6px',
                   background: !canManageRules
-                    ? '#1e293b'
+                    ? GOV_PALETTE.mutedBg
                     : tenantRulesEnabled
-                    ? '#059669'
-                    : '#334155',
-                  color: !canManageRules ? '#64748b' : '#ffffff',
-                  border: 'none',
+                    ? GOV_PALETTE.primaryBtnBg
+                    : GOV_PALETTE.secondaryBtnBg,
+                  color: !canManageRules
+                    ? GOV_PALETTE.textMuted
+                    : tenantRulesEnabled
+                    ? GOV_PALETTE.primaryBtnText
+                    : GOV_PALETTE.textPrimary,
+                  border: `1px solid ${GOV_PALETTE.border}`,
                   fontSize: '0.72rem',
                   fontWeight: '800',
                   cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
@@ -431,9 +506,9 @@ export default function GovernanceView({
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  background: '#111827',
-                  color: canManageRules ? '#e2e8f0' : '#64748b',
-                  border: '1px solid #334155',
+                  background: GOV_PALETTE.secondaryBtnBg,
+                  color: canManageRules ? GOV_PALETTE.textPrimary : GOV_PALETTE.textMuted,
+                  border: `1px solid ${GOV_PALETTE.border}`,
                   fontSize: '0.72rem',
                   fontWeight: '800',
                   cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
@@ -455,9 +530,9 @@ export default function GovernanceView({
               style={{
                 padding: '7px 10px',
                 borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
+                background: GOV_PALETTE.insetBg,
+                color: GOV_PALETTE.textPrimary,
+                border: `1px solid ${GOV_PALETTE.border}`,
                 fontSize: '0.75rem',
                 minWidth: '180px'
               }}
@@ -470,9 +545,9 @@ export default function GovernanceView({
               style={{
                 padding: '7px 10px',
                 borderRadius: '6px',
-                background: '#020617',
-                color: '#f8fafc',
-                border: '1px solid #334155',
+                background: GOV_PALETTE.insetBg,
+                color: GOV_PALETTE.textPrimary,
+                border: `1px solid ${GOV_PALETTE.border}`,
                 fontSize: '0.75rem',
                 minWidth: '220px',
                 flex: 1
@@ -484,9 +559,9 @@ export default function GovernanceView({
               style={{
                 padding: '7px 14px',
                 borderRadius: '6px',
-                background: canManageRules ? '#0284c7' : '#1e293b',
-                color: canManageRules ? '#ffffff' : '#64748b',
-                border: 'none',
+                background: canManageRules ? GOV_PALETTE.primaryBtnBg : GOV_PALETTE.mutedBg,
+                color: canManageRules ? GOV_PALETTE.primaryBtnText : GOV_PALETTE.textMuted,
+                border: `1px solid ${canManageRules ? GOV_PALETTE.charcoal : GOV_PALETTE.border}`,
                 fontSize: '0.74rem',
                 fontWeight: '800',
                 cursor: isRulesLoading ? 'wait' : canManageRules ? 'pointer' : 'not-allowed'
@@ -505,8 +580,8 @@ export default function GovernanceView({
                 style={{
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  background: '#020617',
-                  border: '1px solid #1e293b',
+                  background: GOV_PALETTE.insetBg,
+                  border: `1px solid ${GOV_PALETTE.border}`,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -515,8 +590,11 @@ export default function GovernanceView({
                 }}
               >
                 <div style={{ minWidth: 0, wordBreak: 'break-all' }}>
-                  <strong style={{ color: '#f8fafc' }}>{rule.name}</strong>{' '}
-                  <code className="saare-mono" style={{ color: '#38bdf8', fontSize: '0.7rem' }}>
+                  <strong style={{ color: GOV_PALETTE.textPrimary }}>{rule.name}</strong>{' '}
+                  <code
+                    className="saare-mono"
+                    style={{ color: GOV_PALETTE.textSecondary, fontSize: '0.7rem' }}
+                  >
                     {rule.pattern}
                   </code>
                 </div>
@@ -528,9 +606,9 @@ export default function GovernanceView({
                     style={{
                       padding: '4px 10px',
                       borderRadius: '5px',
-                      background: '#111827',
-                      color: canManageRules ? '#fca5a5' : '#64748b',
-                      border: '1px solid #334155',
+                      background: GOV_PALETTE.mutedBg,
+                      color: canManageRules ? '#5C231E' : GOV_PALETTE.textMuted,
+                      border: `1px solid ${GOV_PALETTE.border}`,
                       fontSize: '0.7rem',
                       fontWeight: '700',
                       cursor: isRulesLoading
@@ -556,11 +634,12 @@ export default function GovernanceView({
           style={{
             padding: '10px 14px',
             borderRadius: '8px',
-            background: '#020617',
+            background: bannerBg,
+            border: `1px solid ${GOV_PALETTE.border}`,
             borderLeft: `3px solid ${bannerBorder}`,
             fontSize: '0.76rem',
             color: bannerColor,
-            fontWeight: '600'
+            fontWeight: '700'
           }}
         >
           {statusMessage}
@@ -572,10 +651,10 @@ export default function GovernanceView({
           style={{
             padding: '10px 14px',
             borderRadius: '8px',
-            background: '#020617',
-            border: '1px solid #1e293b',
+            background: GOV_PALETTE.insetBg,
+            border: `1px solid ${GOV_PALETTE.border}`,
             fontSize: '0.74rem',
-            color: '#cbd5e1',
+            color: GOV_PALETTE.textSecondary,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -584,16 +663,79 @@ export default function GovernanceView({
           }}
         >
           <span>
-            Último artefacto exportado: <strong className="saare-mono">{lastArtifact.filename}</strong>{' '}
+            Último artefacto exportado:{' '}
+            <strong className="saare-mono" style={{ color: GOV_PALETTE.textPrimary }}>
+              {lastArtifact.filename}
+            </strong>{' '}
             · Estado: <strong>{lastArtifact.documentState}</strong>
           </span>
-          <span className="saare-mono" style={{ color: '#64748b', fontSize: '0.7rem' }}>
+          <span className="saare-mono" style={{ color: GOV_PALETTE.textMuted, fontSize: '0.7rem' }}>
             {lastArtifact.generatedAt}
           </span>
         </div>
       )}
 
-      {/* Prioridad 3: Documentación GRC, evaluaciones y subvenciones (segundo plano) */}
+      {/* Alineación con las 5 categorías de CCN-STIC 863 para consultoría */}
+      <section aria-label="Alineación CCN-STIC 863" style={cardStyle}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={labelStyle}>Guía de alineación · 5 categorías CCN-STIC 863</span>
+          <span style={{ fontSize: '0.7rem', color: GOV_PALETTE.textSecondary }}>
+            Soporte técnico en consola + verificación documental del consultor
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '8px'
+          }}
+        >
+          {CCN_STIC_863_BLOCKS.map((block) => (
+            <div
+              key={block.id}
+              style={{
+                background: GOV_PALETTE.insetBg,
+                border: `1px solid ${GOV_PALETTE.border}`,
+                borderRadius: '8px',
+                padding: '10px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                fontSize: '0.72rem'
+              }}
+            >
+              <div style={{ fontWeight: '800', color: GOV_PALETTE.textPrimary }}>
+                {block.title}
+              </div>
+              <div
+                className="saare-mono"
+                style={{ fontSize: '0.67rem', color: GOV_PALETTE.textMuted }}
+              >
+                {block.codes}
+              </div>
+              <div style={{ color: GOV_PALETTE.textSecondary, lineHeight: 1.35 }}>
+                <strong style={{ color: GOV_PALETTE.textPrimary }}>S.A.A.R.E.:</strong>{' '}
+                {block.saareCoverage}
+              </div>
+              <div style={{ color: GOV_PALETTE.textSecondary, lineHeight: 1.35 }}>
+                <strong style={{ color: GOV_PALETTE.textPrimary }}>Consultor:</strong>{' '}
+                {block.consultorTask}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Prioridad 3: Documentación GRC, evaluaciones y subvenciones */}
       <section style={cardStyle}>
         <div
           style={{
@@ -605,12 +747,19 @@ export default function GovernanceView({
           }}
         >
           <span style={labelStyle}>Documentación GRC, evaluaciones y subvenciones</span>
-          <span style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
-            Tenant activo: <strong>{tenantLabel}</strong>
+          <span style={{ fontSize: '0.72rem', color: GOV_PALETTE.textSecondary }}>
+            Tenant activo: <strong style={{ color: GOV_PALETTE.textPrimary }}>{tenantLabel}</strong>
           </span>
         </div>
 
-        <p style={{ margin: 0, fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.45 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: '0.76rem',
+            color: GOV_PALETTE.textSecondary,
+            lineHeight: 1.45
+          }}
+        >
           Los artefactos generados desde la consola se clasifican por estado documental (
           <strong>{DOCUMENT_LIFECYCLE.DRAFT}</strong>, <strong>{DOCUMENT_LIFECYCLE.REVIEWED}</strong>{' '}
           o <strong>{DOCUMENT_LIFECYCLE.APPROVED}</strong>). Una plantilla, evaluación interna o
@@ -625,9 +774,9 @@ export default function GovernanceView({
               style={{
                 padding: '7px 12px',
                 borderRadius: '6px',
-                background: '#0f172a',
-                color: '#7dd3fc',
-                border: '1px solid #0284c7',
+                background: GOV_PALETTE.secondaryBtnBg,
+                color: GOV_PALETTE.textPrimary,
+                border: `1px solid ${GOV_PALETTE.border}`,
                 fontSize: '0.73rem',
                 fontWeight: '700',
                 cursor: 'pointer'
@@ -644,9 +793,9 @@ export default function GovernanceView({
               style={{
                 padding: '7px 12px',
                 borderRadius: '6px',
-                background: '#111827',
-                color: '#fcd34d',
-                border: '1px solid #78350f',
+                background: GOV_PALETTE.mutedBg,
+                color: GOV_PALETTE.textPrimary,
+                border: `1px solid ${GOV_PALETTE.border}`,
                 fontSize: '0.73rem',
                 fontWeight: '700',
                 cursor: 'pointer'
@@ -676,8 +825,8 @@ export default function GovernanceView({
             <article
               key={item.key}
               style={{
-                background: '#0b0f19',
-                border: '1px solid #1e293b',
+                background: GOV_PALETTE.cardBg,
+                border: `1px solid ${GOV_PALETTE.border}`,
                 borderRadius: '10px',
                 padding: '14px',
                 display: 'flex',
@@ -697,16 +846,18 @@ export default function GovernanceView({
                     flexWrap: 'wrap'
                   }}
                 >
-                  <strong style={{ fontSize: '0.84rem', color: '#f8fafc' }}>{item.title}</strong>
+                  <strong style={{ fontSize: '0.84rem', color: GOV_PALETTE.textPrimary }}>
+                    {item.title}
+                  </strong>
                   <span
                     style={{
                       fontSize: '0.66rem',
                       fontWeight: '800',
                       padding: '2px 8px',
                       borderRadius: '999px',
-                      background: '#0f172a',
-                      color: '#38bdf8',
-                      border: '1px solid #0284c7',
+                      background: GOV_PALETTE.mutedBg,
+                      color: GOV_PALETTE.textPrimary,
+                      border: `1px solid ${GOV_PALETTE.border}`,
                       whiteSpace: 'nowrap'
                     }}
                   >
@@ -714,9 +865,25 @@ export default function GovernanceView({
                   </span>
                 </div>
 
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Alcance: {item.scope}</div>
+                <div
+                  className="saare-mono"
+                  style={{ fontSize: '0.68rem', color: GOV_PALETTE.textMuted }}
+                >
+                  {item.ccnTag}
+                </div>
 
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+                <div style={{ fontSize: '0.7rem', color: GOV_PALETTE.textSecondary }}>
+                  Alcance: {item.scope}
+                </div>
+
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '0.75rem',
+                    color: GOV_PALETTE.textSecondary,
+                    lineHeight: 1.45
+                  }}
+                >
                   {item.description}
                 </p>
               </div>
@@ -729,9 +896,9 @@ export default function GovernanceView({
                   style={{
                     padding: '8px 12px',
                     borderRadius: '6px',
-                    background: allowed ? '#0284c7' : '#1e293b',
-                    color: allowed ? '#ffffff' : '#64748b',
-                    border: allowed ? 'none' : '1px solid #334155',
+                    background: allowed ? GOV_PALETTE.primaryBtnBg : GOV_PALETTE.mutedBg,
+                    color: allowed ? GOV_PALETTE.primaryBtnText : GOV_PALETTE.textMuted,
+                    border: `1px solid ${allowed ? GOV_PALETTE.charcoal : GOV_PALETTE.border}`,
                     fontSize: '0.74rem',
                     fontWeight: '800',
                     cursor: busyKey ? 'wait' : allowed ? 'pointer' : 'not-allowed',
